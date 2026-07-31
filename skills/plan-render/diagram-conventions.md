@@ -11,7 +11,7 @@ immediately. Add a **legend** whenever color or line-style carries meaning.
 |---|---|---|
 | System / service architecture | **C4** (Context → Container → Component) | one abstraction level per diagram; a legend is mandatory; every arrow labeled with *what flows* + protocol |
 | Message ordering between parties | **UML sequence** | lifelines (dashed verticals) + activation bars; **filled arrowhead = sync call, dashed open arrowhead = return**; time flows top-down |
-| Object / type relationships | **UML class** | inheritance = hollow triangle to the parent; composition = filled diamond; aggregation = hollow diamond; multiplicity at both line ends |
+| Object / type relationships | **UML class** | inheritance = hollow triangle to the parent; composition = filled diamond (at the whole end); aggregation = hollow diamond (at the whole end); multiplicity at both line ends |
 | Data model / tables | **ER, crow's-foot** | cardinality glyphs at the entity end (bar = one, fork = many, circle = optional); mark PK / FK |
 | Data movement through a system | **DFD** | process = numbered verb; data store = open-ended rectangle; external entity = square; every flow is a **named noun**, never control ("then", "click") |
 | Control flow / algorithm | **flowchart, ISO 5807 shapes** | oval = start/end, rectangle = process, **diamond = decision (label every branch)**, parallelogram = I/O |

@@ -59,7 +59,7 @@ constant:
   **is the point.** Never mermaid, never a CDN chart lib; draw it. A visualize page whose
   only visual is a table has failed its one job. When the figure has a standard notation for
   its domain (a chart type, C4, sequence, crow's-foot, BPMN, a P&ID), use it, and add a
-  **legend** when color or line-style encodes meaning. See `plan-render/diagram-conventions.md`.
+  **legend** when color or line-style encodes meaning. See `diagram-conventions.md` (sibling `plan-render` skill dir).
 - **`.stat` tiles** for headline numbers, **`.callout`** for the load-bearing takeaway,
   **tagged tables** where rows need status pills.
 - **`.foot`** — one mono line; provenance / "as of" / a link, not a decision CTA.
