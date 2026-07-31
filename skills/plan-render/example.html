@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Plan · Self-healing bookkeeping for remote --host runs</title>
+<title>Plan · Reconcile local bookkeeping for remote --host runs</title>
 <style>
   :root{
     --bg:#0a0a0a; --panel:#111312; --panel2:#161a18; --ink:#e7ece8; --dim:#8b938c;
@@ -95,8 +95,8 @@
 
 <header class="hero">
   <p class="kicker">agents-cli · change proposal · plan mode</p>
-  <h1>Self-healing bookkeeping for<br><span class="accent">remote <code style="font-size:.7em">--host</code> runs</span></h1>
-  <p class="sub">A remote agent survives a dropped connection — but today the <em>local</em> record doesn't
+  <h1>Reconcile local bookkeeping for<br><span class="accent">remote <code style="font-size:.7em">--host</code> runs</span></h1>
+  <p class="sub">A remote agent survives a dropped connection, but today the <em>local</em> record doesn't
   track that. Three status bugs leave tasks frozen or falsely failed. This plan makes the local view
   reconcile itself against remote ground truth, with no daemon and no new connection to hold open.</p>
   <div class="meta">
@@ -160,7 +160,7 @@ The <b>local task record</b> is where reality slips.</p>
   <!-- remote lane: keeps running, writes .exit -->
   <rect x="100" y="235" width="180" height="42" rx="7" fill="#12160f" stroke="#3a4a2a"/>
   <text x="190" y="255" fill="#a3e635" font-size="12.5" text-anchor="middle" font-family="var(--mono)">nohup agent run</text>
-  <text x="190" y="270" fill="#8b938c" font-size="10.5" text-anchor="middle" font-family="var(--mono)">detached — survives the drop</text>
+  <text x="190" y="270" fill="#8b938c" font-size="10.5" text-anchor="middle" font-family="var(--mono)">detached · survives the drop</text>
 
   <path d="M280 256 L470 256" stroke="#3a4a2a" fill="none" stroke-dasharray="4 4"/>
   <rect x="470" y="235" width="200" height="42" rx="7" fill="#12160f" stroke="#a3e635"/>
@@ -176,6 +176,11 @@ The <b>local task record</b> is where reality slips.</p>
     <marker id="b" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto"><path d="M0 0 L8 4.5 L0 9 z" fill="#f5c451"/></marker>
   </defs>
 </svg>
+<div class="legend">
+  <span><span class="sw" style="background:#ff6b6b"></span>local path breaks</span>
+  <span><span class="sw" style="background:#a3e635"></span>remote survives</span>
+  <span><span class="sw" style="background:#f5c451"></span>truth never re-read</span>
+</div>
 <figcaption><b>Bug 1.</b> The remote <code>.exit</code> holds the true result, but nothing re-reads it once the local follower dies.</figcaption>
 </figure>
 
@@ -184,12 +189,12 @@ The <b>local task record</b> is where reality slips.</p>
   <tbody>
     <tr><td><span class="tag bug">BUG&nbsp;1</span></td>
       <td>Kill the local run (sleep, Ctrl-C) → <code>agents hosts ps</code> shows <code>running</code> forever.</td>
-      <td>Terminal status is written only after <code>followHostTask</code> returns — <code>dispatch.ts:85-96</code>. Killed follower ⇒ never runs. <code>listTasks()</code> reads verbatim — <code>tasks.ts:67-80</code>.</td></tr>
+      <td>Terminal status is written only after <code>followHostTask</code> returns (<code>dispatch.ts:85-96</code>). Killed follower ⇒ never runs. <code>listTasks()</code> reads it verbatim (<code>tasks.ts:67-80</code>).</td></tr>
     <tr><td><span class="tag bug">BUG&nbsp;2</span></td>
       <td>Reattach with <code>logs -f</code>, watch it finish → still shows <code>running</code>.</td>
-      <td><code>doLogs</code> gets the exit code back but never calls <code>updateTask</code> — <code>hosts.ts:196-197</code>.</td></tr>
+      <td><code>doLogs</code> gets the exit code back but never calls <code>updateTask</code> (<code>hosts.ts:196-197</code>).</td></tr>
     <tr><td><span class="tag bug">BUG&nbsp;3</span></td>
-      <td>A run longer than the 1&nbsp;h follow window exits <code>1</code> locally — a healthy job looks failed.</td>
+      <td>A run longer than the 1&nbsp;h follow window exits <code>1</code> locally, so a healthy job looks failed.</td>
       <td><code>followHostTask</code> returns <code>-1</code> on deadline (<code>progress.ts:33,56</code>); <code>exec.ts:419</code> maps <code>-1 → exit 1</code>; <code>dispatch.ts:92</code> freezes it at <code>unknown</code>.</td></tr>
   </tbody>
 </table>
@@ -197,7 +202,7 @@ The <b>local task record</b> is where reality slips.</p>
 <!-- ============ 02 ARCH ============ -->
 <h2 id="arch"><span class="n">02</span>How a remote run actually works</h2>
 <p class="lead">The offload is deliberately connectionless. SSH is used only to <em>kick off</em> the run and to
-<em>poll</em> a file — never to hold a live pipe to the agent.</p>
+<em>poll</em> a file, never to hold a live pipe to the agent.</p>
 
 <figure class="fig">
 <svg viewBox="0 0 900 210" role="img" aria-label="Detached dispatch and offset-tail architecture">
@@ -238,10 +243,10 @@ The <b>local task record</b> is where reality slips.</p>
 </figure>
 
 <!-- ============ 03 THE DIFFERENCE ============ -->
-<h2 id="diff"><span class="n">03</span>The design choice that matters ★</h2>
-<p class="lead">You asked the sharp question: why not <b>hold an open channel and let everyone watch it</b>, instead of
+<h2 id="diff"><span class="n">03</span>The design choice ★</h2>
+<p class="lead">You asked: why not <b>hold an open channel and let everyone watch it</b>, instead of
 writing to a file and polling? Here are the two models side by side. The short answer: the file model
-<em>is</em> the "everyone watching" model — done so it survives the watchers leaving.</p>
+<em>is</em> the "everyone watching" model, built so it survives the watchers leaving.</p>
 
 <div class="grid2">
   <figure class="fig">
@@ -307,27 +312,27 @@ writing to a file and polling? Here are the two models side by side. The short a
 <table>
   <thead><tr><th style="width:26%">Property</th><th style="width:30%">A · held channel + hub</th><th style="width:30%">B · file + reconcile</th><th>why it matters</th></tr></thead>
   <tbody>
-    <tr><td><b>Survives the drop</b></td><td>No — state lives in the connection; kill it and the view (and any un-persisted state) dies</td><td>Yes — truth is the on-host file; observers are disposable</td><td class="why">this is the entire reason the feature exists</td></tr>
-    <tr><td><b>Many watchers</b></td><td>Needs a fan-out daemon to re-broadcast the single stream</td><td>Free — N clients each <code>tail -c +offset</code> the same file</td><td class="why">"everyone's eye on it" with zero coordination</td></tr>
+    <tr><td><b>Survives the drop</b></td><td>No: state lives in the connection; kill it and the view (and any un-persisted state) dies</td><td>Yes: truth is the on-host file; observers are disposable</td><td class="why">this is the entire reason the feature exists</td></tr>
+    <tr><td><b>Many watchers</b></td><td>Needs a fan-out daemon to re-broadcast the single stream</td><td>Free: N clients each <code>tail -c +offset</code> the same file</td><td class="why">"everyone's eye on it" with zero coordination</td></tr>
     <tr><td><b>Failure surface</b></td><td>A long-lived hub that can crash and blind everyone at once</td><td>No new process; nothing to supervise or restart</td><td class="why">fewer moving parts = fewer 3am pages</td></tr>
     <tr><td><b>Reconnect / late join</b></td><td>Needs server-side replay buffers &amp; sessions</td><td>Resume from saved offset; a late joiner tails from 0</td><td class="why">recovery is idempotent, not stateful</td></tr>
-    <tr><td><b>Latency</b></td><td><span style="color:var(--lime)">Wins</span> — true real-time</td><td>~1.5s poll granularity</td><td class="why">but mux socket makes each poll &lt;100ms; humans don't feel 1.5s</td></tr>
-    <tr><td><b>Load at N watchers</b></td><td><span style="color:var(--lime)">Wins</span> — one stream fanned out</td><td>N×SSH (softened by the shared control socket)</td><td class="why">only bites at dozens of watchers — not our case</td></tr>
+    <tr><td><b>Latency</b></td><td><span style="color:var(--lime)">Wins</span>: true real-time</td><td>~1.5s poll granularity</td><td class="why">but mux socket makes each poll &lt;100ms; humans don't feel 1.5s</td></tr>
+    <tr><td><b>Load at N watchers</b></td><td><span style="color:var(--lime)">Wins</span>: one stream fanned out</td><td>N×SSH (softened by the shared control socket)</td><td class="why">only bites at dozens of watchers, not our case</td></tr>
   </tbody>
 </table>
 
 <div class="callout">
   <span class="lbl">the takeaway</span>
   "Hold a channel so everyone can watch" sounds like it <em>adds</em> observers. It actually <b>centralizes</b>
-  them behind a crashable hub and ties live state to a connection — the one thing that must not die.
+  them behind a crashable hub and ties live state to a connection, the one thing that must not die.
   Model B is the decentralized version of the same idea: every eye is independent, and the truth outlives
   all of them. The bookkeeping fix is just <b>teaching the local record to re-read that truth</b> when someone looks.
 </div>
 
 <!-- ============ 04 FIX ============ -->
-<h2 id="fix"><span class="n">04</span>The fix — reconcile-on-read</h2>
+<h2 id="fix"><span class="n">04</span>The fix: reconcile-on-read</h2>
 <p class="lead">Events are rare (a run finishes once) and watchers are intermittent, so we don't push over a held
-channel — we cheaply re-read <code>.exit</code> whenever someone runs <code>ps</code> or <code>logs</code>. One pure
+channel; we cheaply re-read <code>.exit</code> whenever someone runs <code>ps</code> or <code>logs</code>. One pure
 mapping + one small network module, wired into the paths that already exist.</p>
 
 <figure class="fig">
@@ -374,16 +379,16 @@ mapping + one small network module, wired into the paths that already exist.</p>
     <marker id="j" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0 0 L7 4 L0 8 z" fill="#5ad6c0"/></marker>
   </defs>
 </svg>
-<figcaption>Only a <b>populated <code>.exit</code></b> flips a record terminal. <code>running</code>/<code>unreachable</code> are left alone — we confirm completion, never guess failure.</figcaption>
+<figcaption>Only a <b>populated <code>.exit</code></b> flips a record terminal. <code>running</code>/<code>unreachable</code> are left alone; we confirm completion, never guess failure.</figcaption>
 </figure>
 
 <h3>The two new pieces</h3>
-<pre><span class="c">// tasks.ts — pure, no SSH; a real remote exit code is never -1</span>
+<pre><span class="c">// tasks.ts: pure, no SSH; a real remote exit code is never -1</span>
 <span class="k">export function</span> terminalPatch(code) {
   <span class="k">return</span> { status: code === 0 ? <span class="s">'completed'</span> : <span class="s">'failed'</span>, exitCode: code, finishedAt: iso() }
 }
 
-<span class="c">// reconcile.ts (new) — the one place ps + logs both route through</span>
+<span class="c">// reconcile.ts (new): the one place ps + logs both route through</span>
 <span class="k">export function</span> readRemoteExit(target, remoteExit) {
   <span class="k">const</span> r = sshExec(target, <span class="s">`cat ${remoteExit} 2&gt;/dev/null`</span>, { timeoutMs: 6000, multiplex: true })
   <span class="k">if</span> (r.timedOut || r.code === null || r.code === <span class="r">255</span>) <span class="k">return</span> { state: <span class="s">'unreachable'</span> }  <span class="c">// host down</span>
@@ -394,14 +399,14 @@ mapping + one small network module, wired into the paths that already exist.</p>
 
 <div class="callout warn">
   <span class="lbl">the semantic fix (bug 3)</span>
-  <code>-1</code> from <code>followHostTask</code> means "local follow window closed; the remote run <em>continues</em>" —
+  <code>-1</code> from <code>followHostTask</code> means "local follow window closed; the remote run <em>continues</em>". It is
   never a failure and never terminal. Everywhere it's consumed we now treat it as <b>still running, resolve later</b>:
   dispatch leaves the record <code>running</code>; <code>exec.ts:419</code> and <code>doLogs</code> exit <code>0</code>
   (the reattach hint is already printed at <code>progress.ts:57</code>).
 </div>
 
 <!-- ============ 05 TASKS ============ -->
-<h2 id="tasks"><span class="n">05</span>Tasks — drainable by <code>/code:loop</code></h2>
+<h2 id="tasks"><span class="n">05</span>Tasks: drainable by <code>/code:loop</code></h2>
 <table>
   <thead><tr><th style="width:34px">#</th><th>File</th><th>Change</th></tr></thead>
   <tbody>
@@ -440,7 +445,7 @@ mapping + one small network module, wired into the paths that already exist.</p>
 </div>
 
 <div class="panel">
-  <h3 style="margin-top:0">Delta spec — the contract after this change</h3>
+  <h3 style="margin-top:0">Delta spec: the contract after this change</h3>
   <p style="margin:6px 0">For any <code>HostTask</code>, <code>status:'running'</code> means <em>"not yet confirmed finished."</em>
   It is resolved to <code>completed</code>/<code>failed</code> by any read (<code>ps</code>, <code>logs</code>) that can
   reach the host and find a populated <code>.exit</code>. An unreachable host or absent/empty <code>.exit</code>
@@ -451,8 +456,8 @@ mapping + one small network module, wired into the paths that already exist.</p>
 <div class="callout">
   <span class="lbl">verification</span>
   Two independent planners (read-only, blind to this draft) reproduced all three bugs at the same
-  <code>file:line</code> and independently arrived at this architecture. The one divergence — sequential vs
-  parallel reconcile — resolved to <b>host-deduped sequential</b>: one <code>sshReachable</code> probe per host
+  <code>file:line</code> and independently arrived at this architecture. The one divergence, sequential vs
+  parallel reconcile, resolved to <b>host-deduped sequential</b>: one <code>sshReachable</code> probe per host
   keeps <code>ps</code> responsive without an async rewrite.
 </div>
 
