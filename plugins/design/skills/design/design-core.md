@@ -33,7 +33,7 @@ generation only when the deliverable is genuinely photographic or painterly. See
   not guess it.
 - **Colorblind-safe.** Never encode meaning by red-vs-green alone; pair color with shape,
   label, or position. Categorical uses Okabe-Ito; sequential uses Viridis. Reuse the
-  palettes in `../../skills/plan-render/diagram-conventions.md`.
+  palettes in the `plan-render` skill's `diagram-conventions.md`.
 - **Focus and motion.** Visible focus rings on interactive elements; honor
   `prefers-reduced-motion`; nothing conveyed by hover alone.
 - **Text.** Real, selectable text over text-baked-into-an-image; tap targets at least 44px.

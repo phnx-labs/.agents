@@ -19,7 +19,7 @@ and mandatory render/critique verification (§7).
 
 ## The loop
 
-1. **Identify the notation.** Consult `../../skills/plan-render/diagram-conventions.md` and
+1. **Identify the notation.** Consult the `plan-render` skill's `diagram-conventions.md` and
    pick the notation that fits what the figure shows: C4 for service architecture, UML
    sequence for message ordering, UML class for type relationships, ER crow's-foot for data
    models, ISO 5807 shapes for control flow, BPMN for multi-actor processes, provider icons
