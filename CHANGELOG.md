@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.1.73] - 2026-07-31
+
+### Changed
+- **Agents now run a ticket lifecycle and put a picture on every user-visible PR.** Two always-on rules changed. `conventions.md` (and its compiled `rules/AGENTS.md` mirror) turns the one-line Tickets bullet into a three-step lifecycle: check for an open ticket before substantive work and claim it if found; open one scoped to the task when none exists and a tracker is configured (skip when no tracker is set up, or for a trivial fix or a plain question); and on delivery post a closing update with the PR link plus a screenshot or short screen recording, then move it to Done, closing only with proof. `truly-agentic-git-workflow` gains a pre-review gate in its evidence section: a user-visible change does not get review requested until the PR body carries a screenshot or short screen recording of the outcome, because the user reviews the PR in GitHub rather than the diff and a screenshot beats a description; a change with no visible surface attaches the closest concrete artifact (passing test output, the `curl`'d response). The `/tickets` command gains a "starting a task" section for the same check/open/close flow, and the `git-workflow` skill's Step 3 elevates its attach-evidence line to that gate with a screen-recording example.
+
 ## [0.1.72] - 2026-07-31
 
 ### Added

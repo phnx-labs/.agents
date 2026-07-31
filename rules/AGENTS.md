@@ -157,6 +157,14 @@ Full recipe — worktree creation, PR, after-merge cleanup: the `git-workflow` s
 Opening something for a human — a **PR**, a **GitHub issue**, or a **ticket**
 (Linear/Jira) — is a handoff, not a stopping point. Identify which flow you're in
 and attach what the reviewer needs to judge it without re-running your session.
+
+**A user-visible change ships a picture.** The user reviews the PR in GitHub, not the
+diff, so a PR with no screenshot is one they cannot verify. Before you request review,
+put a **screenshot or a short screen recording** of the user-visible outcome in the body;
+screenshots beat descriptions. A change with no visible surface attaches the closest
+concrete artifact instead (the passing test output, the `curl`'d response). The same
+asset also goes on the ticket when you close it.
+
 Every `gh pr create` / `gh issue create` / ticket-open carries:
 
 - **Screenshots and relevant materials of the user-visible outcome** — the rendered
@@ -244,7 +252,10 @@ Enforced by the bundled `footer-guard.sh` (PreToolUse): a `gh`/`git commit` comm
 # Conventions
 
 - **Memory file:** `AGENTS.md` is canonical. `CLAUDE.md` and `GEMINI.md` are symlinks (or synced copies).
-- **Tickets:** Linear context is auto-injected at session start by the linear hook — read it before starting work. Use `/tickets` to take explicit action (query, update, close) on tickets across Linear/GitHub/Jira. Close only with proof.
+- **Tickets — check first, open if missing, close on delivery.** Linear context is auto-injected at session start by the linear hook; read it before starting. `/tickets` takes any explicit action across Linear/GitHub/Jira.
+  - **Check first.** Before substantive work, check whether an open ticket already covers it (the injected context, or `/tickets` / `gh issue list`). If one exists, claim it (move it to In Progress).
+  - **Open if missing.** No ticket and a tracker is configured? Open one scoped to the task (title + short description) before you start. No tracker set up? Skip this and describe the work in the PR. One ticket per unit of delivery, not per file; skip it for a trivial fix or a plain question.
+  - **Close on delivery, with proof.** When the task ships, post a closing update (what changed, the PR link, a screenshot or short screen recording of the outcome) and move the ticket to Done. Close only with proof.
 - **Parallel work:** Multi-surface changes use `agents teams` — see `parallel-teams`.
 
 # agents-cli
