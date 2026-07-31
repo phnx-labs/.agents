@@ -1,0 +1,82 @@
+---
+name: design
+description: "One keyless, offline-first front door for design. Routes a design intent to a mode and renders it as self-contained HTML/SVG (no CDN, no paid keys): UI screens and flows, clickable prototypes, design systems and tokens, architecture/flow/ER diagrams, infographics and data-stories, slide decks, vector assets (OG cards, SVG logos, icon sets, posters), and critique of an existing screen. True raster (photo, illustration, painterly cover) is an optional layer that degrades to a spec plus an editable placeholder rather than hard-failing. Every mode loads design-core first (hierarchy, WCAG AA contrast, colorblind-safe palettes, brand-probe, precise non-marketing copy, render/screenshot/critique verification). Triggers on: design a screen/page/UI, mock up, prototype, design system, tokens, wireframe, diagram this, infographic, dataviz, slide deck, logo, OG image, social card, icon, poster, critique this design, redesign, is this design any good."
+allowed-tools: Bash(scp*), Bash(agents ssh*), Bash(agents browser*), Bash(open*), Bash(xdg-open*), Bash(node*), Bash(find*), Bash(cp*), Bash(mkdir*), Bash(test*), Bash(git rev-parse*), Write
+user-invocable: true
+---
+
+# design — one keyless front door for design
+
+Design work is scattered and often gated behind paid image backends. This plugin is the
+single, brand-agnostic entry: `/design` reads the intent, picks a mode, and renders the
+result on the **offline HTML/SVG substrate** (the `visualize`/`plan-render` engine —
+self-contained, inline CSS/SVG, no CDN, no keys). It ships in the default distribution, so
+a fresh install has it.
+
+The bet that makes this cover the scenario space: **most design jobs have a better answer
+in editable vector/HTML than in a generated raster.** A landing page, a prototype, a
+diagram, an infographic, a deck, an OG card, a logo, an icon set, a poster — all render
+crisp and editable with zero keys. True raster (a photo, an illustration, a painterly
+cover) is a smaller, clearly-scoped layer that **degrades gracefully** when no backend is
+configured, never a hard failure.
+
+## Load design-core first
+
+Every mode reads **`design-core.md`** before producing anything: visual hierarchy and
+rhythm, accessibility (WCAG AA contrast, colorblind-safe palettes), the brand-probe
+cascade, precise non-marketing copy, the graceful-raster rule, and mandatory
+render/screenshot/critique verification. That shared core is what keeps quality consistent
+across every mode and every user.
+
+## Routing — pick the mode from the intent
+
+| The user asks for | Mode | Output | Keys |
+| --- | --- | --- | --- |
+| a screen, page, UI, dashboard; "make this look good"; redesign | `interface` | self-contained HTML | none |
+| something to click through; a multi-screen flow | `prototype` | linked HTML screens | none |
+| a design system, tokens, components, a `DESIGN.md` | `system` | tokens + HTML preview | none |
+| an architecture / flow / sequence / ER / org diagram | `diagram` | HTML + hand-authored SVG | none |
+| an infographic, data-story, chart, status dashboard | `dataviz` | HTML + SVG | none |
+| a slide deck (pitch, talk, teaching) | `deck` | HTML slides (PPTX optional) | none |
+| an OG card, social graphic, logo, icon set, poster, favicon | `asset` | SVG/HTML (raster optional) | none for vector |
+| motion, a micro-interaction, an animated hero | `motion` | CSS/HTML animation | none |
+| "is this any good?", review/critique an existing screen | `critique` | checklist verdict | none |
+| a photo, illustration, or painterly cover | `asset` (raster) | raster, or spec + placeholder | optional backend |
+
+When the intent is vague ("make me something nice"), ask one clarifying question about the
+job, then route. Never guess between two very different modes silently.
+
+## The modes
+
+Each mode file lives beside this one. Read design-core first, then the mode:
+
+- **`interface.md`** — screens, pages, components; redesign from a screenshot.
+- **`prototype.md`** — clickable multi-screen HTML flows.
+- **`system.md`** — design systems, tokens, `DESIGN.md`, brand definition.
+- **`diagram.md`** — architecture/flow/sequence/ER via `diagram-conventions.md` notation.
+- **`dataviz.md`** — infographics, charts, data-stories, dashboards.
+- **`deck.md`** — slide decks (HTML-first, PPTX when asked).
+- **`asset.md`** — OG cards, logos, icons, posters (vector-first); raster with graceful degradation.
+- **`motion.md`** — CSS/HTML motion and micro-interactions.
+- **`critique.md`** — run the design-core checklist on an existing screen or asset.
+
+## Deliver it (reuse the plan-render/visualize transport)
+
+Write the artifact self-contained. Pick its home once: if the repo has an `.agents/` dir,
+`"$ROOT/.agents/design/<slug>.html"`; else `/tmp/<slug>.html`. Then render it, **look at
+the screenshot**, run the critique checklist, and open it on the machine the user sits at
+(resolve the online device from the Host and Fleet context; `open`/`xdg-open` locally,
+`agents ssh <host> 'open …'` when remote). For a shareable asset, also drop a PDF/PNG in
+`~/Downloads`. See `plan-render/SKILL.md` for the full delivery and PDF steps; do not
+re-derive them.
+
+## Portability (why this works for any user)
+
+- **Ships default.** This plugin lives in the system repo (the npm defaults), beside
+  `plan-render`/`visualize`, not in `.agents-extras` and not in a personal repo.
+- **Keyless core.** The HTML/SVG substrate needs no API key and works offline. That covers
+  interface, prototype, system, diagram, dataviz, deck, critique, and vector assets.
+- **Raster degrades.** True raster uses a backend if one exists, otherwise emits a spec +
+  editable placeholder + enable-steps and exits successfully (design-core §6).
+- **Brand is optional.** Unbranded output is tasteful by default; brand plugins layer on
+  top by calling `/design`.
