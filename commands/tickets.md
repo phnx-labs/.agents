@@ -25,6 +25,18 @@ Check in this order. Stop at the first one that's actually present.
 
 4. **Ask.** If nothing's detectable, ask the user where issues live (Linear team key, GitHub repo, Jira project, etc.) — once. Save the answer to memory if it'll keep coming up.
 
+## When you're starting a task (not just reacting to `/tickets`)
+
+The `conventions` + `truly-agentic-git-workflow` rules ask every substantive task to run a
+small ticket lifecycle; this command is the mechanism.
+
+1. **Check first.** Look for an open ticket that already covers the task (the injected Linear
+   context, or a quick `search` / `gh issue list`). Found one? Claim it (move to In Progress).
+2. **Open if missing.** None, and Step 1 found a configured tracker? Create one scoped to the
+   task before you start. No tracker? Skip this and describe the work in the PR.
+3. **Close on delivery.** When it ships, post the PR link plus a screenshot or short screen
+   recording of the outcome, then move it to Done. Close only with proof.
+
 ## Step 2: Do the thing
 
 Map the user's intent onto the tracker's primitives:
@@ -34,7 +46,7 @@ Map the user's intent onto the tracker's primitives:
 | "what's on my plate" / "my queue" | List issues assigned to the current user, scoped to the active sprint/cycle/milestone if the tracker has one. |
 | "pick up X" / "claim X" | Move the issue to In Progress (or equivalent) and assign it to the current user. |
 | "comment X: ..." | Append a comment. |
-| "close X" / "done with X" | Move to Done with proof — link a PR, paste a screenshot, attach a deploy URL, or quote a metric. Don't close without evidence. |
+| "close X" / "done with X" | Move to Done with proof — link a PR, paste a screenshot or short screen recording, attach a deploy URL, or quote a metric. Don't close without evidence. |
 | "create X" | New issue with title (and description if provided). Default priority Medium unless told otherwise. **Attach screenshots and relevant materials** (repro, error output, the visual you captured) so the issue is actionable without a back-and-forth. |
 | "search X" | Free-text search; show top matches with status + assignee. |
 

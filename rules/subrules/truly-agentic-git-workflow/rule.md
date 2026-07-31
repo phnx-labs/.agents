@@ -81,6 +81,14 @@ Full recipe — worktree creation, PR, after-merge cleanup: the `git-workflow` s
 Opening something for a human — a **PR**, a **GitHub issue**, or a **ticket**
 (Linear/Jira) — is a handoff, not a stopping point. Identify which flow you're in
 and attach what the reviewer needs to judge it without re-running your session.
+
+**A user-visible change ships a picture.** The user reviews the PR in GitHub, not the
+diff, so a PR with no screenshot is one they cannot verify. Before you request review,
+put a **screenshot or a short screen recording** of the user-visible outcome in the body;
+screenshots beat descriptions. A change with no visible surface attaches the closest
+concrete artifact instead (the passing test output, the `curl`'d response). The same
+asset also goes on the ticket when you close it.
+
 Every `gh pr create` / `gh issue create` / ticket-open carries:
 
 - **Screenshots and relevant materials of the user-visible outcome** — the rendered
