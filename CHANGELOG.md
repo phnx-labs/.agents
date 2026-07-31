@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.1.72] - 2026-07-31
+
+### Added
+- **New default `design` plugin: one keyless, offline-first front door for design.** `/design` routes a design intent to a mode and renders it on the self-contained HTML/SVG substrate (the `plan-render`/`visualize` engine: inline CSS/SVG, no CDN, no paid keys), so a fresh install has real design capability with zero setup. Modes: `interface` (screens, pages, components, redesign), `prototype` (clickable multi-screen HTML flows), `system` (design systems, tokens, `DESIGN.md`, a live token preview), `diagram` (architecture/flow/sequence/ER via `plan-render/diagram-conventions.md` notation, legend-bearing SVG, never mermaid), `dataviz` (infographics and charts with Tufte discipline and colorblind-safe palettes), `deck` (HTML slide decks, PPTX optional), `asset` (OG cards, SVG logos, icon sets, and posters rendered offline; true raster degrades to a spec plus an editable placeholder plus enable-steps rather than hard-failing), `motion` (CSS/HTML animation honoring `prefers-reduced-motion`), and `critique` (run the design-core checklist on an existing screen). Every mode loads `design-core.md` first: visual hierarchy and rhythm, WCAG AA contrast, colorblind-safe palettes, the brand-probe cascade, precise non-marketing copy, and mandatory render/screenshot/critique verification. The design bet is that most jobs have a better answer in editable vector/HTML than in a generated raster, so the common design jobs work fully offline; brand plugins (rush, prix) layer on top by calling `/design`, and brand is optional. Registered in `plugins/design/.claude-plugin/plugin.json` and the marketplace seed (`.claude-plugin/marketplace.json`).
+
 ## [0.1.71] - 2026-07-31
 
 ### Added

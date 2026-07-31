@@ -38,6 +38,16 @@
       }
     },
     {
+      "name": "design",
+      "source": "./plugins/design",
+      "description": "design — a keyless, offline-first design front door. `/design` routes a design intent to a mode and renders it as self-contained HTML/SVG (no CDN, no paid keys): UI screens and flows (interface), clickable prototypes (prototype), design systems and tokens (system), architecture/flow/ER diagrams (diagram, via plan-render's diagram-conventions), infographics and data-stories (dataviz), slide decks (deck), and critique of an existing screen (critique). Vector assets (OG cards, SVG logos, icon sets, posters) render offline too; true raster (photo, illustration, painterly cover) is an optional layer that degrades to a spec plus an editable placeholder plus enable-steps rather than hard-failing. Every mode loads design-core first: visual hierarchy, WCAG AA contrast, colorblind-safe palettes, brand-probe, precise non-marketing copy, and render/screenshot/critique verification. Brand plugins layer on top by calling /design; brand is optional, never required.",
+      "version": "0.1.0",
+      "author": {
+        "name": "Muqsit Nawaz",
+        "email": "contact@trp.so"
+      }
+    },
+    {
       "name": "fleet",
       "source": "./plugins/fleet",
       "description": "fleet — fleet-wide operations across every machine registered with `agents devices`. `/fleet:sync` pulls every registered DotAgent repo (system, user, and extras) to origin latest on every online device, then refreshes the installed agents — non-destructive (git merge --ff-only only; reports repos blocked by local edits instead of clobbering), handling the fast-forward workaround, the transient GitHub-SSH throttle, and Windows PowerShell quoting, ending with a repo x device matrix. `/fleet:onboard <device>` brings a bare new device up to fleet parity (agents-cli, agent CLIs, DotAgent repos, shared SSH key, PATH shim, device registration, agent auth) — discovery-first, additive, idempotent, credentials via sanctioned paths only, never copied host-to-host.",
