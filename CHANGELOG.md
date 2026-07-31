@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.71] - 2026-07-31
+
+### Added
+- **`plan-render` / `visualize` now teach a precise, review-grade voice, plus a per-domain diagram-notation reference.** Generated plans and visuals had been drifting into magazine-editorial copy — slogan kickers, "Critically:" drama, and stacked em-dashes (four in a single sub-paragraph) that make a plan hard to *review* rather than easy to check. `plan-render/SKILL.md` gains a `## Voice — precise and reviewable, not marketing` section: the `.kicker` is a label (`PRODUCT · SUBSYSTEM · plan`), not a tagline; the `<h1>` states plainly what the plan does; prose names the concrete file/function/flag/number instead of a vague stand-in ("things"/"surfaces"/"stuff"); em-dashes are capped at one per paragraph and never stacked. The gold `example.html` was rewritten to model it — 0 em-dashes (from ~30), slogan and flattery removed, headline "Self-healing bookkeeping" → "Reconcile local bookkeeping" — and both templates' kicker/headline placeholders now demonstrate the label form, with the `.legend`/`.sw` classes promoted in. A new `plan-render/diagram-conventions.md` is a compact per-domain notation cheat-sheet (C4, UML class/sequence arrowheads, ER crow's-foot, DFD, ISO 5807 flowchart shapes, BPMN, network/cloud, and non-software P&ID/ISA-5.1 & IEC/IEEE, plus Tufte chart rules and colorblind-safe palettes) so figures use the notation a domain expert recognizes, with a legend whenever color or line-style encodes meaning. `visualize` gets the same rules, lighter — a shareable page may keep one accurate punchy headline while the body stays precise.
+
+### Changed
+- **New Tier-2 `code-quality` rule: write prose precisely; don't market.** Added to `rules/subrules/code-quality.md` (and mirrored into the compiled `rules/AGENTS.md`), governing all agent prose — plans, PRs, commit messages, chat — not only the HTML skills: name the concrete file/function/flag/number/error rather than a vague stand-in unless that word is the real technical term; drop the marketing register (no slogans, no "Critically:"/"Notably:" drama, no filler adjectives like "seamless"/"powerful"/"robust"/"leverage"/"simply"); cap em-dashes at one per paragraph and never stack appositive dashes. The reader is reviewing the claim, not being sold it.
+
 ## [0.1.70] - 2026-07-21
 
 ### Added
