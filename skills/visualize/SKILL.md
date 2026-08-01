@@ -13,8 +13,9 @@ double-click), skinned in the relevant brand, and open it in the user's browser 
 plus a poster PDF in their Downloads so it's shareable/postable.
 
 This is the **general-purpose sibling of `plan-render`**. It shares that skill's
-engine verbatim — the brand-probe theming, the light/dark `◐` toggle, the
-"hand-authored inline-SVG, never mermaid" rule, the self-contained constraint, and
+engine verbatim — the brand-probe theming, the light/dark `◐` toggle, Dither Kit
+as the default charting library for data charts, the hand-authored inline-SVG
+rule for non-chart diagrams, the self-contained constraint, and
 the open-on-the-user's-Mac transport. Start from **`template.html`** here;
 **`example.html`** is the gold reference (a fleet-status "arcade map" — a fully
 themed, delightful instance showing the range).
@@ -55,11 +56,13 @@ constant:
   phrase, a ~3-line `.sub` framing (**the single takeaway**), `.chip` metadata
   (data points, "as of DATE", source), a `.toc`.
 - **Numbered `<h2>` sections** ordered by the story, not by "context→design→files".
-- **≥1 hand-authored inline `<svg>` figure** in a `.fig`: the diagram/chart/map/timeline
-  **is the point.** Never mermaid, never a CDN chart lib; draw it. A visualize page whose
-  only visual is a table has failed its one job. When the figure has a standard notation for
-  its domain (a chart type, C4, sequence, crow's-foot, BPMN, a P&ID), use it, and add a
-  **legend** when color or line-style encodes meaning. See `diagram-conventions.md` (sibling `plan-render` skill dir).
+- **≥1 visual figure** in a `.fig` — the diagram/chart/map/timeline **is the point.** For
+  quantitative charts, use Dither Kit by default; for topology, architecture, timeline, map,
+  or before/after diagrams, hand-author inline SVG. Never mermaid, never a CDN chart lib. A
+  visualize page whose only visual is a table has failed its one job. When the figure has a
+  standard notation for its domain (a chart type, C4, sequence, crow's-foot, BPMN, a P&ID),
+  use it, and add a **legend** when color or line-style encodes meaning. See
+  `diagram-conventions.md` (sibling `plan-render` skill dir).
 - **`.stat` tiles** for headline numbers, **`.callout`** for the load-bearing takeaway,
   **tagged tables** where rows need status pills.
 - **`.foot`** — one mono line; provenance / "as of" / a link, not a decision CTA.
@@ -142,7 +145,8 @@ Fleet** context — never hardcode a host; `scp` + `agents ssh` if you're remote
 - [ ] One self-contained HTML at `$HTML` (`.agents/viz/` if the project has `.agents/`, else
       `/tmp`) — opens offline, no CDN.
 - [ ] A **shape** chosen; sections ordered by the story.
-- [ ] ≥1 hand-authored inline-SVG figure carrying the insight; no mermaid.
+- [ ] ≥1 visual figure carrying the insight: Dither Kit for quantitative charts,
+      hand-authored inline SVG for non-chart diagrams; no mermaid.
 - [ ] Figure uses the domain's standard notation; a legend where color or line-style encodes meaning.
 - [ ] Copy is precise: real names/numbers, no filler, ≤1 em-dash per paragraph (one accurate punchy headline is fine).
 - [ ] Skinned in the relevant brand (or house fallback); light/dark toggle present.

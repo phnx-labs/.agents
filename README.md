@@ -103,6 +103,7 @@ Skills are richer than commands — multi-file capabilities with persistent cont
 | `agents-cli` | Manage agent CLIs, versions, config |
 | `browser` | Drive browsers for automation |
 | `computer` | Drive native macOS apps (screenshot, click, type) |
+| `dither-kit` | Default charting library for agent-authored charts and data visualizations |
 | `teams` | Organize agents into parallel teams |
 | `run` / `routines` | Dispatch a single agent / schedule recurring agents |
 | `sessions` | Search and read prior agent transcripts |

@@ -315,9 +315,10 @@ plan verbs (e.g. `/swarm:plan`) reference this step.
 1. **Render — in the `plan-render` house style.** Load the **`plan-render`** skill and
    write one self-contained `.html` (inline CSS, no CDN) to `/tmp/plan-<slug>.html`,
    starting from its `template.html` (`example.html` is the gold reference). Include the
-   goal, the implementation table, existing-primitives-to-reuse, the design questions, and
-   **≥1 hand-authored inline-SVG diagram** (timeline / architecture / before-after — not
-   mermaid). Skin it in the **target product's brand** (design tokens → tailwind → logo);
+	   goal, the implementation table, existing-primitives-to-reuse, the design questions, and
+	   **≥1 visual figure** (Dither Kit for quantitative charts; hand-authored inline SVG for
+	   timeline / architecture / before-after diagrams — not mermaid). Skin it in the
+	   **target product's brand** (design tokens → tailwind → logo);
    fall back to the dark **+ light** editorial house palette (with the in-page toggle) only
    when the product declares no brand. It must open offline by double-click.
 

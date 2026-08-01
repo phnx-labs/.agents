@@ -98,9 +98,10 @@ fi
   echo
   if [ "$html_ok" != 1 ]; then
     echo "* Render it as browser-ready HTML and open it on the user's Mac."
-    echo "  Load the plan-render skill: write /tmp/plan-<slug>.html (hero, TOC, >=1 hand-"
-    echo "  authored inline-SVG diagram, callouts, tagged tables), skinned in the product"
-    echo "  brand with a light/dark toggle. Start from the skill's template.html."
+    echo "  Load the plan-render skill: write /tmp/plan-<slug>.html (hero, TOC, >=1 visual"
+    echo "  figure: a Dither Kit chart for data or a hand-authored inline-SVG diagram,"
+    echo "  callouts, tagged tables), skinned in the product brand with a light/dark toggle."
+    echo "  Start from the skill's template.html."
     echo "  Open it on the online macOS device (resolve the host from \`agents devices\`):"
     echo "    scp /tmp/plan-<slug>.html <host>:/tmp/ && agents ssh <host> 'open /tmp/plan-<slug>.html'"
     echo "  Headless fleet with no browser host: still render the file (that clears this)."

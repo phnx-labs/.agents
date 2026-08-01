@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.1.77] - 2026-08-01
+
+### Changed
+- **Dither Kit is now the default charting library for agent-authored dataviz.** `rules/subrules/tech-stack.md` and its compiled `rules/AGENTS.md` mirror add a Charts/dataviz row and a "Default Charting Library" section telling agents to reach for Dither Kit before ad-hoc inline SVG, one-off canvas code, Recharts, Chart.js, Plotly, or D3 whenever a rendered artifact carries a numeric chart (HTML plans, shareable visualizations, dashboards, QA/quality reports, blog visuals, and React/Next.js pages). A new `skills/dither-kit/SKILL.md` covers `npx @dither-kit/cli add <chart>` install, chart-type selection, and the keep-it-local (no CDN) rule. `commands/plan.md`, `rules/subrules/plan-presentation/rule.md`, the `plan-html-reminder.sh` gate, `skills/docs/SKILL.md`, `skills/docs/write-technical.md`, `skills/plan-render/SKILL.md`, `skills/visualize/SKILL.md`, and both `template.html` files now route quantitative charts to Dither Kit, while ASCII and Mermaid stay fine for text-only structural diagrams and hand-authored inline SVG for architecture and timeline figures.
+
 ## [0.1.76] - 2026-08-01
 
 ### Fixed

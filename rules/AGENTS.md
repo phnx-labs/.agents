@@ -304,6 +304,19 @@ Every brief includes Mission, Full scope, Owns, Must NOT touch, concrete code pa
 | Parallel coding agents | `agents teams` — see `parallel-teams` |
 | Credentials | `agents secrets` — OS keychain-backed |
 | Release/publish | `release` skill |
+| Charts / dataviz in rendered output | Dither Kit (`dither-kit` skill) — default for charts in HTML, React, dashboards, plans, QA/quality reports, and blog visuals |
+
+## Default Charting Library
+
+Use **Dither Kit** by default whenever an agent produces a chart or data
+visualization in a rendered artifact: HTML plans, shareable visualizations,
+dashboards, QA/quality reports, blog visuals, React/Next.js pages, and any
+chart-producing web surface.
+
+- Install copied components with `npx @dither-kit/cli add <chart>` (or `bunx @dither-kit/cli add <chart>`). Use `area-chart`, `bar-chart`, `pie-chart`, `radar-chart`, or `dither-kit`; line charts ship with `area-chart`.
+- Prefer Dither Kit over ad-hoc inline SVG, one-off canvas code, Recharts, Chart.js, Plotly, or D3 for ordinary agent-authored charts.
+- Keep Dither Kit local to the artifact or target project. Do not use a CDN. In shadcn/Tailwind projects, let the CLI copy components into `components/dither-kit/` and commit them with the artifact when appropriate.
+- Plain ASCII or Mermaid remains fine for text-only structural diagrams. Hand-authored inline SVG remains fine for architecture/timeline/process diagrams in self-contained HTML. For numeric charts, use Dither Kit.
 
 # Present Plans as Browser-Ready HTML
 
@@ -318,9 +331,10 @@ house structure, the product-brand theming, the light/dark toggle, and the open-
 transport — lives in the **`plan-render` skill**. Load it and follow it.
 
 - **Structure (fixed).** Hero (kicker · headline · problem statement · metadata chips ·
-  TOC), numbered sections, **≥1 hand-authored inline-SVG diagram** (timeline /
-  architecture / before-after — never mermaid), callouts, tagged tables, code blocks.
-  Start from the skill's `template.html`; `example.html` is the gold reference.
+  TOC), numbered sections, **≥1 visual figure** (Dither Kit for quantitative
+  charts; hand-authored inline SVG for timeline / architecture / before-after
+  diagrams — never mermaid), callouts, tagged tables, code blocks. Start from
+  the skill's `template.html`; `example.html` is the gold reference.
 - **Theme (adopted).** Skin the plan in the **target product's brand** — probe the repo
   for design tokens, tailwind/CSS vars, logo/manifest colors. Fall back to the dark +
   light editorial house palette only when the product declares no brand.

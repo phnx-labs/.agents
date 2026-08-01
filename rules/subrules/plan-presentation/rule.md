@@ -11,9 +11,10 @@ house structure, the product-brand theming, the light/dark toggle, and the open-
 transport — lives in the **`plan-render` skill**. Load it and follow it.
 
 - **Structure (fixed).** Hero (kicker · headline · problem statement · metadata chips ·
-  TOC), numbered sections, **≥1 hand-authored inline-SVG diagram** (timeline /
-  architecture / before-after — never mermaid), callouts, tagged tables, code blocks.
-  Start from the skill's `template.html`; `example.html` is the gold reference.
+  TOC), numbered sections, **≥1 visual figure** (Dither Kit for quantitative
+  charts; hand-authored inline SVG for timeline / architecture / before-after
+  diagrams — never mermaid), callouts, tagged tables, code blocks. Start from
+  the skill's `template.html`; `example.html` is the gold reference.
 - **Theme (adopted).** Skin the plan in the **target product's brand** — probe the repo
   for design tokens, tailwind/CSS vars, logo/manifest colors. Fall back to the dark +
   light editorial house palette only when the product declares no brand.
