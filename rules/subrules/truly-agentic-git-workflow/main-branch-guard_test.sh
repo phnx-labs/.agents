@@ -120,6 +120,15 @@ run_guard 0 "Write on feature branch"            "$(wj Write file_path "$FEAT_RE
 run_guard 0 "Write on clone feature branch"      "$(wj Write file_path "$CLONE_FEAT/z.txt")"
 run_guard 0 "Write in non-git dir"               "$(wj Write file_path "$NOGIT/file.txt")"
 run_guard 0 "Write to /tmp scratch"              "$(wj Write file_path "$TMP/loose.txt")"
+# The core bug case, runnable everywhere (no cygpath): a drive-letter path OUTSIDE
+# any repo, with a POSIX cwd on main. Before the fix the drive-letter path fell to
+# the relative branch, got concatenated onto cwd, and dirname walked back up to the
+# main repo -> false deny. These two run on Linux/macOS CI, where the Windows-cwd
+# cases below are skipped.
+run_guard 0 "Write drive-letter path (forward slash) outside repo, POSIX cwd on main" \
+  "$(wj Write file_path "C:/completely/external/nonexistent/path/file.txt" "$MAIN_REPO")"
+run_guard 0 "Write drive-letter path (backslash) outside repo, POSIX cwd on main" \
+  "$(wj Write file_path "C:\\completely\\external\\nonexistent\\path\\file.txt" "$MAIN_REPO")"
 
 # --- Windows-style paths: drive-letter-rooted, backslash or forward-slash ---
 # separated paths (as sent by Claude Code / other harnesses running natively on
