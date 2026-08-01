@@ -91,6 +91,10 @@ fi
 [ -z "$tool" ] && exit 0
 
 cwd=$(_json_field "$input" cwd) || cwd=""   # cwd is shared by both harnesses
+# Windows harnesses send backslash-separated, drive-letter-rooted cwds
+# (C:\Users\..., I:\Vault\...). The POSIX tools below (case globs, dirname,
+# git) expect forward slashes, so normalize once, up front.
+case "$cwd" in *\\*) cwd=$(printf '%s' "$cwd" | tr '\\' '/') ;; esac
 
 deny_reason=""
 
@@ -133,9 +137,18 @@ case "$tool" in
     fp=$(_json_field "$input" tool_input.file_path toolInput.file_path) || fp=""
     [ -z "$fp" ] && fp=$(_json_field "$input" tool_input.notebook_path toolInput.notebook_path)
     [ -z "$fp" ] && exit 0
+    # Windows-style paths (C:\..., I:\..., or a Claude-Code-supplied C:/..., I:/...)
+    # must be recognized as absolute, never concatenated onto cwd. Bug history:
+    # the old `/*` -only check let a drive-letter path like `I:\tmp\out.html` or
+    # `I:/tmp/out.html` fall through to the relative branch, producing a bogus
+    # "$cwd/I:\tmp\out.html" that `dirname` walked back up to cwd itself — so an
+    # edit to a file completely outside the repo was misreported as "on the
+    # default branch of <repo>". Normalize backslashes first so the case glob,
+    # `dirname`, and `git -C` all agree on one separator.
+    case "$fp" in *\\*) fp=$(printf '%s' "$fp" | tr '\\' '/') ;; esac
     # Resolve a relative path against the session cwd.
     case "$fp" in
-      /*) ;;
+      /*|[A-Za-z]:/*) ;;
       *) [ -n "$cwd" ] && fp="$cwd/$fp" ;;
     esac
     # Nearest existing ancestor directory (a Write may be creating a new file).
@@ -202,9 +215,10 @@ extract_sh_c_inner() {
 # present (relative resolves against cwd), else the session cwd.
 resolve_repo_dir() {
   _cpath=$1
+  case "$_cpath" in *\\*) _cpath=$(printf '%s' "$_cpath" | tr '\\' '/') ;; esac
   if [ -n "$_cpath" ]; then
     case "$_cpath" in
-      /*) printf '%s' "$_cpath" ;;
+      /*|[A-Za-z]:/*) printf '%s' "$_cpath" ;;
       *)  printf '%s' "${cwd:-.}/$_cpath" ;;
     esac
   else
@@ -312,7 +326,19 @@ check_segment() {
   cpath=""
   while [ $# -gt 0 ]; do
     case "$1" in
-      -C)            shift; [ $# -gt 0 ] && { cpath=$1; shift; } ;;
+      -C)            shift
+                     if [ $# -gt 0 ]; then
+                       cpath=$1; shift
+                       # A Windows-style path with a bare drive letter never
+                       # needs quoting, but callers may still quote it (e.g. it
+                       # contains spaces) — strip the same way `first` is above,
+                       # otherwise the leading `"`/`'` breaks the absolute-path
+                       # glob in resolve_repo_dir and it's treated as relative.
+                       case "$cpath" in
+                         \"*\") cpath=$(printf '%s' "$cpath" | sed 's/^"\(.*\)"$/\1/') ;;
+                         \'*\') cpath=$(printf '%s' "$cpath" | sed "s/^'\(.*\)'$/\1/") ;;
+                       esac
+                     fi ;;
       --git-dir=*|--work-tree=*|--namespace=*) shift ;;
       --git-dir|--work-tree|--namespace)      shift; [ $# -gt 0 ] && shift ;;
       -c)            shift; [ $# -gt 0 ] && shift ;;

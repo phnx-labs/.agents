@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.1.76] - 2026-08-01
+
+### Fixed
+- **`rules/subrules/truly-agentic-git-workflow/main-branch-guard.sh` no longer false-blocks writes to files outside the repo from Windows-native harnesses.** A Windows-style absolute path (`C:\tmp\out.html` or `C:/tmp/out.html`) did not match the POSIX-only `/*` absolute-path check, so it fell through to the relative branch and got concatenated onto `cwd`; `dirname` then walked that bogus path back up to `cwd` itself, misreporting an edit to a file completely outside the repo as "on the default branch." Fix: normalize backslashes to forward slashes for `cwd`, `file_path`, and the `git -C` path before any comparison, extend the absolute-path glob from `/*` to `/*|[A-Za-z]:/*`, and strip surrounding quotes from a quoted `-C` value. `main-branch-guard_test.sh` gains two ALLOW cases for drive-letter paths that run on Linux/macOS CI (not only under Windows `cygpath`), so the regression is caught everywhere (63 pass).
+
 ## [0.1.75] - 2026-08-01
 
 ### Changed
