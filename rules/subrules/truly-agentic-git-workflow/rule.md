@@ -122,6 +122,13 @@ back to `AskUserQuestion` only when the review finds problems, tests fail, or th
 merge conflicts. Don't remove the worktree or delete the branch until merge.
 Never stop with a limp "okay, I'll wait" — that just makes the user ping you.
 
+When the merge genuinely needs the **user** (a governance/sign-off change you
+authored and can't self-review, no CI/reviewer configured), that's a real
+handoff — so **open the PR on the user's interactive device** so they can click
+Merge/Approve there, don't just leave the link in this window (see
+`workflow-proactive` → "When you DO hand back, land it where the user is"). The
+user runs many agents and won't be watching this chat.
+
 ## Reconcile with rebase; never `reset --hard`; never stash
 
 **Never stash — commit instead.** Uncommitted working-tree changes get committed
