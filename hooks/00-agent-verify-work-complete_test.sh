@@ -60,6 +60,12 @@ mk_transcript() {
         echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_team1","name":"Bash","input":{"command":"agents teams start factory-remote --watch"}}]}}'
         echo '{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_team1","content":[{"type":"text","text":"team started"}]}]}}'
         ;;
+      grepteams)
+        # Marker strings appear ONLY as a grep pattern being searched for — this
+        # must NOT count as running a swarm (the false positive this test pins).
+        echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_grep1","name":"Bash","input":{"command":"grep -cE \"agents teams start|agents teams create|teams add[^\\\"]*--mode edit\" /tmp/transcript.jsonl"}}]}}'
+        echo '{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_grep1","content":[{"type":"text","text":"2"}]}]}}'
+        ;;
     esac
     echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"step 2"}]}}'
     echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"step 3"}]}}'
@@ -174,6 +180,14 @@ check "non-swarm session does not trip the swarm gate" "$rc" "0"
 # 13. Swarm ran + done-claim but stop_hook_active -> allow (no loops).
 rc=$(FAKE_GH_STATE=MERGED run_hook "$TS" "The work is done and merged." true)
 check "swarm gate respects stop_hook_active" "$rc" "0"
+
+# 13b. Marker strings appear ONLY inside a grep pattern (searching a transcript),
+#      not as a real `agents teams` invocation -> swarm gate must NOT fire. This
+#      is the false positive that fired on the session hardening this very hook.
+TG=$(mk_transcript grepteams)
+rc=$(FAKE_GH_STATE=MERGED run_hook "$TG" "All three tracks landed end-to-end." false)
+check "grep FOR the marker strings does not trip the swarm gate" "$rc" "0"
+grep -q "STOP GATE (swarm)" "$SANDBOX/stderr" && { echo "FAIL - swarm gate false-fired on a grep"; fail=1; } || echo "ok   - no swarm gate on a search-only session"
 
 # --- genuine-user-message extraction (skip harness noise) -------------------
 # A session opened with `j <dir>` (a `!`-prefix bash-input) must NOT have that

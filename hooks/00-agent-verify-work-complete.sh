@@ -171,9 +171,23 @@ fi
 # Single pass over the transcript detects swarm use and counts assistant turns.
 # stop_hook_active (checked at top) makes it fire at most once. Fail-open.
 swarm_info=$(python3 -c "
-import json, sys
+import json, re, sys
 used = False
 turns = 0
+# Match an ACTUAL invocation — the marker at a command position (start of the
+# command, or after a shell separator ; && || | or a \$( / newline) — NOT the
+# same string appearing inside a grep pattern, an echo, a heredoc body, or any
+# quoted argument. Without this anchor a command that merely SEARCHES for
+# 'agents teams start' (e.g. grep -E \"agents teams start|create\" over a
+# transcript) tripped the gate — a false positive on any session that greps for
+# or prints these markers, including work on this very hook. Note the separator
+# class deliberately omits '|': a bare pipe before 'agents teams start' is never
+# a real invocation (you don't pipe INTO it), but it IS how a grep alternation
+# ('agents teams start|agents teams create') reads — matching it reintroduced
+# the exact false positive. '&&' is still covered by '&'.
+CMD_POS = r'(?:^|[\n;&]\s*|\\\$\(\s*)'
+TEAMS_RE = re.compile(CMD_POS + r'agents teams (?:start|create)\b')
+TEAMS_ADD_RE = re.compile(CMD_POS + r'agents teams add\b')
 try:
     with open(sys.argv[1]) as f:
         for raw in f:
@@ -194,8 +208,7 @@ try:
             for block in content:
                 if isinstance(block, dict) and block.get('type') == 'tool_use':
                     cmd = str((block.get('input') or {}).get('command', ''))
-                    if ('agents teams start' in cmd or 'agents teams create' in cmd
-                            or ('teams add' in cmd and '--mode edit' in cmd)):
+                    if TEAMS_RE.search(cmd) or (TEAMS_ADD_RE.search(cmd) and '--mode edit' in cmd):
                         used = True
     print(('yes' if used else 'no'), turns)
 except Exception:
