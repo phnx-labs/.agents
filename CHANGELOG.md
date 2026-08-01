@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.1.75] - 2026-08-01
+
+### Changed
+- **Core-hard-lines #7 changed from a Claude-model pick into a fleet delegation policy.** The old rule banned Haiku for subagents and defaulted load-bearing work to Opus. `rules/subrules/core-hard-lines.md` and its compiled `rules/AGENTS.md` mirror now make fleet spread the default: hand delegated work across harnesses (Kimi, Grok, DeepSeek, Codex, Gemini via `agents run <profile>` or a mixed `agents teams` roster) and across the several accounts of one harness (balanced rotation or per-account pinning), so no single account or harness carries the whole load and token spend stays low. Opus stays reserved for work where a cheaper harness would genuinely lose correctness, never the default. In-session `Agent` subagents still set `model` explicitly (default `"sonnet"`; omitting it can fall through to a pinned Haiku). Framed as a refinement of #2: equal correctness delivered cheaper and spread across the fleet wins.
+
 ## [0.1.74] - 2026-08-01
 
 ### Changed
