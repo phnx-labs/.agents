@@ -82,6 +82,19 @@ Opening something for a human — a **PR**, a **GitHub issue**, or a **ticket**
 (Linear/Jira) — is a handoff, not a stopping point. Identify which flow you're in
 and attach what the reviewer needs to judge it without re-running your session.
 
+**The description must be glanceable — lead with what changed and for whom.** The
+reviewer reads the body, not the diff, so a wall of prose (or a one-liner) is a PR they
+cannot glance. Open with a one-line **what + type** at the very top: a no-behavior-change
+PR says **docs-only** / **refactor** / **test-only** so the reviewer calibrates
+instantly. Then **highlight** the important parts — a `##` heading, a table, short
+bullets — never a prose wall. For a **docs** PR, **state the audience** (maintainers vs
+end users). Include a **before/after** — a table, a screenshot, or real command output —
+whenever there is a visible or behavioral delta. If a reviewer can't tell in ten seconds
+what changed and why, rewrite it. The bundled `pr-description-reminder` (PreToolUse)
+nudges once when a `gh pr create`/`edit` inline body is thin (no heading, table, bullet,
+or type marker); add the structure and retry. It fails open — a `--body-file`/`--fill`
+body is never nudged.
+
 **A user-visible change ships a picture.** The user reviews the PR in GitHub, not the
 diff, so a PR with no screenshot is one they cannot verify. Before you request review,
 put a **screenshot or a short screen recording** of the user-visible outcome in the body;
