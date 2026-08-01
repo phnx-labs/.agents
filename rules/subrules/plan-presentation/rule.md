@@ -27,3 +27,12 @@ transport — lives in the **`plan-render` skill**. Load it and follow it.
   browser host is reachable.
 
 A plan the user can't see rendered is not presented. Render, open, then discuss.
+
+## A multi-step plan also carries a checklist
+
+The same `plan-html-reminder` hook now gates a second thing: when the plan has
+multiple steps, create a **task checklist** for it before you present (one
+`TaskCreate` per step). The checklist is the plan's acceptance rubric — it shows in
+`agents sessions`, drives the watchdog, and marks progress as you work. Trivial,
+single-step plans are exempt (the gate skips them). Binding the checklist to the
+task and to a tracker is covered by the **`task-checklists`** rule.
