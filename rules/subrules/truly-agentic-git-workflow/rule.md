@@ -88,19 +88,30 @@ cannot glance. Open with a one-line **what + type** at the very top: a no-behavi
 PR says **docs-only** / **refactor** / **test-only** so the reviewer calibrates
 instantly. Then **highlight** the important parts — a `##` heading, a table, short
 bullets — never a prose wall. For a **docs** PR, **state the audience** (maintainers vs
-end users). Include a **before/after** — a table, a screenshot, or real command output —
-whenever there is a visible or behavioral delta. If a reviewer can't tell in ten seconds
-what changed and why, rewrite it. The bundled `pr-description-reminder` (PreToolUse)
-nudges once when a `gh pr create`/`edit` inline body is thin (no heading, table, bullet,
-or type marker); add the structure and retry. It fails open — a `--body-file`/`--fill`
-body is never nudged.
+end users). If a reviewer can't tell in ten seconds what changed and why, rewrite it.
 
-**A user-visible change ships a picture.** The user reviews the PR in GitHub, not the
-diff, so a PR with no screenshot is one they cannot verify. Before you request review,
-put a **screenshot or a short screen recording** of the user-visible outcome in the body;
-screenshots beat descriptions. A change with no visible surface attaches the closest
-concrete artifact instead (the passing test output, the `curl`'d response). The same
-asset also goes on the ticket when you close it.
+**Evidence-or-declare — every PR shows proof of outcome, or says why there is none.**
+The bar is not "describe it" but "show it":
+
+- **A user-visible change ships a picture — a screenshot is required, not optional.**
+  The user reviews the PR in GitHub, not the diff, so a visible change with no image is
+  one they cannot verify. Put the **screenshot** of the outcome in the body.
+- **Prefer a video when a still can't carry the flow.** You have the tools: capture a
+  **web app** with the `browser` skill (record the click-through), or a **terminal flow**
+  with `agents pty` (record the run), and attach the file. A short recording beats three
+  paragraphs describing what happens.
+- **A no-UI change attaches the closest concrete artifact** — real command/test output
+  in a fenced code block, a `curl`'d response, or a before/after table. If there is
+  genuinely no visible surface, **declare it** (docs-only / refactor / test-only).
+- **Link the context.** Include the **Linear ticket** for the work, and — if a plan was
+  shared — a **shareable link to the plan file**. The same screenshot/video also goes on
+  the ticket when you close it (see `conventions`).
+
+The bundled `pr-description-reminder` (PreToolUse) is the backstop: it nudges once when a
+`gh pr create`/`edit` inline body shows **no evidence** — no image/video/asset, no code
+block or table, no ticket/plan link, and no no-surface declaration. Attach any one and
+retry. It **fails open** — a `--body-file`/`--fill` body is never nudged — and is
+satisfiable, never a hard wall.
 
 Every `gh pr create` / `gh issue create` / ticket-open carries:
 
