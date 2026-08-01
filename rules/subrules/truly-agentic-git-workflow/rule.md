@@ -90,28 +90,34 @@ instantly. Then **highlight** the important parts — a `##` heading, a table, s
 bullets — never a prose wall. For a **docs** PR, **state the audience** (maintainers vs
 end users). If a reviewer can't tell in ten seconds what changed and why, rewrite it.
 
-**Evidence-or-declare — every PR shows proof of outcome, or says why there is none.**
-The bar is not "describe it" but "show it":
+**Run it, look at the result, then open the PR — not the other way round.** You are an
+agentic developer: before you open a PR you **run the feature you built, look at the real
+output, and attach that result**. A PR is not "code written" — it is "ran it, here's the
+proof" (this is `core-hard-lines` #1 at the PR boundary). Do not open the PR until you
+have. **The only exceptions are a release PR and a pure doc edit** — those need no run.
+
+The body carries **the actual run result, not a description of it**:
 
 - **A user-visible change ships a picture — a screenshot is required, not optional.**
-  The user reviews the PR in GitHub, not the diff, so a visible change with no image is
-  one they cannot verify. Put the **screenshot** of the outcome in the body.
-- **Prefer a video when a still can't carry the flow.** You have the tools: capture a
+  The reviewer should not have to read code or a hand-made table to believe it works;
+  they should **see it work**. Put the **screenshot of the running feature** (the web UI,
+  the app screen) in the body.
+- **Prefer a recording when a still can't carry the flow.** You have the tools: capture a
   **web app** with the `browser` skill (record the click-through), or a **terminal flow**
-  with `agents pty` (record the run), and attach the file. A short recording beats three
-  paragraphs describing what happens.
-- **A no-UI change attaches the closest concrete artifact** — real command/test output
-  in a fenced code block, a `curl`'d response, or a before/after table. If there is
-  genuinely no visible surface, **declare it** (docs-only / refactor / test-only).
+  with `agents pty` (record the run), and attach the file.
+- **A no-UI change still shows the run** — screenshot the passing run / the `curl`'d
+  response, or upload the run's output or log as an **asset**. Pasted **source code** and
+  **hand-authored tables are not proof of a run** and do not count. If there is genuinely
+  no visible surface, **declare it** (refactor / test-only).
 - **Link the context.** Include the **Linear ticket** for the work, and — if a plan was
-  shared — a **shareable link to the plan file**. The same screenshot/video also goes on
-  the ticket when you close it (see `conventions`).
+  shared — a **shareable link to the plan file**. The same screenshot/recording also goes
+  on the ticket when you close it (see `conventions`).
 
 The bundled `pr-description-reminder` (PreToolUse) is the backstop: it nudges once when a
-`gh pr create`/`edit` inline body shows **no evidence** — no image/video/asset, no code
-block or table, no ticket/plan link, and no no-surface declaration. Attach any one and
-retry. It **fails open** — a `--body-file`/`--fill` body is never nudged — and is
-satisfiable, never a hard wall.
+`gh pr create`/`edit` inline body shows **no run result** — no image/recording/asset, no
+ticket/plan link, and no release/docs/no-surface declaration. A code block or table does
+**not** clear it. Run it, capture the result, attach, retry. It **fails open** — a
+`--body-file`/`--fill` body is never nudged — and is satisfiable, never a hard wall.
 
 Every `gh pr create` / `gh issue create` / ticket-open carries:
 
