@@ -43,6 +43,11 @@ agents view --json           # installed versions + signed-in status per agent
 
 Mix across the ones that come back **available and signed-in**. If only one provider is up, say so and proceed single-provider rather than spawning blind.
 
+> Caveat: doctor's `signedIn` is read from installed config, not a live call — stale
+> auth (droid especially) can report signed-in and still 401 at spawn. Before a
+> load-bearing run, smoke-test the provider:
+> `agents run <agent> --mode skip --timeout 1m "Reply with exactly OK"`.
+
 **How many** — there is **no fixed sizing table**. You are a capable orchestrator; size the swarm to the task's complexity by judgment: one agent for a narrow, single-surface job; more for wide, cross-cutting, or gnarly work where independent angles pay off. Scale the *verification* depth the same way — a trivial claim needs one check, a load-bearing cross-stack conclusion needs several. Spend agents where uncertainty is highest, not uniformly. Every other `/swarm:*` skill defers to this rule instead of hardcoding counts.
 
 ## Exploration uses Claude subagents, not the swarm

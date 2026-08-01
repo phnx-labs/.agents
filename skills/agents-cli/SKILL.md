@@ -87,6 +87,15 @@ You can also use `agents pty` to drive the `agents` CLI itself from within anoth
 `agents routines` schedules agents to run on a cron schedule. Check existing routines before setting up new ones. You can run a routine immediately in the foreground to test it before enabling the schedule.
 
 
+## Calling `agents` from automation
+
+`agents` is a node program resolved via `/usr/bin/env node`. Automation contexts
+with a minimal PATH — launchd/systemd units, cron, git hooks — must include a
+node bin dir on PATH, or every `agents` call dies with
+`env: node: No such file or directory` (silently, when stderr is redirected).
+Symptom: a script that works in your shell no-ops under the scheduler.
+
+
 ## Version and Config Management
 
 Install, switch, and inspect agent CLI versions. `agents view` shows installed versions and resources. `agents view <agent>@<version>` shows exactly what commands, skills, MCP servers, and memory files are active for a version.
