@@ -83,3 +83,9 @@ linear.json
 # Background sync state (lock + status markers)
 /.fetch/
 .agents/worktrees/
+
+# Local, machine-specific artifacts that must never block `agents repo pull system`.
+# These are written into ~/.agents/.system at runtime (per-box) but are not source:
+# an ungitignored one silently blocks every pull, drifting .system behind fleet-wide.
+.mcp.json
+/.worktrees/
