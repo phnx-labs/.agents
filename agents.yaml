@@ -24,12 +24,6 @@ hooks:
     script: 05-session-start-autosync.sh
     timeout: 5
   verify-work-complete:
-    # Stop gate: (a) blocks done-claims that lack end-to-end verification,
-    # (b) blocks stopping while a PR this session CREATED is still open with
-    # no explicit handoff — "waiting for reviewer" is not a stop state.
-    # Existed as a script but was never wired; every issue-drain teammate
-    # stopped with stranded PRs because nothing fired. Claude-only: relies on
-    # last_assistant_message + exit-2 stderr feedback semantics.
     agents:
       - claude
     events:
@@ -37,9 +31,6 @@ hooks:
     script: 00-agent-verify-work-complete.sh
     timeout: 20
   inject-repo-inflight:
-    # SessionStart: inject open PRs + active sessions for the cwd repo so an
-    # agent sees what is already owned before duplicating a PR's scope or
-    # taking over a live session's surface. Fail-open on missing gh/agents.
     agents:
       - claude
       - codex
@@ -67,9 +58,6 @@ hooks:
     script: 07-inject-device-topology.sh
     timeout: 5
   session-identity:
-    # Merged identity hook: session metadata + per-pid registry + Claude-gated
-    # session-id injection, one stdin parse. Union of the three former hooks'
-    # agent lists (04-capture-metadata, 07-inject-session-id, 08-register-pid).
     agents:
       - claude
       - codex
@@ -82,10 +70,6 @@ hooks:
     script: 04-session-identity.sh
     timeout: 5
   mailbox-inject:
-    # Drains the agent's mailbox (AGENTS_MAILBOX_DIR, set by agents-cli at spawn)
-    # on every tool call and injects queued `agents message` context mid-run.
-    # Claude only for now — the only harness where PreToolUse additionalContext
-    # is verified to reach the model (Codex/Antigravity are probe-gated next).
     agents:
       - claude
     events:
@@ -93,10 +77,6 @@ hooks:
     script: 09-mailbox-inject.py
     timeout: 5
   git-guard:
-    # Blocks destructive git ops (reset/checkout/stash/clean/rebase-outside-worktree,
-    # force-push, branch delete, config write) on the agent's shell. Previously
-    # defined under a stray `run:` key (never parsed) and removed in 8b006a6 as
-    # "legacy"; re-wired here correctly under `hooks:`.
     agents:
       - claude
       - codex
@@ -107,8 +87,6 @@ hooks:
     script: git-guard.sh
     timeout: 5
   rm-guard:
-    # Blocks `rm -r` on protected paths ($HOME, ~/.ssh, /, ~/src, …). Re-wired
-    # (see git-guard note).
     agents:
       - claude
       - codex
@@ -119,8 +97,6 @@ hooks:
     script: rm-guard.sh
     timeout: 5
   git-require-clean-tree:
-    # Blocks `git pull`/`rebase`/`--autostash` on a dirty tree (would destroy
-    # uncommitted work).
     agents:
       - claude
       - codex
@@ -130,3 +106,6 @@ hooks:
     matcher: Bash
     script: 01-git-require-clean-tree.sh
     timeout: 5
+run:
+  codex:
+    strategy: available

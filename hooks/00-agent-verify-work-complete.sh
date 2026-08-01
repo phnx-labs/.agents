@@ -156,6 +156,95 @@ PRGATE
 fi
 # --- end open-PR abandonment gate ---------------------------------------------
 
+# --- swarm integration gate ---------------------------------------------------
+# An orchestrator that fanned work across an edit-mode swarm (`agents teams`) may
+# NOT stop on "all tracks merged". Each teammate's tests + reviewer only saw its
+# own diff, so the seam BETWEEN tracks (track A calls what track B built) is the
+# one thing no track verified — and it's where the composed feature breaks
+# (imsg shells out to `agents mission-control digest`; the digest track shipped
+# `mission-control-digest` → every PR green, feature dead, declared "landed
+# end-to-end" untested). The normal gates miss this: the teammates' PRs aren't
+# created by THIS transcript's `pr create` (so the open-PR gate is blind), and
+# wrap-up phrasing ("done and merged", "landed end-to-end") isn't in the
+# done-signal list below. This gate is narrow: it only fires when the session
+# actually ran an edit-mode swarm AND the final message claims completion.
+# Single pass over the transcript detects swarm use and counts assistant turns.
+# stop_hook_active (checked at top) makes it fire at most once. Fail-open.
+swarm_info=$(python3 -c "
+import json, sys
+used = False
+turns = 0
+try:
+    with open(sys.argv[1]) as f:
+        for raw in f:
+            raw = raw.strip()
+            if not raw:
+                continue
+            try:
+                rec = json.loads(raw)
+            except Exception:
+                continue
+            msg = rec.get('message') if isinstance(rec.get('message'), dict) else rec
+            role = rec.get('role') or (msg.get('role') if isinstance(msg, dict) else '')
+            if role == 'assistant':
+                turns += 1
+            content = msg.get('content') if isinstance(msg, dict) else None
+            if not isinstance(content, list):
+                continue
+            for block in content:
+                if isinstance(block, dict) and block.get('type') == 'tool_use':
+                    cmd = str((block.get('input') or {}).get('command', ''))
+                    if ('agents teams start' in cmd or 'agents teams create' in cmd
+                            or ('teams add' in cmd and '--mode edit' in cmd)):
+                        used = True
+    print(('yes' if used else 'no'), turns)
+except Exception:
+    print('no 0')
+" "$TRANSCRIPT_PATH" 2>/dev/null || echo "no 0")
+swarm_used=${swarm_info%% *}
+swarm_turns=${swarm_info##* }
+
+if [ "$swarm_used" = "yes" ] && [ "${swarm_turns:-0}" -gt 2 ]; then
+  swarm_done=$(echo "$INPUT_JSON" | python3 -c "
+import json, re, sys
+msg = json.load(sys.stdin).get('last_assistant_message', '').lower()
+# Orchestrator wrap-up phrasings — broader than the generic done list because
+# the trigger (an edit-mode swarm ran) already narrows the population hard.
+pats = [
+    r'\bdone and merged\b', r'\bmerged and done\b', r'\bdone end.to.end\b',
+    r'end.to.end status', r'\bland(ed)? end.to.end\b',
+    r'\ball (three |two |four )?tracks? (landed|merged|are done|done)\b',
+    r'\bfully landed\b', r'\blanded on main\b', r'\ball (the )?tracks? .*(merged|landed)\b',
+    r'\bthe .*work.* is done\b', r'\bwork you asked for is done\b',
+    r'\bfeature .* is (done|complete|landed|shipped)\b', r'\ball merged\b',
+]
+print('yes' if any(re.search(p, msg) for p in pats) else 'no')
+" 2>/dev/null || echo "no")
+
+  if [ "$swarm_done" = "yes" ]; then
+    cat >&2 <<SWARMGATE
+STOP GATE (swarm): You ran an edit-mode swarm and are claiming it is done.
+Every track's PR merging green is NOT proof the composed feature works — each
+teammate's tests and reviewer only ever saw that teammate's own diff. The seam
+BETWEEN tracks (where one track calls what another built) is the one thing no
+track verified, and it is exactly where the feature breaks.
+
+Before you can stop, you MUST:
+1. List every seam where one track calls/imports/hits what another track built.
+2. For each seam, TRIGGER the composed cross-track flow against where the
+   feature actually runs (the running daemon / installed binary / deployed
+   service — merged to main is NOT deployed) and QUOTE the real output.
+3. If a seam genuinely cannot be exercised, name that hop as UNVERIFIED — do
+   not fold it into a "done end-to-end" claim.
+
+"All PRs merged" / a table of green checkmarks is a report of merges, not proof
+of a working feature. Go run the composed flow, then report with quoted output.
+SWARMGATE
+    exit 2
+  fi
+fi
+# --- end swarm integration gate -----------------------------------------------
+
 # Check if Claude is claiming completion
 is_claiming_done=$(echo "$INPUT_JSON" | python3 -c "
 import json, sys
@@ -231,43 +320,74 @@ if [ "${turn_count:-0}" -le 2 ]; then
   exit 0
 fi
 
-# Extract first substantive user message from transcript
+# Extract the first few GENUINE user messages from the transcript. "Genuine"
+# excludes harness noise that also carries role=user: `!`-prefix shell runs and
+# their output (<bash-input>/<bash-stdout>/<bash-stderr>), slash-command
+# expansions (<command-name>/<command-message>/<command-args>), local-command
+# output, injected caveats, and tool_result blocks. The old code took the FIRST
+# user turn over 20 chars, so a session opened with `j <dir>` quoted
+# "<bash-input>j agents-cli</bash-input>" as "the original request" — useless for
+# re-anchoring intent. We skip the noise and keep the first 3 real prose turns so
+# the self-audit sees the actual ask (and its early follow-ups), not the jump cmd.
+# (agents sessions --include user --first N does NOT help here: it still counts
+# each bash-input/stdout as a turn — the filtering has to happen on the text.)
 first_user_msg=$(python3 -c "
-import json, sys
+import json, re, sys
 
-first_user = ''
-with open(sys.argv[1]) as f:
-    for line in f:
-        line = line.strip()
-        if not line:
-            continue
-        try:
-            entry = json.loads(line)
+# A user turn is harness noise if its text starts with one of these wrappers:
+# `!`-prefix shell runs + output, slash-command expansions, local-command
+# output, injected system-reminders, and the interrupt marker — none are asks.
+NOISE = re.compile(r'^\s*<(/?)(bash-(input|stdout|stderr)|command-(name|message|args|contents)|local-command-(stdout|stderr)|system-reminder|task-notification)>')
+CAVEAT = re.compile(r'^\s*Caveat: The messages below were generated by the user while running')
+INTERRUPT = re.compile(r'^\s*\[Request interrupted')
+# Slash-command / skill body injected as a user turn (not something the user typed).
+SKILL = re.compile(r'^\s*Base directory for this skill:')
+# Hook feedback ('Stop hook feedback:', 'PreToolUse hook feedback:') is injected.
+HOOKFB = re.compile(r'^\s*[A-Za-z]+ hook feedback:')
+
+picked = []
+try:
+    with open(sys.argv[1]) as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                entry = json.loads(line)
+            except json.JSONDecodeError:
+                continue
             msg = entry.get('message') if isinstance(entry.get('message'), dict) else {}
             if (entry.get('role') or msg.get('role')) != 'user':
                 continue
             content = entry.get('content', '') or msg.get('content', '')
             if isinstance(content, list):
-                texts = []
-                for c in content:
-                    if isinstance(c, dict) and c.get('type') == 'text':
-                        texts.append(c.get('text', ''))
-                content = ' '.join(texts)
-            content = content.strip()
-            # Skip very short messages (slash commands, 'yes', 'ok', etc.)
-            if len(content) > 20:
-                first_user = content
+                # A list content that carries any tool_result block is a tool
+                # return, never a real request — skip the whole message.
+                if any(isinstance(c, dict) and c.get('type') == 'tool_result' for c in content):
+                    continue
+                content = ' '.join(c.get('text', '') for c in content
+                                   if isinstance(c, dict) and c.get('type') == 'text')
+            content = (content or '').strip()
+            if len(content) <= 20:            # 'yes' / 'ok' / bare slash-commands
+                continue
+            if (NOISE.search(content) or CAVEAT.search(content)
+                    or INTERRUPT.search(content) or SKILL.search(content)
+                    or HOOKFB.search(content)):
+                continue                       # <bash-input>j foo</bash-input> etc.
+            picked.append(content)
+            if len(picked) >= 3:
                 break
-        except (json.JSONDecodeError, KeyError):
-            continue
+except Exception:
+    pass
 
-# Truncate if too long
-if len(first_user) > 500:
-    first_user = first_user[:500] + '...'
-print(first_user)
+# Join the first few real asks; cap total length for the gate message.
+out = '\n---\n'.join(picked)
+if len(out) > 900:
+    out = out[:900] + '...'
+print(out)
 " "$TRANSCRIPT_PATH" 2>/dev/null || echo "")
 
-# If we couldn't extract a user message, allow stop
+# If we couldn't extract a genuine user message, allow stop
 if [ -z "$first_user_msg" ]; then
   exit 0
 fi
@@ -276,7 +396,8 @@ fi
 cat >&2 <<GATE
 STOP GATE: You claimed this work is done, but you must verify before stopping.
 
-The user's original request was:
+The user's request(s) this session — re-read the FULL conversation for the rest,
+including any later corrections:
 "$first_user_msg"
 
 Before you can stop, you MUST:

@@ -1,6 +1,6 @@
 ---
 name: plan-render
-description: "Render an implementation plan as a self-contained, magazine-quality HTML doc — a fixed house structure (hero, chips, TOC, Dither Kit charts where data is charted, hand-authored inline-SVG diagrams, callouts, tagged tables, code) skinned in the target product's brand (dark + light editorial fallback with an in-page toggle), then opened in the user's default browser on the machine they sit at. The canonical LOOK for plan mode, /plan Step 9, and /swarm:plan. Triggers on: render a plan, present a plan, plan-as-HTML, open the plan in the browser, plan mode, show the plan visually."
+description: "Render an implementation plan as a self-contained, review-grade HTML doc — a fixed house structure (hero, chips, TOC, Dither Kit charts where data is charted, hand-authored inline-SVG diagrams, callouts, tagged tables, code) skinned in the target product's brand (dark + light editorial fallback with an in-page toggle), then opened in the user's default browser on the machine they sit at. The canonical LOOK for plan mode, /plan Step 9, and /swarm:plan. Triggers on: render a plan, present a plan, plan-as-HTML, open the plan in the browser, plan mode, show the plan visually."
 allowed-tools: Bash(scp*), Bash(agents ssh*), Bash(agents browser*), Bash(open*), Bash(xdg-open*), Bash(find*), Bash(cp*), Bash(mkdir*), Bash(test*), Bash(git rev-parse*), Write
 user-invocable: true
 ---
@@ -34,19 +34,45 @@ Set `HTML` to that path; every step below refers to `$HTML`. The HTML is self-co
 
 Every plan has, in order:
 
-- **Hero** — `.kicker` (mono, uppercased: `PRODUCT · plan mode · …`), an `<h1>` with one
-  `.accent` phrase, a ~3-line `.sub` problem statement, `.chip` metadata (files touched,
-  new helpers, `status: awaiting go`), and a `.toc` of numbered sections.
+- **Hero** — `.kicker` (mono, uppercased, a label not a slogan: `PRODUCT · SUBSYSTEM · plan`),
+  an `<h1>` that states plainly what the plan does, with the `.accent` span on its key noun;
+  a ~3-line `.sub` problem statement, `.chip` metadata (files touched, new helpers,
+  `status: awaiting go`), and a `.toc` of numbered sections.
 - **Numbered `<h2>` sections** (`<span class="n">01</span>…`) — context/problem first,
   then design, then a files table, then edge cases / verification.
-- **≥1 visual figure** in a `.fig` — use Dither Kit for quantitative charts, and
-  hand-authored inline SVG for timelines, architecture sketches, or before/after
-  `.grid2` comparisons. **Never mermaid.** Visuals are what make the plan land; a
-  plan with zero figures is not done.
+- **≥1 visual figure** in a `.fig` — use **Dither Kit** for quantitative charts, and a
+  hand-authored inline `<svg>` for a timeline, an architecture sketch, or a before/after
+  `.grid2` comparison. **Never mermaid.** A plan with zero figures is not done. When the
+  figure depicts something the audience already has a standard notation for, **use that
+  notation** instead of ad-hoc boxes (sequence diagrams for message ordering, crow's-foot
+  for data models, C4 levels for architecture, ISO shapes for control flow). Add a
+  **legend** whenever color or line-style carries meaning. See `diagram-conventions.md` (this
+  skill dir) for the per-domain rules.
 - **`.callout`** (and `.callout.warn`) for the load-bearing takeaway/caveat.
 - **Tagged tables** — `.tag.a/.b/.c` pills (new / edit / keep) in the leftmost cell.
 - **`<pre>`** code with `.c/.k/.s/.r` spans for the 1–2 key snippets.
 - **`.foot`** — one mono line, ending `next: go / reshape`.
+
+## Voice — precise and reviewable, not marketing
+
+A plan is read by someone checking it against the code, not by a customer being sold to.
+Write like an engineer drafting a design doc for a colleague who will push back on every claim.
+
+- **The kicker is a label, not a slogan.** Use `PRODUCT · SUBSYSTEM · plan`, e.g.
+  `agents-cli · credential subsystem · plan`. Never a tagline. A line like
+  `EVERY CLAIM CARRIES THE COMMAND THAT PROVES IT` carries no information and is banned.
+- **The headline states what the plan does, plainly.** The `.accent` span marks the
+  load-bearing noun, not a punchline. "Reconcile the local task record against the remote
+  exit code" beats "Self-healing bookkeeping".
+- **Name the concrete thing:** the file, function, flag, number, or error string, not a
+  vague stand-in ("things", "surfaces", "stuff", "various", "several"). The one exception is
+  when the vague-sounding word is the real technical term (an "attack surface", a "control plane").
+- **No marketing register.** Drop "Critically:" / "Notably:" drama, flattery ("you asked the
+  sharp question"), and filler adjectives ("seamless", "powerful", "robust", "leverage",
+  "simply", "just"). State the fact and let it stand.
+- **At most one em-dash per paragraph; never stack appositive dashes** (`X — Y — Z`). A comma,
+  colon, period, or parentheses reads cleaner and avoids the machine-written cadence that
+  stacked dashes signal.
 
 ## Theme — match the product, don't impose one
 
@@ -127,8 +153,11 @@ an away user finds it waiting.
 - [ ] Self-contained HTML written to `$HTML` — `<repo>/.agents/plans/` if the project has an
       `.agents/` dir, else `/tmp` — opens offline.
 - [ ] Skinned in the product's brand, or the house fallback if none.
-- [ ] ≥1 visual figure: Dither Kit for quantitative charts, inline SVG for
+- [ ] ≥1 visual figure: Dither Kit for quantitative charts, hand-authored inline SVG for
       non-chart diagrams; no mermaid, no CDN.
+- [ ] Figures use the domain's standard notation; a legend where color or line-style encodes meaning.
+- [ ] Voice is precise, not marketing: kicker is a label (no slogan), headline is factual, prose
+      names concrete files/functions/numbers, no filler adjectives, ≤1 em-dash per paragraph.
 - [ ] Light/dark toggle present, defaults to `prefers-color-scheme`.
 - [ ] PDF + HTML copied to the viewer's `~/Downloads` (or degradation noted).
 - [ ] HTML opened on the resolved online Mac's default browser (or headless noted).
