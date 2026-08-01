@@ -6,8 +6,8 @@
   - Dual-theme: dark + light editorial palettes, with an in-page ◐ toggle that
     defaults to the OS `prefers-color-scheme`. Re-skin to a product's brand by
     editing ONLY the two `:root` blocks (see the plan-render SKILL.md theme step).
-  - Every plan carries >=1 hand-authored inline SVG figure (timeline / architecture
-    / before-after). No mermaid.
+  - Every plan carries >=1 visual figure: Dither Kit for quantitative charts,
+    inline SVG for timeline / architecture / before-after diagrams. No mermaid.
 -->
 <html lang="en">
 <head>
@@ -85,6 +85,10 @@
   pre .c{color:#8b938c}pre .k{color:#a3e635}pre .s{color:#5ad6c0}pre .r{color:#ff6b6b}
   .foot{margin-top:60px;padding-top:22px;border-top:1px solid var(--line);color:var(--dim);
     font-family:var(--mono);font-size:12px}
+  .legend{display:flex;gap:18px;flex-wrap:wrap;font-family:var(--mono);font-size:11.5px;color:var(--dim);
+    justify-content:center;margin-top:6px}
+  .legend span{display:inline-flex;align-items:center;gap:6px}
+  .sw{width:11px;height:11px;border-radius:3px;display:inline-block}
   .themebtn{position:fixed;top:16px;right:16px;z-index:9;font-family:var(--mono);font-size:12px;
     color:var(--dim);background:var(--panel);border:1px solid var(--line);border-radius:999px;
     padding:6px 13px;cursor:pointer}
@@ -102,8 +106,8 @@
 <div class="wrap">
 
 <header class="hero">
-  <p class="kicker">PRODUCT · plan mode · KICKER</p>
-  <h1>Plan headline, with an<br><span class="accent">accented phrase</span></h1>
+  <p class="kicker">PRODUCT · SUBSYSTEM · plan</p>
+  <h1>What this plan changes, in<br><span class="accent">one plain sentence</span></h1>
   <p class="sub">One-paragraph problem statement: what's broken or needed, what prompted this,
   and the intended outcome. Keep it to ~3 lines.</p>
   <div class="meta">
@@ -123,7 +127,10 @@
 <p class="lead">Lead paragraph in dim ink.</p>
 
 <!-- FIGURE: hand-author the inline SVG. Timeline / architecture / before-after.
-     Use var(--mono) labels, the palette colors, and marker arrowheads. -->
+     Use var(--mono) labels, the palette colors, and marker arrowheads.
+     If the figure has a standard notation (sequence, C4, crow's-foot, ISO
+     flowchart), use it; see diagram-conventions.md. Add a .legend below the
+     svg whenever color or line-style encodes meaning. -->
 <figure class="fig">
 <svg viewBox="0 0 900 220" role="img" aria-label="describe the figure">
   <rect x="40" y="80" width="160" height="46" rx="8" fill="#161a18" stroke="#26302a"/>
@@ -133,6 +140,10 @@
   <text x="400" y="108" fill="#a3e635" font-size="12.5" text-anchor="middle" font-family="var(--mono)">box B</text>
   <defs><marker id="ar" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0 0 L7 4 L0 8 z" fill="#a3e635"/></marker></defs>
 </svg>
+<div class="legend">
+  <span><span class="sw" style="background:#a3e635"></span>primary path</span>
+  <span><span class="sw" style="background:#5ad6c0"></span>data</span>
+</div>
 <figcaption><b>Caption.</b> One line on what the figure shows.</figcaption>
 </figure>
 

@@ -74,7 +74,12 @@ A few mechanics bite often enough to name. These are grain, not law — read the
 
 ## What done means
 
-Done means merged. Not "PR open." Not "tests green locally." Not "approved but not yet clicked." Merged, CI green on `main`, worktree removed, branch deleted, ticket closed with a link to the PR.
+Done means merged. Not "PR open." Not "tests green locally." Not "approved but not yet clicked." Merged, CI green on `main`, worktree removed, branch deleted, ticket closed **with an audit comment** (below).
+
+**Close with an audit trail — not a bare status flip.** Moving a ticket to Done without recording *how* is a silent close: when a merge or release later goes bad, whoever digs in has nothing but the diff. Every close posts a comment carrying:
+- **PR link + merge SHA** — the durable anchor. The PR holds the diff, the review verdict, and CI forever; the SHA proves it reached `main`. Map ticket→PR→SHA with `git log origin/main --oneline | grep <TICKET>` (check *every* repo the change could land in — squash titles sometimes drop the ticket tag; fall back to `gh pr list --search`).
+- **A readable transcript of the session that did the work**, so the reasoning is recoverable. Render it with `agents sessions <id> --markdown` (for a host/worker run, run that on the worker, or `agents hosts logs <name>`), then `gh gist create --secret <file>.md` and link the returned URL. **Secret gist, never inline and never public** — transcripts carry secrets, tokens, and internal paths, and the tracker is private.
+- For an **already-fixed** close with no new PR, cite the prior PR that shipped it **and verify that PR exists and is actually relevant** before trusting the close — an unverified "already done" is how a real gap gets buried. Self-corrections (marked Done early, re-opened, rebased) belong on the ticket too.
 
 For a **distributable, merged is the middle, not the end.** If the item ships a VS Code extension, a published CLI, or a deployed web app, users don't run `main` — merge alone reaches nobody. Route it through `code:ship`: publish, confirm the public channel actually serves the new version, activate it where it runs, verify the real surface. "Merged" on a distributable without a ship pass is a half-landed item; say so in the summary rather than calling it done.
 
@@ -99,9 +104,11 @@ Duplicate work is the classic multi-agent (and multi-human) waste. Before you to
 
 - **Existing PR?** Search the target repo for an open PR referencing the item ID or a matching branch: `gh pr list --state open --search "<ID>"` (and scan `gh pr list --state open --json headRefName,title` for obvious matches). If one exists, do not reimplement — switch to the queue-of-one "land this one thing" path on that PR, or if it is clearly someone else's in-flight work, skip the item with a ticket comment linking the PR.
 - **Active agent already on it?** `agents sessions --active` shows every running session across the fleet. If a live session or teammate references the item, skip it this round with a note — never race it.
-- **Then claim it.** Before the first commit, move the item Todo → In Progress in your tracker. Label-queue drains fetch Todo only, so a claimed item disappears from every other loop's next fetch. This is a best-effort cross-machine signal, not a true lock — two loops polling in the same window can both see the item before either claims. Re-check the item's status right before your first commit, and if a PR for it appeared meanwhile, fall back to the dedup rule above.
+- **Then claim it — with a comment, not just a status flip.** Before the first commit, move the item Todo → In Progress in your tracker **and post a claim comment naming who is on it**: the agent, running session id, and host (e.g. `Picked up by claude · w-a-claude-1698 on yosemite-s1`). The status flip is the machine dedup signal; the comment is the human-readable one — another agent (or Muqsit) scanning the ticket sees who owns it and can pull that session's transcript. Label-queue drains fetch Todo only, so a claimed item disappears from every other loop's next fetch. This is a best-effort cross-machine signal, not a true lock — two loops polling in the same window can both see the item before either claims. Re-check the item's status right before your first commit, and if a PR for it appeared meanwhile, fall back to the dedup rule above.
 
 The order matters: dedup first (a PR or session means the claim belongs to someone else), claim second, build third.
+
+**Keep the ticket current between claim and close.** The ticket is the shared record, not your chat. When something material happens that another reader would need — a scope change, a blocking decision, a discovery that the item is already fixed, a hand-off to another agent — post it as a comment when it happens, not only in the final summary. A ticket that goes silent from "claimed" to "done" three hours later, with the whole story trapped in one session's scrollback, is the failure this prevents.
 
 **Make your own work findable.** Every PR you open carries the item ID in its title (`docs(routines): <summary> (PROJ-123)`) and body. The dedup search above only works if PRs are discoverable by ID — a PR without one is invisible to every other loop and will get reimplemented.
 

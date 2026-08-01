@@ -52,11 +52,15 @@ The command files in this directory, with optional team augmentation for complex
 
 **Task Management**
 - `/tickets` — Auto-detect the project's tracker (Linear / GitHub / Jira / etc.) and work with it. Uses whichever tracker skill is available; falls back to repo signals (`gh issue list`, etc.) if none is loaded.
+- `/monitors` — Set up or manage a durable event-triggered watcher (`agents monitors`): watch a source (command / HTTP / file / fleet device), fire an agent / routine / notification on change. Routines fire on a clock; monitors fire on a change.
 - `/continue` — Resume a previous task with context recovery (single session).
 - `/recover` — Recover *many* interrupted sessions after a crash: find them across version homes, understand each in parallel, finish the agent-doable work headlessly (subagents / `agents teams`) rather than resurrecting a terminal swarm, and hand back only what needs the user — as one easy action. Holds irreversible/outward actions for an explicit yes.
 
 **Delegation**
 - `/teams` — Arrange agents into teams for parallel execution. Create, add members, start, monitor, and collect results.
+
+**Observability**
+- `/output` — Fleet-wide token-burn + shipped-output report over a window (default 24h). Runs `agents output --all-hosts`, re-queries relay-only machines that timed out, then renders an HTML dashboard, drops a PDF in `~/Downloads`, and opens it in the browser.
 
 > Capabilities like `/secrets`, `/sessions`, `/audit`, and `/design` are **skills**, not commands — see [`skills/`](../skills/). They're invocable the same way (`/name`) but live in the skills layer with their own tooling and context.
 

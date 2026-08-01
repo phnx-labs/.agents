@@ -1,0 +1,73 @@
+# Built-in routine: keep agents-cli + the shared .system config repo current.
+#
+# Shipped in the system repo (gh:phnx-labs/.agents-system), so every install that
+# runs `agents repo pull system` receives it, and the daemon fires it. Users
+# override it with a same-named routine in ~/.agents/routines/, or disable it with
+# `agents routines disable check-updates` — this file is never mutated in place.
+#
+# Runs as a `command:` (plain shell) routine, NOT an LLM agent: this work is
+# deterministic (version compare + npm install + git fast-forward + notify), so it
+# must not depend on a logged-in agent, burn tokens, or gamble on account rotation
+# (an agent-mode run failed on a logged-out version: "Not logged in · /login").
+# Requires agents-cli with command-mode routines (the release adding JobConfig.command).
+#
+# Design: EACH box self-updates independently (no `devices:` restriction, no SSH
+# fan-out, no designated "primary"), so a single laptop and a large fleet are both
+# covered. Fail-soft: one failing step never aborts the rest.
+name: check-updates
+schedule: 0 9 * * 1        # Mondays 09:00 (daemon-local time)
+enabled: true
+timeout: 15m
+command: |
+  # --- agents-cli: upgrade when behind (skip local dev builds) ---
+  cli_changed=""
+  cur=$(agents --version 2>/dev/null || echo unknown)
+  case "$cur" in
+    *dev*)
+      echo "agents-cli: dev build ($cur) — skipping upgrade"
+      ;;
+    *)
+      # npm may be a lazy zsh function; fall back to the real binary.
+      npm_bin=$(command -v npm 2>/dev/null || echo /opt/homebrew/bin/npm)
+      latest=$("$npm_bin" view @phnx-labs/agents-cli version 2>/dev/null || echo "")
+      if [ -n "$latest" ] && [ "$cur" != "$latest" ]; then
+        if "$npm_bin" install -g @phnx-labs/agents-cli@latest >/dev/null 2>&1; then
+          cli_changed=1
+          echo "agents-cli: $cur -> $latest"
+        else
+          echo "agents-cli: upgrade to $latest failed (continuing)"
+        fi
+      else
+        echo "agents-cli: $cur (current)"
+      fi
+      ;;
+  esac
+
+  # --- .system config repo: fast-forward to origin/main ---
+  # Direct git ff (not `agents repo pull system`, which currently reports
+  # "N available" without fast-forwarding).
+  sys_changed=""
+  sys="$HOME/.agents/.system"
+  if [ -d "$sys/.git" ] && git -C "$sys" fetch -q origin 2>/dev/null; then
+    before=$(git -C "$sys" rev-parse HEAD 2>/dev/null)
+    git -C "$sys" merge --ff-only origin/main >/dev/null 2>&1 || true
+    after=$(git -C "$sys" rev-parse HEAD 2>/dev/null)
+    if [ "$before" != "$after" ]; then
+      sys_changed=1
+      echo ".system: pulled new commits"
+    else
+      echo ".system: up to date"
+    fi
+  else
+    echo ".system: not a git repo / fetch failed (skipped)"
+  fi
+
+  # --- notify only when something actually changed (best-effort) ---
+  if [ -n "$cli_changed" ] || [ -n "$sys_changed" ]; then
+    msg="agents-cli updated on $(hostname -s 2>/dev/null || hostname)"
+    if [ "$(uname)" = "Darwin" ]; then
+      osascript -e "display notification \"$msg\" with title \"agents-cli: updates applied\"" 2>/dev/null || true
+    else
+      command -v notify-send >/dev/null 2>&1 && notify-send "agents-cli: updates applied" "$msg" 2>/dev/null || true
+    fi
+  fi

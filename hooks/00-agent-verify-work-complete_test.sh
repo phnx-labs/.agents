@@ -55,6 +55,12 @@ mk_transcript() {
         echo '{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_view2","content":[{"type":"text","text":"https://github.com/acme/widgets/pull/99 is OPEN, reviewing it"}]}]}}'
         ;;
     esac
+    case "$1" in
+      swarm)
+        echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_team1","name":"Bash","input":{"command":"agents teams start factory-remote --watch"}}]}}'
+        echo '{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_team1","content":[{"type":"text","text":"team started"}]}]}}'
+        ;;
+    esac
     echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"step 2"}]}}'
     echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"step 3"}]}}'
   } > "$t"
@@ -91,6 +97,32 @@ check "open PR with explicit handoff allows stop" "$rc" "0"
 rc=$(FAKE_GH_STATE=OPEN run_hook "$T" "The build handoffs are documented; waiting on review." false)
 check "handoff-substring does not escape the gate" "$rc" "2"
 
+# 4b. Open PR blocked on a genuine external blocker WITH a watcher -> allow
+rc=$(FAKE_GH_STATE=OPEN run_hook "$T" "PR #42 is blocked on a GitHub Actions 503 outage failing CI — watcher: background gh pr checks --watch will merge on green when CI recovers." false)
+check "external blocker + watcher allows stop" "$rc" "0"
+
+# 4c. Open PR blocked on a pending user action (Touch ID / review) -> allow
+rc=$(FAKE_GH_STATE=OPEN run_hook "$T" "PR #42 is blocked on your Touch ID to sign the release; awaiting your merge." false)
+check "external blocker + awaited user action allows stop" "$rc" "0"
+
+# 4d. Bare 'blocked on' with no next-step/watcher -> still blocks (no loophole)
+rc=$(FAKE_GH_STATE=OPEN run_hook "$T" "This is blocked on CI for now." false)
+check "blocked-on without a next-step does not escape" "$rc" "2"
+
+# 4e. Abandonment prose: 'blocked on ...' + 'your review is needed' -> still blocks.
+#     Wanting a human review is not an external blocker the agent can't resolve.
+rc=$(FAKE_GH_STATE=OPEN run_hook "$T" "The PR is blocked on failing tests; your review is needed once they pass." false)
+check "blocked-on + 'your review' still blocks (not an external blocker)" "$rc" "2"
+
+# 4f. Abandonment prose: 'blocked on ...' + 'awaiting your approval' -> still blocks.
+rc=$(FAKE_GH_STATE=OPEN run_hook "$T" "Blocked on the dependency bump — awaiting your approval." false)
+check "blocked-on + 'awaiting your' still blocks" "$rc" "2"
+
+# 4g. Abandonment prose: 'blocked on ...' + bare 'watching' -> still blocks
+#     ('watching' alone does not imply a live gh pr checks --watch process).
+rc=$(FAKE_GH_STATE=OPEN run_hook "$T" "Blocked on flaky tests; I'm watching to see if they stabilize." false)
+check "blocked-on + bare 'watching' still blocks" "$rc" "2"
+
 # 5. stop_hook_active -> allow (no loops)
 rc=$(FAKE_GH_STATE=OPEN run_hook "$T" "still waiting" true)
 check "stop_hook_active bypasses gate" "$rc" "0"
@@ -113,5 +145,56 @@ check "mixed create+review only gates the created PR" "$rc" "0"
 rc=$(FAKE_GH_STATE=MERGED run_hook "$T" "All done. The widget feature is merged." false)
 check "done-claim on real transcript shape blocks for self-audit" "$rc" "2"
 grep -q "You claimed this work is done" "$SANDBOX/stderr" && echo "ok   - done-claim gate cites the original request" || { echo "FAIL - no done-claim gate message"; fail=1; }
+
+# --- swarm integration gate -------------------------------------------------
+# A session that ran an edit-mode swarm (`agents teams start`) may not stop on
+# swarm-completion phrasing that the generic done-list doesn't catch.
+TS=$(mk_transcript swarm)
+
+# 9. Swarm ran + wrap-up phrasing ("done and merged") not in the generic list
+#    -> the swarm gate must fire (generic done-gate would have exited 0).
+rc=$(FAKE_GH_STATE=MERGED run_hook "$TS" "The factory work you asked for is done and merged. You can now text the fleet." false)
+check "swarm 'done and merged' blocks for integration audit" "$rc" "2"
+grep -q "STOP GATE (swarm)" "$SANDBOX/stderr" && echo "ok   - swarm gate names itself + the seam" || { echo "FAIL - no swarm gate message"; fail=1; }
+
+# 10. Swarm ran + "landed end-to-end" wrap-up -> swarm gate fires.
+rc=$(FAKE_GH_STATE=MERGED run_hook "$TS" "All three tracks landed. AGI Factory end-to-end status: shipped." false)
+check "swarm 'all three tracks landed' blocks" "$rc" "2"
+
+# 11. Swarm ran but the final message is NOT a completion claim -> allow.
+rc=$(FAKE_GH_STATE=MERGED run_hook "$TS" "Track 2 is still running; I'm watching the digest teammate." false)
+check "swarm session without a done-claim allows stop" "$rc" "0"
+
+# 12. NO swarm in the transcript + swarm-only phrasing -> swarm gate must NOT
+#     fire (the generic done-gate may still catch other phrasings, but "all
+#     three tracks landed" is not in that list, so a non-swarm session allows).
+rc=$(FAKE_GH_STATE=MERGED run_hook "$T" "All three tracks landed end-to-end." false)
+check "non-swarm session does not trip the swarm gate" "$rc" "0"
+
+# 13. Swarm ran + done-claim but stop_hook_active -> allow (no loops).
+rc=$(FAKE_GH_STATE=MERGED run_hook "$TS" "The work is done and merged." true)
+check "swarm gate respects stop_hook_active" "$rc" "0"
+
+# --- genuine-user-message extraction (skip harness noise) -------------------
+# A session opened with `j <dir>` (a `!`-prefix bash-input) must NOT have that
+# quoted as "the original request" — the done-claim gate must skip
+# <bash-input>/<bash-stdout> turns and quote the first real prose ask instead.
+NT="$SANDBOX/noise-transcript.jsonl"
+{
+  echo '{"type":"user","message":{"role":"user","content":"<bash-input>j agents-cli</bash-input>"}}'
+  echo '{"type":"user","message":{"role":"user","content":"<bash-stdout>/home/muqsit/src/agents-cli</bash-stdout><bash-stderr></bash-stderr>"}}'
+  echo '{"type":"user","message":{"role":"user","content":"<system-reminder>The user named this session AGI Factory.</system-reminder>"}}'
+  echo '{"type":"user","message":{"role":"user","content":"[Request interrupted by user]"}}'
+  echo '{"type":"user","message":{"role":"user","content":"Please refactor the auth module and add end-to-end tests for the login flow."}}'
+  echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"working"}]}}'
+  echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"step 2"}]}}'
+  echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"step 3"}]}}'
+} > "$NT"
+
+# 14. Done-claim on a noise-led transcript -> blocks, and quotes the REAL ask.
+rc=$(FAKE_GH_STATE=MERGED run_hook "$NT" "All done. The auth refactor is complete." false)
+check "done-claim on noise-led transcript blocks" "$rc" "2"
+grep -q "refactor the auth module" "$SANDBOX/stderr" && echo "ok   - gate quotes the real ask, not the jump command" || { echo "FAIL - gate did not quote the real ask"; fail=1; }
+if grep -qE "bash-input|system-reminder|Request interrupted" "$SANDBOX/stderr"; then echo "FAIL - gate leaked harness noise"; fail=1; else echo "ok   - gate does not leak bash-input/system-reminder/interrupt noise"; fi
 
 exit $fail

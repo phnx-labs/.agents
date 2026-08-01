@@ -1,0 +1,9 @@
+{
+  "name": "fleet",
+  "version": "0.1.0",
+  "description": "fleet — fleet-wide operations across every machine registered with `agents devices`. `/fleet:sync` pulls every registered DotAgent repo (system, user, and extras) to origin latest on every online device, then refreshes the installed agents — non-destructive (git merge --ff-only only; reports repos blocked by local edits instead of clobbering), handling the fast-forward workaround, the transient GitHub-SSH throttle, and Windows PowerShell quoting, ending with a repo x device matrix. `/fleet:onboard <device>` brings a bare new device up to fleet parity (agents-cli, agent CLIs, DotAgent repos, shared SSH key, PATH shim, device registration, agent auth) — discovery-first, additive, idempotent, credentials via sanctioned paths only, never copied host-to-host.",
+  "author": {
+    "name": "Muqsit Nawaz",
+    "email": "contact@trp.so"
+  }
+}

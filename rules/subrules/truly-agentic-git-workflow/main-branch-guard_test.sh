@@ -120,6 +120,48 @@ run_guard 0 "Write on feature branch"            "$(wj Write file_path "$FEAT_RE
 run_guard 0 "Write on clone feature branch"      "$(wj Write file_path "$CLONE_FEAT/z.txt")"
 run_guard 0 "Write in non-git dir"               "$(wj Write file_path "$NOGIT/file.txt")"
 run_guard 0 "Write to /tmp scratch"              "$(wj Write file_path "$TMP/loose.txt")"
+# The core bug case, runnable everywhere (no cygpath): a drive-letter path OUTSIDE
+# any repo, with a POSIX cwd on main. Before the fix the drive-letter path fell to
+# the relative branch, got concatenated onto cwd, and dirname walked back up to the
+# main repo -> false deny. These two run on Linux/macOS CI, where the Windows-cwd
+# cases below are skipped.
+run_guard 0 "Write drive-letter path (forward slash) outside repo, POSIX cwd on main" \
+  "$(wj Write file_path "C:/completely/external/nonexistent/path/file.txt" "$MAIN_REPO")"
+run_guard 0 "Write drive-letter path (backslash) outside repo, POSIX cwd on main" \
+  "$(wj Write file_path "C:\\completely\\external\\nonexistent\\path\\file.txt" "$MAIN_REPO")"
+
+# --- Windows-style paths: drive-letter-rooted, backslash or forward-slash ---
+# separated paths (as sent by Claude Code / other harnesses running natively on
+# Windows) must be recognized as absolute, never concatenated onto cwd. Real
+# bug: a Windows absolute path like `I:\tmp\out.html` or `I:/tmp/out.html`,
+# paired with a Windows-style cwd, fell through the old `/*`-only check into the
+# relative branch, producing a bogus `<cwd>/I:\tmp\out.html` that `dirname`
+# walked back up to cwd itself — misreporting an edit to a file completely
+# outside the repo as "on the default branch of <repo>".
+if command -v cygpath >/dev/null 2>&1; then
+  MAIN_REPO_WIN=$(cygpath -w "$MAIN_REPO")
+  MAIN_REPO_WIN_FS=$(printf '%s' "$MAIN_REPO_WIN" | tr '\\' '/')
+
+  # DENY: Windows-style absolute path pointing INSIDE the repo, on main.
+  run_guard 2 "Write Windows absolute path (backslash) on main" \
+    "$(wj Write file_path "$MAIN_REPO_WIN\\tracked.txt")"
+  run_guard 2 "Write Windows absolute path (forward slash, drive letter) on main" \
+    "$(wj Write file_path "$MAIN_REPO_WIN_FS/tracked.txt")"
+  # DENY: relative file_path + Windows-style (backslash) cwd on main — exercises
+  # the cwd-normalization half of the fix.
+  run_guard 2 "Write relative path, Windows-style cwd on main" \
+    "$(wj Write file_path "tracked.txt" "$MAIN_REPO_WIN")"
+  # Bash `git -C <windows-path> commit` must resolve the same way.
+  run_guard 2 "git -C Windows-style path commit" \
+    "$(bj "git -C \"$MAIN_REPO_WIN\" commit -m x")"
+
+  # ALLOW: Windows-style absolute path pointing OUTSIDE the repo, even with a
+  # Windows-style cwd rooted on main — this is the exact bug scenario above.
+  run_guard 0 "Write Windows absolute path (forward slash) outside repo, Windows cwd on main" \
+    "$(wj Write file_path "C:/completely/external/nonexistent/path/file.txt" "$MAIN_REPO_WIN")"
+  run_guard 0 "Write Windows absolute path (backslash) outside repo, Windows cwd on main" \
+    "$(wj Write file_path "C:\\completely\\external\\nonexistent\\path\\file.txt" "$MAIN_REPO_WIN")"
+fi
 
 # --- File tools: ALLOW gitignored paths even on the default branch (exit 0) ---
 # A gitignored path can never be committed, so writing it can't land on main.

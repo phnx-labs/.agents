@@ -1,0 +1,9 @@
+{
+  "name": "clify",
+  "version": "0.1.0",
+  "description": "clify — turn any web service into an installable, verified CLI. `/clify <target>` climbs a reverse-engineering ladder (docs/OpenAPI → authed API → HAR capture → content-script injection), infers a typed command schema, and emits a globally-installable CLI for humans and agents — optionally an MCP server via `--mcp`. No command ships until it has hit the real endpoint and returned real output (the verification gate). Builds on `agents browser` (capture), `agents secrets` (token persistence), `mcporter` (MCP registration), and `oss` (open-sourcing a generated CLI).",
+  "author": {
+    "name": "Muqsit Nawaz",
+    "email": "contact@trp.so"
+  }
+}

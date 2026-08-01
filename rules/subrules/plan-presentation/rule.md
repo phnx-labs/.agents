@@ -11,9 +11,10 @@ house structure, the product-brand theming, the light/dark toggle, and the open-
 transport — lives in the **`plan-render` skill**. Load it and follow it.
 
 - **Structure (fixed).** Hero (kicker · headline · problem statement · metadata chips ·
-  TOC), numbered sections, **≥1 hand-authored inline-SVG diagram** (timeline /
-  architecture / before-after — never mermaid), callouts, tagged tables, code blocks.
-  Start from the skill's `template.html`; `example.html` is the gold reference.
+  TOC), numbered sections, **≥1 visual figure** (Dither Kit for quantitative
+  charts; hand-authored inline SVG for timeline / architecture / before-after
+  diagrams — never mermaid), callouts, tagged tables, code blocks. Start from
+  the skill's `template.html`; `example.html` is the gold reference.
 - **Theme (adopted).** Skin the plan in the **target product's brand** — probe the repo
   for design tokens, tailwind/CSS vars, logo/manifest colors. Fall back to the dark +
   light editorial house palette only when the product declares no brand.
@@ -27,3 +28,12 @@ transport — lives in the **`plan-render` skill**. Load it and follow it.
   browser host is reachable.
 
 A plan the user can't see rendered is not presented. Render, open, then discuss.
+
+## A multi-step plan also carries a checklist
+
+The same `plan-html-reminder` hook now gates a second thing: when the plan has
+multiple steps, create a **task checklist** for it before you present (one
+`TaskCreate` per step). The checklist is the plan's acceptance rubric — it shows in
+`agents sessions`, drives the watchdog, and marks progress as you work. Trivial,
+single-step plans are exempt (the gate skips them). Binding the checklist to the
+task and to a tracker is covered by the **`task-checklists`** rule.

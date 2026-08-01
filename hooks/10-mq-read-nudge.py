@@ -3,8 +3,12 @@
 
 Fires only on the Read tool. When the target is a large (>=16 KiB) file in a
 format `mq` supports (code, docs, data, Office), it injects a one-time — per
-session + per file — suggestion to map the file with `mq <file> .tree` and
-extract just the needed section instead of pulling the whole file into context.
+session + per file — suggestion to extract just the needed part in a single mq
+call (`mq <file> '.section("X") | .text'` / `.search`) instead of reading the
+whole file. It explicitly steers AWAY from the `.tree`->`.section` dance for a
+named target: an A/B measured that two-call dance at ~2.3x the cost and ~2x the
+latency of just reading, while one-call mq is ~18% cheaper AND faster. `.tree`
+is for discovering unknown structure or amortized repeat access only.
 
 Advisory only: it NEVER blocks the read (always exit 0). Fail-open everywhere —
 any error is swallowed so a nudge can never break a tool call.
@@ -95,11 +99,15 @@ def main():
     kb = size // 1024
     note = (
         f"[mq] About to read `{os.path.basename(path)}` whole (~{kb} KiB). If you "
-        f"need only part of it, map it first with `mq {path} .tree` (sections + "
-        f"line ranges), then extract just what you need: "
-        f"`mq {path} '.section(\"<name>\") | .text'`. mq supports this format "
-        f"({ext}) — code, docs, data, and Office, not only markdown. Reading the "
-        f"whole file is fine if you genuinely need all of it; skip mq then."
+        f"already know the part you need, get it in ONE mq call instead of reading "
+        f"the whole file:\n"
+        f"  mq {path} '.section(\"<name>\") | .text'   (a specific function/section)\n"
+        f"  mq {path} '.search(\"<term>\")'            (find + show matches)\n"
+        f"Go straight to that one call — do NOT run `.tree` first for a target you "
+        f"can already name (the map-then-extract dance costs more than just reading). "
+        f"Run `mq {path} .tree` first ONLY to discover an unknown structure, or if "
+        f"you'll read this file more than once. mq handles this format ({ext}) — code, "
+        f"docs, data, Office. If you genuinely need the whole file, just read it."
     )
     print(json.dumps({
         "hookSpecificOutput": {

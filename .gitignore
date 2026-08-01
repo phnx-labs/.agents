@@ -5,7 +5,10 @@
 /shims/
 /repos/
 /runs/
-/routines/
+# NOTE: routines/ is tracked here — this source repo SHIPS built-in routines
+# (e.g. routines/check-updates.yml) that installs receive via `agents repo pull
+# system`. In a user's ~/.agents the routines/ dir is their own runtime state; it
+# is only ignored there, never here.
 /drives/
 /packages/
 /swarm/

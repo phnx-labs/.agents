@@ -38,33 +38,82 @@ case "$tool" in
   *) exit 0 ;;                       # empty / unknown / any other tool -> allow
 esac
 
-# A fresh plan HTML rendered in the last 90 min satisfies the gate. Covers both the
+# The gate has TWO parts, both checked before we allow the plan to be presented:
+#   (A) a fresh plan HTML was rendered (browser-reviewable), and
+#   (B) for a MULTI-STEP plan, a task checklist was created (the acceptance rubric
+#       that then shows in `agents sessions` and drives the watchdog/feed).
+# Either missing -> block ONCE with a message naming what's missing. Both self-
+# terminating: the agent renders the HTML / creates the checklist and re-calls
+# ExitPlanMode, which now passes.
+
+# ---- (A) HTML render check ----------------------------------------------------
+# A fresh plan HTML rendered in the last 90 min satisfies this. Covers both the
 # canonical `/tmp/plan-<slug>.html` and the `<slug>-plan.html` scratchpad convention.
 # Scan root is /tmp (where the recipe renders); overridable for tests.
 # -L: follow symlinks. On macOS /tmp is a symlink to /private/tmp, and BSD find
 # will NOT descend a symlinked start path without -L — so the gate could never
 # detect a rendered plan on a Mac and blocked ExitPlanMode indefinitely.
 scan_root="${PLAN_HTML_SCAN_ROOT:-/tmp}"
+html_ok=0
 if find -L "$scan_root" -maxdepth 6 \( -name 'plan-*.html' -o -name '*-plan.html' \) -mmin -90 \
      -print -quit 2>/dev/null | grep -q .; then
+  html_ok=1
+fi
+
+# ---- (B) Checklist check (FAILS OPEN) -----------------------------------------
+# Only enforced for a genuinely multi-step plan, and only when we can read the
+# session transcript. If the harness gives no transcript_path, or the plan is
+# trivial, or we cannot locate the human turn, checklist_ok stays 1 (allow) — a
+# reminder must never block a legitimate simple plan. A false-pass just skips one
+# nudge; a false-block frustrates the user. We bias to open.
+checklist_ok=1
+tp=$(printf '%s' "$input" | jq -r '(.transcript_path // .transcriptPath) // empty' 2>/dev/null) || tp=""
+plan=$(printf '%s' "$input" | jq -r '(.tool_input.plan // .toolInput.plan) // empty' 2>/dev/null) || plan=""
+if [ -n "$tp" ] && [ -r "$tp" ]; then
+  # "Multi-step" = >=3 step-like lines in the ExitPlanMode plan text
+  # (numbered, bulleted, checkbox, "### " heading, or "Phase ").
+  steps=$(printf '%s\n' "$plan" | grep -Ec '^[[:space:]]*([0-9]+[.)]|[-*][[:space:]]|#{2,3}[[:space:]]|[Pp]hase[[:space:]]|-[[:space:]]\[[ xX]\])' || true)
+  if [ "${steps:-0}" -ge 3 ]; then
+    checklist_ok=0
+    # Last GENUINE human turn = a "type":"user" line WITHOUT a tool_result
+    # (Claude records tool_results as type:user too — those are not human turns).
+    last_human=$(grep -n '"type":"user"' "$tp" 2>/dev/null | grep -v 'tool_result' | tail -1 | cut -d: -f1 || true)
+    if [ -z "$last_human" ]; then
+      checklist_ok=1                       # can't locate a human turn -> fail open
+    elif tail -n +"$last_human" "$tp" 2>/dev/null \
+         | grep -Eq '"name":"(TaskCreate|TodoWrite|todo_write|update_plan)"'; then
+      checklist_ok=1                       # a checklist tool fired for this plan
+    fi
+  fi
+fi
+
+# ---- decide -------------------------------------------------------------------
+if [ "$html_ok" = 1 ] && [ "$checklist_ok" = 1 ]; then
   exit 0
 fi
 
-# No fresh render — remind, and block this one presentation.
-cat >&2 <<'MSG'
-Present this plan as browser-ready HTML before finishing (plan-presentation rule).
-
-Load the `plan-render` skill and:
-  1. Render a self-contained HTML plan to /tmp/plan-<slug>.html — house structure
-     (hero, TOC, >=1 hand-authored inline-SVG diagram, callouts, tagged tables),
-     skinned in the target product's brand (dark+light editorial fallback + toggle).
-     Start from the skill's template.html; example.html is the gold reference.
-  2. Open it on the user's default browser on the online macOS device (Host & Fleet):
-     scp /tmp/plan-<slug>.html <host>:/tmp/ && agents ssh <host> 'open /tmp/plan-<slug>.html'
-     (resolve the host from `agents devices` — never hardcode one).
-  3. Then call ExitPlanMode again — this check passes once the HTML exists.
-
-Headless fleet with no reachable browser host: still render the HTML (that clears this
-gate); just say you could not open it.
-MSG
+# Something's missing — name it, block once.
+{
+  echo "Before presenting this plan (plan-presentation rule), finish these:"
+  echo
+  if [ "$html_ok" != 1 ]; then
+    echo "* Render it as browser-ready HTML and open it on the user's Mac."
+    echo "  Load the plan-render skill: write /tmp/plan-<slug>.html (hero, TOC, >=1 visual"
+    echo "  figure: a Dither Kit chart for data or a hand-authored inline-SVG diagram,"
+    echo "  callouts, tagged tables), skinned in the product brand with a light/dark toggle."
+    echo "  Start from the skill's template.html."
+    echo "  Open it on the online macOS device (resolve the host from \`agents devices\`):"
+    echo "    scp /tmp/plan-<slug>.html <host>:/tmp/ && agents ssh <host> 'open /tmp/plan-<slug>.html'"
+    echo "  Headless fleet with no browser host: still render the file (that clears this)."
+  fi
+  if [ "$checklist_ok" != 1 ]; then
+    echo "* Create a task checklist for this plan — it has multiple steps."
+    echo "  Call TaskCreate for each step (subject + description); the checklist becomes the"
+    echo "  acceptance rubric and shows up in \`agents sessions\`. If a tracker is connected"
+    echo "  and no ticket is paired with this work, create or pair one and note it."
+  fi
+  echo
+  echo "Then call ExitPlanMode again — this passes once the render exists and (for a"
+  echo "multi-step plan) a checklist was created."
+} >&2
 exit 2

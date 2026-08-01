@@ -8,6 +8,16 @@
   },
   "plugins": [
     {
+      "name": "clify",
+      "source": "./plugins/clify",
+      "description": "clify — turn any web service into an installable, verified CLI for humans and agents. `/clify <target>` climbs a reverse-engineering ladder (docs/OpenAPI → authed API → HAR capture → content-script injection), infers a typed command schema, and emits a globally-installable CLI — optionally an MCP server via `--mcp`. No command ships until it has hit the real endpoint and returned real output (the verification gate). Builds on `agents browser` (capture), `agents secrets` (Keychain token persistence), `mcporter`/`agents mcp` (the `--mcp` emit), and `oss` (open-sourcing a generated CLI).",
+      "version": "0.1.0",
+      "author": {
+        "name": "Muqsit Nawaz",
+        "email": "contact@trp.so"
+      }
+    },
+    {
       "name": "cloud",
       "source": "./plugins/cloud",
       "description": "cloud - Rush Cloud dispatch plugin. `/cloud:run` documents the native `rush cloud run` path for Claude Code/Codex harnesses, repo dispatch, execution lifecycle commands, and verification evidence. `/cloud:accounts` covers Rush login plus connected Claude/Codex credentials (`rush cloud accounts add/list/remove`) and distinguishes Rush Cloud access/subscription gates from vendor account capacity.",
@@ -28,10 +38,40 @@
       }
     },
     {
+      "name": "design",
+      "source": "./plugins/design",
+      "description": "design — a keyless, offline-first design front door. `/design` routes a design intent to a mode and renders it as self-contained HTML/SVG (no CDN, no paid keys): UI screens and flows (interface), clickable prototypes (prototype), design systems and tokens (system), architecture/flow/ER diagrams (diagram, via plan-render's diagram-conventions), infographics and data-stories (dataviz), slide decks (deck), and critique of an existing screen (critique). Vector assets (OG cards, SVG logos, icon sets, posters) render offline too; true raster (photo, illustration, painterly cover) is an optional layer that degrades to a spec plus an editable placeholder plus enable-steps rather than hard-failing. Every mode loads design-core first: visual hierarchy, WCAG AA contrast, colorblind-safe palettes, brand-probe, precise non-marketing copy, and render/screenshot/critique verification. Brand plugins layer on top by calling /design; brand is optional, never required.",
+      "version": "0.1.0",
+      "author": {
+        "name": "Muqsit Nawaz",
+        "email": "contact@trp.so"
+      }
+    },
+    {
+      "name": "fleet",
+      "source": "./plugins/fleet",
+      "description": "fleet — fleet-wide operations across every machine registered with `agents devices`. `/fleet:sync` pulls every registered DotAgent repo (system, user, and extras) to origin latest on every online device, then refreshes the installed agents — non-destructive (git merge --ff-only only; reports repos blocked by local edits instead of clobbering), handling the fast-forward workaround, the transient GitHub-SSH throttle, and Windows PowerShell quoting, ending with a repo x device matrix. `/fleet:onboard <device>` brings a bare new device up to fleet parity (agents-cli, agent CLIs, DotAgent repos, shared SSH key, PATH shim, device registration, agent auth) — discovery-first, additive, idempotent, credentials via sanctioned paths only, never copied host-to-host.",
+      "version": "0.1.0",
+      "author": {
+        "name": "Muqsit Nawaz",
+        "email": "contact@trp.so"
+      }
+    },
+    {
       "name": "git",
       "source": "./plugins/git",
       "description": "git \u2014 pure git plumbing commands that aren't tied to code logic. `/git:prune` removes merged branches and worktrees with hard data-loss guards (skips anything with uncommitted changes, stashes, unmerged commits, locks, or detached HEAD), using `git rev-list --count origin/$MAIN..HEAD == 0` as the load-bearing 'nothing to lose' check. `/git:tag-release` creates and pushes an annotated release tag (never force, never re-points an existing tag). The code-aware loop (`/commit`, `/review`, `/sprint`) lives in the `code` plugin.",
       "version": "0.2.0",
+      "author": {
+        "name": "Muqsit Nawaz",
+        "email": "contact@trp.so"
+      }
+    },
+    {
+      "name": "share",
+      "source": "./plugins/share",
+      "description": "share — publish an HTML artifact (a plan, viz, or report) to a shareable link on your own Cloudflare R2 (zero egress, ~$0) via `agents share`. `/share:public` posts a public link with an auto-generated OG cover (a screenshot of the page's hero) so it unfurls into a preview card in Slack/iMessage/Twitter/Discord; `/share:private` posts an unlisted, auto-expiring link with no preview card (unguessable but still public-read — not authenticated). Requires a one-time `agents share setup` (provisions an R2 bucket + Worker) or `agents share join`.",
+      "version": "0.1.0",
       "author": {
         "name": "Muqsit Nawaz",
         "email": "contact@trp.so"
@@ -50,8 +90,8 @@
     {
       "name": "swarm",
       "source": "./plugins/swarm",
-      "description": "swarm \u2014 fan a task out across a team of parallel coding agents via `agents teams` (the modern replacement for the deprecated Swarmify MCP). `/swarm:plan` researches hard and drafts an OpenSpec-grade change proposal, then has independent agents plan it blind and reconciles; `/swarm:debug` traces the data path and confirms the root cause with blind, different-provider verifiers (scaled to the bug) before any fix; `/swarm:test` splits a scope into areas and covers each in parallel; `/swarm:qa` maps an app's QA surface, provisions instances on multiple ports, and fans QA agents across them in waves via `agents browser`, then ranks a ship/no-ship verdict. Each command invokes its same-named skill; the shared `agents teams` engine (provider discovery, boundary contracts, judgment-based sizing) lives in the internal `swarm:orchestrate` skill.",
-      "version": "0.2.0",
+      "description": "swarm \u2014 fan a task out across a team of parallel coding agents via `agents teams` (the modern replacement for the deprecated Swarmify MCP). `/swarm:run` is the generic fan-out \u2014 decompose an arbitrary goal into independent tracks, spawn a mixed team, monitor, and synthesize (the catch-all for work that doesn't fit the specialized modes); `/swarm:plan` researches hard and drafts an OpenSpec-grade change proposal, then has independent agents plan it blind and reconciles; `/swarm:spec` reverse-engineers the OpenSpec source-of-truth spec (requirements + Given/When/Then scenarios) from the real code, then has independent agents spec it blind and drift-checks every requirement against actual behavior; `/swarm:debug` traces the data path and confirms the root cause with blind, different-provider verifiers (scaled to the bug) before any fix; `/swarm:test` splits a scope into areas and covers each in parallel; `/swarm:qa` maps an app's QA surface, provisions instances on multiple ports, and fans QA agents across them in waves via `agents browser`, then ranks a ship/no-ship verdict. Each command invokes its same-named skill; the shared `agents teams` engine (provider discovery, boundary contracts, judgment-based sizing) lives in the internal `swarm:orchestrate` skill.",
+      "version": "0.4.0",
       "author": {
         "name": "Muqsit Nawaz",
         "email": "contact@trp.so"

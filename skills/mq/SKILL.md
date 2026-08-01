@@ -11,6 +11,27 @@ description: "Structure-aware context query for large files — probe structure,
 File or dir → mq query → structure/section enters your context → you reason → answer
 ```
 
+## When to use mq — and when NOT
+
+mq's benefit is a smaller context footprint; its cost is per-call round-trips. Net
+win only when the saving beats the overhead. This is a real tradeoff, measured — not
+"always mq".
+
+| Situation | Do this |
+|---|---|
+| You **know** the function/section you want | **One call:** `mq <file> '.section("Name") \| .text'` or `mq <file> '.search("term")'`. Beats reading the whole file (~18% cheaper + faster, measured). |
+| You'll read the **same big file repeatedly** | `.tree` once, then many cheap `.section` extracts. Map amortizes. |
+| **Unfamiliar directory** / search across files | `mq dir/ '.tree \| depth(1)'`, `mq dir/ '.search("x")'` — one call replaces many grep+cat. |
+| Large file (200+ lines), you need a **slice** | Extract the slice; don't slurp the file. |
+| **Small file (<~100 lines)** | Just `Read` it — mq's round-trip costs more than the file. |
+| **One-shot** read, you need **most/all** of the file | Just `Read` it (targeted with offset/limit if you know the slice). |
+
+**The #1 pitfall — the `.tree`→`.section` dance for a target you already named.**
+If the task names the thing, do NOT run `.tree` first. That two-call dance was
+measured **2.3× more expensive and ~2× slower** than just reading the file — worse
+than doing nothing. `.tree` is for *discovering* an unknown structure, not for a
+target you can name. Go straight to the one-call extract.
+
 ## It is NOT a docs-only tool
 
 `mq --help` lists its formats: **Markdown, HTML, PDF, JSON, YAML, CSV, XLSX, DOCX, PPTX, and Code (Go / Python / TS / Rust / …)**. So `mq` maps the structure of a **source file** just as well as a markdown doc:
@@ -26,15 +47,21 @@ Reach for it on the `.ts`/`.py`/`.go` file you were about to `cat` — not only 
 
 ## The Pattern
 
+**Fast path (most tasks) — one call.** If you can name the target, extract it directly:
 ```
-1. Map      →  mq <dir>/ '.tree | depth(1)'      → what's here (files, sizes, sections)
-2. Narrow   →  mq <file> .tree                     → sections/symbols + line ranges
-3. Find     →  mq <path> '.search("term")'         → section-level matches across files
-4. Extract  →  mq <file> '.section("Name") | .text'→ only the part you need
-5. Reason   →  you compute the answer from what's now in context
+mq <file> '.section("Name") | .text'    → the one function/section you need
+mq <file> '.search("term")'             → find + show matches in one shot
 ```
 
-Your context accumulates structure; you do the final reasoning. Don't re-query what you already see.
+**Exploration path — only when the structure is unknown, or you'll revisit the file:**
+```
+1. Map     →  mq <dir>/ '.tree | depth(1)'         → what's here (files, sizes, sections)
+2. Narrow  →  mq <file> .tree                        → sections/symbols + line ranges
+3. Extract →  mq <file> '.section("Name") | .text'   → the part you now know you need
+```
+
+Don't run the exploration path for a target you can already name — that's the #1
+pitfall above. Your context accumulates structure; don't re-query what you already see.
 
 ## Quick Reference
 
@@ -59,10 +86,16 @@ mq file.md   .metadata                     mq log.jsonl '.record(7)'
 ```bash
 cat src/lib/router.ts        # dumps 800 lines into context for one function
 ```
-**Good** — map then extract:
+**Good** — if you can name the target, extract it in ONE call:
 ```bash
-mq src/lib/router.ts .tree                        # see the structure
-mq src/lib/router.ts '.section("handleRequest") | .text'   # get only that
+mq src/lib/router.ts '.section("handleRequest") | .text'   # just that function, one call
+```
+**Also bad** — running `.tree` first for a target you already named:
+```bash
+mq src/lib/router.ts .tree                        # unnecessary discovery step...
+mq src/lib/router.ts '.section("handleRequest") | .text'   # ...you knew the name already
+# the two-call dance measured 2.3x costlier + ~2x slower than just reading. Use .tree
+# ONLY when the structure is unknown, or you'll extract from this file more than once.
 ```
 
 **Bad** — re-`cat`/`grep` the same large file repeatedly to find different things. That's the single most common waste: the same file gets re-read many times in one session. Map it once with `.tree`; the structure stays in your context.
@@ -80,9 +113,13 @@ Warm cache (after first parse): a 30K-line markdown dir `.tree` in <1s; 123 PDFs
 ## Examples by task
 
 ```bash
-# Understand a source module          mq src/api.ts .tree ; mq src/api.ts '.section("POST /users") | .text'
-# Find how auth works across a repo    mq src/ '.search("auth")' ; mq src/auth.ts '.section("Overview") | .text'
-# Pull one section from a big doc      mq GUIDE.md .tree ; mq GUIDE.md '.section("Deploy") | .text'
-# Query a PDF report                   mq report.pdf .tree ; mq report.pdf '.section("Results") | .text'
-# Inspect a JSONL session              mq session.jsonl '.search("deploy")' ; mq session.jsonl '.record(8)'
+# Named target -> ONE call (the common case):
+#   Pull one function            mq src/api.ts '.section("createUser") | .text'
+#   Pull one doc section         mq GUIDE.md   '.section("Deploy") | .text'
+#   Pull a PDF section           mq report.pdf '.section("Results") | .text'
+# Unknown target -> search or map first, THEN extract:
+#   Find how auth works          mq src/ '.search("auth")'     # locate it...
+#                                mq src/auth.ts '.section("Overview") | .text'   # ...then extract
+#   Explore an unfamiliar file   mq src/api.ts .tree           # only when you don't know the section names
+# Inspect a JSONL session        mq session.jsonl '.search("deploy")' ; mq session.jsonl '.record(8)'
 ```

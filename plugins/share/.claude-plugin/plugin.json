@@ -1,0 +1,9 @@
+{
+  "name": "share",
+  "version": "0.1.0",
+  "description": "share — publish an HTML artifact (plan, viz, report) to a shareable link on your own Cloudflare R2 via `agents share`. `/share:public` posts a public link with an unfurling OG preview card; `/share:private` posts an unlisted, auto-expiring link with no preview. Requires a one-time `agents share setup`.",
+  "author": {
+    "name": "Muqsit Nawaz",
+    "email": "contact@trp.so"
+  }
+}

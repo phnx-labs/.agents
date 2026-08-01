@@ -1,6 +1,6 @@
 ---
 name: run
-description: "Execute a single agent headlessly or interactively. Supports plan/edit/full modes, secrets bundle injection, version pinning, fallback chains, balanced rotation, profile dispatch (Kimi/DeepSeek/etc.), and workflow dispatch by name. Triggers on: 'run claude', 'run codex', 'agents run', 'dispatch an agent', 'headless agent', 'one-off agent task'."
+description: "Execute a single agent headlessly or interactively. Supports plan/edit/auto/skip modes, secrets bundle injection, version pinning, fallback chains, balanced rotation, profile dispatch (Kimi/DeepSeek/etc.), and workflow dispatch by name. Triggers on: 'run claude', 'run codex', 'agents run', 'dispatch an agent', 'headless agent', 'one-off agent task'."
 argument-hint: "<agent|profile|workflow> [prompt]"
 allowed-tools: Bash(agents run*)
 user-invocable: true
@@ -25,18 +25,54 @@ agents run claude "summarize recent git commits"
 
 ## Modes
 
-Permission mode controls what the agent can do. Headless runs MUST set an explicit mode or hang at `ExitPlanMode`.
+Permission mode controls what the agent can do.
 
 | Mode | What it allows |
 |------|----------------|
-| `plan` (default) | Read-only — research, audit, analysis |
-| `edit` | Read + write files |
-| `full` | Writes + all permissions (autonomous) |
+| `plan` (default) | Read-only where supported. Unsupported harnesses warn and degrade to their safest native mode (usually writable `edit`); headless Kimi rejects `plan`. |
+| `edit` | Read + write files; prompts for shell / risky operations |
+| `auto` | Harness-native automatic approval: Claude/Copilot use the smart classifier; Droid uses `--auto high`; Kimi uses `--auto` interactively, while headless `-p` already auto-approves and emits no mode flag. |
+| `skip` | Last-resort bypass of every permission prompt. Direct exec uses the native unsafe flag; ACP selects a protocol permission option. `full` remains an alias. |
 
 ```bash
 agents run claude "fix lint errors in src/" --mode edit
-agents run deploy-bot --mode full "deploy api to staging"
+agents run claude "/code:commit" --mode auto          # run a command unattended, safely
 ```
+
+**Treat `skip` as a last resort.** In direct-exec runs (without `--acp`), agents-cli
+forwards the harness's native bypass flag; it does not add another safety layer. Prefer
+`auto` where it adds a safer automatic policy (smart classifier on Claude/Copilot,
+native high-auto mode on Droid, or interactive Kimi), or `edit` everywhere else.
+For headless Kimi, `edit`, `auto`, and `skip` all use the same already-auto-approved
+`-p` behavior, so prefer `edit` rather than signaling a blanket bypass.
+
+| Harness | Direct-exec `--mode skip` becomes |
+|---|---|
+| Claude Code | `--dangerously-skip-permissions` |
+| Codex | `--dangerously-bypass-approvals-and-sandbox` (equivalent to `--yolo`) |
+| Gemini | `--yolo` |
+| Cursor | `-f` |
+| OpenClaw | `--mode full` |
+| GitHub Copilot | `--allow-all` (alias: `--yolo`) |
+| Antigravity | `--dangerously-skip-permissions` |
+| Grok | `--always-approve` |
+| Kimi | `--yolo` interactively; no extra flag in headless `-p` runs, which already auto-approve |
+| Droid | `--skip-permissions-unsafe` |
+
+With `--acp`, these native flags are not used. agents-cli instead grants `skip`
+permission requests at the ACP protocol layer: it selects `allow_always` when offered,
+otherwise the first permission option offered by the server. The same last-resort
+warning applies.
+
+Codex has no native smart-classifier mode, so `agents run codex --mode auto` resolves
+to sandboxed `edit` and can still prompt. `agents run codex --mode skip` instead
+bypasses approvals **and** removes the sandbox. Harnesses without a native bypass flag
+reject direct-exec `skip`.
+
+**`plan` is not universally read-only.** Agents without a native read-only mode
+(including Antigravity, Cursor, and Kiro) warn and degrade `plan` to their safest native
+mode, which is usually writable `edit`. Headless Kimi has no read-only equivalent and
+rejects `plan` instead of silently running writable.
 
 ## Reasoning effort and model
 
@@ -204,7 +240,7 @@ agents logs <id> -f          # re-attach to a running one and follow
 
 | Flag | Purpose |
 |------|---------|
-| `--mode plan\|edit\|full` | Permission level (default `plan`) |
+| `--mode plan\|edit\|auto\|skip` | Permission level (default `plan`; `full` = alias for `skip`) |
 | `--effort low\|...\|max\|auto` | Reasoning effort |
 | `--model <id>` | Override model |
 | `--secrets <bundle>` | Inject keychain bundle (repeatable) |

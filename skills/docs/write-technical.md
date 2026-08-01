@@ -15,11 +15,11 @@ One paragraph: what this system does, why it exists.
 
 ## Architecture
 
-[ASCII or mermaid diagram showing components and flow]
+[ASCII/Mermaid structural diagram, or a Dither Kit chart for quantitative data]
 
 ## Data Flow
 
-[Diagram: how data moves through the system]
+[Diagram: how data moves through the system; use Dither Kit if this is a chart]
 
 ## Key Concepts
 
@@ -39,7 +39,7 @@ One paragraph: what this system does, why it exists.
 | `foo.go` | Entry point |
 ```
 
-## Diagram Standards
+## Diagram and Chart Standards
 
 ASCII boxes for architecture:
 ```
@@ -53,6 +53,16 @@ Mermaid for flows:
 flowchart LR
     A[Input] --> B[Process] --> C[Output]
 ```
+
+Dither Kit for rendered charts:
+```bash
+npx @dither-kit/cli add area-chart
+```
+
+Use Dither Kit by default for quantitative charts in HTML, React, dashboards,
+reports, and other rendered outputs. Keep ASCII/Mermaid for structural diagrams
+in Markdown. Do not reach for ad-hoc inline SVG or another charting library for
+ordinary data charts unless the target format cannot use Dither Kit.
 
 ## Anti-Patterns
 
