@@ -68,6 +68,51 @@ rm -f "$SCAN"/*.html 2>/dev/null || true
 run 0 "Grok camelCase run_terminal_command, no plan html -> allow (not blocked)" \
   '{"toolName":"run_terminal_command","toolInput":{"command":"npm test"}}'
 
+# --- Part B: checklist gate for multi-step plans -------------------------------
+# These need a fresh HTML present so part A always passes and we isolate part B.
+TX="$SCAN/transcript.jsonl"
+mkfile_nocl() {  # human turn, no checklist tool
+  {
+    printf '%s\n' '{"type":"user","message":{"role":"user","content":"do a big multi-step task"}}'
+    printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"text","text":"planning"}]}}'
+    printf '%s\n' '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"x","content":"ok"}]}}'
+  } > "$TX"
+}
+mkfile_cl() {    # human turn, then a TaskCreate tool_use, then its tool_result(user)
+  {
+    printf '%s\n' '{"type":"user","message":{"role":"user","content":"do a big multi-step task"}}'
+    printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"t1","name":"TaskCreate","input":{"subject":"A1","description":"d"}}]}}'
+    printf '%s\n' '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"t1","content":"created 1"}]}}'
+  } > "$TX"
+}
+MULTI='1. first step\n2. second step\n3. third step'
+
+# 9. multi-step plan, no checklist, fresh HTML -> BLOCK (checklist missing).
+: > "$SCAN/plan-cl.html"
+mkfile_nocl
+run 2 "multi-step plan, no checklist -> block" \
+  '{"tool_name":"ExitPlanMode","tool_input":{"plan":"'"$MULTI"'"},"transcript_path":"'"$TX"'"}'
+
+# 10. multi-step plan, checklist created after the human turn, fresh HTML -> ALLOW.
+mkfile_cl
+run 0 "multi-step plan, checklist created -> allow" \
+  '{"tool_name":"ExitPlanMode","tool_input":{"plan":"'"$MULTI"'"},"transcript_path":"'"$TX"'"}'
+
+# 11. trivial plan (no steps), no checklist, fresh HTML -> ALLOW (gate skipped).
+mkfile_nocl
+run 0 "trivial plan -> allow (checklist gate skipped)" \
+  '{"tool_name":"ExitPlanMode","tool_input":{"plan":"x"},"transcript_path":"'"$TX"'"}'
+
+# 12. multi-step plan, NO transcript_path -> ALLOW (fail open).
+run 0 "multi-step plan, no transcript -> allow (fail open)" \
+  '{"tool_name":"ExitPlanMode","tool_input":{"plan":"'"$MULTI"'"}}'
+
+# 13. multi-step plan WITH checklist but NO fresh HTML -> BLOCK (html missing).
+rm -f "$SCAN"/*.html 2>/dev/null || true
+mkfile_cl
+run 2 "multi-step plan, checklist ok but no HTML -> block" \
+  '{"tool_name":"ExitPlanMode","tool_input":{"plan":"'"$MULTI"'"},"transcript_path":"'"$TX"'"}'
+
 echo "----"
 echo "pass=$pass fail=$fail"
 [ "$fail" = 0 ]

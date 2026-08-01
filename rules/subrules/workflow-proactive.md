@@ -37,6 +37,15 @@ changelog and docs?", you stopped one step short of done.
 
 **`AskUserQuestion` is not an off-ramp.** Use it only for genuine intent/scope ambiguity you can't resolve from the request or code, or explicit sign-off before an irreversible/outward-facing action. Not for "should I do the obvious next step?" — the phrases above are the tells. When an `ask-user-question-guard` PreToolUse hook is installed, it challenges these at call time; if it fires, that's the signal to go decide and act, not to rephrase the question.
 
+## When you DO hand back, land it where the user is — not in this window
+
+A genuine handoff (a decision only the user can make, a PR only they can approve/merge, an artifact for them to eyeball) is only delivered if it reaches them. **The user runs many agents and is almost never watching this window** — a chat message here is a note in an empty room. So whenever you stop for the user to act:
+
+- **Open the thing on the user's interactive device**, don't just describe it. A PR / issue / dashboard → open the URL in their browser; a file → open it. Resolve the online device they sit at from the **Host & Fleet** context / `agents devices` (the online macOS box — never hardcode a host), and `agents ssh <device> 'open <url-or-path>'` (local `open`/`xdg-open` when you're already there). macOS `open` uses their default browser, so a PR lands on a tab where they can click **Merge/Approve** directly.
+- **Make the one action they must take obvious and singular** — "review + merge PR #119" — and put it in the surface you opened, not buried in prose.
+- **If it needs to reach their phone** (they may be away from the laptop), also send the out-of-band notification (Telegram per the messaging rule) with the link. The harness only notifies *you*, never them.
+- This is the handoff analog of the plan-render "open it in the browser, every time" rule: a review the user can't see is not a handoff. Open it, then stop.
+
 ## Waiting
 
 - Short waits (<2 min): `sleep 45 && echo "checking..."`

@@ -21,3 +21,4 @@ presets:
       - tech-stack
       - context-query-mq
       - plan-presentation
+      - task-checklists

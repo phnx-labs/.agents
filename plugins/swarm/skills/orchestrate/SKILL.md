@@ -66,6 +66,7 @@ Agents execute precise targets; they do not explore. Before the distribution pla
 3. **Put concrete paths in the brief**, never vague instructions:
    - BAD: "Store the local-model config somewhere."
    - GOOD: "Add `UseLocalModel bool` to the `UserConfig` struct in `harness/config/user.go:15`."
+4. **Name each seam and the command that exercises it.** Where track A will call what track B builds (a CLI it shells out to, a route it hits, a symbol it imports), write down the exact contract (`imsg calls: agents mission-control digest --phone`) and the one command that proves the two halves connect. This list is not just for the briefs — it is the **post-merge integration checklist** you must run before the swarm is done (see Post-completion). No seam recorded now = no way to verify the composed feature later.
 
 ## Distribution plan — REQUIRED before any spawn
 
@@ -136,7 +137,8 @@ When the swarm's job is to *check* a conclusion (debug root cause, plan soundnes
 
 ## Post-completion (edit-mode swarms)
 
+- **Run the integration checklist FIRST — this is what "done" means for a swarm.** Every track's PR merging green does **not** mean the composed feature works: each teammate's tests and reviewer only saw its own half, so the seam between tracks (track A calls what track B built) is the one thing nobody verified — and it's exactly where the feature breaks. Take the seam list from Pre-spawn integration discovery and **run each seam's command against where the feature actually executes** (the running daemon / installed binary / deployed service — merged to `main` is not deployed), then **quote the real output**. A caller/callee mismatch (`imsg` shells out to `agents mission-control digest`; the digest track shipped `mission-control-digest`) passes every per-track check and dies here. If a seam can't be exercised, call that hop **unverified** — never fold it into "done end-to-end".
 - Verify each track's real flow (core hard line: "done" = end-to-end, not "code written").
 - Run the relevant test suite; report pass/fail with quoted output.
 - Disband the team.
-- Recap: what each track shipped (commit/PR URLs), what's deferred and why, verification proof per track. No human-time estimates — wall-clock minutes, edit counts, or token cost only.
+- Recap: what each track shipped (commit/PR URLs), **the composed-flow verification with its quoted output**, what's deferred/unverified and why, verification proof per track. A table of green checkmarks is a report of merges, not proof of a working feature. No human-time estimates — wall-clock minutes, edit counts, or token cost only.
