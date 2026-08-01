@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.79] - 2026-08-01
+
+### Added
+- **A multi-step plan now also requires a task checklist before it can be presented, and the checklist expectation extends past plan mode.** `rules/subrules/plan-presentation/plan-html-reminder.sh` gains a second gate after the HTML-render check: when the `ExitPlanMode` plan text carries 3+ step-like lines, the hook blocks once (exit 2) unless a checklist tool (`TaskCreate`/`TodoWrite`/`todo_write`/`update_plan`) fired since the last genuine human turn. It fails open (no transcript, a trivial plan, or no locatable human turn allows the presentation), so a simple plan is never blocked. A new `rules/subrules/task-checklists.md` (added to the `default` preset in `rules/rules.yaml`) extends the checklist expectation to any real multi-step work in auto/edit mode and binds the checklist to a Linear ticket via `TaskCreate` `metadata.ticket`; `rules/subrules/plan-presentation/rule.md` documents the gate and `plan-html-reminder_test.sh` covers it (13 pass).
+
+### Fixed
+- **`rules/subrules/task-checklists.md` — capped em-dashes at one per paragraph** per the `code-quality` precise-prose rule the file itself is subject to: the "acceptance rubric" paragraph had two, and the second is now a colon.
+
 ## [0.1.78] - 2026-08-01
 
 ### Added

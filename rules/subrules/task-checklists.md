@@ -7,7 +7,7 @@ task list with `TaskCreate` (one item per step) and walk each item
 you started in plan mode or straight in auto/edit mode.
 
 The checklist is not busywork — it is the **acceptance rubric**: you are done when
-every item is `completed`, not before. It also makes the session legible — the
+every item is `completed`, not before. It also makes the session legible: the
 `agents sessions` preview shows `✓6/8 · <current item>`, and the watchdog can tell
 what you are stuck on instead of guessing.
 
