@@ -10,3 +10,12 @@ main-branch-guard:
   events: [PreToolUse]
   matcher: "Bash|Write|Edit|MultiEdit|NotebookEdit"
   timeout: 5
+
+# Nudges once when a `gh pr create|edit` ships a thin inline body (no heading,
+# table, bullet, or change-type marker). Satisfiable and fails OPEN — it never
+# blocks a --body-file/--fill body or a legit structured one. Fires on Bash only.
+pr-description-reminder:
+  script: pr-description-reminder.sh
+  events: [PreToolUse]
+  matcher: Bash
+  timeout: 5
