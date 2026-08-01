@@ -119,6 +119,28 @@ ticket/plan link, and no release/docs/no-surface declaration. A code block or ta
 **not** clear it. Run it, capture the result, attach, retry. It **fails open** — a
 `--body-file`/`--fill` body is never nudged — and is satisfiable, never a hard wall.
 
+### Attaching evidence on GitHub — the mechanics
+
+`gh` **cannot upload an image inline.** `gh pr create/edit --body` only takes text, so a
+local screenshot path in the body does **not** render on GitHub. Use one of these, in
+order:
+
+1. **Web drag-drop (the only way to inline-embed).** Open the PR/comment box in the
+   browser and drag the image/recording (`.png`/`.gif`/`.mp4`/`.mov`) in. GitHub uploads
+   it and inserts a `https://github.com/user-attachments/assets/…` URL — that URL renders
+   inline anywhere in the body via `![](…)`. This is how a screenshot actually shows up in
+   the PR. Open the PR on the user's Mac to do it (`agents ssh <mac> 'open <pr-url>'`),
+   or drive the upload with the `browser` skill.
+2. **Comment after the fact.** Once you have a `user-attachments` URL (from step 1),
+   `gh pr comment <pr> --body '![result](<url>)'` adds it without touching the body.
+3. **Path fallback (fleet-local only).** If you genuinely can't upload, reference the
+   artifact by **full host:path** (`<host>:/abs/path.png`) and `open` it on the user's
+   machine so they see it — it won't render on GitHub, but a teammate on the fleet can
+   open it. Say plainly that it's a path, not an embed.
+
+Recordings upload the same way (drag `.mp4`/`.mov`/`.gif` into the web UI). Never commit a
+screenshot into the repo just to embed it — that is clutter; use the upload flow.
+
 Every `gh pr create` / `gh issue create` / ticket-open carries:
 
 - **Screenshots and relevant materials of the user-visible outcome** — the rendered
