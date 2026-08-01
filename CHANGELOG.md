@@ -1,6 +1,9 @@
 # Changelog
 
-## [0.1.79] - 2026-08-01
+## [0.1.80] - 2026-08-01
+
+### Fixed
+- **`rules/subrules/no-pr-footer/footer-guard.sh` no longer fails OPEN when `jq` is absent.** The guard extracted the tool command with a single `jq` call and `|| cmd=""`, then `[ -n "$cmd" ] || exit 0` — so on any host without `jq` (notably stock Git Bash on Windows) it silently allowed the banned "Generated with Claude Code" footer onto every PR/issue/commit. It now uses the same `jq -> node -> python` `_json_field` helper the sibling guards (`main-branch-guard.sh`, `merge-guard.sh`) already carry and fails CLOSED (exit 2 with an explanatory message) when no JSON parser is on PATH, since the command already matched the gh/git fast path. Verified: clean commit allowed (rc 0), inline footer blocked via jq and via the node fallback (rc 2), and no-parser input refused (rc 2).
 
 ### Added
 - **A multi-step plan now also requires a task checklist before it can be presented, and the checklist expectation extends past plan mode.** `rules/subrules/plan-presentation/plan-html-reminder.sh` gains a second gate after the HTML-render check: when the `ExitPlanMode` plan text carries 3+ step-like lines, the hook blocks once (exit 2) unless a checklist tool (`TaskCreate`/`TodoWrite`/`todo_write`/`update_plan`) fired since the last genuine human turn. It fails open (no transcript, a trivial plan, or no locatable human turn allows the presentation), so a simple plan is never blocked. A new `rules/subrules/task-checklists.md` (added to the `default` preset in `rules/rules.yaml`) extends the checklist expectation to any real multi-step work in auto/edit mode and binds the checklist to a Linear ticket via `TaskCreate` `metadata.ticket`; `rules/subrules/plan-presentation/rule.md` documents the gate and `plan-html-reminder_test.sh` covers it (13 pass).
