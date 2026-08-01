@@ -175,4 +175,26 @@ check "non-swarm session does not trip the swarm gate" "$rc" "0"
 rc=$(FAKE_GH_STATE=MERGED run_hook "$TS" "The work is done and merged." true)
 check "swarm gate respects stop_hook_active" "$rc" "0"
 
+# --- genuine-user-message extraction (skip harness noise) -------------------
+# A session opened with `j <dir>` (a `!`-prefix bash-input) must NOT have that
+# quoted as "the original request" — the done-claim gate must skip
+# <bash-input>/<bash-stdout> turns and quote the first real prose ask instead.
+NT="$SANDBOX/noise-transcript.jsonl"
+{
+  echo '{"type":"user","message":{"role":"user","content":"<bash-input>j agents-cli</bash-input>"}}'
+  echo '{"type":"user","message":{"role":"user","content":"<bash-stdout>/home/muqsit/src/agents-cli</bash-stdout><bash-stderr></bash-stderr>"}}'
+  echo '{"type":"user","message":{"role":"user","content":"<system-reminder>The user named this session AGI Factory.</system-reminder>"}}'
+  echo '{"type":"user","message":{"role":"user","content":"[Request interrupted by user]"}}'
+  echo '{"type":"user","message":{"role":"user","content":"Please refactor the auth module and add end-to-end tests for the login flow."}}'
+  echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"working"}]}}'
+  echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"step 2"}]}}'
+  echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"step 3"}]}}'
+} > "$NT"
+
+# 14. Done-claim on a noise-led transcript -> blocks, and quotes the REAL ask.
+rc=$(FAKE_GH_STATE=MERGED run_hook "$NT" "All done. The auth refactor is complete." false)
+check "done-claim on noise-led transcript blocks" "$rc" "2"
+grep -q "refactor the auth module" "$SANDBOX/stderr" && echo "ok   - gate quotes the real ask, not the jump command" || { echo "FAIL - gate did not quote the real ask"; fail=1; }
+if grep -qE "bash-input|system-reminder|Request interrupted" "$SANDBOX/stderr"; then echo "FAIL - gate leaked harness noise"; fail=1; else echo "ok   - gate does not leak bash-input/system-reminder/interrupt noise"; fi
+
 exit $fail
