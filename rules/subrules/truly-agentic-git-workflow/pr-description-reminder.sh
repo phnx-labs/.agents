@@ -82,32 +82,44 @@ case "$cmd" in
   *) exit 0 ;;
 esac
 
-# Structure / change-type signals. If ANY appears in the command (biased to
-# ALLOW to keep false-blocks near zero), the body is considered glanceable.
-#  - markdown heading (##), table (|), or a bullet ("- " / "* ")
-#  - a change-type marker (docs-only, bugfix, feat:, etc.)
+# EVIDENCE-OR-DECLARE. A PR body must show something concrete or declare why it
+# can't. Allow (exit 0) if the command carries ANY of the signals below — matched
+# as substrings over the whole command, biased to ALLOW to keep false-blocks near
+# zero. The RULE TEXT carries the strong bar (a screenshot is required for a
+# user-visible change); this hook is the backstop for a body that shows nothing.
+
+# 1) Media evidence — a screenshot / GIF / video, inline or as an uploaded asset.
 case "$cmd" in
-  *"##"*|*"|"*|*"- "*|*"* "*) exit 0 ;;
+  *"!["*|*".png"*|*".jpg"*|*".jpeg"*|*".gif"*|*".webp"*|\
+  *".mp4"*|*".mov"*|*".webm"*|\
+  *"user-attachments/assets"*|*"githubusercontent.com"*|*"/assets/"*) exit 0 ;;
 esac
-# Case-insensitive type-marker scan.
+# 2) A concrete artifact for a no-UI change — a fenced code block or a table.
+case "$cmd" in
+  *'```'*|*"|"*) exit 0 ;;
+esac
+# 3) A no-visible-surface / change-type declaration (case-insensitive), OR a link
+#    to a Linear ticket or a shared plan (both count as attached context).
 lower=$(printf '%s' "$cmd" | tr '[:upper:]' '[:lower:]')
 case "$lower" in
-  *"docs-only"*|*"docs only"*|*"no behavior change"*|*"no-behavior-change"*|\
-  *"bugfix"*|*"bug fix"*|*"hotfix"*|*"test-only"*|*"test only"*|\
-  *"refactor"*|*"feature"*|*"feat:"*|*"fix:"*|*"chore:"*|*"docs:"*|*"perf:"*)
-    exit 0 ;;
+  *"docs-only"*|*"docs only"*|*"docs:"*|*"no behavior change"*|*"no-behavior-change"*|\
+  *"no visible surface"*|*"no user-visible"*|*"refactor"*|*"test-only"*|*"test only"*|\
+  *"chore:"*|*"internal only"*|\
+  *"linear.app/"*|*"getrush.ai/"*|*".html"*) exit 0 ;;
 esac
 
-# Thin inline body — nudge once. Satisfiable: add structure and retry.
+# Body shows no evidence — nudge once. Satisfiable: attach any of the above.
 {
-  echo "PR-description reminder (truly-agentic-git-workflow): this gh pr body looks thin — a reviewer reads the body, not the diff."
+  echo "PR-description evidence reminder (truly-agentic-git-workflow): this gh pr body shows no evidence — a reviewer reads the body, not the diff."
   echo
-  echo "Make it glanceable, then retry:"
-  echo "  * Lead with a one-line what + type at the very top — docs-only / bugfix / feature / refactor / test-only (a no-behavior-change PR says so)."
-  echo "  * Highlight the important parts: a '##' heading, a table, or '- ' bullets — not a prose wall."
-  echo "  * Add a before/after (table, screenshot, or real command output) when there's a visible or behavioral delta."
-  echo "  * For a docs PR, state the audience (maintainers vs end users)."
+  echo "Attach ONE of these, then retry (it clears as soon as any is present):"
+  echo "  * A SCREENSHOT of the user-visible outcome (required for a visible change) — an uploaded asset, or an on-disk image referenced by full path."
+  echo "  * A VIDEO of the flow when a still won't do — capture a web app with the browser skill, or a terminal flow with 'agents pty', and attach it."
+  echo "  * For a no-UI change: real command/test output in a fenced code block, or a before/after table."
+  echo "  * If there is genuinely no visible surface: mark it docs-only / refactor / test-only."
   echo
-  echo "This clears as soon as the body carries any heading/table/bullet or a type marker. Body from --body-file / --fill is never nudged."
+  echo "Also link, when applicable: the Linear ticket for this work, and a shareable link to the plan file if a plan was shared."
+  echo
+  echo "A --body-file / --fill body is never nudged."
 } >&2
 exit 2
