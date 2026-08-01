@@ -55,6 +55,12 @@ mk_transcript() {
         echo '{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_view2","content":[{"type":"text","text":"https://github.com/acme/widgets/pull/99 is OPEN, reviewing it"}]}]}}'
         ;;
     esac
+    case "$1" in
+      swarm)
+        echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_team1","name":"Bash","input":{"command":"agents teams start factory-remote --watch"}}]}}'
+        echo '{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_team1","content":[{"type":"text","text":"team started"}]}]}}'
+        ;;
+    esac
     echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"step 2"}]}}'
     echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"step 3"}]}}'
   } > "$t"
@@ -139,5 +145,34 @@ check "mixed create+review only gates the created PR" "$rc" "0"
 rc=$(FAKE_GH_STATE=MERGED run_hook "$T" "All done. The widget feature is merged." false)
 check "done-claim on real transcript shape blocks for self-audit" "$rc" "2"
 grep -q "You claimed this work is done" "$SANDBOX/stderr" && echo "ok   - done-claim gate cites the original request" || { echo "FAIL - no done-claim gate message"; fail=1; }
+
+# --- swarm integration gate -------------------------------------------------
+# A session that ran an edit-mode swarm (`agents teams start`) may not stop on
+# swarm-completion phrasing that the generic done-list doesn't catch.
+TS=$(mk_transcript swarm)
+
+# 9. Swarm ran + wrap-up phrasing ("done and merged") not in the generic list
+#    -> the swarm gate must fire (generic done-gate would have exited 0).
+rc=$(FAKE_GH_STATE=MERGED run_hook "$TS" "The factory work you asked for is done and merged. You can now text the fleet." false)
+check "swarm 'done and merged' blocks for integration audit" "$rc" "2"
+grep -q "STOP GATE (swarm)" "$SANDBOX/stderr" && echo "ok   - swarm gate names itself + the seam" || { echo "FAIL - no swarm gate message"; fail=1; }
+
+# 10. Swarm ran + "landed end-to-end" wrap-up -> swarm gate fires.
+rc=$(FAKE_GH_STATE=MERGED run_hook "$TS" "All three tracks landed. AGI Factory end-to-end status: shipped." false)
+check "swarm 'all three tracks landed' blocks" "$rc" "2"
+
+# 11. Swarm ran but the final message is NOT a completion claim -> allow.
+rc=$(FAKE_GH_STATE=MERGED run_hook "$TS" "Track 2 is still running; I'm watching the digest teammate." false)
+check "swarm session without a done-claim allows stop" "$rc" "0"
+
+# 12. NO swarm in the transcript + swarm-only phrasing -> swarm gate must NOT
+#     fire (the generic done-gate may still catch other phrasings, but "all
+#     three tracks landed" is not in that list, so a non-swarm session allows).
+rc=$(FAKE_GH_STATE=MERGED run_hook "$T" "All three tracks landed end-to-end." false)
+check "non-swarm session does not trip the swarm gate" "$rc" "0"
+
+# 13. Swarm ran + done-claim but stop_hook_active -> allow (no loops).
+rc=$(FAKE_GH_STATE=MERGED run_hook "$TS" "The work is done and merged." true)
+check "swarm gate respects stop_hook_active" "$rc" "0"
 
 exit $fail

@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.1.74] - 2026-08-01
+
+### Changed
+- **A swarm is not done when its tracks merge — it's done when the composed cross-track flow runs.** An orchestrator fanned "dispatch the factory from iMessage" across three teammates, watched every PR go green + merge, and reported "done and merged / end-to-end" — but the halves didn't connect: the imsg track's daemon shelled out to `agents mission-control digest` while the digest track shipped a bin named `mission-control-digest`, so the feature was dead on `main`. Each PR passed its own tests and reviewer in isolation; nobody ran the seam. Four changes close this at the source. `core-hard-lines.md` #1 gains the proxy example "'every track's PR merged green' is not 'the composed feature runs across the seam where one track calls another'". `parallel-teams.md` gains an **Orchestrator completion contract**: the orchestrator's task is done only when the composed cross-track flow has been triggered end-to-end against where the feature actually executes (running daemon / installed binary — merged is not deployed) and its real output quoted, with any un-exercisable seam named unverified. The `swarm/orchestrate` skill records each seam + the command that proves it during pre-spawn discovery, and makes running that integration checklist the mandatory FIRST post-completion step. And the `verify-work-complete` Stop hook gains a **swarm integration gate**: for a session that ran an edit-mode swarm (`agents teams start/create`, or `teams add --mode edit`) and whose final message claims completion with wrap-up phrasing the generic done-list misses ("done and merged", "all three tracks landed", "end-to-end status"), it blocks the stop and demands the composed-flow output — the two normal gates were blind here because the teammates' PRs aren't created by the orchestrator's own `pr create`. Fires at most once (`stop_hook_active`), fail-open. Six new fixtures added to `00-agent-verify-work-complete_test.sh` (22 pass).
+
 ## [0.1.73] - 2026-07-31
 
 ### Changed
