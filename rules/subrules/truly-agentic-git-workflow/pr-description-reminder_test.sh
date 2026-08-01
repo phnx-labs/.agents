@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 # Test for pr-description-reminder.sh (PreToolUse Bash reminder).
 #
-# Model: EVIDENCE-OR-DECLARE. The reminder NUDGES (exit 2) a `gh pr create|edit`
-# whose inline body shows no evidence, and ALLOWS (exit 0) a body that carries any
-# of: media (screenshot/video/asset), a fenced code block or table, a ticket/plan
-# link, or a no-visible-surface / change-type declaration — plus any --body-file /
-# --fill / editor body and any non-gh-pr command. Exercises both harness payload
-# shapes: Claude snake_case (.tool_input.command) and Grok/Codex camelCase
+# Model: RAN-IT-OR-EXEMPT. The reminder NUDGES (exit 2) a `gh pr create|edit`
+# whose inline body shows no proof of a RUN, and ALLOWS (exit 0) a body that
+# carries any of: a real run result (screenshot/recording/asset), a ticket/plan
+# link, or a release / docs / no-visible-surface declaration — plus any
+# --body-file / --fill / editor body and any non-gh-pr command. A code block or a
+# hand-authored table is NOT proof of a run and is nudged. Exercises both harness
+# payload shapes: Claude snake_case (.tool_input.command) and Grok/Codex camelCase
 # (.toolInput.command). Runs the real script over real stdin JSON (no mocking).
 set -u
 DIR=$(cd "$(dirname "$0")" && pwd)
@@ -28,27 +29,27 @@ check() {
   fi
 }
 
-# --- NUDGE (exit 2): no evidence, both shapes ---
+# --- NUDGE (exit 2): no proof of a run, both shapes ---
 check 2 tool_input "snake bare prose"     'gh pr create -t x -b "just a real change"'
 check 2 toolInput  "camel bare prose"     'gh pr create -t x -b "just a real change"'
 check 2 tool_input "thin pr edit"         'gh pr edit 5 -b "updated the thing"'
 check 2 tool_input "prose list no proof"  'gh pr create -t x -b "1. did the thing 2. tested it"'
+# A code block or table is NOT proof of a run -> nudge.
+check 2 tool_input "code block only"      'gh pr create -t x -b "impl: ```function f(){}```"'
+check 2 tool_input "table only"           'gh pr create -t x -b "field | shown"'
 
-# --- ALLOW (exit 0): media evidence (screenshot / video / asset) ---
+# --- ALLOW (exit 0): a real run result (screenshot / recording / asset) ---
 check 0 tool_input "markdown image"  'gh pr create -t x -b "![result](shot.png)"'
-check 0 tool_input "png path"        'gh pr create -t x -b "see /tmp/out.png for the render"'
-check 0 tool_input "video file"      'gh pr create -t x -b "flow recording: demo.mp4"'
+check 0 tool_input "png path"        'gh pr create -t x -b "ran it, see /tmp/out.png"'
+check 0 tool_input "recording file"  'gh pr create -t x -b "flow recording: demo.mp4"'
 check 0 toolInput  "gh asset url"    'gh pr create -t x -b "https://github.com/o/r/assets/12/ab.gif"'
-
-# --- ALLOW (exit 0): concrete artifact (code block / table) ---
-check 0 tool_input "code block"      'gh pr create -t x -b "ran it: ```200 OK```"'
-check 0 tool_input "table"           'gh pr create -t x -b "field | shown"'
 
 # --- ALLOW (exit 0): ticket / plan link ---
 check 0 tool_input "linear link"     'gh pr create -t x -b "closes https://linear.app/trp/issue/RUSH-9"'
 check 0 tool_input "plan html link"  'gh pr create -t x -b "plan: /tmp/plan-foo.html"'
 
-# --- ALLOW (exit 0): no-visible-surface / type declaration ---
+# --- ALLOW (exit 0): exempt kinds + no-visible-surface declaration ---
+check 0 tool_input "release"         'gh pr create -t x -b "release v1.2.3"'
 check 0 tool_input "docs-only"       'gh pr create -t x -b "docs-only: spec the model"'
 check 0 tool_input "refactor"        'gh pr create -t x -b "pure refactor, no behavior change"'
 check 0 tool_input "test-only"       'gh pr create -t x -b "test-only coverage bump"'

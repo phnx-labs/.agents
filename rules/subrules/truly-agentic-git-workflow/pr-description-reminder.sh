@@ -82,44 +82,45 @@ case "$cmd" in
   *) exit 0 ;;
 esac
 
-# EVIDENCE-OR-DECLARE. A PR body must show something concrete or declare why it
-# can't. Allow (exit 0) if the command carries ANY of the signals below — matched
-# as substrings over the whole command, biased to ALLOW to keep false-blocks near
-# zero. The RULE TEXT carries the strong bar (a screenshot is required for a
-# user-visible change); this hook is the backstop for a body that shows nothing.
+# RAN-IT-OR-EXEMPT. An agentic developer runs the feature it builds, looks at the
+# real result, and attaches THAT — a screenshot/recording of the thing running, or
+# the run's output as an uploaded artifact. Source code and hand-authored tables
+# are NOT proof of a run and do NOT clear this. Allow (exit 0) if the command
+# carries ANY signal below (substring match over the whole command, biased to
+# ALLOW to keep false-blocks near zero); otherwise nudge. Exempt: release + docs.
 
-# 1) Media evidence — a screenshot / GIF / video, inline or as an uploaded asset.
+# 1) A real run result — a screenshot / GIF / recording, inline or as an uploaded
+#    asset. This is the proof that the agent ran it and observed the outcome.
 case "$cmd" in
   *"!["*|*".png"*|*".jpg"*|*".jpeg"*|*".gif"*|*".webp"*|\
-  *".mp4"*|*".mov"*|*".webm"*|\
+  *".mp4"*|*".mov"*|*".webm"*|*".svg"*|\
   *"user-attachments/assets"*|*"githubusercontent.com"*|*"/assets/"*) exit 0 ;;
 esac
-# 2) A concrete artifact for a no-UI change — a fenced code block or a table.
-case "$cmd" in
-  *'```'*|*"|"*) exit 0 ;;
-esac
-# 3) A no-visible-surface / change-type declaration (case-insensitive), OR a link
-#    to a Linear ticket or a shared plan (both count as attached context).
+# 2) An exemption or attached context (case-insensitive):
+#    - the two PR kinds that need no run: a RELEASE, or a pure DOC edit
+#    - a no-visible-surface / non-behavioral declaration (refactor / test-only)
+#    - a Linear ticket link or a shared plan (.html) link
 lower=$(printf '%s' "$cmd" | tr '[:upper:]' '[:lower:]')
 case "$lower" in
-  *"docs-only"*|*"docs only"*|*"docs:"*|*"no behavior change"*|*"no-behavior-change"*|\
-  *"no visible surface"*|*"no user-visible"*|*"refactor"*|*"test-only"*|*"test only"*|\
-  *"chore:"*|*"internal only"*|\
+  *"release"*|*"docs-only"*|*"docs only"*|*"docs:"*|\
+  *"no behavior change"*|*"no-behavior-change"*|*"no visible surface"*|*"no user-visible"*|\
+  *"refactor"*|*"test-only"*|*"test only"*|*"internal only"*|\
   *"linear.app/"*|*"getrush.ai/"*|*".html"*) exit 0 ;;
 esac
 
-# Body shows no evidence — nudge once. Satisfiable: attach any of the above.
+# No run result and not exempt — nudge once. Satisfiable: run it, capture, attach.
 {
-  echo "PR-description evidence reminder (truly-agentic-git-workflow): this gh pr body shows no evidence — a reviewer reads the body, not the diff."
+  echo "PR evidence reminder (truly-agentic-git-workflow): this gh pr body has no proof you RAN what you built."
   echo
-  echo "Attach ONE of these, then retry (it clears as soon as any is present):"
-  echo "  * A SCREENSHOT of the user-visible outcome (required for a visible change) — an uploaded asset, or an on-disk image referenced by full path."
-  echo "  * A VIDEO of the flow when a still won't do — capture a web app with the browser skill, or a terminal flow with 'agents pty', and attach it."
-  echo "  * For a no-UI change: real command/test output in a fenced code block, or a before/after table."
-  echo "  * If there is genuinely no visible surface: mark it docs-only / refactor / test-only."
+  echo "An agentic developer runs its own feature, looks at the result, and attaches THAT — before opening the PR. A code block or table is not proof of a run; a reviewer should not have to read code to see it works."
   echo
-  echo "Also link, when applicable: the Linear ticket for this work, and a shareable link to the plan file if a plan was shared."
+  echo "Do this, then retry (it clears as soon as a run result is attached):"
+  echo "  * RUN the feature and CAPTURE the result: a SCREENSHOT of the running feature (web UI, app screen), or a RECORDING of the flow — a web app via the browser skill, a terminal flow via 'agents pty'."
+  echo "  * For a no-UI change, capture the real run: screenshot the terminal / the passing run, or upload the run's output/log as an asset (not pasted source)."
+  echo "  * Attach it: drag into the PR, or reference an on-disk image/recording by full path."
+  echo "  * Link the Linear ticket, and the plan file if a plan was shared."
   echo
+  echo "Exempt (say so in the body): a RELEASE PR, or a pure DOC edit — those need no run."
   echo "A --body-file / --fill body is never nudged."
 } >&2
 exit 2
