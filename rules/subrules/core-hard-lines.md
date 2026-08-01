@@ -16,7 +16,7 @@ Non-negotiable. Ordered by impact.
 
 6. **Web-search first for time-sensitive claims.** WebSearch before answering, not "if the user asks." Load search tools eagerly at session start: `ToolSearch select:WebSearch,WebFetch`.
 
-7. **Ban Haiku for subagents.** Always set `model` explicitly on Agent calls. Default `"sonnet"`, use `"opus"` for load-bearing work. Omission falls through to subagent frontmatter, which may pin haiku.
+7. **Delegate across the fleet; reserve Opus for load-bearing reasoning.** When work can be handed off, spread it so no single account or harness carries the whole load and token spend stays low: across harnesses (Kimi, Grok, DeepSeek, Codex, Gemini via `agents run <profile>` or a mixed `agents teams` roster) and across the several accounts of one harness (e.g. the 4 Claude accounts, via balanced rotation or per-account pinning). Opus is expensive and its usage limits don't refill quickly, so reach for it only where a cheaper harness would genuinely lose correctness, never as the default. For in-session `Agent` subagents (same account, no cross-harness spread), always set `model` explicitly, defaulting to `"sonnet"`; never omit it, since omission can fall through to a pinned Haiku. This refines #2: correctness still wins, but equal correctness delivered cheaper and spread across the fleet is the default.
 
 8. **Investigation briefs demand evidence.** Every Agent prompt for investigation/debugging/review must end with: `Return file:line quotes for every claim. Do NOT paraphrase. If you can't quote it, don't claim it.`
 
