@@ -81,6 +81,14 @@ Full recipe — worktree creation, PR, after-merge cleanup: the `git-workflow` s
 Opening something for a human — a **PR**, a **GitHub issue**, or a **ticket**
 (Linear/Jira) — is a handoff, not a stopping point. Identify which flow you're in
 and attach what the reviewer needs to judge it without re-running your session.
+
+**A user-visible change ships a picture.** The user reviews the PR in GitHub, not the
+diff, so a PR with no screenshot is one they cannot verify. Before you request review,
+put a **screenshot or a short screen recording** of the user-visible outcome in the body;
+screenshots beat descriptions. A change with no visible surface attaches the closest
+concrete artifact instead (the passing test output, the `curl`'d response). The same
+asset also goes on the ticket when you close it.
+
 Every `gh pr create` / `gh issue create` / ticket-open carries:
 
 - **Screenshots and relevant materials of the user-visible outcome** — the rendered
@@ -113,6 +121,13 @@ review **and** green CI = rebase-merge without asking (see `gh-merge-guard`); fa
 back to `AskUserQuestion` only when the review finds problems, tests fail, or the
 merge conflicts. Don't remove the worktree or delete the branch until merge.
 Never stop with a limp "okay, I'll wait" — that just makes the user ping you.
+
+When the merge genuinely needs the **user** (a governance/sign-off change you
+authored and can't self-review, no CI/reviewer configured), that's a real
+handoff — so **open the PR on the user's interactive device** so they can click
+Merge/Approve there, don't just leave the link in this window (see
+`workflow-proactive` → "When you DO hand back, land it where the user is"). The
+user runs many agents and won't be watching this chat.
 
 ## Reconcile with rebase; never `reset --hard`; never stash
 

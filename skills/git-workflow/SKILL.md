@@ -57,16 +57,20 @@ git -C "$WT" push -u origin "$SLUG"
 gh -R <owner/repo> pr create --base "$BASE" --head "$SLUG" --title "…" --body "…"
 ```
 
-**Attach evidence, per the `truly-agentic-git-workflow` rule.** The body carries
-screenshots / artifacts of the user-visible outcome (rendered UI, passing test run,
-`curl`'d health response) — upload the asset, don't just describe it. Attach the
-**session transcript confidentially**: on a private repo, a secret gist link only;
-on a public repo, omit it and reference the local path. Never paste transcript text
-inline or onto a public repo.
+**A user-visible change does not get review requested until its PR body carries a
+picture**, per the `truly-agentic-git-workflow` rule. The user reviews the PR in GitHub,
+not the diff, so a **screenshot or a short screen recording** of the outcome (rendered UI,
+before/after, the passing test run, the `curl`'d response) is how they verify the feature
+is real. Upload the asset; don't just describe it. A change with no visible surface
+attaches the closest concrete artifact instead. Attach the **session transcript
+confidentially**: on a private repo, a secret gist link only; on a public repo, omit it and
+reference the local path. Never paste transcript text inline or onto a public repo.
 
 ```bash
-# screenshot / artifact -> uploaded onto the PR
+# screenshot -> uploaded onto the PR (drag into the web UI, or:)
 gh -R <owner/repo> pr comment <pr> --body "Verified end-to-end: ![result](<uploaded-image>)"
+# short screen recording: upload the .mp4/.gif via the web UI comment box, or link an asset
+gh -R <owner/repo> pr comment <pr> --body "Walkthrough: <uploaded-video-url>"
 # confidential transcript, private repos only
 gh gist create --secret "$AGENTS_SESSION_DIR/$SESSION_ID.jsonl"   # paste the URL into the PR
 ```

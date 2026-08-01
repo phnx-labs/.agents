@@ -16,7 +16,7 @@ Non-negotiable. Ordered by impact.
 
 6. **Web-search first for time-sensitive claims.** WebSearch before answering, not "if the user asks." Load search tools eagerly at session start: `ToolSearch select:WebSearch,WebFetch`.
 
-7. **Ban Haiku for subagents.** Always set `model` explicitly on Agent calls. Default `"sonnet"`, use `"opus"` for load-bearing work. Omission falls through to subagent frontmatter, which may pin haiku.
+7. **Delegate across the fleet; reserve Opus for load-bearing reasoning.** When work can be handed off, spread it so no single account or harness carries the whole load and token spend stays low: across harnesses (Kimi, Grok, DeepSeek, Codex, Gemini via `agents run <profile>` or a mixed `agents teams` roster) and across the several accounts of one harness (e.g. the 4 Claude accounts, via balanced rotation or per-account pinning). Opus is expensive and its usage limits don't refill quickly, so reach for it only where a cheaper harness would genuinely lose correctness, never as the default. For in-session `Agent` subagents (same account, no cross-harness spread), always set `model` explicitly, defaulting to `"sonnet"`; never omit it, since omission can fall through to a pinned Haiku. This refines #2: correctness still wins, but equal correctness delivered cheaper and spread across the fleet is the default.
 
 8. **Investigation briefs demand evidence.** Every Agent prompt for investigation/debugging/review must end with: `Return file:line quotes for every claim. Do NOT paraphrase. If you can't quote it, don't claim it.`
 
@@ -69,6 +69,7 @@ Only for *new* design (UI flow, architecture, pipeline shape). Show mockup/diagr
 - **No scope creep.** Do exactly what was asked. No drive-by refactors, renames, or import reorganization.
 - **Cross-cutting changes go to the source.** Edit the canonical location, never ad-hoc logic in consumers. If no central place exists, propose refactoring first.
 - **User-facing text must be human.** "13 minutes" not "12m 49s", "30 seconds" not "30.0s". If a grandmother can't parse it, rewrite it.
+- **Write prose precisely; don't market.** Wherever you write for a human to read (plans, PRs, commit messages, code comments, chat), name the concrete thing (the file, function, flag, number, or error), not a vague stand-in ("things", "surfaces", "stuff", "various") unless that word is the real technical term. Cut the marketing register: no slogans, no "Critically:" / "Notably:" drama, no filler adjectives ("seamless", "powerful", "robust", "leverage", "simply"). Cap em-dashes at one per paragraph; never stack appositive dashes (the "X — Y — Z" pattern). The reader is reviewing your claim, not being sold it.
 
 # Strict Testing
 
@@ -156,6 +157,14 @@ Full recipe — worktree creation, PR, after-merge cleanup: the `git-workflow` s
 Opening something for a human — a **PR**, a **GitHub issue**, or a **ticket**
 (Linear/Jira) — is a handoff, not a stopping point. Identify which flow you're in
 and attach what the reviewer needs to judge it without re-running your session.
+
+**A user-visible change ships a picture.** The user reviews the PR in GitHub, not the
+diff, so a PR with no screenshot is one they cannot verify. Before you request review,
+put a **screenshot or a short screen recording** of the user-visible outcome in the body;
+screenshots beat descriptions. A change with no visible surface attaches the closest
+concrete artifact instead (the passing test output, the `curl`'d response). The same
+asset also goes on the ticket when you close it.
+
 Every `gh pr create` / `gh issue create` / ticket-open carries:
 
 - **Screenshots and relevant materials of the user-visible outcome** — the rendered
@@ -243,7 +252,10 @@ Enforced by the bundled `footer-guard.sh` (PreToolUse): a `gh`/`git commit` comm
 # Conventions
 
 - **Memory file:** `AGENTS.md` is canonical. `CLAUDE.md` and `GEMINI.md` are symlinks (or synced copies).
-- **Tickets:** Linear context is auto-injected at session start by the linear hook — read it before starting work. Use `/tickets` to take explicit action (query, update, close) on tickets across Linear/GitHub/Jira. Close only with proof.
+- **Tickets — check first, open if missing, close on delivery.** Linear context is auto-injected at session start by the linear hook; read it before starting. `/tickets` takes any explicit action across Linear/GitHub/Jira.
+  - **Check first.** Before substantive work, check whether an open ticket already covers it (the injected context, or `/tickets` / `gh issue list`). If one exists, claim it (move it to In Progress).
+  - **Open if missing.** No ticket and a tracker is configured? Open one scoped to the task (title + short description) before you start. No tracker set up? Skip this and describe the work in the PR. One ticket per unit of delivery, not per file; skip it for a trivial fix or a plain question.
+  - **Close on delivery, with proof.** When the task ships, post a closing update (what changed, the PR link, a screenshot or short screen recording of the outcome) and move the ticket to Done. Close only with proof.
 - **Parallel work:** Multi-surface changes use `agents teams` — see `parallel-teams`.
 
 # agents-cli

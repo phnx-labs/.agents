@@ -42,3 +42,15 @@ A teammate whose work produces a PR is done when the PR is **merged or explicitl
 > Your task is complete only when your PR is merged, or you have handed it off by naming who/what now owns it. If you are waiting on CI or review, keep waiting with a background watch — do not stop.
 
 Mechanical backstop: the `verify-work-complete` Stop hook blocks a session from stopping with an open PR it created and no handoff — but the brief line is what makes teammates drive to merge instead of arguing with the gate.
+
+## Orchestrator completion contract (the whole swarm, not each track)
+
+A teammate is done when its PR merges. **The orchestrator is not** — "all tracks merged" is the most seductive false finish line a swarm has. Each teammate's tests, its reviewer, and its CI only ever saw that teammate's own diff, so the one thing no track verified is the **seam between tracks**: where track A calls what track B built. That is exactly where the composed feature breaks (a real case: `imessage_dispatch.go` shelled out to `agents mission-control digest`, but the digest track shipped a bin named `mission-control-digest` — every PR was green, the feature was dead, and it was declared "landed end-to-end" without ever being run).
+
+So the orchestrator's task is done only when:
+
+- The **composed cross-track flow has been triggered end-to-end** — the actual user path that crosses the seams the tracks share — and its **real output quoted**. Not "3/4 PRs merged", not "CI green on each", not a table of green checkmarks.
+- The verification runs against where the feature **actually executes** (the running daemon / installed binary / deployed service), not just `origin/main` — merged is not deployed, and code on `main` that no running process has loaded is not "working" (core-hard-lines #1).
+- If a seam genuinely can't be exercised, that hop is named as **unverified** in the recap — never folded into a "done end-to-end" claim. A green table is a report of merges, not proof of a working feature.
+
+Mechanical backstop: for a session that ran an edit-mode swarm, the `verify-work-complete` Stop hook fires a swarm-specific self-audit when the final message claims completion — demanding the composed cross-track flow's real output, not per-track CI.

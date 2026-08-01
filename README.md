@@ -124,7 +124,7 @@ Plugins bundle related skills, commands, hooks, and subagents into one installab
 | `git` | Pure git plumbing — `/git:prune` prunes merged branches/worktrees with hard data-loss guards; `/git:tag-release` cuts and pushes an annotated release tag |
 | `share` | Publish an agent-generated HTML artifact to a shareable link on your own Cloudflare R2 (~$0) — `/share:public` (auto OG cover) / `/share:private` (unlisted, auto-expiring) |
 | `social` | Turn a content agent's post archive into strategy — `/social:audit`, `/social:align`, `/social:schedule` |
-| `swarm` | Fan a task across a team of parallel agents — `/swarm:plan`, `/swarm:debug`, `/swarm:test`, `/swarm:qa` |
+| `swarm` | Fan a task across a team of parallel agents — `/swarm:run`, `/swarm:plan`, `/swarm:spec`, `/swarm:debug`, `/swarm:test`, `/swarm:qa` |
 
 <p align="center">
   <img src=".assets/share.png" alt="/share:public — one command turns any agent-generated HTML into a shareable link with an auto OG cover" width="82%">
