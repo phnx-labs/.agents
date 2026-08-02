@@ -10,10 +10,7 @@
 
 ## Don't stop mid-task
 
-After ACT → VERIFY → SHOW the next step is CONTINUE, not pause. Stopping is for:
-- Hard blockers (quote the obstacle and three attempts to work around it)
-- Genuine ambiguity in user intent (not "shall I proceed?")
-- Task is actually delivered end-to-end (committed, pushed, **merged + shipped**, **docs + changelog updated for any user-visible change**, real-flow verified) — a PR merely being *open* is not a stop; merge autonomously on green review + CI (see `git-workflow`)
+After ACT → VERIFY → SHOW the next step is CONTINUE, not pause. The only legitimate stops are the four named in `core-hard-lines` (a user design/scope decision; a truly-external blocker; a human-physical-only action; a globally-broken signal). A merely-*open* PR is not a stop; the task is delivered only when it is committed, pushed, **merged + shipped**, **docs + changelog updated for any user-visible change**, and real-flow verified — merge autonomously on green review + CI (see `git-workflow`).
 
 If the user types "check", "continue", or "status?" — you missed this rule.
 
