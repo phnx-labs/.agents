@@ -63,19 +63,31 @@ Treat the keystrokes below as the map, not gospel.
    agents pty stop "$SID"
    ```
 
-4. **Store it FILE-backed (never keychain)** so every later read is headless and pops
-   no Touch ID:
+4. **Store it in the reserved FILE-backed `auth` bundle** — the exact bundle the usage
+   reader consults (`AUTH_BUNDLE = 'auth'` in `apps/cli/src/lib/usage.ts`, which requires
+   `bundleBackend('auth') === 'file'`; a keychain- or vault-backed bundle is ignored and
+   the reader falls back to the keychain → Touch ID). So it MUST be **`--backend file`**:
    ```
-   agents secrets create <auth-bundle> --backend file --synced   # once; --synced fleet-syncs it
-   printf '%s' "$TOKEN" | agents secrets add <auth-bundle> <KEY> --value-stdin --type token
+   agents secrets create auth --backend file          # once. Do NOT pass --synced:
+                                                       # --synced forces a VAULT bundle
+                                                       # (needs `agents login`), which the
+                                                       # file-only usage reader rejects.
+   printf '%s' "$TOKEN" | agents secrets add auth <KEY> --value-stdin --type token
    ```
-   Per-account key convention (see `apps/cli/src/lib/secrets/account-token.ts`
-   `accountTokenKey`): upper-case, `@`→`_AT_`, `.`→`_DOT_` — e.g. `muqsit@trp.so` →
-   `CLAUDE_CODE_OAUTH_TOKEN_MUQSIT_AT_TRP_DOT_SO`.
+   Per-account key convention (`accountTokenKey`): upper-case, `@`→`_AT_`, `.`→`_DOT_` —
+   e.g. `muqsit@trp.so` → `CLAUDE_CODE_OAUTH_TOKEN_MUQSIT_AT_TRP_DOT_SO`.
 
-5. **Verify (zero keychain):**
-   `agents secrets get <auth-bundle> <KEY> </dev/null | wc -c` → ~108 chars, no prompt.
-   Then the credential is live for headless runs, usage reads, and fleet sync.
+   **macOS provisioning (required):** a file-backed bundle is not auto-provisioned on
+   macOS, and headless reads (the daemon's usage/auth probe reads with `agentOnly`) can't
+   pop a biometric prompt — so the file-store passphrase must be available via
+   `AGENTS_SECRETS_PASSPHRASE` (export it for the daemon's environment, or run the
+   create/add in a TTY that has it set). Without it, the `auth` read throws and the code
+   falls back to the keychain (Touch ID). On Linux the machine-local passphrase is
+   auto-provisioned, so this is macOS-only.
+
+5. **Verify (zero keychain):** in a shell where `AGENTS_SECRETS_PASSPHRASE` is set (macOS),
+   `agents secrets get auth <KEY> </dev/null | wc -c` → ~108 chars, no prompt. Then
+   `agents view` draws that account's bars from the `auth` token with no keychain read.
 
 ## Other harnesses
 
