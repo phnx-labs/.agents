@@ -93,7 +93,7 @@ end users). If a reviewer can't tell in ten seconds what changed and why, rewrit
 **Run it, look at the result, then open the PR — not the other way round.** You are an
 agentic developer: before you open a PR you **run the feature you built, look at the real
 output, and attach that result**. A PR is not "code written" — it is "ran it, here's the
-proof" (this is `core-hard-lines` #1 at the PR boundary). Do not open the PR until you
+proof" (this is F3 at the PR boundary). Do not open the PR until you
 have. **The only exceptions are a release PR and a pure doc edit** — those need no run.
 
 The body carries **the actual run result, not a description of it**:
@@ -145,7 +145,7 @@ Every `gh pr create` / `gh issue create` / ticket-open carries:
 
 - **Screenshots and relevant materials of the user-visible outcome** — the rendered
   UI, the passing test run, the `curl`'d health response, a before/after. If you
-  produced a visual while verifying end-to-end (core-hard-lines #1), it belongs in
+  produced a visual while verifying end-to-end (F3), it belongs in
   the body. Upload the image to the PR/issue (`gh pr comment <pr> --body` with the
   asset, or drag it into the web UI); reference on-disk images by **full path** so
   the reviewer can click to preview.
@@ -177,9 +177,9 @@ Never stop with a limp "okay, I'll wait" — that just makes the user ping you.
 When the merge genuinely needs the **user** (a governance/sign-off change you
 authored and can't self-review, no CI/reviewer configured), that's a real
 handoff — so **open the PR on the user's interactive device** so they can click
-Merge/Approve there, don't just leave the link in this window (see
-`workflow-proactive` → "When you DO hand back, land it where the user is"). The
-user runs many agents and won't be watching this chat.
+Merge/Approve there, don't just leave the link in this window (F4 — land the
+handoff where the user is). The user runs many agents and won't be watching this
+chat.
 
 ## Reconcile with rebase; never `reset --hard`; never stash
 

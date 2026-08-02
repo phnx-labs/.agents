@@ -28,7 +28,7 @@ The scaffolder is trivial. clify's value is two disciplines the rest of this ski
 - **Language:** TypeScript by default (`--lang=ts`); `--lang=py` for a Python (typer) emit.
 
 The end state is not "the package builds" — it is **the installed CLI runs a command and returns
-real output you can quote**. That is the done-gate (core-hard-lines #1).
+real output you can quote**. That is the done-gate (F3).
 
 ## The escalation ladder
 

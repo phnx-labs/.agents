@@ -40,7 +40,7 @@ git -C "$REPO" worktree add -b "$SLUG" "$WT" "origin/$BASE"
 
 ## 2. Work end-to-end inside `$WT`
 
-Implement → test → verify the real flow (per core-hard-lines #1) → commit → push — all
+Implement → test → verify the real flow (per F3) → commit → push — all
 inside `$WT`. Don't bounce back to the primary checkout. The deny list still applies
 here: no `reset` / `rebase` / `stash`.
 

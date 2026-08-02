@@ -1,7 +1,7 @@
 # Stage 4 — Verify (the gate)
 
 This is the stage that makes clify trustworthy. **No command ships until it has hit the real service
-and returned a real, well-shaped response.** This is core-hard-lines #1 baked into the tool.
+and returned a real, well-shaped response.** This is F3 baked into the tool.
 
 ## The gate
 

@@ -15,7 +15,7 @@ itself — the OAuth handshake only needs *a* browser that is signed in to the p
 and the fleet already has one (the online macOS box). Proven end-to-end 2026-08-01.
 
 Do NOT stop and ask the user to log in until you have actually attempted this and it
-failed for a concrete, quoted reason (see `core-hard-lines` #9, exhaust-self-serve).
+failed for a concrete, quoted reason (see F2 (unblock yourself before you stop)).
 
 ## HARD LINE — mint, never copy
 
