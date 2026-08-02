@@ -49,7 +49,7 @@ Resources resolve **project → user → extras → system**. A same-named resou
 npm install -g @phnx-labs/agents-cli
 agents setup          # first-time: clone this repo into ~/.agents/.system/ + install agent CLIs
 agents view           # show what's installed across every agent + version
-agents doctor         # CLI sign-in + sync status + orphans, at a glance
+agents doctor         # every warning at a glance: repo-behind, sign-in, sync status, orphans
 ```
 
 Already installed and just want the repo? `agents setup` is idempotent — re-run it, or `agents repo pull system` to update in place.
@@ -84,21 +84,39 @@ The one thing to understand: **editing a layer does not change your agents.** Th
 | Re-materialize with no git/network (just rebuild homes) | `agents repo refresh` |
 | Heal every gap across every installed version | `agents doctor --fix` |
 
-**Is it out of date? — check the signal**
+**Is it out of date? — `agents doctor` is the warning surface**
 
-There's no nagging popup; you ask. `agents doctor` prints a **Sync status** line per installed version:
+`agents doctor` is the one place that collects every drift warning for a machine. It reports **two independent kinds of "out of date"**, plus sign-in and orphan issues:
 
-- **`fresh`** — homes match the merged sources ✅
-- **`stale`** — *sources changed since last sync* → run `agents sync` / `agents doctor --fix`
-- **`cold`** — that version was never synced
+- **Repo behind origin** — a *source* layer is itself outdated. Doctor prints it at the top, with the fix:
+  ```
+  agents-cli: system is 2 commits behind origin/main — run 'agents repo pull system' to update.
+  ```
+  → `agents repo pull system` (or `user`, or an alias).
+- **Materialization drift** — the source changed but the agent homes weren't rebuilt. Doctor's **Sync status** labels each installed version:
+  - **`fresh`** — homes match the merged sources
+  - **`stale`** — *sources changed since last sync* → `agents sync` / `agents doctor --fix`
+  - **`cold`** — that version was never synced
 
 ```bash
-agents doctor              # human overview: sign-in, fresh/stale/cold, orphans
-agents check               # CI drift gate: exits non-zero if anything is stale/cold
-agents resources           # which layer each merged resource resolves from
+agents doctor                     # every warning for this machine: repo-behind, sign-in, sync status, orphans
+agents doctor --host yosemite-s0  # run the same audit on another registered device
+agents doctor --fix               # heal materialization drift across every installed version
 ```
 
-Use `agents check` in CI to fail a build when config drifts; use `agents doctor --fix` locally to reconcile it.
+`agents check` is that same drift detection as a **script-friendly exit code** — non-zero when any version is stale or never-synced — for a pre-commit hook or a CI step; `agents check --devices` runs it across every registered device.
+
+**Inspect what's in a repo — or one resource**
+
+To look inside a layer instead of the merged result, `agents inspect <target>` takes a repo (`system` — this repo — `user`, `project`, an extra alias, or a path) or an installed `agent@version`. It reports the repo's path, git/sync state, and resource counts, and drills into any kind:
+
+```bash
+agents inspect system              # this repo: path, git state, sync ahead/behind, counts
+agents inspect system --skills     # list every skill this layer ships
+agents inspect system --skill learn  # full detail for one resource (fuzzy match)
+agents inspect user                # your override layer; swap for an extra alias or path
+agents resources                   # the merged, first-wins surface across all four layers
+```
 
 ## What's tracked
 
