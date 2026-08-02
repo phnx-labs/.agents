@@ -34,18 +34,23 @@ Onboarding touches agent auth and the fleet SSH key. **Never `scp`/copy a creden
 file (`~/.claude/.credentials.json`, keychain exports, tokens) host-to-host.** Provision
 only through the sanctioned paths, and only with the user's explicit OK:
 
-- **Agent auth** → `agents secrets` bundles (keychain/file), `agents profiles login
-  <provider>` (for API-key providers), the agent's **own native login flow** (e.g. run
-  the `claude` CLI's login → `~/.claude/.credentials.json`), or `agents setup`. Two valid
-  models exist on this fleet — OAuth credentials *or* an `agents secrets` API-key bundle
-  (`anthropic.com`/`claude`); pick whichever the reference node uses. (Confirm the current
-  verb via `--help` — there is no bare `agents login`.)
+- **Agent auth** → **mint it yourself first** with [`/fleet:mint-auth`](mint-auth.md): drive
+  the harness's device/OAuth flow (a pty + a logged-in browser via `agents computer` /
+  `agents browser`) to produce a long-lived `setup-token` / API key, stored file-backed.
+  This is the preferred path — "the account isn't logged in" is a false blocker, not a
+  reason to hand off. Other sanctioned paths: `agents secrets` bundles (keychain/file),
+  `agents profiles login <provider>` (API-key providers), the agent's own native login
+  flow, or `agents setup`. Two auth models exist on this fleet — a long-lived
+  setup-token/API-key bundle (preferred; safe to hold + sync) *or* interactive OAuth
+  (per-machine, never copied). (Confirm the current verb via `--help` — there is no bare
+  `agents login`.)
 - **Fleet SSH key** (the one shared Ed25519 that unlocks git + node-to-node mesh) →
   installed from its `agents secrets` bundle, **with explicit authorization** each time.
   It is a private key; treat distributing it as the sensitive act it is.
 
-If you can't provision a credential the sanctioned way, **stop and hand that one step
-to the user** — don't improvise a copy.
+Only after you have genuinely tried to mint it yourself (`/fleet:mint-auth`) and that
+failed for a concrete, quoted reason should you hand that one step to the user — and
+even then, never improvise a credential-file copy.
 
 ## Process
 

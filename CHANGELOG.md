@@ -1,11 +1,19 @@
 # Changelog
 
-## [0.1.80] - 2026-08-01
+## [0.1.82] - 2026-08-01
 
 ### Fixed
 - **The swarm integration Stop gate no longer false-fires on a session that merely *searches for* its own trigger strings.** The gate (added in 0.1.74) detected an edit-mode swarm by substring — `'agents teams start' in cmd` — so any tool command that *contained* that text, e.g. `grep -cE "agents teams start|agents teams create" transcript.jsonl` (or an echo, a heredoc, or editing this hook's own fixtures), counted as having run a swarm and blocked the stop with the composed-flow demand. It fired on the very session hardening the hook. Detection now uses an anchored regex requiring `agents teams start|create` (or `agents teams add … --mode edit`) at an actual command position — start of the command, or after a newline / `;` / `&&` / `$(` — and deliberately omits a bare `|` separator, since piping *into* `agents teams start` is never a real invocation but is exactly how a grep alternation reads. Verified against the real false-positive transcript (old detection → `YES`, new → `no`); a real `agents teams start` invocation still triggers. `hooks/00-agent-verify-work-complete.sh` + 2 new fixtures in `_test.sh` (27 pass).
 
-## [0.1.79] - 2026-08-01
+## [0.1.81] - 2026-08-01
+
+### Changed
+- **`rules/subrules/core-hard-lines.md` now opens with the agent-vs-chatbot identity frame plus the *measured* cost of idle-stops.** Building on the `YOU ARE AN AGENT, NOT A CHATBOT` identity block and its three chatbot tells (PR #126), a grounded evidence block now sits directly under it (PR #129): a 30-day, on-box, redacted mining of ~12,459 Claude sessions across the fleet measured **588 hours** lost to avoidable permission-stops — 1,045 incidents, with the phrases "want me to…?" and "say the word…" alone accounting for 80% of the lost hours. Four of the agents' own worst verbatim stop-sentences are quoted (the one that wrote "that's the natural next step" then idled 345 minutes instead of taking it), so the anti-stop rule is concrete rather than abstract, followed by a restatement that the only legitimate stop is a decision genuinely the user's. Passed a non-author review that corrected the 80%-by-hours framing, an em-dash violation, and condensed-vs-verbatim quotes; the mining stayed strictly on-box (no transcript content leaves the machine) and the block is live across every installed harness on the reachable fleet.
+
+## [0.1.80] - 2026-08-01
+
+### Fixed
+- **`rules/subrules/no-pr-footer/footer-guard.sh` no longer fails OPEN when `jq` is absent.** The guard extracted the tool command with a single `jq` call and `|| cmd=""`, then `[ -n "$cmd" ] || exit 0` — so on any host without `jq` (notably stock Git Bash on Windows) it silently allowed the banned "Generated with Claude Code" footer onto every PR/issue/commit. It now uses the same `jq -> node -> python` `_json_field` helper the sibling guards (`main-branch-guard.sh`, `merge-guard.sh`) already carry and fails CLOSED (exit 2 with an explanatory message) when no JSON parser is on PATH, since the command already matched the gh/git fast path. Verified: clean commit allowed (rc 0), inline footer blocked via jq and via the node fallback (rc 2), and no-parser input refused (rc 2).
 
 ### Added
 - **A multi-step plan now also requires a task checklist before it can be presented, and the checklist expectation extends past plan mode.** `rules/subrules/plan-presentation/plan-html-reminder.sh` gains a second gate after the HTML-render check: when the `ExitPlanMode` plan text carries 3+ step-like lines, the hook blocks once (exit 2) unless a checklist tool (`TaskCreate`/`TodoWrite`/`todo_write`/`update_plan`) fired since the last genuine human turn. It fails open (no transcript, a trivial plan, or no locatable human turn allows the presentation), so a simple plan is never blocked. A new `rules/subrules/task-checklists.md` (added to the `default` preset in `rules/rules.yaml`) extends the checklist expectation to any real multi-step work in auto/edit mode and binds the checklist to a Linear ticket via `TaskCreate` `metadata.ticket`; `rules/subrules/plan-presentation/rule.md` documents the gate and `plan-html-reminder_test.sh` covers it (13 pass).

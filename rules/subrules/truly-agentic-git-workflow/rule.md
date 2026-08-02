@@ -82,12 +82,64 @@ Opening something for a human — a **PR**, a **GitHub issue**, or a **ticket**
 (Linear/Jira) — is a handoff, not a stopping point. Identify which flow you're in
 and attach what the reviewer needs to judge it without re-running your session.
 
-**A user-visible change ships a picture.** The user reviews the PR in GitHub, not the
-diff, so a PR with no screenshot is one they cannot verify. Before you request review,
-put a **screenshot or a short screen recording** of the user-visible outcome in the body;
-screenshots beat descriptions. A change with no visible surface attaches the closest
-concrete artifact instead (the passing test output, the `curl`'d response). The same
-asset also goes on the ticket when you close it.
+**The description must be glanceable — lead with what changed and for whom.** The
+reviewer reads the body, not the diff, so a wall of prose (or a one-liner) is a PR they
+cannot glance. Open with a one-line **what + type** at the very top: a no-behavior-change
+PR says **docs-only** / **refactor** / **test-only** so the reviewer calibrates
+instantly. Then **highlight** the important parts — a `##` heading, a table, short
+bullets — never a prose wall. For a **docs** PR, **state the audience** (maintainers vs
+end users). If a reviewer can't tell in ten seconds what changed and why, rewrite it.
+
+**Run it, look at the result, then open the PR — not the other way round.** You are an
+agentic developer: before you open a PR you **run the feature you built, look at the real
+output, and attach that result**. A PR is not "code written" — it is "ran it, here's the
+proof" (this is `core-hard-lines` #1 at the PR boundary). Do not open the PR until you
+have. **The only exceptions are a release PR and a pure doc edit** — those need no run.
+
+The body carries **the actual run result, not a description of it**:
+
+- **A user-visible change ships a picture — a screenshot is required, not optional.**
+  The reviewer should not have to read code or a hand-made table to believe it works;
+  they should **see it work**. Put the **screenshot of the running feature** (the web UI,
+  the app screen) in the body.
+- **Prefer a recording when a still can't carry the flow.** You have the tools: capture a
+  **web app** with the `browser` skill (record the click-through), or a **terminal flow**
+  with `agents pty` (record the run), and attach the file.
+- **A no-UI change still shows the run** — screenshot the passing run / the `curl`'d
+  response, or upload the run's output or log as an **asset**. Pasted **source code** and
+  **hand-authored tables are not proof of a run** and do not count. If there is genuinely
+  no visible surface, **declare it** (refactor / test-only).
+- **Link the context.** Include the **Linear ticket** for the work, and — if a plan was
+  shared — a **shareable link to the plan file**. The same screenshot/recording also goes
+  on the ticket when you close it (see `conventions`).
+
+The bundled `pr-description-reminder` (PreToolUse) is the backstop: it nudges once when a
+`gh pr create`/`edit` inline body shows **no run result** — no image/recording/asset, no
+ticket/plan link, and no release/docs/no-surface declaration. A code block or table does
+**not** clear it. Run it, capture the result, attach, retry. It **fails open** — a
+`--body-file`/`--fill` body is never nudged — and is satisfiable, never a hard wall.
+
+### Attaching evidence on GitHub — the mechanics
+
+`gh` **cannot upload an image inline.** `gh pr create/edit --body` only takes text, so a
+local screenshot path in the body does **not** render on GitHub. Use one of these, in
+order:
+
+1. **Web drag-drop (the only way to inline-embed).** Open the PR/comment box in the
+   browser and drag the image/recording (`.png`/`.gif`/`.mp4`/`.mov`) in. GitHub uploads
+   it and inserts a `https://github.com/user-attachments/assets/…` URL — that URL renders
+   inline anywhere in the body via `![](…)`. This is how a screenshot actually shows up in
+   the PR. Open the PR on the user's Mac to do it (`agents ssh <mac> 'open <pr-url>'`),
+   or drive the upload with the `browser` skill.
+2. **Comment after the fact.** Once you have a `user-attachments` URL (from step 1),
+   `gh pr comment <pr> --body '![result](<url>)'` adds it without touching the body.
+3. **Path fallback (fleet-local only).** If you genuinely can't upload, reference the
+   artifact by **full host:path** (`<host>:/abs/path.png`) and `open` it on the user's
+   machine so they see it — it won't render on GitHub, but a teammate on the fleet can
+   open it. Say plainly that it's a path, not an embed.
+
+Recordings upload the same way (drag `.mp4`/`.mov`/`.gif` into the web UI). Never commit a
+screenshot into the repo just to embed it — that is clutter; use the upload flow.
 
 Every `gh pr create` / `gh issue create` / ticket-open carries:
 
