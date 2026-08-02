@@ -50,6 +50,19 @@ sys.stdout.write("" if o is None else str(o))' "$2" 2>/dev/null
   return 1
 }
 
+# --- friction self-report ---------------------------------------------------
+# Guard hooks exit 2 before any `agents` process exists, so they cannot emit
+# in-process. This helper fires the hidden recorder in the background, fully
+# fail-open, so a missing/slow CLI never breaks the guard's hot path.
+report_friction() {  # $1=failureId  $2=error-message
+  [ -z "${AGENTS_DISABLE_FRICTION_LOG:-}" ] || return 0
+  _friction_cmd=$cmd
+  _friction_id=$1
+  _friction_msg=$2
+  (agents _internal friction --surface guard --id "$_friction_id" \
+    --error "$_friction_msg" --command "$_friction_cmd" 2>/dev/null || true) &
+}
+
 # Fast path: if the raw JSON doesn't even contain the substring "git", there
 # is nothing for this hook to police. Skip parse entirely. Cuts the cost off
 # every non-git Bash call, which is >80% of them.
@@ -168,6 +181,7 @@ check_segment() {
   case "$sub" in
     reset|checkout|stash|cherry-pick|revert|clean|reflog|filter-branch|gc|prune|fsck)
       deny_reason="git $sub is denied (rewrites history or destroys work). Use a worktree-based flow instead."
+      report_friction "git.$sub" "$deny_reason"
       return 1
       ;;
     rebase)
@@ -190,6 +204,7 @@ check_segment() {
         *"/.agents/worktrees/"*) return 0 ;;
       esac
       deny_reason="git rebase (start) is denied outside a worktree (rewrites history). Run it inside a <repo>/.agents/worktrees/<slug> worktree; finishing an in-progress rebase (--continue/--skip/--abort) is allowed anywhere."
+      report_friction "git.rebase-outside-worktree" "$deny_reason"
       return 1
       ;;
     branch)
@@ -197,6 +212,7 @@ check_segment() {
         case "$a" in
           -D|-d|-m|-M|--delete|--force-delete|--move|--force-move)
             deny_reason="git branch $a is denied (deletes/renames a ref). Branch creation/listing is fine."
+            report_friction "git.branch-delete" "$deny_reason"
             return 1 ;;
         esac
       done
@@ -210,6 +226,7 @@ check_segment() {
         esac
       done
       deny_reason="git config write is denied. Use --get for reads."
+      report_friction "git.config-write" "$deny_reason"
       return 1
       ;;
     push)
@@ -217,6 +234,7 @@ check_segment() {
         case "$a" in
           --force|-f)
             deny_reason="git push --force is denied. Use --force-with-lease."
+            report_friction "git.push-force" "$deny_reason"
             return 1 ;;
         esac
       done
@@ -227,6 +245,7 @@ check_segment() {
         case "$a" in
           --abort)
             deny_reason="git merge --abort is denied."
+            report_friction "git.merge-abort" "$deny_reason"
             return 1 ;;
         esac
       done
@@ -252,17 +271,20 @@ check_segment() {
       if dirty=$(git -C "$target" status --porcelain 2>/dev/null) && [ -n "$dirty" ]; then
         deny_reason="git worktree remove $target denied — worktree has uncommitted changes:
 $(printf '%s\n' "$dirty" | head -5)"
+        report_friction "git.worktree-remove-dirty" "$deny_reason"
         return 1
       fi
       if upstream=$(git -C "$target" rev-parse --abbrev-ref --symbolic-full-name '@{upstream}' 2>/dev/null); then
         ahead=$(git -C "$target" rev-list --count "$upstream..HEAD" 2>/dev/null || echo 0)
         if [ "${ahead:-0}" -gt 0 ]; then
           deny_reason="git worktree remove $target denied — $ahead unpushed commit(s) on $(git -C "$target" rev-parse --abbrev-ref HEAD). Push or merge first."
+          report_friction "git.worktree-remove-unpushed" "$deny_reason"
           return 1
         fi
       fi
       if [ "$forced" = "1" ]; then
         deny_reason="git worktree remove --force denied — drop --force; clean removal is allowed when work is preserved."
+        report_friction "git.worktree-remove-force" "$deny_reason"
         return 1
       fi
       return 0
