@@ -8,7 +8,7 @@ user-invocable: true
 
 # code:ship
 
-> A change is merged and CI is green. For a library that's the end. For a **distributable** — a VS Code extension, a published CLI, a deployed web app — it's the middle. Users don't run your `main` branch. This skill takes the merged artifact the rest of the way: publish it, confirm the public channel actually serves it, get it active where it runs, and verify the real surface with quoted evidence.
+> A change is merged and CI is green. For a library that's the end. For a **distributable** — a VS Code extension, a published CLI, a deployed web app — it's the middle. Users don't run your default branch. This skill takes the merged artifact the rest of the way: publish it, confirm the public channel actually serves it, get it active where it runs, and verify the real surface with quoted evidence.
 
 This is the closing gate for "done means end-to-end" when the thing you built is something other people install or visit. `code:verify` proves the code works; `code:ship` proves users can get the working code and that it's live for them.
 
@@ -25,11 +25,11 @@ Detect the artifact from the repo, then hold it to the matching bar. Every "live
 | VS Code extension | VS Code Marketplace + Open VSX | both registry APIs report the new version (below) | running editor window reloaded → `exthost.log` shows the new activation; real surface renders |
 | npm CLI / lib | npm registry | `npm view <pkg> version` == target | `npx <pkg>@latest --version` in a clean dir prints target |
 | cargo crate | crates.io | `cargo search <crate>` / index API shows target | `cargo install <crate> --version <t>` then `<bin> --version` |
-| web app / API | host (Vercel / CF / Hetzner) | deploy reports success | `curl` the prod health/version endpoint returns 200 with the new build (per the "Deployment & Waiting" hard line) |
+| web app / API | host (Vercel / CF / Hetzner) | deploy reports success | `curl` the prod health/version endpoint returns 200 with the new build (per F3) |
 
 ## The ship loop
 
-1. **Resolve the target.** `$ARGUMENTS` is a version (`0.9.251`), a PR number, or empty (current repo / latest tag). Confirm the merge is on `main` and CI is green before publishing — re-run `code:verify` if unproven.
+1. **Resolve the target.** `$ARGUMENTS` is a version (`0.9.251`), a PR number, or empty (current repo / latest tag). Confirm the merge is on the default branch and CI is green before publishing — re-run `code:verify` if unproven.
 2. **Prefer the repo's own release script.** Most repos already have one (`scripts/release.sh`, `npm publish` wrapper, a deploy script). Read it, run it, don't reinvent it. A good release script already does the collision pre-flight, token resolution, and publish.
 3. **Confirm live on the public channel** — the registry/host's own API, not the publish command's exit code.
 4. **Activate where it runs** — install/reload/redeploy so the new version is actually executing, not just available.
@@ -96,7 +96,7 @@ If the user installs globally (`npm i -g` / `cargo install`) per their conventio
 
 ## Web apps / services
 
-Deploying is not shipping — the deploy command finishing is not proof (per the "Deployment & Waiting" hard line). Hit the prod surface:
+Deploying is not shipping — the deploy command finishing is not proof (per F3). Hit the prod surface:
 
 ```bash
 curl -sS https://<prod-host>/health          # 200 + the new build/version field

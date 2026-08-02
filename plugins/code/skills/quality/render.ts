@@ -318,8 +318,8 @@ const html = `<!doctype html>
     return "<a href='vscode://file/" + esc(abs) + ":" + (line||1) + "'>" + esc(file) + ":" + (line||"") + "</a>";
   };
 
-  const dispatchBrief = (f) => {
-    let s = "/code:dispatch \\"Fix " + f.rule + " at " + f.file + ":" + f.line_start;
+  const loopBrief = (f) => {
+    let s = "/code:loop \\"Fix " + f.rule + " at " + f.file + ":" + f.line_start;
     if (f.anchor_file) s += ". Pattern to follow: " + f.anchor_file + ":" + (f.anchor_line || "");
     if (f.fix_one_line) s += ". Approach: " + f.fix_one_line;
     return s + "\\"";
@@ -368,7 +368,7 @@ const html = `<!doctype html>
           \` : ""}
           \${f.fix_one_line ? \`<div class="finding-fix"><span class="label">Fix:</span>\${esc(f.fix_one_line)}</div>\` : ""}
           <div class="finding-actions">
-            <button data-action="dispatch">Copy as /dispatch</button>
+            <button data-action="loop">Copy as /loop task</button>
             <button data-action="linear">Copy Linear cmd</button>
             <button data-action="fileline">Copy file:line</button>
             <span style="flex:1"></span>
@@ -439,7 +439,7 @@ const html = `<!doctype html>
       const fp = card.dataset.fp;
       const f = findings.find((x) => fingerprint(x) === fp);
       if (!f) return;
-      const text = action === "dispatch" ? dispatchBrief(f)
+      const text = action === "loop" ? loopBrief(f)
                   : action === "linear" ? linearBrief(f)
                   : action === "fileline" ? fileLineText(f) : "";
       copyToClipboard(text, e.target);
@@ -454,7 +454,7 @@ const html = `<!doctype html>
 
   document.getElementById("batchbtn").addEventListener("click", (e) => {
     const picks = findings.filter((f) => selected.has(fingerprint(f)));
-    const brief = "/code:dispatch \\"Address the following " + picks.length + " findings from /quality:\\n"
+    const brief = "/code:loop \\"Address the following " + picks.length + " findings from /quality:\\n"
       + picks.map((f, i) => (i+1) + ". " + f.rule + " at " + f.file + ":" + f.line_start
                             + (f.anchor_file ? " (pattern: " + f.anchor_file + ":" + (f.anchor_line||"") + ")" : "")
                             + (f.fix_one_line ? " — " + f.fix_one_line : "")).join("\\n")
