@@ -50,6 +50,19 @@ sys.stdout.write("" if o is None else str(o))' "$2" 2>/dev/null
   return 1
 }
 
+# --- friction self-report ---------------------------------------------------
+# Guard hooks exit 2 before any `agents` process exists, so they cannot emit
+# in-process. This helper fires the hidden recorder in the background, fully
+# fail-open, so a missing/slow CLI never breaks the guard's hot path.
+report_friction() {  # $1=failureId  $2=error-message
+  [ -z "${AGENTS_DISABLE_FRICTION_LOG:-}" ] || return 0
+  _friction_cmd=$cmd
+  _friction_id=$1
+  _friction_msg=$2
+  (agents _internal friction --surface guard --id "$_friction_id" \
+    --error "$_friction_msg" --command "$_friction_cmd" 2>/dev/null || true) &
+}
+
 # Fast path: no "rm" anywhere in the JSON payload, nothing to police.
 input=$(cat)
 case "$input" in *rm*) ;; *) exit 0 ;; esac
@@ -202,6 +215,7 @@ check_segment() {
       deny_reason="rm -r on protected path denied: $tgt
 Protected paths: /, \$HOME, ~/.agents, ~/.ssh, ~/.config, ~/Library, ~/Documents, ~/Desktop, ~/src, ~/Phoenix, ~/Rush, /Users, /Applications, /System.
 Variable-expansion targets (\$VAR) are also denied because their value is unknown at hook time."
+      report_friction "rm.protected-path" "$deny_reason"
       return 1
     fi
   done

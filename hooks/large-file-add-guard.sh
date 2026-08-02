@@ -72,6 +72,19 @@ size_kb() {
   echo $(( _bytes / 1024 ))
 }
 
+# --- friction self-report ---------------------------------------------------
+# Guard hooks exit 2 before any `agents` process exists, so they cannot emit
+# in-process. This helper fires the hidden recorder in the background, fully
+# fail-open, so a missing/slow CLI never breaks the guard's hot path.
+report_friction() {  # $1=failureId  $2=error-message
+  [ -z "${AGENTS_DISABLE_FRICTION_LOG:-}" ] || return 0
+  _friction_cmd=$cmd
+  _friction_id=$1
+  _friction_msg=$2
+  (agents _internal friction --surface guard --id "$_friction_id" \
+    --error "$_friction_msg" --command "$_friction_cmd" 2>/dev/null || true) &
+}
+
 check_path() {
   _p=$1
   # Skip quoted globs (caller-quoted *).
@@ -94,6 +107,7 @@ check_path() {
     if [ "$_kb" -gt "$THRESHOLD_KB" ]; then
       deny_reason="git add denied — $_p is $(( _kb / 1024 )) MiB (limit ${THRESHOLD_KB} KiB).
 Large files belong in Git LFS or external storage. Set LARGE_FILE_GUARD_MAX_KB=0 to bypass."
+      report_friction "git.add-large-file" "$deny_reason"
       return 1
     fi
   fi
@@ -101,6 +115,7 @@ Large files belong in Git LFS or external storage. Set LARGE_FILE_GUARD_MAX_KB=0
   if is_binary_magic "$_p"; then
     deny_reason="git add denied — $_p has binary magic bytes (build artifact / compiled output).
 If this is intentional (asset, fixture), use \`git add -f\` after confirming with the user."
+    report_friction "git.add-binary-magic" "$deny_reason"
     return 1
   fi
 
