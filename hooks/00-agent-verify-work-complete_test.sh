@@ -68,6 +68,16 @@ mk_transcript() {
         echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_iv1","name":"Bash","input":{"command":"gh pr view https://github.com/acme/widgets/pull/99 --json state"}}]}}'
         echo '{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_iv1","content":[{"type":"text","text":"glanced at pull/99 for context"}]}]}}'
         ;;
+      inherited-observer)
+        # Reviewer / CI-watcher that only OBSERVES an inherited OPEN PR (checks +
+        # review), never drives it to merge. Observer verbs are not ownership, so
+        # the session is NOT responsible and stopping with the ball in the author's
+        # court is correct. Locks the WORK-regex scope.
+        echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_obs1","name":"Bash","input":{"command":"gh pr checks https://github.com/acme/widgets/pull/42 --watch"}}]}}'
+        echo '{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_obs1","content":[{"type":"text","text":"checks green; author will merge"}]}]}}'
+        echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_obs2","name":"Bash","input":{"command":"gh pr review https://github.com/acme/widgets/pull/42 --request-changes -b nit"}}]}}'
+        echo '{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_obs2","content":[{"type":"text","text":"requested changes"}]}]}}'
+        ;;
     esac
     case "$1" in
       swarm)
@@ -238,6 +248,13 @@ check "inherited open PR with explicit handoff allows stop" "$rc" "0"
 TV=$(mk_transcript inherited-view)
 rc=$(FAKE_GH_STATE=OPEN run_hook "$TV" "Glanced at #99 for context; nothing owed here." false)
 check "incidental single view of an unrelated PR does not block" "$rc" "0"
+
+# A5. A reviewer/watcher that only OBSERVED an inherited OPEN PR (gh pr checks +
+#     review, never merge/rebase) -> observer verbs are not ownership, so it must
+#     NOT be attributed -> allow. Locks the WORK-regex scope to merge-driving verbs.
+TOB=$(mk_transcript inherited-observer)
+rc=$(FAKE_GH_STATE=OPEN run_hook "$TOB" "Reviewed pull/42 and left change requests for the author." false)
+check "inherited PR only observed (checks/review) allows stop" "$rc" "0"
 
 # --- parking / offer-instead-of-do done-gate (Fix B) ------------------------
 # A session that PARKS the obvious next step behind the user ('want me to…',

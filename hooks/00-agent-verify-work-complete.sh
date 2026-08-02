@@ -68,10 +68,12 @@ if command -v gh >/dev/null 2>&1; then
 import json, re, sys
 
 PR_URL = re.compile(r'https://github\.com/[\w.-]+/[\w.-]+/pull/\d+')
-# gh pr subcommands that OPERATE on a PR = this session is responsible for it,
-# even if a PRIOR session created it. 'view' is intentionally excluded here and
-# handled below as a weak, repetition-gated signal.
-WORK = re.compile(r'\bgh\s+pr\s+(?:merge|checks|review|ready|rebase|comment|close|reopen|edit)\b')
+# gh pr subcommands that DRIVE a PR toward merge = this session owns it, even if
+# a PRIOR session created it. Observer verbs (checks/review/comment) and 'view'
+# are deliberately excluded: a reviewer or CI-watcher who correctly stops with the
+# ball in the author's court is not abandoning the PR. 'view' is handled below as a
+# weak, repetition-gated signal.
+WORK = re.compile(r'\bgh\s+pr\s+(?:merge|ready|rebase|close|reopen|edit)\b')
 VIEW = re.compile(r'\bgh\s+pr\s+view\b')
 
 def extract_ref(cmd):
