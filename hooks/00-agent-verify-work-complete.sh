@@ -44,26 +44,57 @@ if [ -z "${TRANSCRIPT_PATH:-}" ] || [ ! -f "$TRANSCRIPT_PATH" ]; then
 fi
 
 # --- Open-PR abandonment gate ------------------------------------------------
-# A session that CREATED pull requests may not stop while any is still open,
-# unless the final message explicitly hands the PR off. "PR open, waiting for
-# reviewer" is not a stop state — merged-or-handed-off is done. This fires
-# independently of the done-claim check below: the observed failure mode is
-# agents stopping WITHOUT claiming done ("waiting for CI/review") and being
-# marked completed with stranded PRs.
+# A session that CREATED *or actively WORKED* a pull request may not stop while
+# any is still open, unless the final message explicitly hands the PR off. "PR
+# open, waiting for reviewer" is not a stop state — merged-or-handed-off is
+# done. This fires independently of the done-claim check below: the observed
+# failure modes are (1) agents stopping WITHOUT claiming done ("waiting for
+# CI/review") with stranded PRs they created, and (2) a session that INHERITED
+# an open PR a prior session created, drove it (merge/checks/review), then
+# stopped with it unmerged.
 #
-# Precision guard: a PR counts as session-created only when its URL appears
-# in the tool_result of a tool_use whose command ran `pr create` — the two are
-# paired by tool_use_id, so viewing/reviewing someone else's PR (even in a
-# session that also created PRs) never triggers the gate. Fail-open: no gh,
-# network down, parse errors — allow the stop.
+# A PR is attributed to THIS session two ways:
+#   - CREATED: its URL appears in the tool_result of a tool_use whose command
+#     ran `pr create` — paired by tool_use_id (the original precision guard).
+#   - WORKED: a tool_use command OPERATED on the PR via
+#     `gh pr merge|checks|review|ready|rebase|comment|close|reopen|edit <PR>`.
+# A bare `gh pr view` is deliberately NOT a "worked" signal — reading someone
+# else's PR is incidental; `view` only attributes a PR when the SAME PR is
+# viewed 2+ times (active babysitting). So one incidental read of an unrelated
+# PR never triggers the gate. Fail-open: no gh, network down, parse errors —
+# allow the stop.
 if command -v gh >/dev/null 2>&1; then
-  created_prs=$(python3 -c "
+  responsible_prs=$(python3 -c "
 import json, re, sys
 
-PR_RE = re.compile(r'https://github\.com/[\w.-]+/[\w.-]+/pull/\d+')
+PR_URL = re.compile(r'https://github\.com/[\w.-]+/[\w.-]+/pull/\d+')
+# gh pr subcommands that DRIVE a PR toward merge = this session owns it, even if
+# a PRIOR session created it. Observer verbs (checks/review/comment) and 'view'
+# are deliberately excluded: a reviewer or CI-watcher who correctly stops with the
+# ball in the author's court is not abandoning the PR. 'view' is handled below as a
+# weak, repetition-gated signal.
+WORK = re.compile(r'\bgh\s+pr\s+(?:merge|ready|rebase|close|reopen|edit)\b')
+VIEW = re.compile(r'\bgh\s+pr\s+view\b')
+
+def extract_ref(cmd):
+    # The ref gh accepts for a state check: prefer a self-contained URL, else a
+    # '#N' / bare positional number (never a --flag's value like --interval 30).
+    m = PR_URL.search(cmd)
+    if m:
+        return m.group(0)
+    prev = None
+    for t in cmd.split():
+        if t.startswith('#') and t[1:].isdigit():
+            return t[1:]
+        if t.isdigit() and (prev is None or not prev.startswith('-')):
+            return t
+        prev = t
+    return None
 
 create_ids = set()
-urls = []
+created = []
+worked = []
+views = {}
 try:
     with open(sys.argv[1]) as f:
         for raw in f:
@@ -85,18 +116,35 @@ try:
                     cmd = str((block.get('input') or {}).get('command', ''))
                     if 'pr create' in cmd:
                         create_ids.add(block.get('id'))
+                    if WORK.search(cmd):
+                        r = extract_ref(cmd)
+                        if r and r not in worked:
+                            worked.append(r)
+                    elif VIEW.search(cmd):
+                        r = extract_ref(cmd)
+                        if r:
+                            views[r] = views.get(r, 0) + 1
                 elif block.get('type') == 'tool_result' and block.get('tool_use_id') in create_ids:
-                    for m in PR_RE.finditer(json.dumps(block.get('content', ''))):
+                    for m in PR_URL.finditer(json.dumps(block.get('content', ''))):
                         u = m.group(0)
-                        if u in urls:
-                            urls.remove(u)
-                        urls.append(u)
-    print('\n'.join(urls[-3:]))
+                        if u in created:
+                            created.remove(u)
+                        created.append(u)
+    # A PR viewed 2+ times is active babysitting, not an incidental glance.
+    for r, n in views.items():
+        if n >= 2 and r not in worked:
+            worked.append(r)
+    # Union of created (most-recent 3) + worked, deduped, capped.
+    refs = []
+    for r in created[-3:] + worked:
+        if r not in refs:
+            refs.append(r)
+    print('\n'.join(refs[-5:]))
 except Exception:
     pass
 " "$TRANSCRIPT_PATH" 2>/dev/null || true)
 
-  if [ -n "$created_prs" ]; then
+  if [ -n "$responsible_prs" ]; then
     open_prs=""
     while IFS= read -r pr_url; do
       [ -z "$pr_url" ] && continue
@@ -104,7 +152,7 @@ except Exception:
       if [ "$state" = "OPEN" ]; then
         open_prs="${open_prs}${pr_url}"$'\n'
       fi
-    done <<< "$created_prs"
+    done <<< "$responsible_prs"
 
     if [ -n "$open_prs" ]; then
       # Handoff escape: the final message may legitimately stop with an open PR
@@ -130,7 +178,7 @@ print('yes' if ok else 'no')
 
       if [ "$has_handoff" != "yes" ]; then
         cat >&2 <<PRGATE
-STOP GATE: This session created pull request(s) that are still OPEN:
+STOP GATE: This session created OR worked pull request(s) that are still OPEN:
 
 $open_prs
 An open PR is not a finished task — merged-or-handed-off is done. Before
@@ -260,7 +308,7 @@ fi
 
 # Check if Claude is claiming completion
 is_claiming_done=$(echo "$INPUT_JSON" | python3 -c "
-import json, sys
+import json, re, sys
 
 data = json.load(sys.stdin)
 msg = data.get('last_assistant_message', '').lower()
@@ -297,10 +345,42 @@ done_signals = [
     'done.',
     'done!',
 ]
+
+# Parking / 'offer instead of do' stop: the final message DEFERS the obvious
+# next step back to the user instead of doing it ('want me to…', 'say the
+# word', 'on your go', 'do it on your go'). The repo own rules ban exactly
+# this — a status report is fine, but parking the next step behind the user go
+# is a stop that must be challenged (the observed failure: merged-but-not-
+# released, then 'I can build the .vsix on your go' and stop). Kept TIGHT
+# to avoid nagging: the strong deferral idioms below fire on their own; the
+# fuzzier 'want me to' / 'should I proceed' fire ONLY when the message is not a
+# genuine either/or CHOICE question (which the agent legitimately can't decide).
+strong_parking = [
+    r'\bon your go\b',
+    r'\bsay the word\b',
+    r'\bjust say the word\b',
+    r'\blet me know if you(?:\'d| would)?(?: like| want)\b',
+    r'\bi can \w+\b.{0,40}?\bif you(?:\'d| would)? like\b',
+    r'\bready to \w+\b.{0,30}?\bwhen you(?:\'re| are| want| give)\b',
+]
+soft_parking = [
+    r'\bwant me to\b',
+    r'\bshould i (?:go ahead|proceed|continue|start|kick off|do that|do it|run it|ship it|release it|merge it|build it)\b',
+]
+# A genuine clarifying question offers alternatives — NOT next-step parking.
+is_choice = bool(re.search(r'\bwhich\b', msg) or re.search(r'\b\w+ or \w+\b', msg)
+                 or 'prefer' in msg or 'either' in msg)
+parked = any(re.search(p, msg) for p in strong_parking)
+if not parked and not is_choice:
+    parked = any(re.search(p, msg) for p in soft_parking)
+
 for signal in done_signals:
     if signal in msg:
         print('yes')
         sys.exit(0)
+if parked:
+    print('yes')
+    sys.exit(0)
 print('no')
 " 2>/dev/null || echo "no")
 
