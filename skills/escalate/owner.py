@@ -108,6 +108,9 @@ def derive(data):
         # Opt-in gate for the Notification hook. Absent/false => auto-escalation
         # is OFF (the safe default); the ladder is still usable on demand.
         "auto_escalate": data.get("auto_escalate", False),
+        # Opt-in gate for the feed-forward hook: forward deliberate `agents feed
+        # post` status updates to the owner's phone. OFF by default.
+        "forward_status": data.get("forward_status", False),
         "name": data.get("name", ""),
         "timezone": data.get("timezone", ""),
         "channels": data.get("channels", []),
