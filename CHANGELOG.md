@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.1.82] - 2026-08-01
+
+### Fixed
+- **The swarm integration Stop gate no longer false-fires on a session that merely *searches for* its own trigger strings.** The gate (added in 0.1.74) detected an edit-mode swarm by substring — `'agents teams start' in cmd` — so any tool command that *contained* that text, e.g. `grep -cE "agents teams start|agents teams create" transcript.jsonl` (or an echo, a heredoc, or editing this hook's own fixtures), counted as having run a swarm and blocked the stop with the composed-flow demand. It fired on the very session hardening the hook. Detection now uses an anchored regex requiring `agents teams start|create` (or `agents teams add … --mode edit`) at an actual command position — start of the command, or after a newline / `;` / `&&` / `$(` — and deliberately omits a bare `|` separator, since piping *into* `agents teams start` is never a real invocation but is exactly how a grep alternation reads. Verified against the real false-positive transcript (old detection → `YES`, new → `no`); a real `agents teams start` invocation still triggers. `hooks/00-agent-verify-work-complete.sh` + 2 new fixtures in `_test.sh` (27 pass).
+
 ## [0.1.81] - 2026-08-01
 
 ### Changed
