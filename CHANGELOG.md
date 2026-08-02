@@ -4,6 +4,8 @@
 
 ### Changed
 - **`/continue` now reattaches to a live session before falling back to transcript recovery.** `commands/continue.md` adds a Step 0: resolve the session id, then run `agents sessions focus <id> --attach-only`. If the session is still alive in a tmux pane or terminal tab — locally or on a remote device reached via `--device`/`--host` — the agent joins it and hands off cleanly instead of spawning a redundant copy that abandons the original. Only when attach fails (dead, headless, no tmux/Ghostty rail, ambiguous id, or no TTY) does it load the transcript and continue as before. `commands/README.md` updated to describe the new behavior.
+- **`/recover` now tries live reattachment first.** `commands/recover.md` instructs the agent to run `agents sessions focus <id> --attach-only` for each interrupted session before falling back to headless recovery.
+- **Removed F1-violating permission gates from code/swarm plugins.** `plugins/code/commands/review.md`, `plugins/code/skills/dispatch/SKILL.md`, `plugins/code/skills/sprint/SKILL.md`, `plugins/swarm/skills/orchestrate/SKILL.md`, and `plugins/swarm/skills/run/SKILL.md` no longer require an explicit user "go" before acting on verdicts, dispatches, or swarm plans. Replaced stale "HARD LINE" / "CLAUDE.md hard line" language with F1–F5 foundations references, fixed `code:dispatch` to resolve the default branch dynamically instead of hardcoding `main`, removed Haiku paths, and updated merge rules to require green CI + non-author review.
 
 ## [0.1.84] - 2026-08-01
 

@@ -70,13 +70,11 @@ The planner must return:
 
 If the planner returns fewer than 3 tracks, the goal is too narrow for sprint — drop back to single-agent dispatch.
 
-### Phase 3 — Confirm (user, ~30s–2min)
+### Phase 3 — Confirm (checkpoint, ~30s–2min)
 
-Present the plan to the user via **`AskUserQuestion`** with the track list as a multi-select. Default: all checked. Header: "Tracks". Question: "Approve these tracks?" Options: the track names + an "Edit plan" option that lets them redirect.
+Present the track distribution plan concisely. Proceed with spawning `agents teams` on the default path.
 
-If user says "edit plan," re-run Phase 2 with the corrections folded in. Do NOT touch `agents teams` until Phase 3 returns a clean yes.
-
-This phase is **mandatory** even when the user has said "work without stopping" — the cost of fanning out the wrong plan is a wasted hour of agent wall-clock.
+Only use `AskUserQuestion` if the plan materially diverges from the user's original goal or if the user explicitly asked to approve each sprint. If the user asks to edit the plan, re-run Phase 2 with the corrections folded in.
 
 ### Phase 4 — Fan out (orchestrator + `agents teams`, ~2 min to spawn)
 
@@ -234,13 +232,13 @@ For sprint artifacts that span multiple repos (audit reports, render outputs, re
 | Don't | Do |
 |---|---|
 | Skip Phase 2 ("I know what to do, just spawn teams") | Run the Opus planner. It catches the file-collision and ordering bugs you miss. |
-| Skip Phase 3 ("user said go") | Always confirm the track distribution. Fanning out the wrong plan costs hours. |
+| Stop for a permission gate in Phase 3 | Present the plan as a checkpoint, then spawn. Only ask if the plan materially diverges from the user's goal. |
 | Fan out without boundary contracts | Two teammates editing the same file is the #1 sprint killer. |
 | Disband mid-sprint to "restart" | Diagnose the blocking track, fix or remove THAT track. Other tracks keep running. |
 | Mark a track done because the agent said "done" | Run the verification command. Quote its output. |
 | Roll into a fresh sprint without recap | The recap is the input to the next session. Skip it and the next session loses context. |
 | Use `Monitor`/`ScheduleWakeup` to poll | Use `sleep N && check && echo "..."` per harness convention. |
-| Spawn Haiku sub-agents for the planner | Opus only. The planner is the load-bearing piece. |
+| Spawn a cheap model for the planner | Opus only. The planner is the load-bearing piece. |
 
 ---
 

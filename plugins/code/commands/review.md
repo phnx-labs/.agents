@@ -9,17 +9,19 @@ Review the PRs this session produced and decide what ships. Arguments (optional)
 - Pass `dry-run` to print the plan and stop — no comments, no merges, no closes.
 - Pass `no-merge` to comment verdicts but never merge (request-changes and close-as-duplicate still execute).
 
-## HARD LINE — DO NOT MERGE WITHOUT EVIDENCE THE THING ACTUALLY RUNS
+## Do not merge without evidence the thing actually runs
 
 A PR that "looks correct" is not the same as a PR that has been demonstrated to work. Before merging, you must have at least one of:
 
 1. A green CI run on the PR's head SHA (`gh pr checks <pr> --watch=false` shows all required checks passing).
 2. A quoted command + output from this session showing the changed code path executing end-to-end (curl response, test run, screenshot, log line — quoted, not paraphrased).
-3. An explicit user approval that overrides this gate. The user typing "ship it" or selecting "Yes, merge" in `AskUserQuestion` counts. "It looks good" does not.
+3. An explicit user override for an exceptional case (e.g. the PR is blocked by an external dependency and the user said "ship it" verbatim). "It looks good" does not.
 
 If you have none of those, the verdict is **request-changes**, not merge. State the missing evidence in the PR comment.
 
-## HARD LINE — NO OVERREVIEW, NO OVERENGINEERING PRESSURE
+See F1–F5 (`rules/subrules/foundations.md`) and the `git-workflow` skill for the full merge-on-green policy.
+
+## No overreview, no overengineering pressure
 
 The review subagents you spawn are NOT here to find every possible improvement. They are here to answer **five questions** and stop:
 
@@ -81,7 +83,7 @@ Build a candidate set from:
 - PRs whose `createdAt` is inside this session's window.
 - PRs whose head branch matches a branch this session created (cross-check against `git reflog` + recent branches).
 - PRs explicitly named in `$ARGUMENTS` (these override the auto-detect — review exactly that set).
-- PRs opened by an `agents teams` run started in this session (check `agents sessions --active` and recent team branches).
+- PRs opened by an `agents teams` run started in this session (check `agents sessions --active` for live teammates, or `agents sessions focus <id>` to reattach to a live session).
 
 If the result is empty, say so and stop — "No PRs opened in this session to review."
 
@@ -128,7 +130,7 @@ Flag any PR that looks like a **duplicate** or **already-merged-elsewhere** in t
 
 ### 5. Spawn one review subagent per PR — in parallel
 
-Use the `Agent` tool. **One subagent per PR, all dispatched in a single message** so they run concurrently. Always set `model: "sonnet"` (or `"opus"` for a load-bearing PR — auth, billing, migrations). Never let it default.
+Use the `Agent` tool. **One subagent per PR, all dispatched in a single message** so they run concurrently. Always set `model` explicitly — `"sonnet"` is the default, reserve `"opus"` only for genuinely load-bearing reasoning (auth, billing, migrations). Never let it default.
 
 Each subagent gets this brief — fill in the bracketed parts:
 
@@ -181,21 +183,11 @@ Merge plan (stack order):
 
 If any PR is REQUEST_CHANGES, the stack pauses at that point — do NOT merge anything stacked on top of it.
 
-### 7. Confirm before any write action
+### 7. Execute the verdicts
 
-Use `AskUserQuestion` with concrete counts: "Merge N PRs, request changes on M, close C as duplicate?" Options are forward actions only (per the project's HARD LINE on never proposing to stop):
+Order matters. Do these in sequence per PR; PRs across the stack are processed in stack order (base → tip). If `$ARGUMENTS` contains `dry-run`, print the plan and stop instead.
 
-- "Yes — execute the plan"
-- "Just comment, don't merge"  (equivalent to `no-merge`)
-- "Show me one verdict's evidence first" (then re-prompt)
-
-Never include "stop" or "cancel" as a forward option — the user can always interrupt. If `$ARGUMENTS` contains `dry-run`, skip this step and stop after printing the plan.
-
-### 8. Execute the verdicts
-
-Order matters. Do these in sequence per PR; PRs across the stack are processed in stack order (base → tip).
-
-**8a. SHIP verdict — comment + merge.**
+**7a. SHIP verdict — comment + merge.**
 
 Post a single approval comment that states the safety case in 2-4 lines max — what was checked, the evidence (quoted CI line or curl response), and the cleanup confirmation. Example:
 
@@ -222,7 +214,7 @@ gh pr merge <N> --rebase --delete-branch
 
 For stacked PRs: after merging the base, the next PR's base auto-retargets on GitHub if it was set to the previous head — but if your tooling didn't enable that, run `gh pr edit <next> --base main` and confirm `mergeStateStatus` becomes `clean` before merging the next one.
 
-**8b. REQUEST_CHANGES verdict — comment with concrete asks.**
+**7b. REQUEST_CHANGES verdict — comment with concrete asks.**
 
 Bullet points, each `file:line — exact change — why`. No prose, no padding, no "great work overall." Example:
 
@@ -242,7 +234,7 @@ EOF
 
 Do NOT auto-request review from the user via `gh pr review --request-changes` unless `$ARGUMENTS` contains `formal-review` — a comment is enough and avoids notification noise. The subagent that produced the verdict is the source of truth; the comment is the artifact.
 
-**8c. CLOSE_DUPLICATE verdict — comment + close.**
+**7c. CLOSE_DUPLICATE verdict — comment + close.**
 
 Quote the commit or PR that already contains the work, then close.
 
@@ -259,7 +251,7 @@ gh pr comment <other> --body "Folded in scope from #<N> (closed)."
 gh pr close <N> --delete-branch
 ```
 
-### 9. Verify and report
+### 8. Verify and report
 
 After execution, re-query state in parallel:
 
@@ -280,7 +272,7 @@ A stack is a chain `main ← A ← B ← C`. The rules:
 - **Merge order: strictly root-up.** A before B before C. Never merge a child before its parent — that creates phantom commits in the child's diff and confuses subsequent reviews.
 - **If the base verdict is REQUEST_CHANGES, every PR stacked on top is also blocked.** Mark them `BLOCKED — waiting on #<base>` and do not merge them, even if their own verdict was SHIP.
 - **After merging A, retarget B's base to `main`** if GitHub didn't do it automatically: `gh pr edit <B> --base main`. Then re-check `mergeable` before merging B.
-- **If B has merge conflicts after A lands**, do NOT rebase/force-push on the author's behalf without explicit user approval (see the project HARD LINE on destructive ops). Comment on B explaining the conflict and stop the chain.
+- **If B has merge conflicts after A lands**, do NOT rebase/force-push on the author's behalf without explicit user approval (F5 — protect what you can't undo). Comment on B explaining the conflict and stop the chain.
 
 ## Duplicate detection
 
@@ -298,7 +290,7 @@ If you cannot run one of these commands and get a definitive answer, the verdict
 - Don't merge without one of: green CI, a quoted run, or explicit user override. "I read the diff and it looks correct" is not evidence.
 - Don't post review comments that demand abstractions, naming changes, or speculative future-proofing — those are noise that delay merges. The subagent rubric forbids them; the reviewer (you) does too.
 - Don't merge stacked PRs out of order.
-- Don't force-push, rebase the author's branch, or amend their commits to "help" — that's destructive (see project HARD LINE). Comment and let the author act.
+- Don't force-push, rebase the author's branch, or amend their commits to "help" — that's destructive (F5). Comment and let the author act.
 - Don't auto-request formal review (`gh pr review --request-changes`) unless `$ARGUMENTS` contains `formal-review` — a comment is the lighter touch and doesn't ping reviewers redundantly.
 - Don't summarize each PR with prose like "Overall this is a solid change that…". Verdicts are terse. Evidence is quoted. That's the whole document.
 - Don't propose to stop after the recap. The recap is a checkpoint, not an exit ramp. Continue to the verdict matrix unless `$ARGUMENTS` contains `dry-run`.

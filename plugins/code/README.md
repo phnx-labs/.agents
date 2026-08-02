@@ -28,6 +28,6 @@ Coding-workflow plugin. Sub-skills for the manager/router engineering loop: scop
 ## Conventions
 
 - All sub-skills assume `agents-cli` is installed and on PATH.
-- Sub-skills default to the `Plan` sub-agent type with `model: "opus"` for planning, and to a mix of `claude`/`codex` for implementation tracks.
+- Sub-skills default to the `Plan` sub-agent type with `model: "sonnet"`; reserve `model: "opus"` only for genuinely load-bearing reasoning. Mix `claude`/`codex` for implementation tracks.
 - Every sub-skill ends with a real verification step — no "code written = done." See `code:verify` for the canonical gate.
-- Worktrees live in `<repo>/.agents/worktrees/<slug>/` per the project CLAUDE.md hard line.
+- Worktrees live in `<repo>/.agents/worktrees/<slug>/` (F5: protect what you can't undo).

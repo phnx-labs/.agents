@@ -54,7 +54,7 @@ The command files in this directory, with optional team augmentation for complex
 - `/tickets` — Auto-detect the project's tracker (Linear / GitHub / Jira / etc.) and work with it. Uses whichever tracker skill is available; falls back to repo signals (`gh issue list`, etc.) if none is loaded.
 - `/monitors` — Set up or manage a durable event-triggered watcher (`agents monitors`): watch a source (command / HTTP / file / fleet device), fire an agent / routine / notification on change. Routines fire on a clock; monitors fire on a change.
 - `/continue` — Resume a previous task (single session). Reattaches to the live tmux/terminal surface if it still exists, otherwise loads the transcript and continues.
-- `/recover` — Recover *many* interrupted sessions after a crash: find them across version homes, understand each in parallel, finish the agent-doable work headlessly (subagents / `agents teams`) rather than resurrecting a terminal swarm, and hand back only what needs the user — as one easy action. Holds irreversible/outward actions for an explicit yes.
+- `/recover` — Recover *many* interrupted sessions after a crash: reattach to any still-live tmux/terminal surface first, then finish the remaining agent-doable work headlessly (subagents / `agents teams`) rather than resurrecting a terminal swarm. Hand back only what needs the user — as one easy action. Holds irreversible/outward actions for an explicit yes.
 
 **Delegation**
 - `/teams` — Arrange agents into teams for parallel execution. Create, add members, start, monitor, and collect results.

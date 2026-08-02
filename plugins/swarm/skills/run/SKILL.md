@@ -35,7 +35,7 @@ Follow `swarm:orchestrate` exactly:
 
 1. **Discover providers** — `agents teams doctor` / `agents view --json`. Mix across the ones that are installed AND signed in; diversity across claude/codex/antigravity is the point. If only one is up, say so and proceed single-provider.
 2. **Size by judgment** — no fixed table. Wide/gnarly/cross-cutting work gets more tracks; a narrow job gets one (or none). Spend agents where uncertainty is highest.
-3. **Show the Swarm Distribution Plan and get an explicit go** before creating the team (the orchestrate template: goal, per-track owns / must-not-touch / verification / after, boundary contracts). Fanning out the wrong plan wastes a wall-clock window, so this gate holds even under "work without stopping."
+3. **Show the Swarm Distribution Plan** as a checkpoint, then create the team and proceed. Only stop for genuine scope/design ambiguity, not for a permission gate.
 4. **`--mode plan`** for read-only tracks (research, audit, analysis); **`--mode edit`** only for tracks that change code. Isolate every edit-mode track so two tracks never write the same file.
 5. Every `add` gets the full teammate brief (Mission / Full scope / Your assignment / Boundary contract / Pattern to apply / Success criteria), ending with the exact line:
    > `Return file:line quotes for every claim. Do NOT paraphrase. If you can't quote it, don't claim it.`
