@@ -132,6 +132,18 @@ mk_transcript() {
         echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_grep1","name":"Bash","input":{"command":"grep -cE \"agents teams start|agents teams create|teams add[^\\\"]*--mode edit\" /tmp/transcript.jsonl"}}]}}'
         echo '{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_grep1","content":[{"type":"text","text":"2"}]}]}}'
         ;;
+      handback)
+        # The session materialized a runnable script under /tmp via the Write
+        # tool — the exact shape of the "No, you release it.." failure.
+        echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_wr1","name":"Write","input":{"file_path":"/tmp/release-1.20.82.sh","content":"#!/usr/bin/env bash\nset -euo pipefail\ngit -C /repo merge --ff-only origin/main\n"}}]}}'
+        echo '{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_wr1","content":[{"type":"text","text":"File created at /tmp/release-1.20.82.sh"}]}]}}'
+        ;;
+      handback-shell)
+        # Same failure, but the script is written via a shell redirect/heredoc
+        # (cat > /tmp/x.sh) rather than the Write tool.
+        echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_sh1","name":"Bash","input":{"command":"cat > /tmp/deploy.sh <<EOF\n#!/usr/bin/env bash\nrush deploy\nEOF\nchmod +x /tmp/deploy.sh"}}]}}'
+        echo '{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_sh1","content":[{"type":"text","text":"wrote /tmp/deploy.sh"}]}]}}'
+        ;;
     esac
     echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"step 2"}]}}'
     echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"step 3"}]}}'
@@ -463,5 +475,41 @@ TGIT="$SANDBOX/git-merge-transcript.jsonl"
 rc=$(FAKE_GH_STATE=MERGED FAKE_GIT_BRANCH=release/RUSH-2468 FAKE_LINEAR_STATE=Todo run_hook "$TGIT" "Merged RUSH-2468." false)
 check "git merge finish-line triggers delivery gate" "$rc" "2"
 grep -q "RUSH-2468" "$SANDBOX/stderr" && echo "ok   - git merge delivery gate cites ticket" || { echo "FAIL - git merge delivery gate missed ticket"; fail=1; }
+
+# --- command-handback gate --------------------------------------------------
+# The "No, you release it.." failure: the session wrote a runnable script to a
+# temp path AND the final message tells the user to run it. Fires only when BOTH
+# hold, and exempts a genuine user-only gate (biometric / interactive login).
+THB=$(mk_transcript handback)
+
+# H1. Wrote /tmp/release.sh (Write tool) + "run it when ready" -> block.
+rc=$(FAKE_GH_STATE=MERGED run_hook "$THB" "I've prepared the release at /tmp/release-1.20.82.sh — run it when ready for a single paste." false)
+check "temp-script write + 'run it' handoff blocks" "$rc" "2"
+grep -q "STOP GATE (handback)" "$SANDBOX/stderr" && echo "ok   - handback gate names itself" || { echo "FAIL - no handback gate message"; fail=1; }
+
+# H2. Same temp script, but the final message reports the agent RAN it -> allow
+#     (no directive to the user; running it yourself is the whole point).
+rc=$(FAKE_GH_STATE=MERGED run_hook "$THB" "Ran the release script myself; v1.20.82 is published and verified live." false)
+check "temp-script write but agent ran it allows stop" "$rc" "0"
+
+# H3. Temp script + a directive that names a GENUINE user-only gate -> allow.
+rc=$(FAKE_GH_STATE=MERGED run_hook "$THB" "The signing step needs your Touch ID — run it when you're at the machine to approve the biometric prompt." false)
+check "temp-script handoff exempted for a user-only biometric gate" "$rc" "0"
+
+# H4. Directive to run, but NO temp script was written this session -> allow
+#     (a bare 'run it' with no prepared script is not the hand-back this catches;
+#     avoids nagging ordinary prose). Uses the plain transcript.
+TPL=$(mk_transcript plain)
+rc=$(FAKE_GH_STATE=MERGED run_hook "$TPL" "Once CI is green, run it to cut the tag." false)
+check "'run it' with no temp script written does not fire handback gate" "$rc" "0"
+
+# H5. Temp script + directive but stop_hook_active -> allow (no loops).
+rc=$(FAKE_GH_STATE=MERGED run_hook "$THB" "Run it when ready." true)
+check "handback gate respects stop_hook_active" "$rc" "0"
+
+# H6. Shell-redirect form (cat > /tmp/deploy.sh) + "paste it" -> block.
+THBS=$(mk_transcript handback-shell)
+rc=$(FAKE_GH_STATE=MERGED run_hook "$THBS" "The deploy is scripted at /tmp/deploy.sh — paste it into your shell to ship." false)
+check "shell-redirect temp script + 'paste it' blocks" "$rc" "2"
 
 exit $fail
