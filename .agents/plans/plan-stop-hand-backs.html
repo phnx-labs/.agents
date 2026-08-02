@@ -165,10 +165,12 @@
   <p>Then <strong>rewrite the rule</strong>: retire "last resort, blocking-prod only." New line — <em>"When you're genuinely blocked and have exhausted self-serve (F2), you do NOT stop in this window. Fire <code>agents escalate</code> and keep working. The phone call is the ladder's terminal step, not a forbidden weapon."</em></p>
   <div class="call warn"><strong>Feasibility gate (verifying now):</strong> the reply-watch needs to read your inbound Telegram. A subagent is probing whether OpenClaw exposes that. If it can't, the watcher still fires the timed escalation, and in-session replies clear it — the phone step just runs on the timer instead of on "no reply detected."</div>
 
-  <h3><span class="tag b">FIX B</span> A deterministic handback-guard</h3>
+  <h3><span class="tag b">FIX B</span> A deterministic handback-guard <span class="chip">shipped · PR #145</span></h3>
+  <p class="muted">Two Stop-side detectors in <code>00-agent-verify-work-complete.sh</code> (a PreToolUse nudge on any <code>/tmp</code> write proved too noisy — the high-precision signal is the final-message prose plus a real script write):</p>
   <ul>
-    <li><strong>PreToolUse nudge</strong> when an agent writes an executable script to <code>/tmp</code> destined for you to run: <em>"You have the same shell + ssh. Run it yourself, or <code>agents escalate</code>. Don't write a script for the user to paste."</em> One-shot, fail-open, satisfiable — the <code>pr-description-reminder</code> pattern.</li>
-    <li><strong>Broaden the Stop guard</strong> to catch <em>declarative</em> hand-offs, not just <code>?</code>-questions: "run it when ready," "you'll need to run," "paste this," "go ahead and run."</li>
+    <li><strong>Command-handback gate.</strong> Fires only when the session <em>wrote a runnable script</em> to <code>/tmp</code>/<code>/var/folders</code> <strong>and</strong> the final message directs you to run/paste it. Exempts genuine user-only gates (biometric/login). Catches the <em>"No, you release it.."</em> case.</li>
+    <li><strong>Stand-down detector.</strong> Catches the <em>chatbot-mode</em> failure from your second screenshot — the agent arguing about ownership and refusing to drive ("#1642 is yours, not mine to drive", "handing it back and standing clear"), often citing a sibling session. F1 says a sibling session is coordinate-and-continue, never stand-down. Routes through the self-audit gate; a legit handoff-by-naming-an-owner does not trip it.</li>
+    <li>11 new tests; full suite <strong>67/67 green</strong>.</li>
   </ul>
 
   <h3><span class="tag c">FIX C</span> Kill the dilution</h3>

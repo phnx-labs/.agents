@@ -366,6 +366,29 @@ TSHORT="$SANDBOX/short.jsonl"
 rc=$(FAKE_GH_STATE=OPEN run_hook "$TSHORT" "Want me to fix it? Say the word." false)
 check "parking phrasing in a <=2-turn session does not block" "$rc" "0"
 
+# --- stand-down / ownership-handback (chatbot-mode) -------------------------
+# The agent deliberates about ownership and refuses to drive work it was asked
+# to do ("#1642 is yours, not mine to drive", "handing it back and standing
+# clear"), often citing a sibling session. F1: coordinate-and-continue, never
+# stand-down. These route through the self-audit gate like the parking idioms.
+
+# S1. 'is yours, not mine to drive' stand-down -> the self-audit gate fires.
+rc=$(FAKE_GH_STATE=OPEN run_hook "$TP" "I've got the disposition clear: #1642 is yours, not mine to drive. I'm standing clear." false)
+check "stand-down 'yours not mine to drive' blocks for self-audit" "$rc" "2"
+grep -q "You claimed this work is done" "$SANDBOX/stderr" && echo "ok   - stand-down routes through the self-audit gate" || { echo "FAIL - stand-down did not reach the self-audit gate"; fail=1; }
+
+# S2. 'handing it back and standing clear' stand-down -> fires.
+rc=$(FAKE_GH_STATE=OPEN run_hook "$TP" "The other session can take it from here — handing it back and standing down." false)
+check "stand-down 'handing it back / standing down' blocks" "$rc" "2"
+
+# S3. LEGIT handoff by naming an owner -> must NOT trip the stand-down patterns.
+rc=$(FAKE_GH_STATE=OPEN run_hook "$TP" "Landed and handed off to the release watcher, which owns the follow-up from here." false)
+check "legit handoff-by-naming-owner does not trip stand-down" "$rc" "0"
+
+# S4. Ordinary use of 'back' (rolled back) -> must NOT fire (no stand-down idiom).
+rc=$(FAKE_GH_STATE=OPEN run_hook "$TP" "Rolled back the migration; the schema is on the prior revision now." false)
+check "ordinary 'rolled back' prose does not trip stand-down" "$rc" "0"
+
 # --- delivery-chain close-the-loop gate (RUSH-2073) ---------------------------
 # Fixtures for the new delivery gate. The gate must fire on done-claims and on
 # PR merge/release finish-line stops, and must check Linear, docs/CHANGELOG,
