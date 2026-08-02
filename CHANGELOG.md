@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.1.81] - 2026-08-01
+
+### Changed
+- **`rules/subrules/core-hard-lines.md` now opens with the agent-vs-chatbot identity frame plus the *measured* cost of idle-stops.** Building on the `YOU ARE AN AGENT, NOT A CHATBOT` identity block and its three chatbot tells (PR #126), a grounded evidence block now sits directly under it (PR #129): a 30-day, on-box, redacted mining of ~12,459 Claude sessions across the fleet measured **588 hours** lost to avoidable permission-stops — 1,045 incidents, with the phrases "want me to…?" and "say the word…" alone accounting for 80% of the lost hours. Four of the agents' own worst verbatim stop-sentences are quoted (the one that wrote "that's the natural next step" then idled 345 minutes instead of taking it), so the anti-stop rule is concrete rather than abstract, followed by a restatement that the only legitimate stop is a decision genuinely the user's. Passed a non-author review that corrected the 80%-by-hours framing, an em-dash violation, and condensed-vs-verbatim quotes; the mining stayed strictly on-box (no transcript content leaves the machine) and the block is live across every installed harness on the reachable fleet.
+
 ## [0.1.80] - 2026-08-01
 
 ### Fixed
