@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.1.86] - 2026-08-02
+
+### Removed
+- **`code:dispatch` skill and `/code:dispatch` command are removed.** The primitives have matured past the wrapper: `agents run` (local), `agents run --device` (fleet), `agents run --lease` (disposable cloud box), `agents teams` (parallel), and `cloud:run` (Rush Cloud) are the dispatch. The skill was also operationally broken here (`rush` CLI not installed; `autodev` workflow missing) and duplicated the `cloud` plugin.
+- **`code:sprint` skill is removed.** Its useful planning/verification/boundary-contract content is folded into `/teams` and `code:loop`; the separate skill was just another entry point for the same `agents teams` primitive.
+
+### Changed
+- **`code:loop` no longer references `code:dispatch`.** It routes single items directly to the right primitive and fans out multi-surface queues via `agents teams`.
+- **`plugins/code/skills/quality/SKILL.md` and `render.ts` no longer emit `/code:dispatch` clipboard actions.** Findings copy as `/code:loop` tasks or Linear tickets.
+- **`plugins/code/skills/learn/SKILL.md` map updated** to remove `code:dispatch` and `code:sprint`; routing lessons belong in `code:loop` or the relevant tool skill.
+- **Hardcoded `main` branches removed from code plugin skills/commands.** `code:loop`, `code:verify`, `code:ship`, and `/review` now use `$BASE` / the default branch.
+- **Remaining "HARD LINE" terminology in code plugin replaced with F1–F5 references.** `code:verify`, `code:ship`, and `code:quality` now cite F1/F3 instead of legacy hard-line names.
+- **`commands/clean.md` no longer waits for user approval.** Cleanup identifies, proposes, and executes autonomously; only genuine ambiguity or risk surfaces to the user.
+- **`commands/recap.md` no longer defaults to `AskUserQuestion` for small decisions.** Low-stakes calls are made and noted; questions are reserved for genuine ambiguity.
+- **`plugins/code/skills/review/SKILL.md` drops `--haiku` and aligns BLOCKED handling** with the autonomous `/review` command.
+
+### Fixed
+- **`commands/finish.md` resolves the default branch dynamically** instead of hardcoding `main/master`.
+
 ## [0.1.85] - 2026-08-02
 
 ### Changed
