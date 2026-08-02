@@ -42,6 +42,12 @@ policy:
   normal:   [telegram, call@15m]           # message; call if no ack in 15m
   critical: [telegram, call@0m]            # message + call immediately
 default_severity: normal
+
+# Auto-escalation: when true, an agent's "I need you" Notification automatically
+# fires the ladder above (deduped per session). OFF by default — turn it on only
+# after you've run `escalate --check` and done a wiring test, so it never
+# surprises you. With it off, the ladder is still available on demand.
+auto_escalate: false
 ---
 
 # Your Name
