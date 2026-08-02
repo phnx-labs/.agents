@@ -37,7 +37,8 @@ Every plan has, in order:
 - **Hero** — `.kicker` (mono, uppercased, a label not a slogan: `PRODUCT · SUBSYSTEM · plan`),
   an `<h1>` that states plainly what the plan does, with the `.accent` span on its key noun;
   a ~3-line `.sub` problem statement, `.chip` metadata (files touched, new helpers,
-  `status: awaiting go`), and a `.toc` of numbered sections.
+  `status: awaiting go`), a **`.meta.prov` provenance chip row** (harness · agent · host ·
+  session · date — see "Provenance" below), and a `.toc` of numbered sections.
 - **Numbered `<h2>` sections** (`<span class="n">01</span>…`) — context/problem first,
   then design, then a files table, then edge cases / verification.
 - **≥1 visual figure** in a `.fig` — use **Dither Kit** for quantitative charts, and a
@@ -51,7 +52,27 @@ Every plan has, in order:
 - **`.callout`** (and `.callout.warn`) for the load-bearing takeaway/caveat.
 - **Tagged tables** — `.tag.a/.b/.c` pills (new / edit / keep) in the leftmost cell.
 - **`<pre>`** code with `.c/.k/.s/.r` spans for the 1–2 key snippets.
-- **`.foot`** — one mono line, ending `next: go / reshape`.
+- **`.foot`** — one mono line: the same provenance (harness · agent · host · session · date)
+  repeated so it survives a scroll-to-bottom / print, ending `next: go / reshape`.
+
+## Provenance — every plan says who made it, where
+
+A rendered plan is a durable artifact that outlives the session. Without attribution it is
+an orphan: you can't tell which agent produced it, on what box, or which session to reopen
+to continue the work. So **every plan carries a provenance chip row in the hero** (`.meta.prov`)
+and repeats the same line in the `.foot`. Fill all five from the session, at render time:
+
+| Chip | Value | Where to get it |
+| --- | --- | --- |
+| `harness` | the agent CLI you are (`claude` / `codex` / `grok` / `droid` / …) | your own identity; also the `versions/<harness>/` segment of the session transcript path |
+| `agent` | the model / profile (`opus-4.8`, `sonnet-4.6`, `gpt-5-codex`) | your model id, shortened (drop the `claude-` prefix and any `[1m]` suffix) |
+| `host` | the machine this session runs on (`yosemite-s0`, `zion`) | `hostname -s`, or the **Host & Fleet** block injected at session start ("You are running on **<host>**") |
+| `session` | the short session id (first segment of the UUID) | the **session id** printed in the SessionStart context; `echo "$SESSION_ID" \| cut -c1-8` if exported |
+| date | the plan's render date (`YYYY-MM-DD`) | `currentDate` in the system prompt / `date +%F` |
+
+Add a `session-label` chip too when the session has a human label (`agents sessions` shows it).
+These are **not** placeholders to leave as `claude` / `yosemite-s0` — the template ships them
+filled with example values; replace each with **this** session's real values before you present.
 
 ## Voice — precise and reviewable, not marketing
 
@@ -153,6 +174,8 @@ an away user finds it waiting.
 - [ ] Self-contained HTML written to `$HTML` — `<repo>/.agents/plans/` if the project has an
       `.agents/` dir, else `/tmp` — opens offline.
 - [ ] Skinned in the product's brand, or the house fallback if none.
+- [ ] Provenance chip row filled with **this** session's real harness · agent · host · session · date
+      (hero `.meta.prov` + repeated in `.foot`) — no leftover template example values.
 - [ ] ≥1 visual figure: Dither Kit for quantitative charts, hand-authored inline SVG for
       non-chart diagrams; no mermaid, no CDN.
 - [ ] Figures use the domain's standard notation; a legend where color or line-style encodes meaning.

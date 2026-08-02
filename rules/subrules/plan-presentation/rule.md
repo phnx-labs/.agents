@@ -11,7 +11,8 @@ house structure, the product-brand theming, the light/dark toggle, and the open-
 transport — lives in the **`plan-render` skill**. Load it and follow it.
 
 - **Structure (fixed).** Hero (kicker · headline · problem statement · metadata chips ·
-  TOC), numbered sections, **≥1 visual figure** (Dither Kit for quantitative
+  **provenance chips — harness · agent · host · session · date, so a rendered plan is never
+  an orphan** · TOC), numbered sections, **≥1 visual figure** (Dither Kit for quantitative
   charts; hand-authored inline SVG for timeline / architecture / before-after
   diagrams — never mermaid), callouts, tagged tables, code blocks. Start from
   the skill's `template.html`; `example.html` is the gold reference.
