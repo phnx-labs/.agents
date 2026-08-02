@@ -15,4 +15,5 @@
 - **No unsolicited .md files.** No README/docs/summary/notes unless asked. (Updating *existing* docs + CHANGELOG for a real user-visible change is required, not this — see F3.)
 - **Permissions:** add permanent agent permissions to settings once; don't re-prompt the same action across sessions.
 - **Images:** include the full file path so the user can click to preview.
+- **Handing off a command the user must run (F2), in order:** (1) pipe it to the clipboard (`pbcopy` on macOS, `xclip -selection clipboard` / `wl-copy` on Linux) and say "copied — paste it"; (2) write a one-shot script to a temp path (`mktemp` or `/tmp/<slug>.sh`), `chmod +x` it, and point them at that single path; (3) only as a last resort, render the command in the message. Multi-line commands always go to a script. Quote what you copied so the user can verify before pasting.
 - **Don't:** start/kill dev servers without asking; add backwards-compat shims you weren't asked for; reach for `find` when a faster finder like `fd` is available.
