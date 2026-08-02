@@ -48,6 +48,12 @@ default_severity: normal
 # after you've run `escalate --check` and done a wiring test, so it never
 # surprises you. With it off, the ladder is still available on demand.
 auto_escalate: false
+
+# Forward status updates: when true, an agent's DELIBERATE `agents feed post`
+# (a milestone / completion recap) is forwarded to your phone by the feed-forward
+# hook — event-driven, no polling. Fine-grained checklist crossings are NOT
+# forwarded (they stay on the feed). OFF by default.
+forward_status: false
 ---
 
 # Your Name

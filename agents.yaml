@@ -106,6 +106,17 @@ hooks:
     matcher: Bash
     script: rm-guard.sh
     timeout: 5
+  feed-forward:
+    # Event-driven (no polling routine): when an agent posts a status update via
+    # `agents feed post`, forward it to the owner's phone (rush iMessage, else
+    # Telegram). Opt-in via owner.md (forward_status: true) — inert until on.
+    agents:
+      - claude
+    events:
+      - PostToolUse
+    matcher: Bash
+    script: 13-feed-forward.py
+    timeout: 10
   git-require-clean-tree:
     agents:
       - claude
