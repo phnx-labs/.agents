@@ -1,6 +1,6 @@
 ---
 name: verify
-description: "End-to-end gate. Given a branch / PR # / worktree path, identify what changed, run the canonical sandbox.sh test for each affected surface, hit health endpoints on deploys, screenshot UI if rush/app touched. Returns PASS or FAIL with file:line evidence and quoted command output. The closing gate for 'done means end-to-end' — call this before telling the user a dispatch is complete. Triggers on: 'verify', 'did it actually work', 'gate this', 'E2E check', 'test the PR'."
+description: "End-to-end gate. Given a branch / PR # / worktree path, identify what changed, run the canonical sandbox.sh test for each affected surface, hit health endpoints on deploys, screenshot UI if rush/app touched. Returns PASS or FAIL with file:line evidence and quoted command output. The closing gate for 'done means end-to-end' (F3) — call this before telling the user work is complete. Triggers on: 'verify', 'did it actually work', 'gate this', 'E2E check', 'test the PR'."
 argument-hint: "[branch | PR# | worktree path | empty for current]"
 allowed-tools: Bash(agents *), Bash(gh *), Bash(git diff*), Bash(git log*), Bash(git status*), Bash(git rev-parse*), Bash(git show*), Bash(rush *), Bash(./*/scripts/sandbox.sh*), Bash(./scripts/*), Bash(curl *), Bash(jq *), Read(*), Bash(rg*), Bash(fd*), Bash(ls*)
 user-invocable: true
@@ -10,11 +10,11 @@ user-invocable: true
 
 > The user (or you) just shipped a change. Before claiming done, prove it works end-to-end. This skill identifies the changed surfaces, picks the right canonical test for each, runs them on the right host, and reports with quoted evidence.
 
-This is the closing gate for the "done means end-to-end" hard line. Code compiling is not done. Unit tests passing is not done. A real flow producing real output, quoted in this response, is done.
+This is the closing gate for F3 — "done means end-to-end." Code compiling is not done. Unit tests passing is not done. A real flow producing real output, quoted in this response, is done.
 
 ## When to invoke
 
-- An agent just claimed a dispatch is finished.
+- An agent just claimed work is finished.
 - A PR is open and the user wants to know if it ships.
 - You finished an inline edit and need to gate before reporting back.
 - The user asks "did it actually work?"
@@ -29,13 +29,14 @@ This is the closing gate for the "done means end-to-end" hard line. Code compili
 - Empty — current directory's HEAD.
 
 Set:
-- `$REF` — the ref to diff against `origin/main`.
+- `$BASE` — the default branch: `$(git symbolic-ref --short refs/remotes/origin/HEAD | sed 's#^origin/##')`.
+- `$REF` — the ref to diff against `origin/$BASE`.
 - `$CWD` — the working directory to run tests in (worktree path or current).
 
 ## Step 2 — Diff and classify
 
 ```bash
-git diff origin/main...$REF --name-only > /tmp/verify-changed.txt
+git diff origin/$BASE...$REF --name-only > /tmp/verify-changed.txt
 ```
 
 Classify changed files into surfaces. Each surface owns a canonical test command:
@@ -105,7 +106,7 @@ If the diff was deployed during this verification (or as part of the dispatch), 
 curl -sS https://api.prix.dev/health    # or rush http GET /health
 ```
 
-Per CLAUDE.md "Deployment & Waiting" hard line: a deploy command finishing is NOT proof. Only a 200 OK response from a real curl is proof.
+Per F3: a deploy command finishing is NOT proof. Only a 200 OK response from a real curl is proof.
 
 ## Step 7 — Report
 
@@ -127,7 +128,7 @@ Next action:
 - If UNVERIFIED: <what's missing — a sandbox host, a flag, a credential — and how to unblock>
 ```
 
-Per hard-line #2: every claim needs proof. Quote the lines. Do not paraphrase. UNVERIFIED is the correct verdict when you cannot prove it works — never inflate it to PASS.
+Every claim needs proof. Quote the lines. Do not paraphrase. UNVERIFIED is the correct verdict when you cannot prove it works — never inflate it to PASS.
 
 ## Don'ts
 
