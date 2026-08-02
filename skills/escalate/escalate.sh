@@ -32,15 +32,19 @@
 # non-zero only if NO message rung is configured (it cannot reach the user).
 set -euo pipefail
 
-CFG="${ESCALATE_CONFIG:-$HOME/.agents/escalate.json}"
+SKILL_DIR="$(cd "$(dirname "$0")" && pwd)"
+# The owner profile (~/.agents/owner.md) is the single source of truth. owner.py
+# parses its frontmatter stdlib-only (no PyYAML — not on every box) and emits the
+# JSON this skill reads. $OWNER_PROFILE overrides the path (used by tests).
+CFG="${OWNER_PROFILE:-$HOME/.agents/owner.md}"
+OWNER_JSON="$(python3 "$SKILL_DIR/owner.py" "$CFG" 2>/dev/null || echo '{}')"
 
-# --- tiny JSON config reader (python3; absent keys -> empty) ------------------
+# --- owner-profile reader (dotted key over the derived JSON) ------------------
 cfg() { # cfg <dotted.key>
-  [ -f "$CFG" ] || { echo ""; return; }
-  python3 -c "
+  printf '%s' "$OWNER_JSON" | python3 -c "
 import json,sys
 try:
-    d=json.load(open('$CFG'))
+    d=json.load(sys.stdin)
 except Exception:
     print(''); sys.exit(0)
 cur=d

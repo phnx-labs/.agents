@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Tests for the system escalate skill — the channel-agnostic ladder.
 #
-# Hermetic: config is pointed at a temp file via $ESCALATE_CONFIG, and `openclaw`
+# Hermetic: the owner profile is pointed at a temp owner.md via $OWNER_PROFILE, and `openclaw`
 # is stubbed on PATH so no real message is sent. The rung-detection, --check
 # report, config-missing degradation, and dry-run planning are all exercised
 # without touching a real channel. The live send->watch->call path is verified by
@@ -21,20 +21,33 @@ mkdir -p "$SANDBOX/bin"
 printf '#!/usr/bin/env bash\nexit 0\n' > "$SANDBOX/bin/openclaw"; chmod +x "$SANDBOX/bin/openclaw"
 export PATH="$SANDBOX/bin:$PATH"
 
-# --- 1. No config -> cannot reach the user -----------------------------------
-export ESCALATE_CONFIG="$SANDBOX/none.json"   # does not exist
+# --- 1. No profile -> cannot reach the user ----------------------------------
+export OWNER_PROFILE="$SANDBOX/none.md"        # does not exist
 out="$(bash "$SH" --check 2>&1)"; rc=$?
-check "no-config --check exits 0" "$rc" "0"
-contains "no-config ceiling is NONE" "$out" "ceiling: NONE"
+check "no-profile --check exits 0" "$rc" "0"
+contains "no-profile ceiling is NONE" "$out" "ceiling: NONE"
 out="$(bash "$SH" "blocked on x" 2>&1)"; rc=$?
 check "no message rung -> exit 3 (cannot reach user)" "$rc" "3"
 contains "no message rung says so" "$out" "cannot reach the user"
 
-# --- 2. Config with a message rung but NO call rung (graceful degradation) ----
-cat > "$SANDBOX/msg-only.json" <<JSON
-{ "host": "local", "telegram": { "account": "default", "target": "6078999250" } }
-JSON
-export ESCALATE_CONFIG="$SANDBOX/msg-only.json"
+# --- 2. Profile with a message rung but NO call rung (graceful degradation) ---
+cat > "$SANDBOX/msg-only.md" <<'MD'
+---
+name: Test
+channels:
+  - id: telegram
+    transport: openclaw
+    host: local
+    account: default
+    target: "6078999250"
+    watch: true
+policy:
+  normal: [telegram]
+default_severity: normal
+---
+Test owner.
+MD
+export OWNER_PROFILE="$SANDBOX/msg-only.md"
 out="$(bash "$SH" --check 2>&1)"
 contains "message rung READY" "$out" "message (telegram via openclaw@local -> 6078999250): READY"
 contains "call rung NOT READY (no call.cmd)" "$out" "call: NOT READY"
@@ -57,10 +70,27 @@ absent  "dry-run does not claim a call" "$out" "CALL via"
 mkdir -p "$SANDBOX/mcli"
 printf '#!/usr/bin/env bash\nexit 0\n' > "$SANDBOX/mcli/call.sh"; chmod +x "$SANDBOX/mcli/call.sh"
 echo '{}' > "$SANDBOX/mcli/config.json"
-cat > "$SANDBOX/full.json" <<JSON
-{ "host": "local", "telegram": { "account": "default", "target": "6078999250" }, "call": { "cmd": "$SANDBOX/mcli/call.sh" } }
-JSON
-export ESCALATE_CONFIG="$SANDBOX/full.json"
+cat > "$SANDBOX/full.md" <<MD
+---
+name: Test
+channels:
+  - id: telegram
+    transport: openclaw
+    host: local
+    account: default
+    target: "6078999250"
+    watch: true
+  - id: call
+    transport: twilio
+    cmd: $SANDBOX/mcli/call.sh
+    intrusive: true
+policy:
+  normal: [telegram, call@15m]
+default_severity: normal
+---
+Test owner.
+MD
+export OWNER_PROFILE="$SANDBOX/full.md"
 out="$(bash "$SH" --check 2>&1)"
 contains "call rung READY when cmd + config.json present" "$out" "call ($SANDBOX/mcli/call.sh): READY"
 # ceiling mentions CALL (full ladder) — watch may be absent (no local ingress DB),
@@ -83,7 +113,7 @@ echo "openclaw \$*" >> "$LOGDIR/openclaw.calls"
 exit 0
 STUB
 chmod +x "$SANDBOX/bin/openclaw"
-export ESCALATE_CONFIG="$SANDBOX/msg-only.json"
+export OWNER_PROFILE="$SANDBOX/msg-only.md"
 start=$(date +%s)
 out="$(bash "$SH" "creds locked" --no-call --wait 1s --poll 1s 2>&1)"; rc=$?
 elapsed=$(( $(date +%s) - start ))
