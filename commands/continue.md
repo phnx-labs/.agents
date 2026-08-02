@@ -1,12 +1,35 @@
 ---
-description: Resume a previous task — load context via agents sessions, assess state, then continue working
+description: Resume a previous task — reattach if it's still live, otherwise load context and continue
 ---
 
 Resume previous work: $ARGUMENTS
 
 You are picking up where a previous session left off. Typically called as `/continue <session-id>` (UUID or short prefix) — the invocation you see when resuming from the `agents sessions` picker across versions. The argument may also be a name, a topic, or empty.
 
+## Step 0: Reattach if the session is still live
+
+The session you are resuming may already be running inside a tmux pane or terminal tab (locally or on a remote device such as `zion -> yosemite-*`). If it is, jump to the live surface instead of spawning a redundant copy that abandons the original.
+
+1. **Resolve the session id (if one was given).**
+   - If the user passed an id (UUID or short prefix), use it directly.
+   - If they passed a topic/name/keyword, run `agents sessions "<query>"` to read the index and extract the id. If the query returns multiple candidates, pick the most recent matching one or ask once.
+   - If they passed nothing, skip to the attach picker in step 2.
+
+2. **Try to attach.**
+   - If you have an id: `agents sessions focus <id> --attach-only`.
+   - If you have no id (the user typed bare `/continue`): `agents sessions focus --attach-only`. This opens the live-session picker; if the user cancels or no live session is chosen, fall through to Step 1.
+   - `--attach-only` means "join the live pane/tab or fail"; it never silently opens a new copy.
+   - The command performs the cross-host sweep automatically, so remote sessions reached via `--device` / `--host` are handled without extra flags.
+
+3. **Interpret the result.**
+   - **Exit code 0:** you are now attached to the live session. Tell the user which session you reattached to, then **cleanly hand off** — do not continue chatting in this harness. The user is interacting with the resumed session.
+   - **Exit code non-zero:** the session is not attachable (dead, headless, plain terminal, ambiguous id, no tmux/Ghostty rail, or no TTY). Proceed to the transcript-recovery flow below.
+
+4. **Resolve ambiguity.** If focus prints `"<id>" is ambiguous (N live matches)`, run `agents sessions --active` or `agents sessions focus` (no id) to pick the right one, or use more characters of the id and retry.
+
 ## Step 1: Load the prior session
+
+Use this only when Step 0 could not attach (session is not live in a reachable terminal).
 
 Pick the loader based on what the user passed.
 
@@ -49,4 +72,5 @@ Pick up exactly where things left off. Don't redo completed work. Follow ACT -> 
 - Do not ask "what were you working on?" — load the transcript first
 - Do not dump raw transcript output at the user — synthesize it
 - Do not start coding before verifying the prior work is still intact
+- Do not spawn a new resumed copy when the session is still live in tmux/Ghostty — reattach instead
 - Use the `agents sessions` CLI to load context — don't hand-traverse `~/.agents/versions/.../projects/`

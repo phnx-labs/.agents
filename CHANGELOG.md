@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.1.85] - 2026-08-02
+
+### Changed
+- **`/continue` now reattaches to a live session before falling back to transcript recovery.** `commands/continue.md` adds a Step 0: resolve the session id, then run `agents sessions focus <id> --attach-only`. If the session is still alive in a tmux pane or terminal tab — locally or on a remote device reached via `--device`/`--host` — the agent joins it and hands off cleanly instead of spawning a redundant copy that abandons the original. Only when attach fails (dead, headless, no tmux/Ghostty rail, ambiguous id, or no TTY) does it load the transcript and continue as before. `commands/README.md` updated to describe the new behavior.
+
 ## [0.1.84] - 2026-08-01
 
 ### Added
