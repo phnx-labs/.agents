@@ -1,12 +1,14 @@
 #!/usr/bin/env bash
-# Tests for the open-PR abandonment gate in 00-agent-verify-work-complete.sh.
+# Tests for the open-PR abandonment and delivery-chain gates in
+# 00-agent-verify-work-complete.sh.
+#
 # The gate must block a Stop when the session created a PR that is still OPEN
-# and the final message has no explicit handoff — and allow everything else.
+# and the final message has no explicit handoff — and must also block when a
+# delivery ends without closing the Linear loop, docs/CHANGELOG, or release.
 #
 # Fixtures use the REAL Claude Code transcript shape: tool_use blocks (with
 # the command) paired to tool_result blocks (with the PR URL) by tool_use_id.
-# gh is stubbed via a PATH shim so no network is touched; the stub reports
-# $FAKE_GH_STATE for most PRs, but pull/99 is always OPEN (someone else's).
+# gh, git, and linear are stubbed via a PATH shim so no network is touched.
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
 HOOK="$HERE/00-agent-verify-work-complete.sh"
@@ -18,14 +20,54 @@ trap 'rm -rf "$SANDBOX"' EXIT
 mkdir -p "$SANDBOX/bin"
 cat > "$SANDBOX/bin/gh" <<'STUB'
 #!/usr/bin/env bash
-# Minimal gh stub: `gh pr view <url> --json state --jq .state`
+# Minimal gh stub. `gh pr view --json state --jq .state` is used by the open-PR
+# gate and expects a bare state string; `gh pr view --json title,body,headRefName`
+# is used by the delivery gate and expects JSON.
 case "$*" in
-  *pull/99*) echo "OPEN" ;;
-  *)         echo "${FAKE_GH_STATE:-OPEN}" ;;
+  *pull/99*)                          echo "OPEN" ;;
+  *title,body,headRefName*)           echo "${FAKE_GH_JSON:-}" ;;
+  *--json*)                           echo "${FAKE_GH_STATE:-OPEN}" ;;
+  *)                                  echo "${FAKE_GH_STATE:-OPEN}" ;;
 esac
 STUB
 chmod +x "$SANDBOX/bin/gh"
+
+# --- git stub --------------------------------------------------------------
+# The hook runs git commands against the repo it infers from the transcript.
+# Stub them so tests are hermetic and not affected by the worktree branch name.
+cat > "$SANDBOX/bin/git" <<'STUB'
+#!/usr/bin/env bash
+case "$*" in
+  "rev-parse --abbrev-ref HEAD") echo "${FAKE_GIT_BRANCH:-feature/no-ticket}" ;;
+  "merge-base"*)                 echo "${FAKE_GIT_BASE:-abc123}" ;;
+  "log"*)                        echo "${FAKE_GIT_LOG:-}" ;;
+  "diff --name-only"*)           echo "${FAKE_GIT_FILES:-}" ;;
+  "diff HEAD~5..HEAD -- package.json") echo "${FAKE_GIT_PKGDIFF:-}" ;;
+  "describe --tags --abbrev=0")  echo "${FAKE_GIT_TAG:-}" ;;
+  *)                             echo "" ;;
+esac
+STUB
+chmod +x "$SANDBOX/bin/git"
+
+# --- linear stub -----------------------------------------------------------
+# Returns configurable state for any RUSH-XXXX ticket.
+cat > "$SANDBOX/bin/linear" <<'STUB'
+#!/usr/bin/env bash
+ticket=$(echo "$*" | grep -oE 'RUSH-[0-9]+' | head -1)
+state="${FAKE_LINEAR_STATE:-Done}"
+title="Fake ticket"
+printf '{"state":{"name":"%s"},"title":"%s"}\n' "$state" "$title"
+STUB
+chmod +x "$SANDBOX/bin/linear"
+
 export PATH="$SANDBOX/bin:$PATH"
+
+# Defaults so existing merged-PR tests pass the delivery gate.
+export FAKE_GH_JSON='{"title":"Widget","body":"","headRefName":"feature/no-ticket"}'
+export FAKE_GIT_BRANCH="feature/no-ticket"
+export FAKE_GIT_BASE="abc123"
+export FAKE_GIT_FILES=""
+export FAKE_LINEAR_STATE="Done"
 
 fail=0
 check() { if [ "$2" = "$3" ]; then echo "ok   - $1"; else echo "FAIL - $1: expected exit [$3] got [$2]"; fail=1; fi; }
@@ -37,7 +79,7 @@ check() { if [ "$2" = "$3" ]; then echo "ok   - $1"; else echo "FAIL - $1: expec
 mk_transcript() {
   local t="$SANDBOX/transcript-$RANDOM.jsonl"
   {
-    echo '{"type":"user","message":{"role":"user","content":"Please implement the widget feature and open a PR for it"}}'
+    echo '{"type":"user","message":{"role":"user","content":"Please implement the widget and open a PR for it"}}'
     echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"Working on it"}]}}'
     case "$1" in
       create|create+view)
@@ -311,5 +353,115 @@ TSHORT="$SANDBOX/short.jsonl"
 } > "$TSHORT"
 rc=$(FAKE_GH_STATE=OPEN run_hook "$TSHORT" "Want me to fix it? Say the word." false)
 check "parking phrasing in a <=2-turn session does not block" "$rc" "0"
+
+# --- delivery-chain close-the-loop gate (RUSH-2073) ---------------------------
+# Fixtures for the new delivery gate. The gate must fire on done-claims and on
+# PR merge/release finish-line stops, and must check Linear, docs/CHANGELOG,
+# release, and related tickets.
+
+FAKE_REPO="$SANDBOX/fakerepo"
+mkdir -p "$FAKE_REPO/.git"
+
+mk_delivery_transcript() {
+  local first_msg="${1:-Please implement the widget and open a PR for it}"
+  local repo_dir="${2:-$FAKE_REPO}"
+  local t="$SANDBOX/delivery-$RANDOM.jsonl"
+  {
+    echo "{\"type\":\"user\",\"message\":{\"role\":\"user\",\"content\":\"$first_msg\"}}"
+    echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"Working on it"}]}}'
+    echo "{\"type\":\"assistant\",\"message\":{\"role\":\"assistant\",\"content\":[{\"type\":\"tool_use\",\"id\":\"toolu_create1\",\"name\":\"Bash\",\"input\":{\"command\":\"cd $repo_dir && gh pr create --title widget\"}}]}}"
+    echo '{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_create1","content":[{"type":"text","text":"https://github.com/acme/widgets/pull/42\n"}]}]}}'
+    echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"step 2"}]}}'
+    echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"step 3"}]}}'
+  } > "$t"
+  echo "$t"
+}
+
+# D1. Done-claim + open Linear ticket in branch name -> delivery gate blocks.
+TD=$(mk_delivery_transcript "Please implement the widget")
+rc=$(FAKE_GH_STATE=MERGED FAKE_GIT_BRANCH=feature/RUSH-1234 FAKE_LINEAR_STATE=Todo run_hook "$TD" "All done. The widget is merged." false)
+check "done-claim + open ticket in branch name blocks" "$rc" "2"
+grep -q "STOP GATE (delivery)" "$SANDBOX/stderr" && echo "ok   - delivery gate names itself" || { echo "FAIL - delivery gate message missing"; fail=1; }
+grep -q "RUSH-1234" "$SANDBOX/stderr" && echo "ok   - delivery gate cites the open ticket" || { echo "FAIL - delivery gate did not cite ticket"; fail=1; }
+
+# D2. PR finish-line + ticket closed + evidence -> delivery gate allows stop.
+#     This avoids generic done-claim wording so the older self-audit gate does
+#     not intentionally fire after the delivery gate passes.
+rc=$(FAKE_GH_STATE=MERGED FAKE_GIT_BRANCH=feature/RUSH-1234 FAKE_LINEAR_STATE=Done run_hook "$TD" "Merged RUSH-1234. Evidence: tests passed." false)
+check "finish-line + closed ticket + evidence allows delivery stop" "$rc" "0"
+
+# D3. User-facing change + no docs/CHANGELOG -> blocks.
+TD_UF=$(mk_delivery_transcript "Please add a new --flag command to the widget")
+rc=$(FAKE_GH_STATE=MERGED FAKE_GIT_BRANCH=feature/no-ticket FAKE_GIT_FILES=src/widget.js run_hook "$TD_UF" "Merged the new flag." false)
+check "user-facing change without docs/CHANGELOG blocks" "$rc" "2"
+grep -q "missing docs and CHANGELOG" "$SANDBOX/stderr" && echo "ok   - delivery gate flags missing docs and CHANGELOG" || { echo "FAIL - delivery gate did not flag docs/changelog"; fail=1; }
+
+# D4. User-facing change + only CHANGELOG updated -> still blocks; docs and
+#     CHANGELOG are separate requirements.
+rc=$(FAKE_GH_STATE=MERGED FAKE_GIT_BRANCH=feature/no-ticket FAKE_GIT_FILES=$'CHANGELOG.md\nsrc/widget.js' run_hook "$TD_UF" "Merged the new flag. Evidence: screenshot /tmp/flag.png." false)
+check "user-facing change with only CHANGELOG still blocks" "$rc" "2"
+grep -q "missing docs" "$SANDBOX/stderr" && echo "ok   - delivery gate requires docs separately" || { echo "FAIL - delivery gate did not require docs separately"; fail=1; }
+
+# D4b. User-facing change + docs + CHANGELOG + evidence -> allows.
+rc=$(FAKE_GH_STATE=MERGED FAKE_GIT_BRANCH=feature/no-ticket FAKE_GIT_FILES=$'README.md\nCHANGELOG.md\nsrc/widget.js' run_hook "$TD_UF" "Merged the new flag. Evidence: screenshot /tmp/flag.png." false)
+check "user-facing change with docs + CHANGELOG + evidence allows delivery stop" "$rc" "0"
+
+# D5. Independently-shippable change + no release evidence -> blocks.
+SHIP_REPO="$SANDBOX/shiprepo"
+mkdir -p "$SHIP_REPO/.git"
+echo '{"name":"widget","version":"1.0.0"}' > "$SHIP_REPO/package.json"
+TD_SHIP=$(mk_delivery_transcript "Please release the widget extension" "$SHIP_REPO")
+rc=$(FAKE_GH_STATE=MERGED FAKE_GIT_BRANCH=feature/no-ticket FAKE_GIT_FILES=src/widget.js FAKE_GIT_TAG="" run_hook "$TD_SHIP" "Merged. The extension is ready to publish." false)
+check "shippable change without release evidence blocks" "$rc" "2"
+grep -q "release/live verification is incomplete" "$SANDBOX/stderr" && echo "ok   - delivery gate flags missing release/live verification" || { echo "FAIL - delivery gate did not flag release"; fail=1; }
+
+# D6. Independently-shippable change + release + live version check -> allows.
+rc=$(FAKE_GH_STATE=MERGED FAKE_GIT_BRANCH=feature/no-ticket FAKE_GIT_FILES=$'README.md\nCHANGELOG.md\nsrc/widget.js' FAKE_GIT_TAG=v1.1.0 run_hook "$TD_SHIP" "Merged and released v1.1.0. Verified live: npm view widget version -> 1.1.0." false)
+check "shippable change with release + live check allows delivery stop" "$rc" "0"
+
+# D7. PR body links a related ticket that is still open -> blocks.
+FAKE_GH_JSON_REL='{"title":"Widget fix","body":"Closes RUSH-1234. Relates to RUSH-5678.","headRefName":"feature/RUSH-1234"}'
+TD_REL=$(mk_delivery_transcript "Please fix the widget")
+rc=$(FAKE_GH_STATE=MERGED FAKE_GH_JSON="$FAKE_GH_JSON_REL" FAKE_LINEAR_STATE=Todo run_hook "$TD_REL" "Merged. RUSH-1234 is closed." false)
+check "open related ticket in PR body blocks" "$rc" "2"
+grep -q "RUSH-5678" "$SANDBOX/stderr" && echo "ok   - delivery gate cites related ticket" || { echo "FAIL - delivery gate did not cite related ticket"; fail=1; }
+
+# D8. Plain question (no done-claim, no PR) -> delivery gate must NOT fire.
+rc=$(run_hook "$TSHORT" "The config looks valid." false)
+check "plain question does not fire delivery gate" "$rc" "0"
+
+# D9. Probe error (linear crashes/returns garbage) -> fail open.
+cat > "$SANDBOX/bin/linear" <<'STUB'
+#!/usr/bin/env bash
+echo "garbage"
+exit 1
+STUB
+chmod +x "$SANDBOX/bin/linear"
+rc=$(FAKE_GH_STATE=MERGED FAKE_GIT_BRANCH=feature/RUSH-1234 run_hook "$TD" "All done. The widget is merged." false)
+check "linear probe error fails open to the older self-audit gate" "$rc" "2"
+grep -q "STOP GATE (delivery)" "$SANDBOX/stderr" && { echo "FAIL - delivery gate did not fail open on linear error"; fail=1; } || echo "ok   - delivery gate fails open on linear error"
+
+cat > "$SANDBOX/bin/linear" <<'STUB'
+#!/usr/bin/env bash
+ticket=$(echo "$*" | grep -oE 'RUSH-[0-9]+' | head -1)
+state="${FAKE_LINEAR_STATE:-Done}"
+title="Fake ticket"
+printf '{"state":{"name":"%s"},"title":"%s"}\n' "$state" "$title"
+STUB
+chmod +x "$SANDBOX/bin/linear"
+
+# D10. Delivery activity can come from a raw git merge, not only gh PR commands.
+TGIT="$SANDBOX/git-merge-transcript.jsonl"
+{
+  echo '{"type":"user","message":{"role":"user","content":"Please ship RUSH-2468 from the release branch."}}'
+  echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"Working"}]}}'
+  echo "{\"type\":\"assistant\",\"message\":{\"role\":\"assistant\",\"content\":[{\"type\":\"tool_use\",\"id\":\"toolu_gitmerge\",\"name\":\"Bash\",\"input\":{\"command\":\"cd $FAKE_REPO && git merge origin/release/RUSH-2468\"}}]}}"
+  echo '{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_gitmerge","content":[{"type":"text","text":"merge made by recursive strategy"}]}]}}'
+  echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"step 2"}]}}'
+  echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"step 3"}]}}'
+} > "$TGIT"
+rc=$(FAKE_GH_STATE=MERGED FAKE_GIT_BRANCH=release/RUSH-2468 FAKE_LINEAR_STATE=Todo run_hook "$TGIT" "Merged RUSH-2468." false)
+check "git merge finish-line triggers delivery gate" "$rc" "2"
+grep -q "RUSH-2468" "$SANDBOX/stderr" && echo "ok   - git merge delivery gate cites ticket" || { echo "FAIL - git merge delivery gate missed ticket"; fail=1; }
 
 exit $fail
