@@ -395,8 +395,10 @@ Before you can stop, do ONE of:
    own machine), say so explicitly ("needs your Touch ID" / "interactive login")
    — that phrasing clears this gate.
 3. If you are blocked and it is NOT a user-only gate, do NOT stop in this window:
-   fire  agents escalate "<one-line blocker>"  (message -> watch for reply ->
-   phone call if silent) and keep working every other thread meanwhile.
+   reach the user OUT-OF-BAND (message them) so you get their attention, keep
+   working every other thread meanwhile, and escalate if they do not reply. A
+   chat message in this window is a note in an empty room — the user is not
+   watching it.
 
 Then finish your final message and stop again.
 HBGATE
