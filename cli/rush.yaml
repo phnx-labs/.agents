@@ -1,0 +1,24 @@
+name: rush
+description: Rush — Phoenix Labs agent OS CLI (rush run/http/cloud/login/message) against api.prix.dev
+homepage: https://getrush.ai
+
+# `rush --version` prints the installed version once the binary is on PATH
+# (installs to ~/.rush/bin/rush; brew symlinks it into the brew prefix).
+check: rush --version
+
+# brew covers macOS + Linuxbrew (the fleet's Macs already have it as the
+# /opt/homebrew/bin/rush -> ~/.rush/bin/rush symlink). The cdn install.sh is the
+# no-package-manager fallback: it downloads the prebuilt binary for macOS + Linux,
+# verifies the SHA256, and drops it in ~/.rush/bin. NOTE: that script carries a
+# `#!/bin/bash` shebang and `agents cli install` runs `script:` methods via `sh`,
+# so on a brew-less host prefer `brew install phnx-labs/tap/rush` or run the
+# one-liner in bash directly (`curl -fsSL https://cdn.getrush.ai/install.sh | bash`).
+install:
+  - brew: phnx-labs/tap/rush
+  - script: https://cdn.getrush.ai/install.sh
+
+post_install: |
+  Authenticate with: rush login
+  Then verify: rush whoami
+  rush is the owner-notification path (`rush message send`) and the api.prix.dev
+  REST client (`rush http`) — a core requirement for the fleet.
