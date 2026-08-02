@@ -308,6 +308,103 @@ SWARMGATE
 fi
 # --- end swarm integration gate -----------------------------------------------
 
+# --- command-handback gate ----------------------------------------------------
+# The observed failure (a real correction — "No, you release it.."): an agent
+# prepares a runnable script the user did NOT ask it to hand over — it writes
+# /tmp/release.sh and its final message tells the user to RUN it — instead of
+# running it itself or escalating. This slips past every other gate: writing to
+# /tmp is unguarded, a DECLARATIVE handoff ("Run it when ready.") has no '?' so
+# the permission-stop guards miss it, and it makes no done-claim so the audit
+# gate below never sees it. The agent has the SAME shell + ssh the user does, so
+# handing over a command it could run is exactly the hand-back this repo bans.
+#
+# Fires only when BOTH hold, to stay high-precision (a bare /tmp script write is
+# often legitimate — a background job, the agent's own scratch):
+#   (1) this session WROTE a runnable script to a temp path — a Write/Edit tool
+#       to /tmp|/var/folders ...(.sh/.bash/.zsh/.command), or a shell
+#       redirect/heredoc/tee/cp that lands such a script there, AND
+#   (2) the final message DIRECTS the user to run/paste/execute it.
+# Exempts a genuine user-only gate (biometric / interactive login) — those are
+# legitimate handoffs the agent cannot perform. stop_hook_active (top of file)
+# makes it fire at most once; running the script (or naming the user-only gate)
+# clears it. Fail-open on any parse error.
+wrote_temp_script=$(python3 -c "
+import json, re, sys
+# A runnable script materialized under a temp dir (a place the USER would be told
+# to run from), by a file tool or a shell write.
+TEMP_SCRIPT_PATH = re.compile(r'/(?:tmp|var/folders/[\w./+-]+)/[\w.+-]+\.(?:sh|bash|zsh|command)\b')
+SHELL_WRITE = re.compile(r'(?:>>?|\btee\b|\bcat\s+>|\bcp\b\s+\S+\s+)\s*[\x22\x27]?/(?:tmp|var/folders/[\w./+-]+)/[\w.+-]+\.(?:sh|bash|zsh|command)')
+found = False
+try:
+    with open(sys.argv[1]) as f:
+        for raw in f:
+            raw = raw.strip()
+            if not raw:
+                continue
+            try:
+                rec = json.loads(raw)
+            except Exception:
+                continue
+            m = rec.get('message') if isinstance(rec.get('message'), dict) else rec
+            content = m.get('content') if isinstance(m, dict) else None
+            if not isinstance(content, list):
+                continue
+            for block in content:
+                if not isinstance(block, dict) or block.get('type') != 'tool_use':
+                    continue
+                inp = block.get('input') or {}
+                if block.get('name') in ('Write', 'Edit', 'MultiEdit', 'NotebookEdit'):
+                    if TEMP_SCRIPT_PATH.search(str(inp.get('file_path', ''))):
+                        found = True
+                if SHELL_WRITE.search(str(inp.get('command', ''))):
+                    found = True
+    print('yes' if found else 'no')
+except Exception:
+    print('no')
+" "$TRANSCRIPT_PATH" 2>/dev/null || echo "no")
+
+if [ "$wrote_temp_script" = "yes" ]; then
+  directs_user_to_run=$(echo "$INPUT_JSON" | python3 -c "
+import json, re, sys
+msg = json.load(sys.stdin).get('last_assistant_message', '').lower()
+# The final message hands the runnable thing to the USER to execute.
+RUN = re.compile(
+    r'\b(?:run|paste|execute|copy[- ]?paste|kick off) (?:it|this|that|the (?:script|command|following|one-?shot|file|snippet))\b'
+    r'|\byou(?:\x27ll| will)?\s+(?:need to|have to|can|should|just)?\s*(?:run|paste|execute)\b'
+    r'|\b(?:go ahead and|then|just|please|now) (?:run|paste|execute)\b'
+    r'|\brun (?:it|this) (?:when|once|after)\b'
+    r'|\bpaste (?:it|this|the following|the command)\b')
+# Genuine user-only gate the agent CANNOT perform — a legitimate handoff, no nag.
+EXEMPT = re.compile(
+    r'\b(?:biometric|touch ?id|face ?id|interactive login|sign in|log in|your password|'
+    r'2fa|one-?time code|authenticate in the browser|browser to authorize|approve on your (?:phone|device))\b')
+print('yes' if (RUN.search(msg) and not EXEMPT.search(msg)) else 'no')
+" 2>/dev/null || echo "no")
+
+  if [ "$directs_user_to_run" = "yes" ]; then
+    cat >&2 <<'HBGATE'
+STOP GATE (handback): You wrote a runnable script to a temp path and your final
+message tells the user to run it. You have the SAME shell + ssh the user does —
+handing them a command you could run yourself is the hand-back this repo exists
+to prevent ("No, you release it..").
+
+Before you can stop, do ONE of:
+1. RUN IT YOURSELF (the default — you almost always can). Execute the script or
+   command you just prepared, then report the real result.
+2. If a step genuinely needs the USER (a biometric, an interactive login on their
+   own machine), say so explicitly ("needs your Touch ID" / "interactive login")
+   — that phrasing clears this gate.
+3. If you are blocked and it is NOT a user-only gate, do NOT stop in this window:
+   fire  agents escalate "<one-line blocker>"  (message -> watch for reply ->
+   phone call if silent) and keep working every other thread meanwhile.
+
+Then finish your final message and stop again.
+HBGATE
+    exit 2
+  fi
+fi
+# --- end command-handback gate ------------------------------------------------
+
 # Check if Claude is claiming completion
 is_claiming_done=$(echo "$INPUT_JSON" | python3 -c "
 import json, re, sys
