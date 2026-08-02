@@ -106,6 +106,3 @@ hooks:
     matcher: Bash
     script: 01-git-require-clean-tree.sh
     timeout: 5
-run:
-  codex:
-    strategy: available
