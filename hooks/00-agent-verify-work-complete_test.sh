@@ -176,6 +176,13 @@ rc=$(FAKE_GH_STATE=MERGED run_hook "$T" "All done. The widget feature is merged.
 check "done-claim on real transcript shape blocks for self-audit" "$rc" "2"
 grep -q "You claimed this work is done" "$SANDBOX/stderr" && echo "ok   - done-claim gate cites the original request" || { echo "FAIL - no done-claim gate message"; fail=1; }
 
+# 8b. Regression: first_user_msg is extracted via `python3 -c "..."` inside $(...).
+#     A backtick in that python string is re-parsed by bash as a nested command
+#     substitution and throws "command substitution: syntax error" at runtime — the
+#     gate's exit code stays correct, so ONLY a stderr check catches it. The prior
+#     run (line above) exercised that path; assert it left no shell error behind.
+if grep -qiE "syntax error|command substitution" "$SANDBOX/stderr"; then echo "FAIL - hook emits a shell syntax error (backtick inside the python3 -c block)"; fail=1; else echo "ok   - no shell syntax error from the first_user_msg substitution"; fi
+
 # --- swarm integration gate -------------------------------------------------
 # A session that ran an edit-mode swarm (`agents teams start`) may not stop on
 # swarm-completion phrasing that the generic done-list doesn't catch.
