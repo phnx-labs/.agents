@@ -389,6 +389,16 @@ check "legit handoff-by-naming-owner does not trip stand-down" "$rc" "0"
 rc=$(FAKE_GH_STATE=OPEN run_hook "$TP" "Rolled back the migration; the schema is on the prior revision now." false)
 check "ordinary 'rolled back' prose does not trip stand-down" "$rc" "0"
 
+# S5. 'handing it back to you' (to the human) -> fires (the tightened pattern).
+rc=$(FAKE_GH_STATE=OPEN run_hook "$TP" "This one is above my pay grade — handing it back to you to decide." false)
+check "stand-down 'handing it back to you' blocks" "$rc" "2"
+
+# S6. 'handing it back to the main thread' (async prose) -> must NOT fire. This
+#     is the reviewer-found false positive: returning control to a technical
+#     entity is not a stand-down. The pattern now requires a HUMAN target.
+rc=$(FAKE_GH_STATE=OPEN run_hook "$TP" "Each handler now awaits the result before handing it back to the main thread; tests pass." false)
+check "async 'handing it back to the main thread' does not trip stand-down" "$rc" "0"
+
 # --- delivery-chain close-the-loop gate (RUSH-2073) ---------------------------
 # Fixtures for the new delivery gate. The gate must fire on done-claims and on
 # PR merge/release finish-line stops, and must check Linear, docs/CHANGELOG,

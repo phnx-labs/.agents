@@ -479,7 +479,11 @@ soft_parking = [
 standdown = [
     r'\bnot mine to (?:drive|own|finish|land|take|push|ship|complete|close|merge|run)\b',
     r'\b(?:is|it\'?s) yours,? not mine\b',
-    r'\bhanding (?:it|this|the pr|#?\d+) back\b',
+    # 'handing it back' must be TO THE HUMAN — bare 'handing it back to the main
+    # thread / caller / event loop' is legitimate async prose, not a stand-down.
+    # The screenshot failure ('handing it back and standing clear') still fires
+    # via the 'standing clear' pattern below, so no true positive is lost.
+    r'\bhanding (?:it|this|the pr|#?\d+) back to (?:you|your team|the user|muqsit)\b',
     r'\bstanding (?:clear|down)\b',
     r'\bi\'?ll stand (?:clear|down)\b',
     r'\bthis (?:one )?is (?:your|the user\'?s) (?:responsibility|job) to (?:drive|finish|own)\b',
