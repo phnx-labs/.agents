@@ -66,8 +66,14 @@ validate_yaml_file() {
 
 validate_json_file() {
     local file="$1"
-    if ! yq -p json '.' "$file" >/dev/null 2>&1; then
-        return 1
+    if command -v jq &>/dev/null; then
+        if ! jq '.' "$file" >/dev/null 2>&1; then
+            return 1
+        fi
+    else
+        if ! python3 -c "import json; json.load(open('$file'))" >/dev/null 2>&1; then
+            return 1
+        fi
     fi
 }
 

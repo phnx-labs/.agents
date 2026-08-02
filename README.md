@@ -196,7 +196,7 @@ Plugins bundle related skills, commands, hooks, and subagents into one installab
 | Plugin | Purpose |
 |--------|---------|
 | [`cloud`](plugins/cloud/) | Rush Cloud dispatch — `/cloud:run` runs a prompt on a managed cloud worker that opens a PR; `/cloud:accounts` wires Rush + Claude/Codex credentials |
-| [`code`](plugins/code/) | The coding loop — `/code:loop`, `/code:dispatch`, `/code:verify`, `/code:review`, `/code:ship`, `/code:sprint`, `/code:quality`, `/code:learn`, `/commit` |
+| [`code`](plugins/code/) | The coding loop — `/code:loop`, `/code:verify`, `/code:review`, `/code:ship`, `/code:quality`, `/code:learn`, `/commit` |
 | [`design`](plugins/design/) | Design workflows — mockups, redesigns, DESIGN.md specs |
 | [`fleet`](plugins/fleet/) | Fleet-wide ops across every registered machine — `/fleet:sync` pulls every repo to latest on every device and refreshes all agents (never clobbers local work); `/fleet:onboard` brings a bare device to parity |
 | [`git`](plugins/git/) | Pure git plumbing — `/git:prune` prunes merged branches/worktrees with hard data-loss guards; `/git:tag-release` cuts and pushes an annotated release tag |
@@ -238,7 +238,7 @@ Two supported paths — both keep this shipped repo pull-only:
 This repo is the lean, universal default. Heavier opt-in workflows — parallel coding loops, branded media generation — ship as a separate **extras** bundle:
 
 ```bash
-agents repo add gh:phnx-labs/.agents-extras   # /loop, /sprint, /dispatch, /verify, /animate, /image, /compose, /design
+agents repo add gh:phnx-labs/.agents-extras   # /verify, /animate, /image, /compose, /design
 agents repo list                              # confirm it registered
 ```
 
