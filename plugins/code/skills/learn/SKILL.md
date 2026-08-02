@@ -30,7 +30,7 @@ The plugin is the engineering loop, decomposed into verbs. A lesson about *how t
 ## Routing calls that aren't a code:* skill
 
 - **A tool gotcha** you hit while coding — a CLI, an editor, git behavior — belongs in *that tool's* skill (`computer`, `browser`, the `git` plugin), not stuffed into a `code:*` skill. Coding sessions surface tool lessons constantly; resist filing them under `code`.
-- **A hard engineering principle** ("done means end-to-end", "no unverified claims") is a rule, not a skill — `rules/subrules/core-hard-lines.md` and its siblings. Skills are procedures; rules are constraints.
+- **A hard engineering principle** ("done means end-to-end", "no unverified claims") is a rule, not a skill — `rules/subrules/foundations.md` and its siblings. Skills are procedures; rules are constraints.
 - **A new code:* skill** is justified only when a genuinely missing *verb* in the loop is the lesson — the way `code:ship` filled the gap after `merge`. A one-off, or a refinement to an existing verb, is a section edit, not a new skill. Apply the engine's bar: name the future situations first.
 
 ## Don't break the contracts

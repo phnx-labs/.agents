@@ -33,7 +33,7 @@ agents teams add my-feature codex  "Owns: src/ui/*. Not: src/auth/*. ..." --name
 agents teams start my-feature --watch
 ```
 
-Every brief includes Mission, Full scope, Owns, Must NOT touch, concrete code pattern, success criteria, and ends with the line from core-hard-lines #8. The `/teams` command is the long-form playbook.
+Every brief includes Mission, Full scope, Owns, Must NOT touch, concrete code pattern, success criteria, and ends with the evidence line from `research-discipline`. The `/teams` command is the long-form playbook.
 
 ## Completion contract (every edit-mode brief)
 
@@ -50,7 +50,7 @@ A teammate is done when its PR merges. **The orchestrator is not** — "all trac
 So the orchestrator's task is done only when:
 
 - The **composed cross-track flow has been triggered end-to-end** — the actual user path that crosses the seams the tracks share — and its **real output quoted**. Not "3/4 PRs merged", not "CI green on each", not a table of green checkmarks.
-- The verification runs against where the feature **actually executes** (the running daemon / installed binary / deployed service), not just `origin/main` — merged is not deployed, and code on `main` that no running process has loaded is not "working" (core-hard-lines #1).
+- The verification runs against where the feature **actually executes** (the running daemon / installed binary / deployed service), not just `origin/main` — merged is not deployed, and code on `main` that no running process has loaded is not "working" (F3).
 - If a seam genuinely can't be exercised, that hop is named as **unverified** in the recap — never folded into a "done end-to-end" claim. A green table is a report of merges, not proof of a working feature.
 
 Mechanical backstop: for a session that ran an edit-mode swarm, the `verify-work-complete` Stop hook fires a swarm-specific self-audit when the final message claims completion — demanding the composed cross-track flow's real output, not per-track CI.

@@ -1,7 +1,8 @@
-# Code Quality (Tier 2)
+# Code Quality
 
-> Tier 2 of 3 — companion tiers: `core-hard-lines` (Tier 1), `operational` (Tier 3).
+> Tactics that keep the code clean. See `foundations` (F1–F5) for the load-bearing stance.
 
+- **No fallbacks, no band-aids.** Never add "just in case" code paths. Standardize at the source. Every fallback hides a bug.
 - **No duplicate code.** Search before writing. Use or extend what exists.
 - **No scope creep.** Do exactly what was asked. No drive-by refactors, renames, or import reorganization.
 - **Cross-cutting changes go to the source.** Edit the canonical location, never ad-hoc logic in consumers. If no central place exists, propose refactoring first.

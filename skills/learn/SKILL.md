@@ -54,7 +54,7 @@ Read the matched transcripts (`file` field) and find the friction: a result the 
 - A problem seen **only in old** sessions, absent from recent ones, is likely already addressed → set `maybe_already_fixed: true` and check: does the target's current text (or `git log` on its file) already cover it? If yes, drop it or mark it resolved. Don't re-propose a fix that already landed.
 - The **same** problem across several sessions is the highest-value finding — record every session it appears in and set `recurrence_count`.
 
-For each problem, capture it **exactly as it happened**, grounded in the transcript (cite the session + line; quote the real moment — the user's actual words or the actual error). This is core-hard-lines #2: a problem you can't quote, you don't claim.
+For each problem, capture it **exactly as it happened**, grounded in the transcript (cite the session + line; quote the real moment — the user's actual words or the actual error). This is `research-discipline` (no unverified claims): a problem you can't quote, you don't claim.
 
 ### Step 3 — Build the findings and render the report
 
