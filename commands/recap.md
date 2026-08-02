@@ -84,7 +84,7 @@ Only keep items in "Recommended Next Steps" that genuinely need the user's input
 "Query the database to check X" → do it yourself. Don't list it.
 "Build 3 dashboard panels + run a config sweep across N files + investigate a UUID" → spawn a team. Don't list it.
 
-**HARD RULE 3 — No wastebasket bullets. Finish trivial loose ends yourself; turn small decisions into AskUserQuestion.**
+**No wastebasket bullets. Finish trivial loose ends yourself; make low-stakes decisions and note them, use `AskUserQuestion` only for genuine ambiguity.**
 
 A "wastebasket bullet" is anything in Recommended Next Steps that (a) you could just execute, or (b) is a tiny decision you're punting instead of reasoning about and proposing options. Both waste the user's time. Before writing the recap, walk the entire session and close these out.
 

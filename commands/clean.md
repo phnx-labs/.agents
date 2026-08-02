@@ -54,63 +54,60 @@ Evidence examples:
 
 If you cannot verify a finding, drop it.
 
-## Clarify
+## Propose and execute
 
-If anything is unclear, ask before proceeding. Examples:
-- "FeatureX and FeatureY appear to do the same thing. Which is canonical?"
-- "This function is unused but exported. Is it part of the public API?"
+For each verified finding, propose a concrete fix, then execute it unless it is genuinely ambiguous or risky. Explain what you changed and why. Do not stop for approval on obvious, safe cleanups.
 
-Do not assume. Ask.
+Genuine reasons to pause and surface to the user:
+- The finding touches a public API or user-facing behavior and you're unsure of intent.
+- Removing code would break a consumer you cannot identify.
+- The cleanup spans multiple ownership boundaries.
 
-## Propose
-
-For each verified finding, propose a concrete fix. Explain what to change
-and why it solves the problem.
+Everything else — doc drift fixes, dead-code removal, consolidating duplicate helpers, renaming for clarity — you execute directly.
 
 ## Output
 
 ### Summary
 One paragraph. What areas need cleanup and the overall state.
 
+### Completed
+What you already fixed, with commit/PR links where applicable.
+
 ### Findings
 
-Group by category in priority order. For each finding:
+Group by category in priority order. For each finding you acted on or parked:
 
 #### Outdated
 **[file or component name]**
 - What: description of what's outdated
 - Evidence: how you verified this
-- Fix: what to update or remove
+- Fix: what you changed or removed
 
 #### Near-duplicates
 **[the duplicate implementations]**
 - What: the two or more implementations
 - Evidence: how they've diverged
-- Fix: which to keep, how to unify
+- Fix: which you kept, how you unified them
 
 #### Scattered Sources of Truth
 **[the concept]**
-- Locations: where each definition lives
-- Fix: where to centralize, what to remove
+- Locations: where each definition lived
+- Fix: where you centralized it, what you removed
 
 #### Complex Patterns
 **[file:function or component]**
 - What: the complexity
-- Fix: how to simplify
+- Fix: how you simplified it
 
 #### Dead Code
 **[file or export]**
-- Evidence: why it's unreachable or unused
-- Fix: remove
+- Evidence: why it was unreachable or unused
+- Fix: removed
 
 #### Naming/Organization
 **[the issue]**
-- Current: what it's called or where it lives
-- Proposed: better name or location
+- Current: what it was called or where it lived
+- Changed: better name or location
 
-### Clarifications
-Questions for the user before proceeding. Skip if none.
-
-### Execution Plan
-Ordered list of changes to make. Group by area. Ready to execute after
-user approval.
+### Parked
+Findings that genuinely need the user's input, credentials, judgment, or authorization. Include the smallest next step for each.

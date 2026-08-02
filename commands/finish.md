@@ -84,7 +84,8 @@ transcript as a **secret** gist for an audit trail (never `--public` unless the 
 you've reviewed the transcript):
 
 ```bash
-git rev-parse --abbrev-ref HEAD          # confirm not on main/master
+BASE=$(git symbolic-ref --short refs/remotes/origin/HEAD | sed 's#^origin/##')
+git rev-parse --abbrev-ref HEAD          # confirm not on $BASE
 git push -u origin HEAD
 gh pr create --title "..." --body "..."
 agents sessions --last 50 --markdown > /tmp/session-export.md

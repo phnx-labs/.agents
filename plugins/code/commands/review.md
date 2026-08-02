@@ -92,8 +92,8 @@ If the result is empty, say so and stop — "No PRs opened in this session to re
 For each candidate PR, record `{number, title, head, base, author, draft, ci_state, mergeable, url}`. Then construct the stack graph:
 
 - If PR B's `baseRefName` equals PR A's `headRefName`, B is **stacked on** A. Draw an edge A → B.
-- If multiple PRs share the same base (e.g., `main`), they are **independent** — flat list, no edges.
-- A chain A → B → C must merge in order A, then B, then C. After A merges, B's base auto-retargets (or needs `gh pr edit <B> --base main` + a rebase). Document that.
+- If multiple PRs share the same base (e.g., the default branch), they are **independent** — flat list, no edges.
+- A chain A → B → C must merge in order A, then B, then C. After A merges, B's base auto-retargets (or needs `gh pr edit <B> --base $BASE` + a rebase, where `$BASE` is the default branch). Document that.
 
 Validate the graph with `gh pr view <n> --json baseRefName,headRefName` for each PR — don't trust the cached list if it's older than a few minutes.
 
@@ -126,7 +126,7 @@ Rules for the table:
 - **Use the Notes column** for duplicate flags, "stacked on #X", "draft", "conflicts" — not extra rows.
 - Empty cells use `—` (em dash) or blank, not `N/A` or `null`.
 
-Flag any PR that looks like a **duplicate** or **already-merged-elsewhere** in the Notes column — confirm with `git rev-list --count <head>..origin/main` and `git log origin/main --grep "<title>"` before claiming it.
+Flag any PR that looks like a **duplicate** or **already-merged-elsewhere** in the Notes column — confirm with `git rev-list --count <head>..origin/$BASE` and `git log origin/$BASE --grep "<title>"` (where `$BASE` is the default branch) before claiming it.
 
 ### 5. Spawn one review subagent per PR — in parallel
 
@@ -158,7 +158,7 @@ Answer EXACTLY these five questions, in this order, with file:line evidence quot
 Then give ONE verdict:
   - SHIP — all five answers are good. State why this is safe to merge in ONE sentence.
   - REQUEST_CHANGES — list 1-5 bullet points, each with file:line and the exact change needed. No prose around them.
-  - CLOSE_DUPLICATE — the work is already in main (quote the commit) or another open PR (quote the #).
+  - CLOSE_DUPLICATE — the work is already in the default branch (quote the commit) or another open PR (quote the #).
 
 Do NOT propose abstractions, renames, doc additions, test additions for trivial code, naming preferences, or "what if later." Do NOT relitigate lint/format. The bar is "reasonable and meets the goal," not "perfect."
 
@@ -204,7 +204,7 @@ EOF
 )"
 ```
 
-Then merge. Strategy by default: **rebase** — replay the PR's commits onto main so the granular per-commit history is preserved (this matches the `code:commit` micro-commit philosophy; squashing would throw away exactly the one-concept-per-commit history those commits were authored to create). Only squash when a PR's commits are genuine throwaway WIP ("wip", "fix typo", "address review") that should not land individually. Use `--auto` only if CI is still running.
+Then merge. Strategy by default: **rebase** — replay the PR's commits onto the default branch so the granular per-commit history is preserved (this matches the `code:commit` micro-commit philosophy; squashing would throw away exactly the one-concept-per-commit history those commits were authored to create). Only squash when a PR's commits are genuine throwaway WIP ("wip", "fix typo", "address review") that should not land individually. Use `--auto` only if CI is still running.
 
 ```bash
 gh pr merge <N> --rebase --delete-branch
@@ -212,7 +212,7 @@ gh pr merge <N> --rebase --delete-branch
 # gh pr merge <N> --squash --delete-branch
 ```
 
-For stacked PRs: after merging the base, the next PR's base auto-retargets on GitHub if it was set to the previous head — but if your tooling didn't enable that, run `gh pr edit <next> --base main` and confirm `mergeStateStatus` becomes `clean` before merging the next one.
+For stacked PRs: after merging the base, the next PR's base auto-retargets on GitHub if it was set to the previous head — but if your tooling didn't enable that, run `gh pr edit <next> --base $BASE` (where `$BASE` is the default branch) and confirm `mergeStateStatus` becomes `clean` before merging the next one.
 
 **7b. REQUEST_CHANGES verdict — comment with concrete asks.**
 
@@ -239,7 +239,7 @@ Do NOT auto-request review from the user via `gh pr review --request-changes` un
 Quote the commit or PR that already contains the work, then close.
 
 ```bash
-gh pr comment <N> --body "Closing as duplicate — this work is already in main as <SHA> (\"<commit subject>\") merged at <date>. The diff between this branch and main is empty modulo whitespace: \`git diff origin/main..<head>\` returns 0 substantive changes."
+gh pr comment <N> --body "Closing as duplicate — this work is already in the default branch as <SHA> (\"<commit subject>\") merged at <date>. The diff between this branch and the default branch is empty modulo whitespace: \`git diff origin/$BASE..<head>\` returns 0 substantive changes."
 gh pr close <N> --delete-branch
 ```
 
@@ -271,15 +271,15 @@ A stack is a chain `main ← A ← B ← C`. The rules:
 - **Review order: leaf-down or root-up — your choice.** Either works; subagents run in parallel anyway. The verdicts come back independent.
 - **Merge order: strictly root-up.** A before B before C. Never merge a child before its parent — that creates phantom commits in the child's diff and confuses subsequent reviews.
 - **If the base verdict is REQUEST_CHANGES, every PR stacked on top is also blocked.** Mark them `BLOCKED — waiting on #<base>` and do not merge them, even if their own verdict was SHIP.
-- **After merging A, retarget B's base to `main`** if GitHub didn't do it automatically: `gh pr edit <B> --base main`. Then re-check `mergeable` before merging B.
+- **After merging A, retarget B's base to the default branch** if GitHub didn't do it automatically: `gh pr edit <B> --base $BASE`. Then re-check `mergeable` before merging B.
 - **If B has merge conflicts after A lands**, do NOT rebase/force-push on the author's behalf without explicit user approval (F5 — protect what you can't undo). Comment on B explaining the conflict and stop the chain.
 
 ## Duplicate detection
 
 A PR is a duplicate when one of these is true — verify with a command before claiming it:
 
-1. **Already in main:** `git rev-list --count <head>..origin/main` returns the same count as `git rev-list --count <base>..origin/main` (i.e., the head adds nothing). Also confirm with `git diff origin/main..<head> -- <files-changed>` returning empty/whitespace-only.
-2. **Squashed-merged elsewhere:** the PR's commit messages or diff are subsumed by a recent main commit. Find it: `git log origin/main --oneline --since="14 days ago" | grep -i "<keyword from PR title>"`. Confirm the diff overlap by hand.
+1. **Already in default branch:** `git rev-list --count <head>..origin/$BASE` returns the same count as `git rev-list --count <base>..origin/$BASE` (i.e., the head adds nothing). Also confirm with `git diff origin/$BASE..<head> -- <files-changed>` returning empty/whitespace-only.
+2. **Squashed-merged elsewhere:** the PR's commit messages or diff are subsumed by a recent default-branch commit. Find it: `git log origin/$BASE --oneline --since="14 days ago" | grep -i "<keyword from PR title>"`. Confirm the diff overlap by hand.
 3. **Open elsewhere:** another open PR touches a strict superset of the same files for the same goal. Quote the PR number and the file overlap.
 
 If you cannot run one of these commands and get a definitive answer, the verdict is NOT `CLOSE_DUPLICATE` — fall back to `REQUEST_CHANGES` with "needs human triage: possible duplicate of <SHA/#>".
