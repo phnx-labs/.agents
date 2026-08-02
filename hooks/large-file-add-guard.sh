@@ -82,7 +82,7 @@ report_friction() {  # $1=failureId  $2=error-message
   _friction_id=$1
   _friction_msg=$2
   (agents _internal friction --surface guard --id "$_friction_id" \
-    --error "$_friction_msg" --command "$_friction_cmd" </dev/null >/dev/null 2>/dev/null || true) &
+    --error "$_friction_msg" --command "$_friction_cmd" || true) </dev/null >/dev/null 2>&1 &
 }
 
 check_path() {
