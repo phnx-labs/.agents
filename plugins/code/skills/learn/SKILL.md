@@ -19,13 +19,13 @@ The plugin is the engineering loop, decomposed into verbs. A lesson about *how t
 | The lesson is about… | Skill |
 |---|---|
 | Draining a queue, conflict-graph parallelism, rebasing, what "done" means | `code:loop` |
-| Scoping a single task, picking inline / agent / venue | `code:dispatch` |
 | Proving end-to-end, which canonical test per changed surface | `code:verify` |
 | Pre-merge review, security pass, merge verdict | `code:review` |
 | Publishing / activating / confirming-live a distributable | `code:ship` |
-| Time-boxed multi-track parallel push | `code:sprint` |
 | Read-only code-health diagnostics | `code:quality` |
 | Splitting a working tree into logical commits | `code:commit` |
+
+Single-task routing (inline / `agents run` / `agents teams` / `cloud:run`) is no longer a separate skill — lessons about picking the right primitive belong in `code:loop` if they affect queue handling, or in the relevant tool skill (`teams`, `cloud:run`) if they are primitive-specific.
 
 ## Routing calls that aren't a code:* skill
 
@@ -35,6 +35,6 @@ The plugin is the engineering loop, decomposed into verbs. A lesson about *how t
 
 ## Don't break the contracts
 
-The `code:*` skills compose: `code:loop` calls `code:dispatch`, `code:verify`, `code:review`, `code:ship` by name (see `loop/SKILL.md` "Tools you compose"). So an edit to one verb's *contract* — what `code:verify` returns, what `code:ship` checks before it calls something shipped — can ripple to its callers. Before you change a skill's promised output or gate, grep the other `code:*` skills for references to it and keep the contract intact (or update every caller in the same scoped change). Additive sections are safe; contract changes are not — treat them like an API change.
+The `code:*` skills compose: `code:loop` calls `code:verify`, `code:review`, `code:ship` by name (see `loop/SKILL.md` "Tools you compose"). So an edit to one verb's *contract* — what `code:verify` returns, what `code:ship` checks before it calls something shipped — can ripple to its callers. Before you change a skill's promised output or gate, grep the other `code:*` skills for references to it and keep the contract intact (or update every caller in the same scoped change). Additive sections are safe; contract changes are not — treat them like an API change.
 
 The rest — the gates, the rejects-list, non-regression discipline, verify-then-ship — is the `learn` engine. Follow it.
