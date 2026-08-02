@@ -54,6 +54,20 @@ mk_transcript() {
         echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_view2","name":"Bash","input":{"command":"gh pr view https://github.com/acme/widgets/pull/99 --json state"}}]}}'
         echo '{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_view2","content":[{"type":"text","text":"https://github.com/acme/widgets/pull/99 is OPEN, reviewing it"}]}]}}'
         ;;
+      inherited)
+        # No `gh pr create` this session — a PRIOR session opened pull/42; THIS
+        # session drives it (merge/checks), so it is responsible for it.
+        echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_chk1","name":"Bash","input":{"command":"gh pr checks https://github.com/acme/widgets/pull/42 --watch"}}]}}'
+        echo '{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_chk1","content":[{"type":"text","text":"all checks passing"}]}]}}'
+        echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_mrg1","name":"Bash","input":{"command":"gh pr merge https://github.com/acme/widgets/pull/42 --rebase"}}]}}'
+        echo '{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_mrg1","content":[{"type":"text","text":"merge attempted"}]}]}}'
+        ;;
+      inherited-view)
+        # A single incidental `gh pr view` of an unrelated OPEN PR (pull/99) —
+        # no create, no merge/checks. Must NOT attribute the PR to this session.
+        echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_iv1","name":"Bash","input":{"command":"gh pr view https://github.com/acme/widgets/pull/99 --json state"}}]}}'
+        echo '{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_iv1","content":[{"type":"text","text":"glanced at pull/99 for context"}]}]}}'
+        ;;
     esac
     case "$1" in
       swarm)
@@ -196,5 +210,68 @@ rc=$(FAKE_GH_STATE=MERGED run_hook "$NT" "All done. The auth refactor is complet
 check "done-claim on noise-led transcript blocks" "$rc" "2"
 grep -q "refactor the auth module" "$SANDBOX/stderr" && echo "ok   - gate quotes the real ask, not the jump command" || { echo "FAIL - gate did not quote the real ask"; fail=1; }
 if grep -qE "bash-input|system-reminder|Request interrupted" "$SANDBOX/stderr"; then echo "FAIL - gate leaked harness noise"; fail=1; else echo "ok   - gate does not leak bash-input/system-reminder/interrupt noise"; fi
+
+# --- inherited-PR gate (Fix A) ----------------------------------------------
+# A session may INHERIT an open PR a prior session created, drive it
+# (gh pr checks/merge), and then try to stop with it unmerged. That PR is never
+# in this transcript's `pr create` result, so the create-only gate was blind;
+# the worked-PR signal must now catch it.
+TI=$(mk_transcript inherited)
+
+# A1. Inherited PR still OPEN (session ran gh pr merge/checks, no create),
+#     no handoff -> the gate must fire even though this session never created it.
+rc=$(FAKE_GH_STATE=OPEN run_hook "$TI" "CI is green and it is reviewed. Presenting the merge choice: 1) merge 2) hold." false)
+check "inherited open PR (worked, not created) blocks" "$rc" "2"
+grep -q "created OR worked" "$SANDBOX/stderr" && echo "ok   - inherited-PR gate names created-or-worked" || { echo "FAIL - inherited gate message not updated"; fail=1; }
+
+# A2. Same inherited PR but MERGED -> allow (the gate checks live state, not
+#     mere presence, so a session that actually merged it can stop).
+rc=$(FAKE_GH_STATE=MERGED run_hook "$TI" "Merged it and cleaned up the branch." false)
+check "inherited PR that is merged allows stop" "$rc" "0"
+
+# A3. Inherited PR OPEN but explicit handoff -> the existing escape still applies.
+rc=$(FAKE_GH_STATE=OPEN run_hook "$TI" "PR #42 is handed off to the release watcher, which owns the PR from here." false)
+check "inherited open PR with explicit handoff allows stop" "$rc" "0"
+
+# A4. A single incidental `gh pr view` of an unrelated OPEN PR (no create, no
+#     merge/checks) -> must NOT be attributed to this session -> allow.
+TV=$(mk_transcript inherited-view)
+rc=$(FAKE_GH_STATE=OPEN run_hook "$TV" "Glanced at #99 for context; nothing owed here." false)
+check "incidental single view of an unrelated PR does not block" "$rc" "0"
+
+# --- parking / offer-instead-of-do done-gate (Fix B) ------------------------
+# A session that PARKS the obvious next step behind the user ('want me to…',
+# 'on your go', 'say the word') instead of doing it must be challenged, even
+# though those phrases are in neither the done-signal list nor the swarm list.
+# Uses a plain transcript (no PR, no swarm) with >2 assistant turns.
+TP=$(mk_transcript plain)
+
+# B1. 'want me to … on your go' parking -> the self-audit gate must fire.
+rc=$(FAKE_GH_STATE=OPEN run_hook "$TP" "Want me to build the current main into a .vsix and install it? I can do it on your go." false)
+check "parking 'want me to … on your go' blocks for self-audit" "$rc" "2"
+grep -q "You claimed this work is done" "$SANDBOX/stderr" && echo "ok   - parking routes through the self-audit GATE" || { echo "FAIL - parking did not reach the self-audit gate"; fail=1; }
+
+# B2. A GENUINE clarifying question that offers alternatives -> must NOT fire
+#     (the agent legitimately cannot pick between the options).
+rc=$(FAKE_GH_STATE=OPEN run_hook "$TP" "Which environment should I target for the deploy — dev or prod?" false)
+check "genuine either/or intent question does not trip parking gate" "$rc" "0"
+
+# B3. 'should I proceed' with no alternatives offered -> parking -> fire.
+rc=$(FAKE_GH_STATE=OPEN run_hook "$TP" "Should I proceed with releasing the build now?" false)
+check "parking 'should I proceed' (no choice offered) blocks" "$rc" "2"
+
+# B4. A plain status report with none of the parking idioms -> must NOT fire.
+rc=$(FAKE_GH_STATE=OPEN run_hook "$TP" "The refactor landed in commit abc123; tests were not run yet." false)
+check "plain status report (no parking idiom) allows stop" "$rc" "0"
+
+# B5. Parking phrasing but only 2 turns (short Q&A) -> must NOT fire (turn gate).
+TSHORT="$SANDBOX/short.jsonl"
+{
+  echo '{"type":"user","message":{"role":"user","content":"Can you look at the config and tell me if it is valid?"}}'
+  echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"Looking"}]}}'
+  echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"Want me to fix it? Say the word."}]}}'
+} > "$TSHORT"
+rc=$(FAKE_GH_STATE=OPEN run_hook "$TSHORT" "Want me to fix it? Say the word." false)
+check "parking phrasing in a <=2-turn session does not block" "$rc" "0"
 
 exit $fail
