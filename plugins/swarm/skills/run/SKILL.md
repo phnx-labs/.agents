@@ -1,6 +1,6 @@
 ---
 name: run
-description: "Run any task across a swarm — the generic fan-out mode. Decompose an arbitrary goal into independent tracks, spawn a mixed team of parallel agents (claude/codex/gemini), monitor to completion, and synthesize. The catch-all `/swarm:*` command for work that doesn't fit the specialized modes (plan/debug/test/qa). Use when a task is wide enough that one agent would serialize 4+ independent pieces of work. Triggers on: 'swarm run', 'fan this out', 'distribute this across agents', 'run this as a swarm', 'parallelize this task'."
+description: "Run any task across a swarm — the generic fan-out mode. Decompose an arbitrary goal into independent tracks, spawn a mixed team of parallel agents (claude/codex/antigravity), monitor to completion, and synthesize. The catch-all `/swarm:*` command for work that doesn't fit the specialized modes (plan/debug/test/qa). Use when a task is wide enough that one agent would serialize 4+ independent pieces of work. Triggers on: 'swarm run', 'fan this out', 'distribute this across agents', 'run this as a swarm', 'parallelize this task'."
 argument-hint: "[task, goal, or scope to distribute across the swarm]"
 allowed-tools: Bash(agents teams*), Bash(agents run*), Bash(agents sessions*), Bash(agents view*), Bash(git status*), Bash(git log*), Bash(git diff*), Bash(git show*), Bash(rg*), Bash(fd*), Bash(ls*), Read(*), Grep(*), Glob(*), WebSearch(*), WebFetch(*)
 user-invocable: true
@@ -33,7 +33,7 @@ A swarm earns its cost only when there are **≥2 genuinely independent tracks**
 
 Follow `swarm:orchestrate` exactly:
 
-1. **Discover providers** — `agents teams doctor` / `agents view --json`. Mix across the ones that are installed AND signed in; diversity across claude/codex/gemini is the point. If only one is up, say so and proceed single-provider.
+1. **Discover providers** — `agents teams doctor` / `agents view --json`. Mix across the ones that are installed AND signed in; diversity across claude/codex/antigravity is the point. If only one is up, say so and proceed single-provider.
 2. **Size by judgment** — no fixed table. Wide/gnarly/cross-cutting work gets more tracks; a narrow job gets one (or none). Spend agents where uncertainty is highest.
 3. **Show the Swarm Distribution Plan and get an explicit go** before creating the team (the orchestrate template: goal, per-track owns / must-not-touch / verification / after, boundary contracts). Fanning out the wrong plan wastes a wall-clock window, so this gate holds even under "work without stopping."
 4. **`--mode plan`** for read-only tracks (research, audit, analysis); **`--mode edit`** only for tracks that change code. Isolate every edit-mode track so two tracks never write the same file.

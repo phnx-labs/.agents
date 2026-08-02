@@ -36,7 +36,7 @@ shortcuts:
       agents teams create rethink-<short-slug>
       agents teams add <team> claude  "<angle task>" --name product-lens
       agents teams add <team> codex   "<angle task>" --name tradeoffs-lens
-      agents teams add <team> gemini  "<angle task>" --name steelman-opposite
+      agents teams add <team> antigravity  "<angle task>" --name steelman-opposite
       agents teams start <team>
       agents teams status <team> --since <ts>   # poll until all finish
       agents teams logs <teammate>               # read a specific teammate
@@ -73,7 +73,7 @@ shortcuts:
         1. Load the `debug` skill — it encodes the project's debugging workflow.
         2. Trace the full data path end-to-end. If data flows A → B → C → D, open A, B, C, AND D. Quote file:line from each. Skipping files in the middle is how you misdiagnose (Hard Line #3: NO LAZY DEBUGGING).
         3. Spawn parallel agents for independent verification (parallelize — Hard Line #11):
-           - Codex agent via `agents teams` — reproduce the bug from scratch       - Gemini agent via `agents teams` — cross-check the data flow independently
+           - Codex agent via `agents teams` — reproduce the bug from scratch       - Antigravity agent via `agents teams` — cross-check the data flow independently
        - Opus Agent subagent — deep review of the suspected module
        Every agent prompt MUST end with the exact line:
        `Return file:line quotes for every claim. Do NOT paraphrase. If you can't quote it, don't claim it.`
@@ -90,7 +90,7 @@ shortcuts:
     Reread your last response. List every factual claim you made. For each one, read the actual code right now and verify it. Be brutally honest — mark each claim as VERIFIED (with file:line proof) or WRONG (with what the code actually says). Do not defend your prior answer — investigate it like someone else wrote it.
 
     STEP 2 — TEAM VERIFY (after step 1):
-    Spawn codex and gemini agents via `agents teams`. Give them the full context: what the user asked, what you claimed, and the relevant file paths. Do NOT share your step 1 results or your conclusions — we don't want to bias their analysis. Ask them to independently verify the claims by reading the code themselves and arriving at their own conclusions.
+    Spawn codex and antigravity agents via `agents teams`. Give them the full context: what the user asked, what you claimed, and the relevant file paths. Do NOT share your step 1 results or your conclusions — we don't want to bias their analysis. Ask them to independently verify the claims by reading the code themselves and arriving at their own conclusions.
 
     STEP 3 — SYNTHESIZE (after team returns):
     Compare your self-reflection (step 1) with the independent team results (step 2). Where all three agree, that's the answer. Where they disagree, read the disputed code one more time and resolve with evidence, not majority vote. Present the final verified answer with file:line citations for every claim.

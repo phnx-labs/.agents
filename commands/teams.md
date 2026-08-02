@@ -41,7 +41,7 @@ agents teams add <team-name> <agent> "prompt" --name <role> --worktree <role> --
 | claude | Deep analysis, architecture, complex code |
 | codex | Fast implementation, straightforward tasks |
 | cursor | Debugging, tracing, bug fixes |
-| gemini | Multi-system features, large context |
+| antigravity | Multi-system features, large context |
 
 **Prompt must include:**
 - Background: what and why

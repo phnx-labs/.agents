@@ -43,7 +43,7 @@ agents teams create qa-<app-slug>
 agents teams add qa-<app-slug> claude "<brief: flow A @ port 3001>" --name w1-flowA --mode plan
 agents teams add qa-<app-slug> codex  "<brief: flow B @ port 3002>" --name w1-flowB --mode plan
 # Wave 2 — starts when wave 1 frees the ports/agents
-agents teams add qa-<app-slug> gemini "<brief: flow C @ port 3001>" --name w2-flowC --after w1-flowA --mode plan
+agents teams add qa-<app-slug> antigravity "<brief: flow C @ port 3001>" --name w2-flowC --after w1-flowA --mode plan
 agents teams add qa-<app-slug> claude "<brief: flow D @ port 3002>" --name w2-flowD --after w1-flowB --mode plan
 agents teams start qa-<app-slug> --watch
 ```

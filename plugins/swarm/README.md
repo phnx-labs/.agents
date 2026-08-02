@@ -18,7 +18,7 @@ The shared engine — provider discovery (`agents teams doctor` / `agents view -
 ## Principles
 
 - **`agents teams`, not Swarm MCP.** Run `agents teams --help` / `agents teams doctor` if unfamiliar. Disband teams when done.
-- **Discover, then mix.** Probe which providers are installed and signed in (`agents teams doctor`, `agents view --json`), then mix across the available ones — diversity across claude/codex/gemini is the point, never three of one model "verifying" each other.
+- **Discover, then mix.** Probe which providers are installed and signed in (`agents teams doctor`, `agents view --json`), then mix across the available ones — diversity across claude/codex/antigravity is the point, never three of one model "verifying" each other.
 - **Size by judgment, not a table.** A capable orchestrator scales agent and verifier count to task complexity — wide for gnarly work, one for narrow.
 - **Blinded verification.** When the swarm's job is to *check* a conclusion, withhold your hypothesis. Convergence, not confirmation.
 - **`--mode plan` for read-only** (research, audit, verify, QA-observe); `--mode edit` only when a track changes code or writes bug reports.

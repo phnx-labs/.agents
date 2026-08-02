@@ -197,14 +197,14 @@ corrupting the plan.
 agents teams doctor                       # see which vendor agents are installed
 agents teams create plan-<topic>
 agents teams add plan-<topic> codex  "<blind brief>" --name p1 --mode plan
-agents teams add plan-<topic> gemini "<blind brief>" --name p2 --mode plan
+agents teams add plan-<topic> antigravity "<blind brief>" --name p2 --mode plan
 agents teams add plan-<topic> cursor "<blind brief>" --name p3 --mode plan
 agents teams start plan-<topic> --watch
 agents teams logs plan-<topic> p1   # ...read each, then:
 agents teams disband plan-<topic>
 ```
 
-**Variety is the requirement — a MIX of vendors** (`codex`/`gemini`/`cursor`/`claude`), not N
+**Variety is the requirement — a MIX of vendors** (`codex`/`antigravity`/`cursor`/`claude`), not N
 copies of one; same vendor = same blind spots. **How many is your judgment**, scaled to the
 feature's breadth. Each planner is **`--mode plan`** (reads code, never edits).
 

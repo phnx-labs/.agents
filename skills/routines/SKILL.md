@@ -14,7 +14,7 @@ Schedule agents to run on a cron schedule or one-shot at a specific time. Routin
 
 A YAML job with four parts:
 
-- **Which agent** — claude, codex, gemini, cursor, opencode
+- **Which agent** — claude, codex, antigravity, cursor, opencode
 - **When** — cron schedule (recurring) or specific time (one-shot)
 - **What task** — the prompt for the agent
 - **Execution constraints** — mode, effort, timeout

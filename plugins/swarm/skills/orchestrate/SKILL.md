@@ -1,6 +1,6 @@
 ---
 name: orchestrate
-description: "Fan a task out across a swarm of parallel coding agents via `agents teams` — the engine behind every /swarm:* command. Build a distribution plan with boundary contracts, spawn a mixed team (claude/codex/gemini), monitor, and synthesize. Use whenever a task is wide enough that one agent would serialize 4+ independent edits, or when you want independent agents to verify a conclusion instead of trusting one. Triggers on: 'swarm', 'fan out', 'spin up a team', 'parallel agents', 'distribute this', 'independent verification'."
+description: "Fan a task out across a swarm of parallel coding agents via `agents teams` — the engine behind every /swarm:* command. Build a distribution plan with boundary contracts, spawn a mixed team (claude/codex/antigravity), monitor, and synthesize. Use whenever a task is wide enough that one agent would serialize 4+ independent edits, or when you want independent agents to verify a conclusion instead of trusting one. Triggers on: 'swarm', 'fan out', 'spin up a team', 'parallel agents', 'distribute this', 'independent verification'."
 argument-hint: "[task, plan, or question to distribute across the swarm]"
 allowed-tools: Bash(agents teams*), Bash(agents run*), Bash(agents sessions*), Bash(git status*), Bash(git log*), Bash(git diff*), Bash(rg*), Bash(fd*), Bash(ls*), Read(*), Grep(*), Glob(*), WebSearch(*), WebFetch(*)
 user-invocable: true
@@ -26,7 +26,7 @@ agents teams logs <slug> <role>                              # read one teammate
 agents teams disband <slug>                                  # tear down when synthesis is done
 ```
 
-- **Mix agents** when available (`claude`, `codex`, `gemini`, `cursor`, `opencode`) — different models have different blind spots. That diversity is the entire point of a swarm; never spawn three of the same model to "verify" each other.
+- **Mix agents** when available (`claude`, `codex`, `antigravity`, `cursor`, `opencode`) — different models have different blind spots. That diversity is the entire point of a swarm; never spawn three of the same model to "verify" each other.
 - **`--mode plan`** (read-only) for research, audit, planning, verification. **`--mode edit`** only when the track changes code.
 - **Never** leave a team running. Disband when done.
 
@@ -37,7 +37,7 @@ Two decisions, both yours as the orchestrator, before you write the distribution
 **Which providers** — never assume a CLI is installed and logged in. Probe first:
 
 ```bash
-agents teams doctor          # JSON: which agent CLIs are installed (claude/codex/gemini/cursor/opencode)
+agents teams doctor          # JSON: which agent CLIs are installed (claude/codex/antigravity/cursor/opencode)
 agents view --json           # installed versions + signed-in status per agent
 ```
 
@@ -83,7 +83,7 @@ Show this and get an explicit **go** before creating the team. Fanning out the w
 ### Goal
 [one or two sentences — what we're building / proving / cleaning]
 
-### Track: <kebab-name>  (agent: claude|codex|gemini, mode: plan|edit)
+### Track: <kebab-name>  (agent: claude|codex|antigravity, mode: plan|edit)
 - Goal: [specific deliverable, 1–2 sentences]
 - Owns: [exact files/globs this track may modify]
 - Must NOT touch: [files owned by other tracks]

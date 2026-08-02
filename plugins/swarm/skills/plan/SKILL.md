@@ -41,7 +41,7 @@ Structure the plan as a change proposal, not prose. (You don't need the `openspe
 
 ## 5. Verify — the swarm plans it blind
 
-Fan out via `agents teams` (mechanics in `swarm:orchestrate`). Check who's signed in (`agents teams doctor` / `agents view --json`), then spawn 1–2 verifiers on **different** providers than yourself (codex, gemini, …) — count by judgment, more for a wide or high-stakes plan. **`--mode plan`** (read-only).
+Fan out via `agents teams` (mechanics in `swarm:orchestrate`). Check who's signed in (`agents teams doctor` / `agents view --json`), then spawn 1–2 verifiers on **different** providers than yourself (codex, antigravity, …) — count by judgment, more for a wide or high-stakes plan. **`--mode plan`** (read-only).
 
 Give each verifier: the feature description, the relevant context (key files, how the system works, your web-search citations). Do **NOT** share your proposed approach — ask them to independently produce their own plan. (Blinded verification per `swarm:orchestrate`.)
 
