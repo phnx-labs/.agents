@@ -28,7 +28,7 @@ local machine and silently targets a path that doesn't exist on the remote.
 
 ## Spread across harnesses — don't just spin up more of yourself
 
-Dispatch whichever harness (codex / grok / droid / gemini / claude) is confirmed
+Dispatch whichever harness (codex / grok / droid / antigravity / claude) is confirmed
 working on the target box, not a default clone of your own type. Spreading the load
 across harnesses is the point of the fleet.
 

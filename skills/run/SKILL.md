@@ -127,8 +127,8 @@ Strategy is ignored when `@version` is pinned, a profile is used, or `--fallback
 Retry on rate-limit by handing off to another agent via `/continue`.
 
 ```bash
-agents run claude "..." --fallback codex,gemini
-agents run claude "..." --fallback codex@0.116.0,gemini
+agents run claude "..." --fallback codex,antigravity
+agents run claude "..." --fallback codex@0.116.0,antigravity
 ```
 
 Primary runs first; on rate-limit error, the next agent picks up.
@@ -252,7 +252,7 @@ agents logs <id> -f          # re-attach to a running one and follow
 | `--verbose` | Detailed logs |
 | `--timeout 30m` | Kill after duration |
 | `--session-id <id>` | Resume conversation (Claude) |
-| `--fallback codex,gemini` | Rate-limit fallback chain |
+| `--fallback codex,antigravity` | Rate-limit fallback chain |
 | `-b, --balanced` | Shortcut for `--strategy balanced` |
 | `--strategy pinned\|available\|balanced` | Version selection |
 | `--acp` | Route via Agent Client Protocol |
