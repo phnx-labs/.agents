@@ -8,6 +8,8 @@ A crash, reboot, or a pile of mid-task sessions has left work in limbo. Pick it 
 
 The shape of the job: find the sessions that were actually interrupted, understand what each still needs, finish what an agent can finish, and hand back only what truly needs the user. Carry the right mindset; the mechanics are yours to work out.
 
+- **Reattach to live sessions first.** A session may still be running inside a tmux pane or terminal tab locally or on a remote device. For each interrupted session, try `agents sessions focus <id> --attach-only` before doing anything else. On exit 0, hand off to the live session. Only on failure proceed to headless recovery.
+
 - **Don't resume what's already done.** Plenty of sessions finished their last turn and have nothing left. Read enough to tell interrupted-mid-task from idle, and act only on the former. `agents sessions` finds and reads them across every version home (a plain `claude --resume` sees only one); the raw transcripts are append-only, so a crash doesn't corrupt them.
 
 - **Read cheaply, in parallel.** Use read-only subagents to understand the sessions — don't relaunch them just to find out what they were doing.

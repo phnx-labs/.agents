@@ -74,21 +74,23 @@ Verifier: <who runs /verify after — me / autodev / sprint>
 Ticket: <RUSH-XXX or "ad-hoc">
 ```
 
-Show it via `AskUserQuestion` with two options: "Proceed" (default) and "Edit plan". Do not include a "stop" option — hard line.
+For inline-bucket tasks, skip the plan presentation and just do the work.
 
-For inline-bucket tasks, skip the question and just do the work.
+For other buckets, present the plan concisely, then proceed on the default path. Only use `AskUserQuestion` if the scope is genuinely ambiguous or the user explicitly asked to approve each dispatch. Do not include a "stop" option — the user can always interrupt.
 
 ### Step 4 — Set up the workspace
 
-**Local venue** — per CLAUDE.md hard line, worktrees live in `<repo>/.agents/worktrees/<slug>/`:
+**Local venue** — worktrees live in `<repo>/.agents/worktrees/<slug>/` (F5: protect what you can't undo):
 
 ```bash
 REPO=$(git rev-parse --show-toplevel)
 SLUG=<short-kebab-from-task>
 WT=$REPO/.agents/worktrees/$SLUG
 
-git -C $REPO fetch origin main
-git -C $REPO worktree add -b $SLUG $WT origin/main
+git -C $REPO fetch origin
+git -C $REPO remote set-head origin --auto
+BASE=$(git -C $REPO symbolic-ref --short refs/remotes/origin/HEAD | sed 's#^origin/##')
+git -C $REPO worktree add -b $SLUG $WT origin/$BASE
 ```
 
 **Rush Cloud venue** — no local worktree. The cloud pod clones the repo at HEAD and creates the branch on push:
@@ -178,7 +180,7 @@ Report in the chat:
 
 **For local dispatches:**
 - Worktree path
-- Agent CLI + session id (if available — `agents sessions --active` lists it)
+- Agent CLI + session id (if available — `agents sessions --active` lists it; `agents sessions focus <id> --attach-only` reattaches to a live session)
 - Expected wall-clock minutes for the longest path
 - The exact `/verify` invocation to run when the agent reports done
 
@@ -189,14 +191,14 @@ Report in the chat:
 - The exact `/verify` invocation to run when the cloud execution completes (PR URL appears in `rush cloud status`)
 
 Then keep the conversation open. Do NOT propose to stop. Polling:
-- Local: `agents teams status` or `agents sessions --active`
+- Local: `agents teams status` or `agents sessions --active`; reattach to a live session with `agents sessions focus <id> --attach-only`
 - Cloud: `rush cloud list` (all executions) or `rush cloud status <id>` (one)
 
 Surface blockers to the user — don't wait silently.
 
 ## Don'ts
 
-- Don't bypass the worktree for local dispatches. Per CLAUDE.md hard line, every local PR-bound task lives in `.agents/worktrees/`.
+- Don't bypass the worktree for local dispatches. Every local PR-bound task lives in `.agents/worktrees/` (F5).
 - Don't ship the brief without the evidence line — agents lie about what they read otherwise.
 - Don't pick "sprint" for fewer than 3 tracks. Sprint coordination overhead eats its own gains below that.
 - Don't combine "autodev" with a multi-surface task. Autodev assumes one ticket = one PR scope.

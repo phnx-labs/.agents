@@ -75,7 +75,7 @@ Agents execute precise targets; they do not explore. Before the distribution pla
 
 ## Distribution plan — REQUIRED before any spawn
 
-Show this and get an explicit **go** before creating the team. Fanning out the wrong plan wastes a wall-clock window of agent time, so this gate holds even when the user has said "work without stopping."
+Show the distribution plan as a concise checkpoint, then proceed on the default path. Only stop for genuine scope/design ambiguity, not for a permission gate. Fanning out the wrong plan wastes a wall-clock window, so make the plan concrete enough that it can be executed without re-asking.
 
 ```
 ## Swarm Distribution Plan
@@ -143,7 +143,7 @@ When the swarm's job is to *check* a conclusion (debug root cause, plan soundnes
 ## Post-completion (edit-mode swarms)
 
 - **Run the integration checklist FIRST — this is what "done" means for a swarm.** Every track's PR merging green does **not** mean the composed feature works: each teammate's tests and reviewer only saw its own half, so the seam between tracks (track A calls what track B built) is the one thing nobody verified — and it's exactly where the feature breaks. Take the seam list from Pre-spawn integration discovery and **run each seam's command against where the feature actually executes** (the running daemon / installed binary / deployed service — merged to `main` is not deployed), then **quote the real output**. A caller/callee mismatch (`imsg` shells out to `agents mission-control digest`; the digest track shipped `mission-control-digest`) passes every per-track check and dies here. If a seam can't be exercised, call that hop **unverified** — never fold it into "done end-to-end".
-- Verify each track's real flow (core hard line: "done" = end-to-end, not "code written").
+- Verify each track's real flow (F3: "done" = the verified user-visible outcome, not "code written").
 - Run the relevant test suite; report pass/fail with quoted output.
 - Disband the team.
 - Recap: what each track shipped (commit/PR URLs), **the composed-flow verification with its quoted output**, what's deferred/unverified and why, verification proof per track. A table of green checkmarks is a report of merges, not proof of a working feature. No human-time estimates — wall-clock minutes, edit counts, or token cost only.

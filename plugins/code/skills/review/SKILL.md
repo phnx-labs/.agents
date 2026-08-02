@@ -1,6 +1,6 @@
 ---
 name: review
-description: "Pre-merge review of a PR by a sub-agent (not the author). Picks single-agent (Sonnet/Haiku) or `agents teams` based on diff size + surface count; auto-detects but accepts override. Scans the diff for neighboring canonical patterns BEFORE spawning, then briefs the reviewer with file:line evidence demands. Reviewer focuses on missed tests, missing E2E proof / screenshots, missed docs, missed pattern reuse, increasing messiness, and — when the diff touches a risk surface — a security pass that classifies by vulnerability class and filters false positives hard. Every finding cites file:line + quoted code; no paraphrase. Triggers on: 'review the PR', 'code review', 'review #N', 'sub-agent review', 'before I merge', 'gate this PR', 'security review', 'check this for vulnerabilities'."
+description: "Pre-merge review of a PR by a sub-agent (not the author). Picks single-agent (Sonnet) or `agents teams` based on diff size + surface count; auto-detects but accepts override. Scans the diff for neighboring canonical patterns BEFORE spawning, then briefs the reviewer with file:line evidence demands. Reviewer focuses on missed tests, missing E2E proof / screenshots, missed docs, missed pattern reuse, increasing messiness, and — when the diff touches a risk surface — a security pass that classifies by vulnerability class and filters false positives hard. Every finding cites file:line + quoted code; no paraphrase. Triggers on: 'review the PR', 'code review', 'review #N', 'sub-agent review', 'before I merge', 'gate this PR', 'security review', 'check this for vulnerabilities'."
 argument-hint: "[PR# | branch | worktree path] [--single|--team] [--haiku|--sonnet] [--security]"
 allowed-tools: Bash(gh *), Bash(git diff*), Bash(git log*), Bash(git status*), Bash(git rev-parse*), Bash(git show*), Bash(git ls-tree*), Bash(git blame*), Bash(rg*), Bash(ls*), Bash(wc*), Bash(agents *), Read(*), Agent(*)
 user-invocable: true
@@ -47,11 +47,11 @@ Auto-classify when no flag is set. The bias is toward cheap.
 
 | Signal | Shape | Model |
 |---|---|---|
-| ≤ 3 files changed, all docs (`*.md`) | Single | Haiku |
+| ≤ 3 files changed, all docs (`*.md`) | Single | Sonnet |
 | ≤ 10 files, ≤ 300 lines net, one surface | Single | Sonnet |
 | > 10 files OR > 300 lines OR ≥ 3 surfaces touched | Team | Sonnet per teammate |
-| Pure dependency bump / lockfile only | Single | Haiku |
-| Touches security / auth / billing surface | Single (or team) | Sonnet — never Haiku |
+| Pure dependency bump / lockfile only | Single | Sonnet |
+| Touches security / auth / billing surface | Single (or team) | Sonnet |
 
 "Surface" = one of the project's top-level modules (e.g. `app`, `api`, `web`, `cli`, `infra`, `docs`). Count distinct top-level surfaces touched.
 
@@ -62,7 +62,7 @@ Dispatch: single-agent (Sonnet)
 Why: 3 files, 173 lines, one surface (api), no auth/billing.
 ```
 
-User override happens via the `--single`/`--team`/`--haiku`/`--sonnet` flags. Don't ask.
+User override happens via the `--single`/`--team`/`--sonnet` flags. Don't ask.
 
 ## Step 3 — Pattern grounding (BEFORE spawning the reviewer)
 
@@ -89,9 +89,9 @@ Build a short "patterns to compare against" list — 3-5 specific file:line cita
 
 ## Step 4 — Spawn the reviewer
 
-### Single-agent path (Sonnet or Haiku)
+### Single-agent path (Sonnet)
 
-Spawn ONE `Agent` call with `subagent_type: "claude"` and `model: "sonnet"` (or `"haiku"`). The prompt is structured as the brief below. **Critical**: end every reviewer prompt with the file:line grounding line (the project's evidence hard line).
+Spawn ONE `Agent` call with `subagent_type: "claude"` and `model: "sonnet"`. The prompt is structured as the brief below. **Critical**: end every reviewer prompt with the file:line grounding line (research discipline: no unverified claims).
 
 ### Team path (`agents teams`)
 
@@ -241,7 +241,7 @@ Post one comment to the PR via `gh pr comment <N> --body-file <synthesized>.md`.
 
 | Verdict | Action |
 |---|---|
-| READY TO MERGE | `gh pr merge <N> --rebase --auto` (if CI green) or merge directly if CI is N/A. Rebase preserves the PR's individual commits; squash only for throwaway-WIP commit series. Then close the worktree. |
+| READY TO MERGE | `gh pr merge <N> --rebase` after CI is green and a non-author review is clear. Rebase preserves the PR's individual commits; squash only for throwaway-WIP commit series. Then close the worktree. |
 | CHANGES REQUESTED | Leave the comment. Iterate inside the same worktree — additional commits, `git push`. Do NOT spawn a fresh review until changes land. |
 | BLOCKED | Surface to the user via `AskUserQuestion`. In an unattended run (headless/cron, no interactive user), skip the question — state the BLOCKED verdict and its reasons in your output so the orchestrator can park the ticket and notify. Don't unilaterally close or revert. |
 
@@ -259,5 +259,5 @@ A red required check isn't automatically a code problem. Before you treat "CI fa
 2. Every finding cites file:line + quoted code. No paraphrase.
 3. Pattern criticisms name the specific pattern by file:line. No generic "follow existing patterns."
 4. The 5 non-checks list is a HARD non-checks list. Reviewers who add nits get re-prompted.
-5. Default to cheap (Haiku for trivial, Sonnet for default, team only when diff demands it).
+5. Default to Sonnet; use a team only when the diff spans multiple surfaces. Never omit `model`.
 6. Security findings are verified at the sink before they ship — no "CRITICAL" survives without a file:line quote and a traced path from user input. Public keys, router-level auth, and uncalled CVEs are filtered, not reported.
