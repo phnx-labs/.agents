@@ -710,6 +710,12 @@ Before you can stop, you MUST:
    - DONE but UNTESTED (state what verification is missing, then go do it)
    - NOT DONE (continue working on it now)
 4. If ANY goal is UNTESTED or NOT DONE, keep working. Do not stop.
+5. Once EVERY goal is DONE and verified, post ONE quick status update the way you
+   would update a human manager — the headline outcome + the one link/next-step,
+   not a transcript:
+       agents feed post "<what you delivered + the one thing that needs the user>"
+   This is how the user hears you finished (it surfaces on the feed and can be
+   forwarded to their phone). Post it, THEN stop.
 
 Only stop when every goal has tangible, verified results.
 GATE
