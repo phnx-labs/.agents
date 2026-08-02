@@ -466,10 +466,26 @@ soft_parking = [
     r'\bwant me to\b',
     r'\bshould i (?:go ahead|proceed|continue|start|kick off|do that|do it|run it|ship it|release it|merge it|build it)\b',
 ]
+# Stand-down: the agent DELIBERATES about ownership and refuses to drive work it
+# was asked to do (is-yours-not-mine-to-drive, handing-it-back-and-standing-clear)
+# — often citing a sibling session as the excuse. F1 is explicit: a sibling
+# session on the same surface is coordinate-and-continue, NEVER stand-down; the
+# user asked YOU. These are unambiguous refusals to drive, so (like
+# strong_parking) they fire on their own, regardless of is_choice.
+# Handoff-by-naming-an-owner (handed-off-to-a-named-watcher) does NOT match these
+# — that legitimate escape lives in the open-PR gate above.
+standdown = [
+    r'\bnot mine to (?:drive|own|finish|land|take|push|ship|complete|close|merge|run)\b',
+    r'\b(?:is|it\'?s) yours,? not mine\b',
+    r'\bhanding (?:it|this|the pr|#?\d+) back\b',
+    r'\bstanding (?:clear|down)\b',
+    r'\bi\'?ll stand (?:clear|down)\b',
+    r'\bthis (?:one )?is (?:your|the user\'?s) (?:responsibility|job) to (?:drive|finish|own)\b',
+]
 # A genuine clarifying question offers alternatives — NOT next-step parking.
 is_choice = bool(re.search(r'\bwhich\b', msg) or re.search(r'\b\w+ or \w+\b', msg)
                  or 'prefer' in msg or 'either' in msg)
-parked = any(re.search(p, msg) for p in strong_parking)
+parked = any(re.search(p, msg) for p in strong_parking + standdown)
 if not parked and not is_choice:
     parked = any(re.search(p, msg) for p in soft_parking)
 
