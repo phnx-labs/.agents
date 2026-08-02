@@ -1,7 +1,7 @@
 ---
 name: review
 description: "Pre-merge review of a PR by a sub-agent (not the author). Picks single-agent (Sonnet) or `agents teams` based on diff size + surface count; auto-detects but accepts override. Scans the diff for neighboring canonical patterns BEFORE spawning, then briefs the reviewer with file:line evidence demands. Reviewer focuses on missed tests, missing E2E proof / screenshots, missed docs, missed pattern reuse, increasing messiness, and — when the diff touches a risk surface — a security pass that classifies by vulnerability class and filters false positives hard. Every finding cites file:line + quoted code; no paraphrase. Triggers on: 'review the PR', 'code review', 'review #N', 'sub-agent review', 'before I merge', 'gate this PR', 'security review', 'check this for vulnerabilities'."
-argument-hint: "[PR# | branch | worktree path] [--single|--team] [--haiku|--sonnet] [--security]"
+argument-hint: "[PR# | branch | worktree path] [--single|--team] [--security]"
 allowed-tools: Bash(gh *), Bash(git diff*), Bash(git log*), Bash(git status*), Bash(git rev-parse*), Bash(git show*), Bash(git ls-tree*), Bash(git blame*), Bash(rg*), Bash(ls*), Bash(wc*), Bash(agents *), Read(*), Agent(*)
 user-invocable: true
 ---
@@ -20,7 +20,6 @@ If you (the orchestrator) opened this PR in the current session — and most of 
 
 - **Target**: PR number (`#356` or `356`), branch slug, or worktree path. Empty = current HEAD.
 - **`--single`** / **`--team`**: force the dispatch shape.
-- **`--haiku`** / **`--sonnet`**: force the model on a single-agent review. Default Sonnet.
 - **`--security`**: force the deep security pass (Step 4b) even if the diff doesn't obviously touch a risk surface. Use before a launch, when auditing an unfamiliar contributor's PR, or when the change is small but sensitive.
 
 Resolve into:
@@ -243,7 +242,7 @@ Post one comment to the PR via `gh pr comment <N> --body-file <synthesized>.md`.
 |---|---|
 | READY TO MERGE | `gh pr merge <N> --rebase` after CI is green and a non-author review is clear. Rebase preserves the PR's individual commits; squash only for throwaway-WIP commit series. Then close the worktree. |
 | CHANGES REQUESTED | Leave the comment. Iterate inside the same worktree — additional commits, `git push`. Do NOT spawn a fresh review until changes land. |
-| BLOCKED | Surface to the user via `AskUserQuestion`. In an unattended run (headless/cron, no interactive user), skip the question — state the BLOCKED verdict and its reasons in your output so the orchestrator can park the ticket and notify. Don't unilaterally close or revert. |
+| BLOCKED | An external dependency or decision outside your reach blocks this PR. Document the blocker, park the ticket in the tracker's blocked state with a concise comment, and move on. Do not unilaterally close or revert. In an interactive session, state the blocker in one line; in unattended mode, park it and continue without waiting. |
 
 A red required check isn't automatically a code problem. Before you treat "CI failing" as CHANGES REQUESTED, read the **step-level** conclusions, not just the job's pass/fail — `gh api repos/<owner>/<repo>/actions/jobs/<id> --jq '.steps[] | "\(.conclusion)\t\(.name)"'`. Self-hosted runners flake: a job shows "fail" when only its `checkout`/`setup`/cache step died on a stale workspace, while the actual test step never ran. That's infra — fix the runner or re-run the failed jobs (`gh run rerun <run-id> --failed`), don't send a clean PR back for changes it doesn't need.
 
