@@ -1,5 +1,10 @@
 # Changelog
 
+## [0.1.84] - 2026-08-01
+
+### Added
+- **Every rendered plan now carries a provenance chip row — a plan is no longer an anonymous orphan.** Plans render as durable HTML artifacts that outlive the session, but the `plan-render` house structure captured only `files touched / new helpers / status` in the hero — nothing said *who* produced the plan, *on what box*, or *which session to reopen* to continue the work. The hero now has a second `.meta.prov` chip row with five values sourced from the session at render time: **harness** (claude / codex / grok / …), **agent** (the model / profile, e.g. `opus-4.8`), **host** (the machine, e.g. `yosemite-s0`), **session** (the short session id), and the render **date** — plus an optional `session-label` chip. The same line repeats in the `.foot` so it survives a scroll-to-bottom or a print/PDF. `skills/plan-render/template.html` (new `.prov` style + hero row + foot line), `example.html` (gold reference updated to match), `skills/plan-render/SKILL.md` (new "Provenance" subsection with a per-field source table, updated Hero/foot bullets, new checklist item), and the `plan-presentation` rule (`rules/subrules/plan-presentation/rule.md` + regenerated `rules/AGENTS.md`).
+
 ## [0.1.83] - 2026-08-01
 
 ### Changed

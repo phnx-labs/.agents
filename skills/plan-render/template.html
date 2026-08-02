@@ -47,6 +47,9 @@
   .chip{font-family:var(--mono);font-size:11.5px;color:var(--dim);border:1px solid var(--line);
     border-radius:999px;padding:4px 11px;background:var(--panel)}
   .chip b{color:var(--ink);font-weight:500}
+  .prov{margin-top:10px}
+  .prov .chip{font-size:11px;opacity:.82}
+  .prov .chip b{color:var(--cyan)}
   h2{font-size:23px;margin:52px 0 8px;letter-spacing:-.01em;scroll-margin-top:20px}
   h2 .n{font-family:var(--mono);color:var(--accent);font-size:15px;margin-right:10px;opacity:.85}
   h3{font-size:16.5px;margin:26px 0 8px;color:var(--ink)}
@@ -115,6 +118,13 @@
     <span class="chip"><b>N</b>&nbsp;new helpers</span>
     <span class="chip">status: <b>awaiting go</b></span>
   </div>
+  <div class="meta prov">
+    <span class="chip">harness: <b>claude</b></span>
+    <span class="chip">agent: <b>opus-4.8</b></span>
+    <span class="chip">host: <b>yosemite-s0</b></span>
+    <span class="chip">session: <b>39a9f321</b></span>
+    <span class="chip"><b>2026-08-01</b></span>
+  </div>
   <nav class="toc">
     <a href="#s1">01 · section</a>
     <a href="#s2">02 · section</a>
@@ -168,7 +178,9 @@
 <span class="k">export function</span> example() { <span class="k">return</span> <span class="s">'ok'</span> }</pre>
 
 <div class="foot">
-  product · plan mode · rendered by plan-render &nbsp;·&nbsp; next: <span style="color:var(--accent)">go / reshape</span>
+  product · plan mode · rendered by plan-render &nbsp;·&nbsp;
+  claude · opus-4.8 · yosemite-s0 · session 39a9f321 · 2026-08-01 &nbsp;·&nbsp;
+  next: <span style="color:var(--accent)">go / reshape</span>
 </div>
 
 </div>
