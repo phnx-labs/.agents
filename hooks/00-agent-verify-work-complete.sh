@@ -7,6 +7,8 @@ set -euo pipefail
 # Exit 0 = allow stop
 # Exit 2 = block stop, stderr becomes feedback to Claude
 
+HERE="$(cd "$(dirname "$0")" && pwd)"
+
 # Portable timeout: macOS ships neither `timeout` nor `gtimeout` by default.
 _to() {
   if command -v timeout >/dev/null 2>&1; then timeout "$@"
@@ -384,8 +386,67 @@ if parked:
 print('no')
 " 2>/dev/null || echo "no")
 
-# Not claiming done — allow stop (answering a question, asking user, etc.)
-if [ "$is_claiming_done" != "yes" ]; then
+# Did this session run a delivery command even if the final message avoids the
+# generic done phrases? Keep this anchored to command positions so grepping or
+# editing this hook does not count as running a merge/create.
+delivery_activity=$(python3 -c "
+import json, re, sys
+
+CMD_POS = r'(?:^|[\n;&]\s*|\\\$\(\s*)'
+ACTIVITY = re.compile(CMD_POS + r'(?:gh\s+pr\s+(?:create|merge)\b|git\s+(?:-C\s+\S+\s+)?merge\b)')
+seen = False
+try:
+    with open(sys.argv[1]) as f:
+        for raw in f:
+            raw = raw.strip()
+            if not raw:
+                continue
+            try:
+                rec = json.loads(raw)
+            except Exception:
+                continue
+            msg = rec.get('message') if isinstance(rec.get('message'), dict) else rec
+            content = msg.get('content') if isinstance(msg, dict) else None
+            if not isinstance(content, list):
+                continue
+            for block in content:
+                if isinstance(block, dict) and block.get('type') == 'tool_use':
+                    cmd = str((block.get('input') or {}).get('command', ''))
+                    if ACTIVITY.search(cmd):
+                        seen = True
+                        raise SystemExit
+except SystemExit:
+    pass
+except Exception:
+    seen = False
+print('yes' if seen else 'no')
+" "$TRANSCRIPT_PATH" 2>/dev/null || echo "no")
+
+# Decide whether this stop is the end of a delivery.
+#   - Claiming done -> delivery gate.
+#   - Created/worked a PR, or ran gh/git delivery activity, and the final
+#     message treats merge/release as the finish line -> delivery gate (the
+#     open-PR gate already handled OPEN PRs).
+delivery_trigger="no"
+if [ "$is_claiming_done" = "yes" ]; then
+  delivery_trigger="yes"
+elif [ -n "$responsible_prs" ] || [ "$delivery_activity" = "yes" ]; then
+  has_merge_phrase=$(echo "$INPUT_JSON" | python3 -c "
+import json, re, sys
+msg = json.load(sys.stdin).get('last_assistant_message', '').lower()
+pats = [
+    r'\bmerged\b', r'\bdone\b', r'\bshipped\b', r'\breleased\b',
+    r'\bpublished\b', r'\bcomplete\b', r'\blanded\b',
+]
+print('yes' if any(re.search(p, msg) for p in pats) else 'no')
+" 2>/dev/null || echo "no")
+  if [ "$has_merge_phrase" = "yes" ]; then
+    delivery_trigger="yes"
+  fi
+fi
+
+# Neither a done claim nor a PR finish line -> allow stop (answering a question, etc.)
+if [ "$delivery_trigger" != "yes" ]; then
   exit 0
 fi
 
@@ -410,6 +471,33 @@ print(turns)
 " "$TRANSCRIPT_PATH" 2>/dev/null || echo "0")
 
 if [ "${turn_count:-0}" -le 2 ]; then
+  exit 0
+fi
+
+# --- Delivery-chain close-the-loop gate ---------------------------------------
+# A stop at the end of a delivery must close the loop on Linear, docs/CHANGELOG,
+# and release. This gate is evidence-based: it parses the actual branch name,
+# PR title/body, and commit messages for Linear ticket ids, then checks whether
+# they are still open and whether the delivery artifacts exist. It fails open:
+# any probe error allows the stop.
+delivery_gate_msg=$(python3 - "$INPUT_JSON" "$responsible_prs" <<'PY' | python3 "$HERE/verify-delivery-chain.py" 2>/dev/null
+import json, sys
+data = json.loads(sys.argv[1])
+refs = [r.strip() for r in sys.argv[2].splitlines() if r.strip()]
+data["responsible_prs"] = refs
+data["delivery_activity"] = True
+print(json.dumps(data))
+PY
+)
+
+if [ -n "$delivery_gate_msg" ]; then
+  echo "$delivery_gate_msg" >&2
+  exit 2
+fi
+# --- end delivery-chain close-the-loop gate -----------------------------------
+
+# Not claiming done -> no further gates (PR finish-line deliveries pass here).
+if [ "$is_claiming_done" != "yes" ]; then
   exit 0
 fi
 
