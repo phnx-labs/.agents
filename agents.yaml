@@ -39,6 +39,15 @@ hooks:
       - SessionStart
     script: 08-inject-repo-inflight.sh
     timeout: 10
+    # Measured 5648ms — 68% of SessionStart wall-clock on its own. It shells out to
+    # `gh pr list` and `agents sessions`, so the cost is network + subprocess, not
+    # compute. Keyed per-cwd because the payload is "open PRs and live sessions in THIS
+    # checkout". 5m-bg serves the cached answer instantly and refreshes behind it, so
+    # there is no staleness cliff. Also switches on `agents hooks profile` for this hook.
+    cache:
+      ttl: 5m
+      key: per-cwd
+      prefetch: background
   attention-sentinel:
     agents:
       - claude
@@ -67,6 +76,13 @@ hooks:
       - SessionStart
     script: 07-inject-device-topology.sh
     timeout: 5
+    # Measured 2255ms — probes every fleet device for load/memory. Fleet membership is
+    # machine-wide, so the key is global; the load figures are advisory and a few minutes
+    # stale is fine for "which box is idle". Same 5m-bg stale-while-revalidate.
+    cache:
+      ttl: 5m
+      key: global
+      prefetch: background
   session-identity:
     agents:
       - claude

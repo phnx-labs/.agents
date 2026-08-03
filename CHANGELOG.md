@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.1.93] - 2026-08-03
+
+### Fixed
+
+- **`hooks/AGENTS.md` claimed the `NN-` filename prefix orders hook execution. It does not.** The prefix is cosmetic: registration order is `Object.entries(manifest)` order (`apps/cli/src/lib/hooks.ts:1696`), i.e. YAML declaration order, and there is no `.sort()` anywhere between `parseHookManifest` and any registrar's write — the manifest currently declares `10-`, `05-`, `00-`, `08-`, `06-`, `12-` in that order. Claude then runs them concurrently regardless: *"All matching hooks run in parallel, and identical handlers are deduplicated automatically"*, with a per-hook `timeout` and all `additionalContext` values delivered. The section now states the real rule — a hook must be independent, may not read a file another hook writes in the same event, and may not assume ordering; two steps that genuinely must be ordered belong in one script, which is exactly why `04-session-identity.sh` merged three former hooks that all parsed the same `SessionStart` stdin. The claim was introduced in 0.1.92 and shipped for a few hours.
+
+### Changed
+
+- **The two slow `SessionStart` hooks are cached, cutting boot from ~5.6s to ~0.1s and switching on the only hook instrumentation that exists.** Measured cost of the five `SessionStart` hooks was `inject-repo-inflight` 5648ms, `inject-device-topology` 2255ms, `linear-tasks` 318ms, `session-identity` 18ms, `session-start-autosync` 5ms — the first two are 96% of the total, and both are network/subprocess bound (`gh pr list`, `agents sessions`, per-device probes) rather than compute bound. Both now declare `cache:` with `ttl: 5m` and `prefetch: background`, keyed `per-cwd` for `inject-repo-inflight` (its payload is "open PRs and live sessions in THIS checkout") and `global` for `inject-device-topology` (fleet membership is machine-wide). Verified end-to-end against a generated shim before merge: `inject-repo-inflight` 4244ms cold → 110ms / 102ms warm, `inject-device-topology` 2217ms → 68ms, with byte-identical output (2320 bytes) between the cached and uncached paths, so the speedup is not a truncated payload.
+- **Those two hooks are now the first to appear in `agents hooks profile`.** Instrumentation rides on the same `cache:` field — only a hook wrapped in a generated shim emits `hook.fire` events (`ms`, `cache`, `exit`) to `~/.agents/.cache/logs/events-<date>.jsonl`, which is the sole input to the profiler (`apps/cli/src/lib/hooks/profile.ts:6-9`). Until now **no hook in this repo declared `cache:`**, so `agents hooks profile` reported "No hook.fire events in the last 7 days" and hook timing appeared in neither the session transcript nor the hooks' own output. The emitted events were confirmed live: `cache=miss` on the first fire, `cache=hit` on subsequent ones. `hooks/AGENTS.md` documents this as the reason to add `cache:` to any hook whose cost you want tracked.
+
+### Known drift recorded (not fixed here)
+
+- **OpenClaw's capability table claims hook support it never receives.** `apps/cli/src/lib/agents.ts:374` declares `hooks: true`, but no `registerHooksForOpenClaw` exists and `registerHooksToSettings` has no `openclaw` branch, so it falls through to `return { registered: [], errors: [] }` (`hooks.ts:1449`). agents-cli's own review conventions name this failure mode: *"A map asserting a capability the code doesn't implement is a lying table."* The fix belongs in agents-cli — either flip the flag or write the registrar — and is tracked separately.
+
 ## [Unreleased]
 
 ### Changed

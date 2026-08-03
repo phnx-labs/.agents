@@ -17,9 +17,39 @@ entry is dead code that looks alive. Adding a hook is always two edits:
 Then add a row to [`README.md`](./README.md) under the right event group, ship a
 `<name>_test.sh` beside the script, and add a `CHANGELOG.md` entry.
 
-The `NN-` prefix orders execution within an event. Guards take a low number; context
-injection takes a middle number; anything that reads the result of another hook takes a
-higher one.
+### Execution order is NOT guaranteed — never depend on it
+
+The `NN-` prefix is **cosmetic**. It keeps this directory readable; it does not order
+anything. Two facts, both checkable:
+
+- **Nothing sorts by it.** Registration order is `Object.entries(manifest)` order
+  (`apps/cli/src/lib/hooks.ts:1696`) — i.e. YAML declaration order in `../agents.yaml` —
+  and there is no `.sort()` anywhere between `parseHookManifest` and any registrar's write.
+  The manifest currently declares `10-`, `05-`, `00-`, `08-`, `06-`, `12-` in that order.
+- **Claude runs them concurrently anyway.** *"All matching hooks run in parallel, and
+  identical handlers are deduplicated automatically"*
+  ([hooks reference](https://code.claude.com/docs/en/hooks)), with a per-hook `timeout`.
+  When several return `additionalContext`, Claude receives all of the values.
+
+So a hook must be **independent**: it may not read a file another hook writes in the same
+event, and it may not assume it runs before or after anything. If two steps genuinely must
+be ordered, they belong in **one** script — that is exactly why `04-session-identity.sh`
+merged three former hooks that all parsed the same `SessionStart` stdin.
+
+One consequence worth knowing: because Claude parallelises, splitting slow work into more
+hooks is free, and **merging** slow hooks makes an event slower — wall-clock goes from
+`max` to `sum`. The lever for a slow hook is `cache:`, not consolidation.
+
+### `cache:` — the only instrumentation there is
+
+A hook with a `cache:` entry is wrapped in a generated shim that adds stale-while-revalidate
+caching **and** emits a `hook.fire` event (`ms`, `cache`, `exit`) to
+`~/.agents/.cache/logs/events-<date>.jsonl`. That event stream is the sole input to
+`agents hooks profile` (p50 / p99 / mean / max, cache ratios, slow-hook warnings).
+
+A hook **without** `cache:` is invisible to the profiler — timing appears in neither the
+session transcript nor the hook's own output. If you want a hook's cost tracked, give it a
+`cache:` entry; `5m-bg` serves stale instantly and refreshes in the background.
 
 ## One script is present but never fires
 
