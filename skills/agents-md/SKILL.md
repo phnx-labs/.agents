@@ -153,6 +153,10 @@ test), so drift is catchable; the intent tier is explicitly not a fact to trust 
 
 ## The other half: pair it with a README, split by audience
 
+> This section is the canonical statement of the rule. A repo that adopts it records
+> only its own instance (which directories, and any local exception) in its root
+> `AGENTS.md`, and points back here rather than restating the policy.
+
 An `AGENTS.md` has a sibling. Write both, and keep them doing different jobs — a
 single file trying to serve a human browsing the repo and an agent mid-task serves
 neither, and it is why most directory docs read as a tutorial nobody finishes.

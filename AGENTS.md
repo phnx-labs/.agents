@@ -8,6 +8,11 @@ Everything here ships to every agent on every box, so a broken file here breaks 
 
 ## The two-file convention
 
+This section is **this repo's instance** of the general rule. The rule itself — including
+when a directory wants neither file — lives in the
+[`agents-md`](./skills/agents-md/SKILL.md) skill. Change it there first; this section
+records only how it lands here, plus the `rules/` exception below.
+
 Every directory carries both, and they do different jobs. Do not merge them.
 
 - **`README.md`** — for humans. What lives here, and a table listing every item with a
@@ -72,7 +77,7 @@ across harnesses, and skills very nearly are. From the capability table
 |---|---|
 | skills | every harness (version-gated on `goose` ≥1.25.0, `droid` ≥0.26.0) |
 | commands | **not** on `openclaw`, `kimi`, `hermes`; on `codex` only **below** 0.117.0 |
-| plugins | **not** on `amp`, `kiro` |
+| plugins | **not** on `amp`, `kiro`; version-gated on `codex` ≥0.128.0, `gemini` ≥0.8.0 |
 
 So a capability that only works when its command exists is broken on four harnesses.
 Write the skill so it is complete on its own, then add the command as the fast path.
