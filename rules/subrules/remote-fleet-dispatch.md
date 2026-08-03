@@ -11,6 +11,7 @@ agents run <agent> "<prompt>" --device <box> --remote-cwd <ABS repo path> --mode
 ```
 
 - `--device` and `--host` are the same flag (`--device` is an alias of `--host`) and work on both `agents run` and `agents teams`.
+- `--device auto` / `--host auto` lets the CLI pick from your registered, online, dispatchable fleet by 14-day affinity + live headroom. Use this as the default for "send to the fleet"; use a named `--device <box>` only when the task must land on a specific machine.
 - **NEVER** `ssh <box> 'agents run <agent> "<prompt>"'`. That leaks stdin: the remote agent (e.g. `codex exec`) blocks forever reading a stdin that never hits EOF, because the ssh channel stays open. The native `--device` path launches the remote process **detached** (`nohup bash -lc … >/dev/null 2>&1 &`), which is what prevents the hang — it survives a dropped connection and follows via an offset-tail of a remote log + `.exit` file.
 
 ## Fleet/SSH devices are NOT cloud devices — different venue

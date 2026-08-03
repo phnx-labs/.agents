@@ -19,6 +19,7 @@ Coding-workflow plugin. Sub-skills for the manager/router engineering loop: drai
 |---|---|
 | Inline edit | 1-2 files, < 15 min, no ambiguity. |
 | `agents run <agent> "..." --mode edit --cwd <worktree>` | One surface, one agent, local. |
+| `agents run --device auto` | Send to the fleet and let the CLI pick by affinity + headroom. |
 | `agents run --device <box>` | The work must run on a specific fleet box. |
 | `agents run --lease` | Clear single-agent task on a disposable cloud box. |
 | `agents teams` | 3+ independent surfaces; use boundary contracts and per-teammate worktrees. |
