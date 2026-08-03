@@ -1,5 +1,32 @@
 # Changelog
 
+## [0.1.88] - 2026-08-03
+
+### Changed
+
+- **Every directory now carries a `README.md` for humans and an `AGENTS.md` for agents, split by audience.** The docs had drifted into one inconsistent surface: `permissions/AGENTS.md` was a 114-line reference while its `README.md` was a 34-line pointer, `skills/README.md` listed 15 of the 20 shipped skills (missing `devices`, `escalate`, `mq`, `plan-render`, `visualize`), `commands/README.md` grouped commands under headings that no longer matched the files, and the root `README.md` restated the commands, skills, and plugins catalogs that belong in those directories. Adopting the split used by [mattpocock/skills](https://github.com/mattpocock/skills): **`README.md` is the human catalog** — what lives here plus a table of every item with a one-line description linked to its source — and **`AGENTS.md` is the agent's maintenance contract**, the invariants and what must stay in sync. New: root `AGENTS.md` (with `CLAUDE.md`/`GEMINI.md` symlinked to it, matching the convention `permissions/` and `rules/` already used), `commands/AGENTS.md`, `skills/AGENTS.md`, `hooks/AGENTS.md`, `plugins/AGENTS.md` + `plugins/README.md`, `cli/AGENTS.md` + `cli/README.md`, `routines/AGENTS.md` + `routines/README.md`, `subagents/README.md`, `webhooks/README.md`. Rewritten: the root, `commands/`, `skills/`, `hooks/`, `permissions/`, and `rules/` READMEs. The root README drops from 253 to ~150 lines by moving each catalog to the directory that owns it. Every relative link in the repo was verified to resolve.
+- **`rules/` is the documented exception and keeps its contract in `README.md`.** `rules/AGENTS.md` is not a maintenance file — it is the *composed ruleset* that syncs into every agent as its memory file, so a maintenance note written there would be injected into every agent's context on the fleet. `rules/README.md` now opens with that warning and holds the rule-authoring contract instead.
+
+### Fixed
+
+- **Documented hook and permission facts that were wrong.** `hooks/README.md` described a manifest schema that no longer exists — a root `hooks.yaml` (folded into the `hooks:` section of `agents.yaml`, `apps/cli/src/lib/migrate.ts:292`) and the legacy `~/.agents-system/` path (`~/.agents/.system/` since `state.ts:57`; `~/.agents-system` is migration-only at `state.ts:64`). `permissions/README.md` claimed its `AGENTS.md` was "also synced into agent context"; it is not — only `rules/` is (`resourceDir('rules') -> 'memory'`, `resources.ts:64`), verified against the composed 1219-line `~/.claude/CLAUDE.md`, which carries the ruleset and no other directory's `AGENTS.md`. `permissions/AGENTS.md`'s layout section listed a `16-mcp.yaml` that does not exist and claimed the `01-18` range was "currently empty" while 13 group files occupy it.
+
+### Known drift recorded (not fixed here)
+
+- **Six hook scripts are present but unregistered**, so they do not run: `02-expand-prompt-bang-commands.py`, `02-expand-prompt-skill-refs.py`, `02-expand-prompt-user-shortcuts.sh`, `03-linear-inject-tasks-context.sh`, `large-file-add-guard.sh`, `verify-delivery-chain.py`. None appears in the `hooks:` section of `agents.yaml`, and none in the user layer on the machine this was checked on. Recorded in `hooks/AGENTS.md` so they are not mistaken for live behavior; registering or deleting them is a separate change.
+- **`user-invocable` is set on 17 of 20 `SKILL.md` files and read by nothing here** — `grep -rn "user-invocable"` over `apps/cli/src` returns no match. Recorded in `skills/AGENTS.md` so no behavior gets built on it.
+
+## [0.1.87] - 2026-08-02
+
+Backfills the entries for work merged after 0.1.86 (PRs #145, #147, #149, #150), which shipped without a changelog record.
+
+### Added
+
+- **A system-level escalation ladder, driven by an `owner.md` profile (#147).** When an agent is genuinely blocked, `skills/escalate/` climbs message → watch for reply → call, instead of idling on a chat message the user is not watching. The owner's contact profile and preferences live in `~/.agents/owner.md` (gitignored, per machine; schema in `skills/escalate/owner.example.md`), parsed by `skills/escalate/owner.py` using only the standard library. `hooks/12-escalate-on-notification.sh` fires the ladder from the agent's own `Notification` event, so the escalation starts from the harness's existing "needs the user" signal rather than a new convention the agent has to remember.
+- **A command-handback gate in the Stop hook (#145).** The gate caught agents that finished by *preparing* work for the user — a script written to `/tmp` with "run this", a stand-down that hands ownership back — rather than doing it. Narrowed after review to fire only on a hand-back to a human target, and its message kept generic so it does not name an unbuilt command.
+- **Deliberate feed status posts now forward to the owner's phone (#149).** `hooks/13-feed-forward.py` (PostToolUse) forwards a status post made through the feed, so a long headless run reaches the user out-of-band; the Stop hook prompts for a manager-style status post when the work is genuinely done.
+- **Guards self-report their blocks as friction events (#150).** `hooks/` guards now emit a friction event when they block, making the guard surface measurable instead of invisible. Two follow-up fixes: the backgrounded friction call detaches stdout and stdin, and the redirections sit on the subshell rather than the inner command — either one left unhandled hangs the session.
+
 ## [0.1.86] - 2026-08-02
 
 ### Removed

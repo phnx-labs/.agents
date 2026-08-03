@@ -1,97 +1,76 @@
 # Commands
 
-> Layered with `~/.agents/commands/`. Same name in your user repo wins; everything else unions in.
+Slash commands are prompt templates. Type `/debug the auth flow` and
+[`debug.md`](./debug.md) expands into a full debugging prompt, with your text replacing
+`$ARGUMENTS`.
 
-Slash commands are prompt templates. Type `/debug the auth flow` and the command file expands into a full debugging methodology prompt, with your text replacing `$ARGUMENTS`.
+One `.md` file here becomes one `/<name>` command. Layered with `~/.agents/commands/`: a
+same-named file in your user repo wins, everything else unions in.
 
-## How Commands Work
+**Command or skill?** A command is a one-shot prompt expansion — it fires once and is done.
+A [skill](../skills/README.md) is a persistent capability that stays loaded, often with its
+own scripts and reference files. Use a command for a methodology applied once.
 
-Each `.md` file in this directory becomes a slash command. The file content is a prompt template:
+## Plan and build
 
-```markdown
+| Command | What it does |
+|---|---|
+| [`/plan`](./plan.md) | Plan with grounded design — research, read code, create artifacts, optionally get early review |
+| [`/debug`](./debug.md) | Trace the data path, hypothesize a root cause, then have independent agents confirm it before any fix |
+| [`/clean`](./clean.md) | Identify and clean up technical debt, outdated code, and duplicates |
+| [`/test`](./test.md) | Test critical paths — parallel validation for complex scopes |
+
+## Ship and review
+
+| Command | What it does |
+|---|---|
+| [`/commit`](./commit.md) | Split the working tree into the maximum number of small logical commits, then push. Alias of `/code:commit` |
+| [`/review`](./review.md) | Review every PR the session opened, then merge or request changes per verdict. Alias of `/code:review` |
+| [`/finish`](./finish.md) | Drive the current task to done end-to-end instead of stopping at a recap, blocker, or partial handoff |
+| [`/done`](./done.md) | Recap the session, then cleanly self-exit (SIGTERM the harness) |
+| [`/prune`](./prune.md) | Delete merged branches and worktrees locally and on origin — conservative, never removes recoverable work |
+
+`/done` **exits** the session and assumes the work already shipped. `/finish` keeps
+working until it has. They are easy to confuse.
+
+## Recap and resume
+
+| Command | What it does |
+|---|---|
+| [`/recap`](./recap.md) | Summarize the current situation — facts first, hypotheses with grounding |
+| [`/continue`](./continue.md) | Resume one task — reattach if the session is still live, otherwise load its transcript |
+| [`/recover`](./recover.md) | Recover *many* crashed sessions — finish the agent-doable work headlessly, hand back the rest as one action |
+| [`/restore`](./restore.md) | Re-open sessions killed by a crash or reboot as Ghostty windows, resuming each |
+| [`/hibernate`](./hibernate.md) | Sleep this same session until a future time, then wake it with full context to check a long wait |
+
+## Coordinate
+
+| Command | What it does |
+|---|---|
+| [`/tickets`](./tickets.md) | Work with the project's issue tracker — auto-detects Linear, GitHub Issues, or Jira |
+| [`/teams`](./teams.md) | Spawn parallel agents to work on a task together |
+
+## Observe
+
+| Command | What it does |
+|---|---|
+| [`/monitors`](./monitors.md) | Set up a durable event-triggered watcher. Routines fire on a clock; monitors fire on a change |
+| [`/output`](./output.md) | Fleet-wide token-burn and output report across every device, rendered as an HTML dashboard and PDF |
+
+<p align="center">
+  <img src="../.assets/monitors.png" alt="/monitors — a general-purpose watcher primitive for the agent fleet" width="82%">
+</p>
+
+## Related
+
+Several commands escalate to `agents teams` when the scope is wide: `/debug`, `/plan`,
+`/clean`, `/test`, `/recap`, `/review`.
+
+Capabilities like `/secrets`, `/sessions`, and `/browser` are **skills**, not commands —
+see [`skills/`](../skills/README.md). They are invoked the same way but carry their own
+tooling. Plugins ship namespaced commands (`/code:loop`, `/swarm:run`, `/fleet:sync`) — see
+[`plugins/`](../plugins/README.md).
+
 ---
-description: Debug an issue with systematic root cause analysis
----
 
-You are debugging: $ARGUMENTS
-
-## The Discipline
-
-The root cause is NEVER where the error appears...
-```
-
-When you type `/debug the login is broken`, Claude receives the full prompt with "the login is broken" substituted for `$ARGUMENTS`.
-
-## Commands vs Skills
-
-Commands are **one-shot prompt expansions** - they fire once and are done.
-
-Skills are **persistent capabilities** - they load into context and stay active, often with supporting scripts and reference files.
-
-Use a command when you want a specific methodology applied once. Use a skill when you need ongoing capability with tools and context.
-
-## Commands
-
-The command files in this directory, with optional team augmentation for complex scopes:
-
-**Planning**
-- `/plan` — Feature planning with mandatory artifacts (mockups, diagrams, state machines). Forces grounded discussion. For large features, automatically validates with a team.
-
-**Debugging & Maintenance**
-- `/debug` — Systematic root cause analysis. Maps the full data path, reads every file in the chain, builds evidence. For complex bugs, verifies with independent teammates.
-- `/clean` — Remove tech debt, consolidate duplicate code, clean up patterns. For large codebases, parallelizes scanning across areas.
-- `/recap` — Summarize the current situation — facts first, hypotheses grounded in evidence, next steps. Spawns teams for actionable items.
-- `/test` — Identify critical paths and validate them. For complex scopes, distributes testing across a team.
-
-**Shipping & Review**
-- `/commit` — **Alias of `/code:commit`** (code plugin). Split changes into the maximum number of small logical commits and push in the background. Canonical definition lives in the `code` plugin; this is the short name.
-- `/review` — **Alias of `/code:review`** (code plugin). Recap the session's goal, list every PR it opened, review each in parallel, then merge / request-changes / close-as-duplicate per verdict. Canonical definition lives in the `code` plugin; this is the short name.
-- `/finish` — Anti-stopping driver **and** ship gate: refuses to stop at a recap/blocker/partial handoff and drives the task to delivered — verify E2E, docs, commit, PR, optional release, close tickets.
-- `/done` — Recap the session for handoff, then cleanly **self-exit** (SIGTERM the harness). Assumes the work is already delivered; for the ship gate use `/finish`.
-- `/prune` — Delete merged branches and worktrees locally and on origin. Conservative — never removes work that could be lost.
-
-**Task Management**
-- `/tickets` — Auto-detect the project's tracker (Linear / GitHub / Jira / etc.) and work with it. Uses whichever tracker skill is available; falls back to repo signals (`gh issue list`, etc.) if none is loaded.
-- `/monitors` — Set up or manage a durable event-triggered watcher (`agents monitors`): watch a source (command / HTTP / file / fleet device), fire an agent / routine / notification on change. Routines fire on a clock; monitors fire on a change.
-- `/continue` — Resume a previous task (single session). Reattaches to the live tmux/terminal surface if it still exists, otherwise loads the transcript and continues.
-- `/recover` — Recover *many* interrupted sessions after a crash: reattach to any still-live tmux/terminal surface first, then finish the remaining agent-doable work headlessly (subagents / `agents teams`) rather than resurrecting a terminal swarm. Hand back only what needs the user — as one easy action. Holds irreversible/outward actions for an explicit yes.
-
-**Delegation**
-- `/teams` — Arrange agents into teams for parallel execution. Create, add members, start, monitor, and collect results.
-
-**Observability**
-- `/output` — Fleet-wide token-burn + shipped-output report over a window (default 24h). Runs `agents output --all-hosts`, re-queries relay-only machines that timed out, then renders an HTML dashboard, drops a PDF in `~/Downloads`, and opens it in the browser.
-
-> Capabilities like `/secrets`, `/sessions`, `/audit`, and `/design` are **skills**, not commands — see [`skills/`](../skills/). They're invocable the same way (`/name`) but live in the skills layer with their own tooling and context.
-
-## Team Augmentation
-
-Several commands automatically use `agents teams` when the scope is complex:
-
-- `/debug` — Verifies root cause with independent teammates for multi-service bugs
-- `/plan` — Validates approach with independent planners for large features
-- `/clean` — Parallelizes scanning across frontend/backend/shared/docs for large codebases
-- `/test` — Distributes testing across areas for complex scopes
-- `/recap` — Spawns teams for 2+ clear, actionable items instead of listing them
-- `/review` — Reviews each open PR in parallel, one reviewer per PR
-
-Run `agents teams --help` for team management commands.
-
-## Creating Commands
-
-1. Create `commands/<name>.md`
-2. Add frontmatter with a `description`
-3. Use `$ARGUMENTS` where user input should appear
-4. Commit and sync (`agents pull` on other machines)
-
-Keep prompts focused. One methodology per command. If you need scripts or reference files, make it a skill instead.
-
-## Patterns Worth Noting
-
-**Forcing functions** - Commands like `/plan` require artifacts before discussion. You can't hand-wave; you must draw the mockup first.
-
-**Evidence chains** - `/debug` builds explicit chains: "file_a.ts:45 receives X, transforms to Y, passes to B" - making reasoning visible and verifiable.
-
-**Grounded hypotheses** - `/recap` distinguishes facts from hypotheses, and requires evidence for each hypothesis.
-
-These patterns prevent the most common failure mode: talking about code without reading it.
+Changing something here? Read [`AGENTS.md`](./AGENTS.md).

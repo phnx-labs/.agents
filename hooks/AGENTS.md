@@ -1,0 +1,63 @@
+# hooks/ — maintenance contract
+
+Humans start at [README.md](./README.md).
+
+A hook runs on every agent, on every machine, on an event the user did not ask for. It is the
+highest-blast-radius thing in this repo. A hook that throws, hangs, or writes to stdout at the
+wrong moment corrupts the session it fires in.
+
+## The script alone does nothing
+
+Registration is the `hooks:` entry in [`../agents.yaml`](../agents.yaml). A script with no
+entry is dead code that looks alive. Adding a hook is always two edits:
+
+1. `hooks/<NN>-<name>.{sh,py}`, executable (`chmod +x`).
+2. A `hooks:` entry in `../agents.yaml` naming the script, its `events`, and a `timeout`.
+
+Then add a row to [`README.md`](./README.md) under the right event group, ship a
+`<name>_test.sh` beside the script, and add a `CHANGELOG.md` entry.
+
+The `NN-` prefix orders execution within an event. Guards take a low number; context
+injection takes a middle number; anything that reads the result of another hook takes a
+higher one.
+
+## Known drift — six scripts are present but unregistered
+
+`02-expand-prompt-bang-commands.py`, `02-expand-prompt-skill-refs.py`,
+`02-expand-prompt-user-shortcuts.sh`, `03-linear-inject-tasks-context.sh`,
+`large-file-add-guard.sh`, and `verify-delivery-chain.py` appear in this directory but have
+no entry in `../agents.yaml`, and none in the user layer on the machine this was verified on
+(`~/.agents/agents.yaml`, 16 entries, no overlap). They do not run. Either
+register them or delete them — do not copy their patterns assuming they are live, and do not
+document them as working behavior.
+
+## Fail closed, never fail open
+
+A guard that cannot evaluate its input must **refuse**, not allow. The `footer-guard`
+regression is the reference case: it extracted the command with a single `jq` call and
+`|| cmd=""`, then `[ -n "$cmd" ] || exit 0`, so on any machine without `jq` it silently
+permitted exactly what it existed to block. Use the `_json_field` helper pattern
+(`jq` → `node` → `python`) and exit non-zero with an explanation when no parser is available.
+
+## Exit codes and streams
+
+- `exit 0` — allow. Anything on stdout is injected into the model's context.
+- `exit 2` — block, with the reason on stderr. That text is what the agent reads, so write it
+  as an instruction, not an error dump.
+- Never write to stdout from a `PreToolUse` guard on the allow path. It lands in the prompt.
+- Background work must detach both stdout and stdin (`>/dev/null 2>&1 </dev/null &` on the
+  **subshell**, not the inner command) or the hook hangs the session. Two separate fixes have
+  landed for exactly this.
+
+## Keep it fast
+
+`timeout` is real and it runs on every matching event. Anything that touches the network or
+another machine needs `cache:` or a background detach. A session-start hook that blocks for
+five seconds costs five seconds on every session on every box.
+
+## Tests are required
+
+`<name>_test.sh` sits beside the script and must pass before the PR. Test the real path — no
+mocking. For a guard, include a fixture proving it blocks the bad input **and** one proving
+it fails closed with no JSON parser on `PATH`. For a detector, include the transcript that
+produced a past false positive; three of the gates here regressed on exactly that.
