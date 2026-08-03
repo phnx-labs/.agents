@@ -25,7 +25,7 @@ guidance in `rules/README.md` instead. Never write maintenance notes into `rules
 — they would be injected into every agent's context on the fleet.
 
 Subdirectory `AGENTS.md` files are **not** synced into agent prompts. Only `rules/` is
-(`resourceDir('rules') -> 'memory'`, `apps/cli/src/lib/resources.ts:64`). Verified: the
+(`profiledKind` maps `rules` -> `'memory'`, `apps/cli/src/lib/resources.ts:64-65`). Verified: the
 composed `~/.claude/CLAUDE.md` carries the ruleset and no other directory's `AGENTS.md`.
 
 ## Adding a resource — what must stay in sync

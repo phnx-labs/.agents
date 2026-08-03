@@ -71,16 +71,21 @@ merge with **user wins on key collision** — resolution order is user > extra >
 same-named entry in the user repo replaces the system entry wholesale; set `override: true`
 there to silence the shadowing warning.
 
-## Promptcuts
+## Promptcuts — currently inert
 
-`promptcuts.yaml` is data for the prompt-expansion hook, layered the same way:
+`promptcuts.yaml` is data for the prompt-expansion hooks, layered the same way as everything
+else:
 
 - `~/.agents/.system/hooks/promptcuts.yaml` — system-shipped defaults (`#checkit`, `#rethink`, …)
 - `~/.agents/hooks/promptcuts.yaml` — your shortcuts; user keys win
 
+> **These do not run today.** `02-expand-prompt-user-shortcuts.sh` and
+> `02-expand-prompt-bang-commands.py` have no entry in the `hooks:` section of
+> `../agents.yaml`, so `#shortcut` expansion and `` `!cmd` `` bang commands are not wired up
+> from this layer. See the unregistered-scripts list in [`AGENTS.md`](./AGENTS.md).
+
 ## Look here when
 
-- a `#shortcut` did not expand, or a `` `!cmd` `` bang command did not run
 - an agent refuses to stop, or stops when it should not
 - a git command was blocked and you want to know which guard did it
 - agent behavior feels customized in a way that is not obvious
