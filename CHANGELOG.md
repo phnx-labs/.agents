@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.1.92] - 2026-08-03
+
+### Fixed
+
+- **Four hooks that had been silently dead for months are registered again.** Each was working code whose `hooks:` entry in `agents.yaml` was dropped as collateral in an unrelated commit, and nothing failed — a hook has no test for "am I registered", so each script kept passing its own `_test.sh` while never running. `606db6e` (May 13, subject: *"fix(hooks): handle missing YAML frontmatter in pre-commit validator"*) removed **27 lines** from `agents.yaml`, taking `expand-promptcuts`, `expand-bang-commands`, `linear-tasks`, and `stop-completion-gate` with it; `8b006a6` (Jun 24, *"chore: remove legacy agents hook config"*) removed **34 lines**, taking `rm-guard` and `large-file-add-guard`. In both cases one sibling was later restored (`stop-completion-gate` returned as `verify-work-complete`, `rm-guard` was re-registered) and the rest were forgotten. All four are verified working before re-registration: `#checkit` expands to the full verification block; `` `!echo HELLOTEST` `` expands to `HELLOTEST`; the Linear hook fails soft with a clear message when the `linear.app` bundle is absent (`rc=0`); and `large-file-add-guard.sh` blocks an 11 MiB `git add` with `rc=2`. `agents.yaml` goes from 13 registered hooks to 17. All 6 hook test suites pass.
+- **`promptcuts.yaml` cited a rule scheme that no longer exists.** 22 references to `Hard Line #N` survived the 0.1.83 migration that replaced `core-hard-lines` with the F1–F5 foundations, so every promptcut that fired pointed at a rule name nothing defines. Each is rewritten to its real home, mapped from the pre-removal `core-hard-lines.md`: #1 → `F3`, #9/#10 → `F2`, #2/#3/#5/#6/#8 → `research-discipline`, #4/#15 → `code-quality`, #7/#11 → `fleet-delegation`.
+- **`hooks/README.md` and `hooks/AGENTS.md` now describe the fixed state**, not the broken one. The Promptcuts section no longer opens with "currently inert", the four restored hooks have rows in the event tables, and the drift section is down to the single script that was *never* registered (`02-expand-prompt-skill-refs.py` — `git log -S` over the manifest returns zero commits, so it is an unfinished feature, not a regression). The root `AGENTS.md` mistakes table now names the actual failure mode: a bulk edit dropping registrations under an unrelated subject.
+
 ## [0.1.91] - 2026-08-03
 
 ### Fixed
