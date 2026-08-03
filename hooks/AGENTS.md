@@ -21,15 +21,28 @@ The `NN-` prefix orders execution within an event. Guards take a low number; con
 injection takes a middle number; anything that reads the result of another hook takes a
 higher one.
 
-## Known drift — six scripts are present but unregistered
+## Known drift — five scripts are present but never fire
 
 `02-expand-prompt-bang-commands.py`, `02-expand-prompt-skill-refs.py`,
-`02-expand-prompt-user-shortcuts.sh`, `03-linear-inject-tasks-context.sh`,
-`large-file-add-guard.sh`, and `verify-delivery-chain.py` appear in this directory but have
-no entry in `../agents.yaml`, and none in the user layer on the machine this was verified on
-(`~/.agents/agents.yaml`, 16 entries, no overlap). They do not run. Either
-register them or delete them — do not copy their patterns assuming they are live, and do not
-document them as working behavior.
+`02-expand-prompt-user-shortcuts.sh`, `03-linear-inject-tasks-context.sh`, and
+`large-file-add-guard.sh` appear in this directory but have no entry in `../agents.yaml`,
+and none in the user layer on the machine this was verified on (`~/.agents/agents.yaml`,
+16 entries, no overlap). They do not run. Either register them or delete them — do not
+copy their patterns assuming they are live, and do not document them as working behavior.
+
+**`verify-delivery-chain.py` is the exception, and the reason to check twice.** It has no
+`hooks:` entry either, but it **does** run on every Stop: `00-agent-verify-work-complete.sh`
+pipes into it directly. "No manifest entry" means *not registered as a hook*, not *dead* —
+a script another hook invokes is live.
+
+The inverse trap is just as easy: `02-expand-prompt-bang-commands.py` **is** referenced,
+but only by `02-expand-prompt-skill-refs.py`, which is itself unregistered. Referenced is
+not reachable — follow the chain to a registered entry point or it is dead either way.
+
+```bash
+# every mention, minus tests and docs — then check whether the caller is itself registered
+grep -rl <script-name> ../agents.yaml . | grep -vE '_test\.sh|README|AGENTS'
+```
 
 ## Fail closed, never fail open
 
