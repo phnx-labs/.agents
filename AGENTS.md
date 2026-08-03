@@ -93,9 +93,9 @@ complete, nothing errors, and the thing silently does not work.
 | Mistake | Why it bites | The check |
 |---|---|---|
 | **Hand-editing a generated file** | `rules/AGENTS.md` is composed from `rules/subrules/` + `rules.yaml`; `permissions/default.yaml` is built by `permissions/build.sh`. A hand edit is erased by the next regeneration and reads later as a mystery regression | Edit the source (`subrules/`, `groups/`), then regenerate and commit the output |
-| **Adding a hook script without registering it** | The script alone does nothing. Six scripts in `hooks/` have no `hooks:` entry in `agents.yaml` and have never run — dead code that looks alive | `grep <script-name> agents.yaml` before you believe it fires |
+| **Adding a hook script without registering it** | A script with no `hooks:` entry in `agents.yaml` never fires on its own. Five in `hooks/` are in that state today. The exception proves the care needed: `verify-delivery-chain.py` has no entry either, but it **does** run — `00-agent-verify-work-complete.sh` pipes into it, so it fires on every Stop | `grep -r <script-name> agents.yaml hooks/` — the second path catches a script another hook invokes |
 | **Writing maintenance notes into `rules/AGENTS.md`** | That file is the *composed ruleset* synced into every agent as its memory file. A note there ships to every agent on every machine | Maintenance guidance for `rules/` goes in `rules/README.md` |
-| **Putting a `README.md`/`AGENTS.md` in a resource directory on an old CLI** | Before the doc-file filter (`resources.ts`), every `.md` in `commands/` became a slash command — `commands/README.md` installed a `/README` into every agent home | `agents inspect commands` and look for a doc name in the list |
+| **Putting a `README.md`/`AGENTS.md` in a resource directory on an old CLI** | Before the doc-file filter (`isDirectoryDoc` in `resources.ts`), every `.md` in `commands/` became a slash command — `commands/README.md` installed a `/README` into every agent home | `ls ~/.claude/commands/` on the target box and look for a doc name — check the installed home, not the repo |
 | **Editing `~/.agents/.system/` in place** | It is a **pull-only mirror**. Local edits are overwritten by the next `agents sync system` | Change it via a worktree + PR; to override on one machine, add the same-named file under `~/.agents/` |
 | **Citing a `file:line` or symbol without opening it** | A wrong pointer is worse than none — the next agent trusts it. A citation here named a `resourceDir()` that does not exist and pointed one line short of the code it described | Open the file at that line and confirm the text before committing the claim |
 | **Assuming merged means live** | Merged is not published; published is not installed. A fix can be on `main` while every box still runs a binary without it | Run the *installed* artifact and confirm the behavior, not the repo state |
@@ -114,11 +114,38 @@ repo instructs an agent it has never met:
   the user's own `~/.agents/` (`resolveResource` / `listResources` in
   `apps/cli/src/lib/resources.ts`), so a repo-shipped command wins over a same-named
   personal one.
+- **`<repo>/.agents/rules/`, committed** — project rules, compiled into the repo's
+  `AGENTS.md` (plus per-agent symlinks) by `compileRulesForProject`
+  (`apps/cli/src/lib/rules/compile.ts`). No-op only when `<repo>/.agents/rules/` is
+  absent, and it will not clobber an `AGENTS.md` you hand-wrote.
 
-What does **not** travel: a rules preset. `rules/rules.yaml` presets are selected per
-installed agent version on one machine (`rulesPreset`, `agents rules switch`). You cannot
-hand one to a contributor's agent, so never rely on a preset to deliver repo-specific
-instruction — put it in the repo.
+  It does **not** wholesale-replace the contributor's rules. `composeRules`
+  (`compose.ts:173-225`) does three distinct things, and the second is the useful one:
+
+  1. **Per-name shadowing** — the preset's named subrules resolve first-layer-wins
+     (project > user > extras > system), so a project `foo.md` replaces the system's
+     `foo.md`. Only same-named fragments are affected.
+  2. **Auto-append** — every subrule in a **non-system** layer that the preset never
+     named is appended anyway. So dropping `.agents/rules/subrules/foo.md` into a repo
+     ships it to every contributor with **no `rules.yaml` edit at all**. System-layer
+     subrules outside the preset are skipped (`if (layer.scope === 'system') continue`).
+  3. **Order** — preset order first, then auto-appends, with the project layer's first.
+
+  The one true wholesale override is the preset *definition*: `resolvePreset` takes the
+  first layer defining that name, so a project's `default` replaces the system's subrule
+  **list**, not its files.
+
+**So the simplest way to ship repo instructions to a contributor's agent is to drop one
+file**: `<repo>/.agents/rules/subrules/<topic>.md`, committed. Auto-append picks it up —
+no `rules.yaml`, no preset, no setup on their side.
+
+**Know the limit before you design around presets.** A repo *can* define presets in its
+own `.agents/rules/rules.yaml`, and the `default` one is what every contributor gets. But
+no production caller ever selects a different one — `sync.ts:546` and
+`project-launch.ts:108` both call `compileRulesForProject(cwd)` with no `preset`. So a
+`review` preset defined here would compile for nobody. Mode-specific instruction has to
+live in the content every agent already reads (a labeled section in `AGENTS.md`), not
+behind a preset nothing selects.
 
 ## Every user-visible change updates CHANGELOG.md
 
