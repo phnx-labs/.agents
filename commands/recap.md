@@ -143,22 +143,21 @@ state of this receiving session.
 
 ### 1. Resolve the session with `agents sessions`
 
-Use the `agents sessions` CLI to resolve `$ARGUMENTS`; do not search transcript files
-directly. Keep transcript bodies out of this receiving agent's context during
-resolution.
+Resolve every selector form with exactly
+`agents sessions --resolve "$ARGUMENTS" --json`. This is the metadata-only resolver
+for full IDs, session-ID prefixes, and keywords; it searches the fleet by default
+without parsing or rendering transcript events. Do not use a positional sessions
+query, `--preview`, `--markdown`, or `--json` without `--resolve` in this receiving
+agent.
 
-- A full session ID: resolve that exact ID with `agents sessions <id> --preview`.
-- A session-ID prefix: run `agents sessions <prefix> --no-interactive` and select it
-  only when the result identifies exactly one session.
-- Keywords: run `agents sessions --query "<keywords>" --no-interactive` in the
-  current project first. `--query` prevents words such as `go` from being parsed as
-  a `sessions` subcommand. If there is no match and the words plausibly refer to
-  another project, retry the same query with `--all`.
-- Multiple plausible matches: show a short numbered list containing only session
-  ID, project, agent, date, and preview metadata, then ask the user to choose. Do
-  not guess and do not read any candidate transcript.
-- No matches: say that no session matched and include the exact selector used. Do
-  not fall back to the current session and do not invent a recap.
+- A successful resolution returns a one-element JSON array. Select the full `id`
+  from that metadata object.
+- An ambiguous prefix or keyword exits non-zero and lists every matching full ID
+  and machine. Show a short numbered list containing only the returned metadata,
+  then ask the user to choose a more specific selector. Do not guess and do not
+  read any candidate transcript.
+- No match exits non-zero. Say that no session matched and include the exact
+  selector used. Do not fall back to the current session and do not invent a recap.
 
 Continue only after exactly one prior session has been selected. Treat its resolved
 full ID as an input locator, not as this session's identity.
