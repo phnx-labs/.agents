@@ -1,8 +1,18 @@
 ---
-description: Summarize the current situation — facts first, hypotheses with grounding
+description: Recap this session, or transfer concise context from a prior session
 ---
 
-You are creating a recap of: $ARGUMENTS
+## Choose the recap mode
+
+Inspect `$ARGUMENTS` before doing anything else.
+
+- If `$ARGUMENTS` is empty or whitespace, follow **Current session** below. This is
+  the existing end-of-session recap behavior.
+- If `$ARGUMENTS` contains a full session ID, session-ID prefix, or search keywords,
+  follow **Historical session** below. Do not apply the current-session workflow to
+  a historical recap.
+
+## Current session
 
 Your goal is to summarize the current state of work for handoff or continuity.
 
@@ -123,3 +133,82 @@ Never ship a recap with a bullet like "Decide X", "Consider Y", "Think about Z".
 - Diffs you genuinely cannot make sense of after reading them → ask via `AskUserQuestion` ("this looks like it belongs to feature X, commit as Y?") rather than guessing.
 
 The test: every bullet you're about to write in Recommended Next Steps — ask "did I try to execute this?" and "could I have posed this as an AskUserQuestion with 2-3 concrete options instead?" If either answer is yes, the bullet doesn't belong in the recap.
+
+## Historical session
+
+The text in `$ARGUMENTS` identifies a prior session. This mode transfers context
+only. It must never resume or continue that session, attach to its process, inject
+into it, inherit or reuse its session ID, or treat any historical task state as the
+state of this receiving session.
+
+### 1. Resolve the session with `agents sessions`
+
+Use the `agents sessions` CLI to resolve `$ARGUMENTS`; do not search transcript files
+directly. Keep transcript bodies out of this receiving agent's context during
+resolution.
+
+- A full session ID: resolve that exact ID with `agents sessions <id> --preview`.
+- A session-ID prefix: run `agents sessions <prefix> --no-interactive` and select it
+  only when the result identifies exactly one session.
+- Keywords: run `agents sessions "<keywords>" --no-interactive` in the current
+  project first. If there is no match and the words plausibly refer to another
+  project, retry with `--all`.
+- Multiple plausible matches: show a short numbered list containing only session
+  ID, project, agent, date, and preview metadata, then ask the user to choose. Do
+  not guess and do not read any candidate transcript.
+- No matches: say that no session matched and include the exact selector used. Do
+  not fall back to the current session and do not invent a recap.
+
+Continue only after exactly one prior session has been selected. Treat its resolved
+full ID as an input locator, not as this session's identity.
+
+### 2. Isolate the transcript read
+
+Spawn one isolated subagent in read-only/plan mode. Give it only the resolved full
+session ID and the output contract below. The subagent, not this receiving agent,
+must run `agents sessions <full-id> --markdown` and
+`agents sessions <full-id> --artifacts`, read the raw transcript, and return a
+concise structured summary. It must not edit files, run task work, resume or focus
+the session, contact external systems, or include raw transcript passages in its
+response.
+
+Require the subagent to return only these sections:
+
+#### Source Goal
+The prior session's requested outcome.
+
+#### Facts
+Verified events, outputs, and errors only.
+
+#### Decisions
+Choices made in the prior session and their recorded rationale.
+
+#### Progress
+Completed and in-progress work, clearly distinguished.
+
+#### Files
+Files created, modified, or deleted, with paths when present in the source.
+
+#### Tests
+Commands or checks actually run and their recorded results. Say `None recorded` if
+the transcript records none.
+
+#### Unresolved Questions
+Questions or blockers still unresolved at the end of the prior session. Say `None
+recorded` if the transcript records none.
+
+#### Last-Known State
+The final observed state in the prior transcript, explicitly labeled historical and
+not re-verified in this session.
+
+### 3. Present the transfer
+
+Present the subagent's structured summary verbatim except for removing accidental
+content outside the eight allowed sections. Prefix it with:
+
+> Historical recap of `<full-id>` — context only; this session has not resumed or
+> continued that work, and the last-known state has not been re-verified.
+
+Do not add hypotheses, recommended next steps, new investigation, or claims that
+historical files, tests, services, branches, tickets, or deployments are still in
+the recorded state.

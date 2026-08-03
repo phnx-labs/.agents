@@ -65,7 +65,7 @@ Each directory has a `README.md` for humans (a catalog of everything in it) and 
 
 | Directory | What it holds |
 |---|---|
-| [`commands/`](commands/README.md) | Slash commands — `/plan`, `/debug`, `/finish`, `/output`, one `.md` per command |
+| [`commands/`](commands/README.md) | Slash commands — `/plan`, `/debug`, `/finish`, and `/recap` for current or historical session context |
 | [`skills/`](skills/README.md) | Skills — multi-file capabilities like `browser`, `teams`, `sessions`, `mq` |
 | [`plugins/`](plugins/README.md) | Plugins — bundles of related skills and commands (`code`, `swarm`, `fleet`, `share`) |
 | [`hooks/`](hooks/README.md) | Lifecycle scripts — session-start context injection, prompt expansion, Stop-gates, guards |
