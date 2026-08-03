@@ -4,6 +4,7 @@
 
 ### Fixed
 
+- **Historical `/recap` resolution no longer reads transcript content in the receiving agent.** The full-ID `--preview` and positional prefix/keyword paths added in 0.1.89 parsed transcript events before the isolated subagent boundary. Every historical selector now uses the metadata-only `agents sessions --resolve <selector> --json` contract from agents-cli #1759; only the selected full ID crosses into the isolated transcript-reading subagent.
 - **`hooks/AGENTS.md` said six scripts "do not run"; one of them does.** `verify-delivery-chain.py` has no `hooks:` entry, but `00-agent-verify-work-complete.sh` pipes into it directly, so it fires on every Stop. Corrected to five, with `verify-delivery-chain.py` called out as the exception that shows "no manifest entry" means *unregistered*, not *dead*. The inverse trap is recorded too: `02-expand-prompt-bang-commands.py` **is** referenced, but only by `02-expand-prompt-skill-refs.py`, which is itself unregistered — referenced is not reachable unless the chain ends at a registered entry point. The grep in that section now excludes tests and docs so it stops producing false positives.
 
 ### Added
