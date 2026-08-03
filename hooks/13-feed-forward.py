@@ -20,7 +20,23 @@ import sys, os, re, json, shlex, hashlib, subprocess, time
 
 _HOME = os.environ.get("HOME", os.path.expanduser("~"))
 # Paths are overridable for tests; default to the real fleet locations.
-SKILL = os.environ.get("ESCALATE_SKILL_DIR") or os.path.join(_HOME, ".agents", "skills", "escalate")
+def _resolve_skill_dir():
+    """Resolve the escalate skill the way resources resolve everywhere else:
+    user layer first, then system.
+
+    Defaulting to the USER layer alone was a silent kill switch -- the skill
+    ships in the SYSTEM layer (.system/skills/escalate), so owner.py was never
+    found and this hook forwarded nothing on any box."""
+    override = os.environ.get("ESCALATE_SKILL_DIR")
+    if override:
+        return override
+    user = os.path.join(_HOME, ".agents", "skills", "escalate")
+    if os.path.isfile(os.path.join(user, "owner.py")):
+        return user
+    return os.path.join(_HOME, ".agents", ".system", "skills", "escalate")
+
+
+SKILL = _resolve_skill_dir()
 OWNER = os.environ.get("OWNER_PROFILE") or os.path.join(_HOME, ".agents", "owner.md")
 STATE = os.environ.get("FEED_FORWARD_STATE") or os.path.join(_HOME, ".agents", ".cache", "state", "feed-forward")
 COOLDOWN = 30  # seconds — dedup window for an identical (session,text)
