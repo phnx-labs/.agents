@@ -47,6 +47,39 @@ or the resource exists on disk and is invisible or dead:
 A hook is the sharpest edge: the script alone does nothing. Registration is the
 `hooks:` entry in `agents.yaml`, and an unregistered script is dead code.
 
+## Authoring a new capability — group it, and give it a front door
+
+**Group related skills into a plugin rather than shipping them loose.** A plugin is the
+unit that carries a namespace, its own README, and a manifest. Loose skills that share a
+domain — an industry, a function, one product's workflow — should be one
+`plugins/<name>/` with its skills inside, not N entries competing in the flat `skills/`
+list. The test: if two skills would always be installed together, or if a reader would
+ask "which of these three do I use?", they are one plugin. A skill stays top-level only
+when it is genuinely standalone and cross-domain (`browser`, `mq`, `sessions`).
+
+**Give every user-facing skill a slash command that routes to it.** A skill loads when
+the model decides its `description` matches; a command fires when the user types it.
+Those are different doors, and a skill with no command can only be reached by asking the
+agent nicely. Add `commands/<name>.md` (or `plugins/<p>/commands/<name>.md`) that routes
+to the skill — the command stays thin, the behavior stays in the skill, and they never
+fork (see the `/commit` → `/code:commit` alias pattern).
+
+**But the command is an accelerator, never the only door.** Commands are not universal
+across harnesses, and skills very nearly are. From the capability table
+(`apps/cli/src/lib/agents.ts`):
+
+| Capability | Coverage |
+|---|---|
+| skills | every harness (version-gated on `goose` ≥1.25.0, `droid` ≥0.26.0) |
+| commands | **not** on `openclaw`, `kimi`, `hermes`; on `codex` only **below** 0.117.0 |
+| plugins | **not** on `amp`, `kiro` |
+
+So a capability that only works when its command exists is broken on four harnesses.
+Write the skill so it is complete on its own, then add the command as the fast path.
+Never move logic out of the skill and into the command. When a plugin is the right
+grouping but a target harness has no plugin support, say so in the plugin's README
+rather than silently shipping something a third of the fleet cannot load.
+
 ## Every user-visible change updates CHANGELOG.md
 
 A change to a command, skill, hook, rule, permission, or plugin adds an entry under the next

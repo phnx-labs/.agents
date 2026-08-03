@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.1.89] - 2026-08-03
+
+### Added
+
+- **The `agents-md` skill now ships in the system layer.** It was stranded in one machine's user layer (`~/.agents/skills/agents-md/`), so no other box or person had it. It is the evidence-based guide to writing an `AGENTS.md` a coding agent will actually use — grounded in an observed sample of ~100 subagent runs where agents did roughly 16x more source-file reads than doc reads and navigated by symbol (`rg mintToken`) rather than by prose heading, which is why it insists every claim name a greppable `file:symbol` source of truth.
+- **`agents-md` gains the other half of the pair: the README.** New section covering the audience split (`README.md` is a **catalog** for a human deciding what exists; `AGENTS.md` is a **contract** for an agent about to change something), the **what-must-stay-in-sync table** that is the highest-value entry an `AGENTS.md` can carry (adding a file is rarely the whole change — an unregistered hook script is dead code that looks alive), and an explicit boundary: the catalog shape is right for a **registry-shaped** directory (`commands/`, `skills/`, `plugins/`) and wrong for an ordinary source directory, where a table of files is just `ls` that rots on every commit. Added a matching checklist item.
+- **Authoring guidance for new capabilities, in the root `AGENTS.md`.** Group related skills into a plugin rather than shipping them loose in the flat `skills/` list, especially when they share an industry or function. Give every user-facing skill a slash command that routes to it, since a skill loads only when the model matches its `description` while a command fires when the user types it. But keep the command a thin accelerator and never the only door: from the capability table in `apps/cli/src/lib/agents.ts`, skills reach every harness while commands are absent on `openclaw`, `kimi`, `hermes`, and on `codex` above 0.117.0, and plugins are absent on `amp` and `kiro` — so a capability reachable only through its command is broken on four harnesses.
+
+### Changed
+
+- **The `docs` skill's routing table no longer dead-ends on directory docs.** It had five subskills (user, technical, runbook, onboarding, changelog) and **zero** mentions of `AGENTS.md`, so an agent asked to document a directory was routed to `write-user.md` and never learned the pair exists. It now routes that case to `agents-md`, which owns both halves.
+
 ## [0.1.88] - 2026-08-03
 
 ### Changed
