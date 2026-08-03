@@ -85,6 +85,41 @@ Never move logic out of the skill and into the command. When a plugin is the rig
 grouping but a target harness has no plugin support, say so in the plugin's README
 rather than silently shipping something a third of the fleet cannot load.
 
+## Common mistakes in this repo — check yourself against these first
+
+Every one of these has actually happened here. They share a shape: the change looks
+complete, nothing errors, and the thing silently does not work.
+
+| Mistake | Why it bites | The check |
+|---|---|---|
+| **Hand-editing a generated file** | `rules/AGENTS.md` is composed from `rules/subrules/` + `rules.yaml`; `permissions/default.yaml` is built by `permissions/build.sh`. A hand edit is erased by the next regeneration and reads later as a mystery regression | Edit the source (`subrules/`, `groups/`), then regenerate and commit the output |
+| **Adding a hook script without registering it** | The script alone does nothing. Six scripts in `hooks/` have no `hooks:` entry in `agents.yaml` and have never run — dead code that looks alive | `grep <script-name> agents.yaml` before you believe it fires |
+| **Writing maintenance notes into `rules/AGENTS.md`** | That file is the *composed ruleset* synced into every agent as its memory file. A note there ships to every agent on every machine | Maintenance guidance for `rules/` goes in `rules/README.md` |
+| **Putting a `README.md`/`AGENTS.md` in a resource directory on an old CLI** | Before the doc-file filter (`resources.ts`), every `.md` in `commands/` became a slash command — `commands/README.md` installed a `/README` into every agent home | `agents inspect commands` and look for a doc name in the list |
+| **Editing `~/.agents/.system/` in place** | It is a **pull-only mirror**. Local edits are overwritten by the next `agents sync system` | Change it via a worktree + PR; to override on one machine, add the same-named file under `~/.agents/` |
+| **Citing a `file:line` or symbol without opening it** | A wrong pointer is worse than none — the next agent trusts it. A citation here named a `resourceDir()` that does not exist and pointed one line short of the code it described | Open the file at that line and confirm the text before committing the claim |
+| **Assuming merged means live** | Merged is not published; published is not installed. A fix can be on `main` while every box still runs a binary without it | Run the *installed* artifact and confirm the behavior, not the repo state |
+| **Adding a resource without its second edit** | The file exists but is invisible or dead — see the sync table above | Walk the row for that kind before opening the PR |
+
+## Instructions for agents working in a repo travel two ways
+
+Neither requires the person cloning the repo to configure anything, and this is how a
+repo instructs an agent it has never met:
+
+- **`AGENTS.md`, committed** (with `CLAUDE.md`/`GEMINI.md` symlinked to it) — every harness
+  reads its own memory file out of the clone. This is where repo-wide policy, the
+  mistakes above, and any review conventions belong.
+- **`<repo>/.agents/`, committed** — a full DotAgents layer that ships in-tree:
+  `.agents/commands/`, `.agents/skills/`. It resolves at **project** precedence, ahead of
+  the user's own `~/.agents/` (`resolveResource` / `listResources` in
+  `apps/cli/src/lib/resources.ts`), so a repo-shipped command wins over a same-named
+  personal one.
+
+What does **not** travel: a rules preset. `rules/rules.yaml` presets are selected per
+installed agent version on one machine (`rulesPreset`, `agents rules switch`). You cannot
+hand one to a contributor's agent, so never rely on a preset to deliver repo-specific
+instruction — put it in the repo.
+
 ## Every user-visible change updates CHANGELOG.md
 
 A change to a command, skill, hook, rule, permission, or plugin adds an entry under the next

@@ -2,6 +2,13 @@
 
 ## [0.1.90] - 2026-08-03
 
+### Added
+
+- **A "common mistakes in this repo" table in the root `AGENTS.md`, so an agent that has never worked here checks itself before shipping something inert.** Every entry has actually happened in this repo, and they share a shape: the change looks complete, nothing errors, and the thing silently does not work. Hand-editing a generated file (`rules/AGENTS.md` is composed from `subrules/` + `rules.yaml`; `permissions/default.yaml` is built by `build.sh`) so the next regeneration erases it; adding a hook script without its `hooks:` entry in `agents.yaml` — six scripts in `hooks/` are unregistered and have never run; writing maintenance notes into `rules/AGENTS.md`, which is the composed ruleset synced into every agent's memory file; editing `~/.agents/.system/` in place when it is a pull-only mirror; citing a `file:line` or symbol without opening it, which is worse than no pointer because the next agent trusts it; and assuming merged means live when merged is not published and published is not installed. Each row carries the concrete check that catches it.
+- **A section stating how repo instructions reach an agent the repo has never met.** Two things travel with a clone and neither needs the contributor to configure anything: the committed `AGENTS.md` (with `CLAUDE.md`/`GEMINI.md` symlinked), which every harness reads out of the clone, and a committed `<repo>/.agents/` directory, which is a full DotAgents layer resolving at **project** precedence — ahead of the user's own `~/.agents/` (`resolveResource` / `listResources`, `apps/cli/src/lib/resources.ts`), so a repo-shipped command wins over a same-named personal one. Also states the negative that motivated it: a **rules preset does not travel**. Presets are selected per installed agent version on one machine (`rulesPreset`, `agents rules switch`), so they can never deliver repo-specific instruction to a contributor's agent.
+
+## [0.1.90] - 2026-08-03
+
 ### Changed
 
 - **Document `agents run --device auto` / `--host auto` across the system.** `code:loop`, `skills/run`, `rules/subrules/remote-fleet-dispatch.md`, and `plugins/code/README.md` now list automatic fleet placement as the default for "send to the fleet" — the CLI picks a reachable device by 14-day affinity + live headroom, degrading to local when no device is eligible. Named `--device <box>` is now reserved for tasks that must land on a specific machine.
