@@ -30,7 +30,13 @@ if not prompt:
 
 home = os.path.expanduser("~")
 paths = [
-    os.path.join(home, ".agents-system", "hooks", "promptcuts.yaml"),  # system defaults
+    # System defaults. The canonical location is ~/.agents/.system (state.ts:57);
+    # ~/.agents-system is the pre-migration path (state.ts:64) that only exists on
+    # a folded legacy install. This read pointed ONLY at the legacy path, so on any
+    # fresh install the system layer never loaded and every shortcut resolved from
+    # the user's own copy alone.
+    os.path.join(home, ".agents", ".system", "hooks", "promptcuts.yaml"),
+    os.path.join(home, ".agents-system", "hooks", "promptcuts.yaml"),  # legacy
     os.path.join(home, ".agents", "hooks", "promptcuts.yaml"),         # user overrides
 ]
 

@@ -21,14 +21,44 @@ The `NN-` prefix orders execution within an event. Guards take a low number; con
 injection takes a middle number; anything that reads the result of another hook takes a
 higher one.
 
-## Known drift — five scripts are present but never fire
+## One script is present but never fires
 
-`02-expand-prompt-bang-commands.py`, `02-expand-prompt-skill-refs.py`,
-`02-expand-prompt-user-shortcuts.sh`, `03-linear-inject-tasks-context.sh`, and
-`large-file-add-guard.sh` appear in this directory but have no entry in `../agents.yaml`,
-and none in the user layer on the machine this was verified on (`~/.agents/agents.yaml`,
-16 entries, no overlap). They do not run. Either register them or delete them — do not
-copy their patterns assuming they are live, and do not document them as working behavior.
+`02-expand-prompt-skill-refs.py` has no entry in `../agents.yaml` and has **never** had
+one — `git log -S` over the manifest returns zero commits. It is an unfinished feature,
+not a regression. Register it or delete it; do not copy its patterns assuming it is live.
+
+### How the other four got here — the failure mode to watch for
+
+Four scripts sat unregistered for months because two unrelated bulk edits dropped their
+entries as collateral, and nothing failed loudly:
+
+| Commit | Subject | Dropped |
+|---|---|---|
+| `606db6e` (May 13) | "fix(hooks): handle missing YAML frontmatter in pre-commit validator" | `-27` lines from `agents.yaml`: `expand-promptcuts`, `expand-bang-commands`, `linear-tasks`, `stop-completion-gate` |
+| `8b006a6` (Jun 24) | "chore: remove legacy agents hook config" | `-34` lines: `rm-guard` **and** `large-file-add-guard` |
+
+In both cases a sibling was later restored — `stop-completion-gate` came back as
+`verify-work-complete`, `rm-guard` was re-registered — while the others were forgotten.
+All four have now been restored and verified working.
+
+**The lesson: a hook has no failing test for "is it registered."** The script keeps
+passing its own `_test.sh` while never running. When a commit touches `agents.yaml`, check
+the entry count before and after — a diff that removes registrations under an unrelated
+subject is the exact shape of this bug.
+
+### Registering a hook scopes it to every hook-capable harness, not to a chosen few
+
+The `agents:` field in a hook entry is **deprecated and ignored**
+(`apps/cli/src/lib/types.ts:305`), so there is currently **no way to scope a hook to a
+subset of harnesses**. A registration reaches every agent whose capability table supports
+that event — for `UserPromptSubmit` and `SessionStart` that is roughly ten harnesses, not
+just claude/codex/gemini.
+
+That matters because these scripts emit **Claude-shaped** `hookSpecificOutput` JSON, and
+agents-cli has no adapter translating that shape for grok, kimi, cursor, copilot, kiro,
+goose, hermes, or droid. Before you register a hook that produces output, either confirm
+its payload is harmless when a harness ignores it, or make the script no-op outside the
+harnesses it targets — the manifest cannot do it for you.
 
 **`verify-delivery-chain.py` is the exception, and the reason to check twice.** It has no
 `hooks:` entry either, but it **does** run on every Stop: `00-agent-verify-work-complete.sh`

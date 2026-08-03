@@ -97,7 +97,9 @@ QUERY='{
 }'
 BODY=$(python3 -c 'import json,sys; print(json.dumps({"query": sys.argv[1]}))' "$QUERY")
 
-result=$(curl -s -X POST https://api.linear.app/graphql \
+# Self-bounded: without --max-time the only limit is the harness's own hook timeout,
+# so a reachable-but-slow Linear API would stall every SessionStart on every harness.
+result=$(curl -s --connect-timeout 3 --max-time 8 -X POST https://api.linear.app/graphql \
   -H "Content-Type: application/json" \
   -H "Authorization: $LINEAR_API_KEY" \
   -d "$BODY" 2>/dev/null)

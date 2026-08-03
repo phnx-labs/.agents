@@ -116,6 +116,9 @@ def main():
     search_dirs = [
         os.path.join(cwd, '.agents', 'skills'),
         os.path.join(home, '.agents', 'skills'),
+        # Canonical system layer (state.ts:57); the bare ~/.agents-system below is
+        # the legacy pre-migration path (state.ts:64), kept for folded installs.
+        os.path.join(home, '.agents', '.system', 'skills'),
         os.path.join(home, '.agents-system', 'skills'),
     ]
 

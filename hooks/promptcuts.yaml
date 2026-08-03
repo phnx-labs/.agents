@@ -16,9 +16,9 @@ shortcuts:
     - READ (not grep, not guess) every file on the data path. Open the actual source. Quote file:line directly.
     - Ban paraphrase. Ban summary. Paste the actual code/text that proves your point.
     - Ban "probably", "I think", "it seems", "should be". Either you have proof or you label the statement "unverified".
-    - For state-of-the-world claims (APIs, library behavior, prices, SOTA, versions, framework capabilities), run WebSearch FIRST with the current year in the query. Weights are stale by default (Hard Lines #5, #6).
-    - For counts, sizes, directory contents: run the tool call THIS session. "I think there are 26 files" is a Hard Line #2 violation — run `ls | wc -l` and quote the number.
-    - For cross-cutting claims spanning multiple files/modules, spawn parallel Agent subagents (model="sonnet" for breadth, "opus" for depth — NEVER "haiku", NEVER omit the field — Hard Line #7). Every subagent brief MUST end with:
+    - For state-of-the-world claims (APIs, library behavior, prices, SOTA, versions, framework capabilities), run WebSearch FIRST with the current year in the query. Weights are stale by default (research-discipline: date-anchoring + web-search-first).
+    - For counts, sizes, directory contents: run the tool call THIS session. "I think there are 26 files" is a research-discipline violation — run `ls | wc -l` and quote the number.
+    - For cross-cutting claims spanning multiple files/modules, spawn parallel Agent subagents (model="sonnet" for breadth, "opus" for depth — NEVER "haiku", NEVER omit the field — fleet-delegation). Every subagent brief MUST end with:
       `Return file:line quotes for every claim. Do NOT paraphrase. If you can't quote it, don't claim it.`
 
     If you cannot verify a claim, say "unverified" explicitly. Never smuggle an assumption in as a fact.
@@ -56,7 +56,7 @@ shortcuts:
     Every teammate task prompt MUST end with:
       `Return file:line quotes for every claim. Do NOT paraphrase. If you can't quote it, don't claim it.`
 
-    (Hard Line #7 still applies to any Agent() subagents you spawn alongside — model explicit, never haiku.)
+    (fleet-delegation still applies to any Agent() subagents you spawn alongside — model explicit, never haiku.)
 
     ---------------- SYNTHESIS ----------------------------------------
     Once the team finishes:
@@ -71,17 +71,17 @@ shortcuts:
   
         Execution plan (follow in order):
         1. Load the `debug` skill — it encodes the project's debugging workflow.
-        2. Trace the full data path end-to-end. If data flows A → B → C → D, open A, B, C, AND D. Quote file:line from each. Skipping files in the middle is how you misdiagnose (Hard Line #3: NO LAZY DEBUGGING).
-        3. Spawn parallel agents for independent verification (parallelize — Hard Line #11):
+        2. Trace the full data path end-to-end. If data flows A → B → C → D, open A, B, C, AND D. Quote file:line from each. Skipping files in the middle is how you misdiagnose (research-discipline: NO LAZY DEBUGGING).
+        3. Spawn parallel agents for independent verification (parallelize — fleet-delegation: parallelize from message one):
            - Codex agent via `agents teams` — reproduce the bug from scratch       - Antigravity agent via `agents teams` — cross-check the data flow independently
        - Opus Agent subagent — deep review of the suspected module
        Every agent prompt MUST end with the exact line:
        `Return file:line quotes for every claim. Do NOT paraphrase. If you can't quote it, don't claim it.`
-       NEVER pass model="haiku". NEVER omit the model field. (Hard Lines #7, #8)
+       NEVER pass model="haiku". NEVER omit the model field. (fleet-delegation; research-discipline)
     4. Synthesize: do the agents AGREE on the cause? Where do they DIVERGE? Divergence = you do not understand the bug yet — investigate more, do NOT patch.
     5. Present: bug description, full evidence chain with file:line quotes from every file on the path, root cause, proposed fix (sorted by scope). NO fix ships until the user confirms the diagnosis.
 
-    FORBIDDEN: fallback logic, "just in case" guards, patching symptoms (Hard Line #4: NO FALLBACKS / NO BAND-AIDS). Fix the root cause or don't fix anything.
+    FORBIDDEN: fallback logic, "just in case" guards, patching symptoms (code-quality: NO FALLBACKS / NO BAND-AIDS). Fix the root cause or don't fix anything.
 
   "#yousure": |
     Stop and verify what you just claimed. Three-step process:
@@ -105,8 +105,8 @@ shortcuts:
     - Enumerate edge cases explicitly: empty input, large input, concurrent access, partial failure, network death, stale data, race conditions, permission boundaries, timezones, unicode, rounding, off-by-one, retries.
     - Present the evidence chain, not vibes. Every claim backed by a file:line quote or a web-search citation (with year).
     - Banned words: "probably", "I think", "it seems", "might", "should work". Either you have proof or you label the statement explicitly as speculation.
-    - For state-of-the-world dimensions (library behavior, API contracts, SOTA approaches, framework capabilities, current-year best practice), WebSearch with the current year BEFORE answering (Hard Lines #5, #6).
-    - For multi-dimensional questions (multi-file, cross-platform, audits, parity checks, root-cause across a stack), spawn 3-7 parallel Agent subagents (model="opus" for depth, NEVER "haiku", NEVER omit the field — Hard Line #7). Every brief ends with:
+    - For state-of-the-world dimensions (library behavior, API contracts, SOTA approaches, framework capabilities, current-year best practice), WebSearch with the current year BEFORE answering (research-discipline: date-anchoring + web-search-first).
+    - For multi-dimensional questions (multi-file, cross-platform, audits, parity checks, root-cause across a stack), spawn 3-7 parallel Agent subagents (model="opus" for depth, NEVER "haiku", NEVER omit the field — fleet-delegation). Every brief ends with:
       `Return file:line quotes for every claim. Do NOT paraphrase. If you can't quote it, don't claim it.`
 
     Shallow fast answers are rejected here. If you catch yourself about to answer in one paragraph, stop — you're being lazy.
@@ -127,7 +127,7 @@ shortcuts:
 
     4. ABSTRACTION BLOAT — too many small wrappers, adapters, layers each doing 10% of a job. If there are 5 abstractions for one concern, propose a SINGLE cleaner abstraction that subsumes 3-4 of them. Fewer concepts > more concepts, when the shape is right.
 
-          5. SCATTERED TRUTH — the same constant, config value, or decision expressed in multiple places. Unify at the source. No shadow copies. (Hard Line #15: CROSS-CUTTING CHANGES GO TO THE SOURCE.)
+          5. SCATTERED TRUTH — the same constant, config value, or decision expressed in multiple places. Unify at the source. No shadow copies. (code-quality: CROSS-CUTTING CHANGES GO TO THE SOURCE.)
     
           WHAT YOU PROPOSE:    - A NEW, simpler abstraction — with name, shape, responsibilities.
     - Which existing abstractions it REPLACES (list them by file:line).
@@ -139,7 +139,7 @@ shortcuts:
     - If the "simpler" abstraction adds LOC or concept count, it is NOT simpler — reject it and try again.
     - Naming matters. `DataManager` is not an abstraction, it's a parking lot. If you can't name the new concept in one clean word, the concept isn't clean yet.
     - Applies to CODE and CONCEPTS equally — product language, domain terms, UI vocabulary, status enums, event names.
-    - Parallelize the hunt: spawn Agent subagents (Opus, never Haiku — Hard Line #7) to grep for near-duplicates across different areas simultaneously. Every brief ends with:
+    - Parallelize the hunt: spawn Agent subagents (Opus, never Haiku — fleet-delegation) to grep for near-duplicates across different areas simultaneously. Every brief ends with:
       `Return file:line quotes for every claim. Do NOT paraphrase. If you can't quote it, don't claim it.`
 
     DO NOT ship the consolidation. Propose it. Enumerate the replacements. Wait for approval.
@@ -283,7 +283,7 @@ shortcuts:
        Not just one. Skills contain project-specific endpoints,
        correct patterns, known gotchas, and domain language your
        weights do not have. Skipping a relevant skill = operating
-       on generic priors = violating Hard Line #2 (unverified
+       on generic priors = violating research-discipline (unverified
        claims). When in doubt, load it — loading is cheap, being
        wrong is expensive.
 
@@ -305,23 +305,23 @@ shortcuts:
     1. CONTEXT — You have READ (not grepped, not guessed) every file
        on the data path. For debugging, data flows A->B->C->D means
        you opened A, B, C, AND D. You can quote file:line from each.
-       (Hard Line #3: NO LAZY DEBUGGING in AGENTS.md)
+       (research-discipline: NO LAZY DEBUGGING in AGENTS.md)
 
           2. PARALLELISM — If the question has more than one dimension
              (multi-file, cross-platform, "is X ready", audit, parity check,
              root-cause across a stack, comparing options), you spawned
              3-7 Agent subagents IN PARALLEL in your FIRST response.
              Sequential single-threaded investigation is BANNED for
-             multi-dimensional work. (Hard Line #11)
+             multi-dimensional work. (fleet-delegation: parallelize from message one)
     
           3. SUBAGENT MODEL — Every Agent() call has model explicitly set.       Default "sonnet". "opus" for deep investigation / review /
        architecture / anything load-bearing. NEVER "haiku". NEVER
-       omit the field (frontmatter may pin haiku). (Hard Line #7)
+       omit the field (frontmatter may pin haiku). (fleet-delegation)
 
     4. INVESTIGATION BRIEFS — Every investigative/debug/review
        subagent prompt ends with the exact line:
        `Return file:line quotes for every claim. Do NOT paraphrase.
-       If you can't quote it, don't claim it.` (Hard Line #8)
+       If you can't quote it, don't claim it.` (research-discipline)
 
     5. WEB SEARCH — If the answer depends on state-of-the-world
        (models, APIs, prices, libraries, releases, framework
@@ -330,26 +330,26 @@ shortcuts:
        you ran WebSearch FIRST — before the first sentence — with
        the current year in the query string. Trusting your weights
        on current affairs = unverified claim = violation.
-       (Hard Lines #5, #6)
+       (research-discipline: date-anchoring + web-search-first)
 
           6. ENV STATE — You did NOT ask the user to verify anything you
              could have checked yourself with a shell command. You ran the
-             check. (Hard Line #10)
+             check. (F2)
     
           7. NO PREMATURE BLOCKERS — You did NOT declare "I can't do X"
              after one failed attempt. You tried at least THREE distinct
              approaches and quoted the failure of each, OR you succeeded.
-             (Hard Line #9)
+             (F2)
     
           8. EVIDENCE — Every factual claim in your response is backed by       code you READ in this session, quoted file:line. No
        paraphrase. No "I think". No counts, sizes, or behaviors
        asserted without a tool call that verified them this session.
-       (Hard Line #2: NO UNVERIFIED CLAIMS)
+       (research-discipline: NO UNVERIFIED CLAIMS)
 
     9. END-TO-END — If you built or changed something, you triggered
        the REAL flow and saw REAL output before claiming done.
        "It compiles" and "tests pass" are NOT verification.
-       (Hard Line #1)
+       (F3)
 
     ---------------- WHAT LAZINESS LOOKS LIKE (DO NOT DO) -----------
     - "Let me grep for X" then answering without reading the files.
