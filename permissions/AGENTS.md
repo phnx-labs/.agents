@@ -77,5 +77,5 @@ widens on Codex — check the translation before relying on a narrow allow.
 
 `CLAUDE.md` and `GEMINI.md` here are symlinks to this file, so an agent working *in this
 directory* reads it. It is **not** injected into every agent's prompt — only `rules/` is
-(`resourceDir('rules') -> 'memory'`, `apps/cli/src/lib/resources.ts:64`). Write for the agent
+(`profiledKind` maps `rules` -> `'memory'`, `apps/cli/src/lib/resources.ts:64-65`). Write for the agent
 editing permissions, not for every agent on the fleet.
