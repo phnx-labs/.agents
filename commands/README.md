@@ -37,7 +37,7 @@ working until it has. They are easy to confuse.
 
 | Command | What it does |
 |---|---|
-| [`/recap`](./recap.md) | Summarize the current situation — facts first, hypotheses with grounding |
+| [`/recap`](./recap.md) | Recap the current session, or transfer concise context from a prior session selected by ID, prefix, or keywords |
 | [`/continue`](./continue.md) | Resume one task — reattach if the session is still live, otherwise load its transcript |
 | [`/recover`](./recover.md) | Recover *many* crashed sessions — finish the agent-doable work headlessly, hand back the rest as one action |
 | [`/restore`](./restore.md) | Re-open sessions killed by a crash or reboot as Ghostty windows, resuming each |

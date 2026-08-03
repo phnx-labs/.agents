@@ -17,6 +17,7 @@
 ### Changed
 
 - **The `docs` skill's routing table no longer dead-ends on directory docs.** It had five subskills (user, technical, runbook, onboarding, changelog) and **zero** mentions of `AGENTS.md`, so an agent asked to document a directory was routed to `write-user.md` and never learned the pair exists. It now routes that case to `agents-md`, which owns both halves.
+- **`/recap` now transfers context from a selected historical session while preserving bare `/recap`.** `/recap <full-id|prefix|keywords>` resolves one prior session through `agents sessions`, delegates the raw transcript read to an isolated read-only subagent, and returns only the source goal, facts, decisions, progress, files, tests, unresolved questions, and explicitly historical last-known state. It does not resume the session, inherit its ID, or treat recorded state as current.
 
 ## [0.1.88] - 2026-08-03
 
