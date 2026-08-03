@@ -150,9 +150,10 @@ resolution.
 - A full session ID: resolve that exact ID with `agents sessions <id> --preview`.
 - A session-ID prefix: run `agents sessions <prefix> --no-interactive` and select it
   only when the result identifies exactly one session.
-- Keywords: run `agents sessions "<keywords>" --no-interactive` in the current
-  project first. If there is no match and the words plausibly refer to another
-  project, retry with `--all`.
+- Keywords: run `agents sessions --query "<keywords>" --no-interactive` in the
+  current project first. `--query` prevents words such as `go` from being parsed as
+  a `sessions` subcommand. If there is no match and the words plausibly refer to
+  another project, retry the same query with `--all`.
 - Multiple plausible matches: show a short numbered list containing only session
   ID, project, agent, date, and preview metadata, then ask the user to choose. Do
   not guess and do not read any candidate transcript.
