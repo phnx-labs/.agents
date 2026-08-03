@@ -2,7 +2,7 @@
 # Tests for 13-feed-forward.py — the event-driven feed->phone forwarder.
 #
 # Hermetic: owner profile + skill dir + state dir are pointed at a sandbox via
-# env overrides, and `rush` is stubbed on PATH so nothing real sends. Safety
+# env overrides, and `agents` is stubbed on PATH so nothing real sends. Safety
 # properties under test: INERT unless owner.md opts in (forward_status: true);
 # only a real `agents feed post` invocation forwards (not a grep/echo that
 # mentions it); deduped per (session, text).
@@ -15,23 +15,24 @@ SANDBOX="$(mktemp -d)"; trap 'rm -rf "$SANDBOX"' EXIT
 fail=0
 check() { if [ "$2" = "$3" ]; then echo "ok   - $1"; else echo "FAIL - $1: expected [$3] got [$2]"; fail=1; fi; }
 
-# Sandbox skill (owner.py) + state + a rush stub that records instead of sending.
+# Sandbox skill (owner.py) + state + an agents stub that records instead of sending.
 SKILL="$SANDBOX/skill"; mkdir -p "$SKILL"; cp "$REAL_OWNERPY" "$SKILL/owner.py"
 STATE="$SANDBOX/state"; LOG="$SANDBOX/sent.log"
 mkdir -p "$SANDBOX/bin"
-cat > "$SANDBOX/bin/rush" <<STUB
+cat > "$SANDBOX/bin/agents" <<STUB
 #!/usr/bin/env bash
-case "\$1" in
-  whoami) exit 0 ;;
-  message) shift; echo "RUSH \$*" >> "$LOG"; exit 0 ;;
-esac
+# Log notify deliveries; ignore other subcommands with success so PATH looks real.
+if [ "\$1" = "notify" ]; then
+  echo "AGENTS \$*" >> "$LOG"
+  exit 0
+fi
 exit 0
 STUB
-chmod +x "$SANDBOX/bin/rush"
+chmod +x "$SANDBOX/bin/agents"
 export PATH="$SANDBOX/bin:$PATH"
 export ESCALATE_SKILL_DIR="$SKILL" FEED_FORWARD_STATE="$STATE"
 
-# owner.md with host=local so the forward runs locally against the rush stub.
+# owner.md with host=local so the forward runs locally against the agents stub.
 optout="$SANDBOX/optout.md"; optin="$SANDBOX/optin.md"
 cat > "$optout" <<'MD'
 ---
@@ -67,11 +68,12 @@ fire() { # fire <owner.md> <session> <command>
 fire "$optout" s1 'agents feed post "shipped the thing"'
 check "opt-out: no forward" "$(wc -l < "$LOG")" "0"
 
-# 2. opted IN -> a real feed post forwards (via the rush stub).
+# 2. opted IN -> a real feed post forwards (via the agents notify stub).
 : > "$LOG"; rm -rf "$STATE"
 fire "$optin" s2 'agents feed post "shipped the thing, PR #149 needs review"'
 check "opt-in: forwards once" "$(wc -l < "$LOG")" "1"
 grep -q "shipped the thing" "$LOG" && echo "ok   - forwards the posted text" || { echo "FAIL - text not forwarded"; fail=1; }
+grep -q "notify" "$LOG" && echo "ok   - uses agents notify" || { echo "FAIL - did not call agents notify"; fail=1; }
 
 # 3. a grep that merely MENTIONS 'agents feed post' -> must NOT forward.
 : > "$LOG"; rm -rf "$STATE"

@@ -8,9 +8,10 @@ The tiering the owner asked for falls out naturally: fine-grained progress
 a DELIBERATE `agents feed post` (a milestone / the completion recap) is the
 important tier, and THIS hook forwards that one to the owner's iMessage.
 
-Delivery: `rush message send` (owner-scoped iMessage via Rush's Sendblue number)
-when it's available + authed on this box; otherwise falls back to OpenClaw
-Telegram (works headless). Owner + channels come from ~/.agents/owner.md.
+Delivery: `agents notify` (channel registry; destination from notify.owner in
+agents.yaml — the RUSH-2123 delivery envelope). Falls back to OpenClaw Telegram
+if agents notify fails. Owner profile for the telegram fallback comes from
+~/.agents/owner.md.
 
 Safety: OPT-IN — does nothing unless owner.md sets `forward_status: true`. Deduped
 per (session, text) with a short cooldown so a re-run can't double-send. Fires the
@@ -87,20 +88,25 @@ def already_sent(session, text):
 
 
 def forward(text, agent):
-    """Send the status to the owner: rush iMessage if available, else Telegram."""
+    """Send the status to the owner: agents notify first, else Telegram."""
     o = owner_json()
     host = o.get("host") or ""
     tg = o.get("telegram") or {}
     def on_host(shell):
+        # Local: non-login shell so PATH from the hook env (and test stubs) is
+        # preserved — `bash -lc` re-sources the profile and can hide a sandbox
+        # stub behind a real `agents` that fails notify and looks like "no send".
         if not host or host == "local":
-            return ["bash", "-lc", shell]
+            return ["bash", "-c", shell]
         return ["ssh", host, shell]
-    # rush iMessage (owner-scoped) — preferred; only works where rush is authed.
-    rush_cmd = ("command -v rush >/dev/null 2>&1 && rush whoami >/dev/null 2>&1 && "
-                "rush message send --from-agent " + shlex.quote(agent or "claude") +
-                " --text " + shlex.quote(text))
+    # Preferred: agents notify (send --to owner). One delivery stack; channel
+    # comes from notify.owner in agents.yaml — not a version-skewed rush subcommand.
+    agents_cmd = (
+        "command -v agents >/dev/null 2>&1 && "
+        "agents notify --text " + shlex.quote(text)
+    )
     try:
-        if subprocess.run(on_host(rush_cmd), capture_output=True, timeout=25).returncode == 0:
+        if subprocess.run(on_host(agents_cmd), capture_output=True, timeout=25).returncode == 0:
             return
     except Exception:
         pass
