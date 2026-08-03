@@ -35,6 +35,16 @@ sys.stdout.write("" if o is None else str(o))' "$2" 2>/dev/null
   return 1
 }
 
+# --- friction self-report ---------------------------------------------------
+# This hook exits 2 before any `agents` process exists, so it cannot emit
+# in-process. Fires the hidden recorder in the background, fully fail-open,
+# so a missing/slow CLI never breaks the guard's hot path.
+report_friction() {  # $1=failureId  $2=error-message
+  [ -z "${AGENTS_DISABLE_FRICTION_LOG:-}" ] || return 0
+  (agents _internal friction --surface guard --id "$1" \
+    --error "$2" --command "$cmd" || true) </dev/null >/dev/null 2>&1 &
+}
+
 if ! cmd=$(_json_field "$input" tool_input.command); then
   echo "git-require-clean-tree: no JSON parser (jq/node/python) available — refusing git pull/rebase unchecked (fail-closed)." >&2
   exit 2
@@ -50,5 +60,7 @@ cwd=$(_json_field "$input" cwd) || cwd=""
 
 [ -z "$(git status --porcelain 2>/dev/null)" ] && exit 0
 
-echo "Blocked: working tree is dirty. git pull/rebase/autostash on a dirty tree can destroy uncommitted work. Commit (or manually stash) first, then retry." >&2
+deny_reason="Blocked: working tree is dirty. git pull/rebase/autostash on a dirty tree can destroy uncommitted work. Commit (or manually stash) first, then retry."
+echo "$deny_reason" >&2
+report_friction "git.pull-rebase-dirty-tree" "$deny_reason"
 exit 2
