@@ -39,15 +39,13 @@ hooks:
       - SessionStart
     script: 08-inject-repo-inflight.sh
     timeout: 10
-    # Measured 5648ms — 68% of SessionStart wall-clock on its own. It shells out to
-    # `gh pr list` and `agents sessions`, so the cost is network + subprocess, not
-    # compute. Keyed per-cwd because the payload is "open PRs and live sessions in THIS
-    # checkout". 5m-bg serves the cached answer instantly and refreshes behind it, so
-    # there is no staleness cliff. Also switches on `agents hooks profile` for this hook.
-    cache:
-      ttl: 5m
-      key: per-cwd
-      prefetch: background
+    # NOT cached, deliberately. The hook excludes the CALLING session from the live-session
+    # list (`self_sid`, 08-inject-repo-inflight.sh:72), so its correct output differs per
+    # session. `per-cwd` keying drops session_id, which would serve agent B the snapshot
+    # computed for agent A — filtered to exclude A, not B — so B would not see that A is
+    # running, defeating the hook's stated purpose. `per-session` keying would be correct
+    # but useless: SessionStart fires once per session, so every fire would be a miss.
+    # Speed comes from parallelising its two probes inside the script instead.
   attention-sentinel:
     agents:
       - claude
@@ -76,11 +74,18 @@ hooks:
       - SessionStart
     script: 07-inject-device-topology.sh
     timeout: 5
-    # Measured 2255ms — probes every fleet device for load/memory. Fleet membership is
-    # machine-wide, so the key is global; the load figures are advisory and a few minutes
-    # stale is fine for "which box is idle". Same 5m-bg stale-while-revalidate.
+    # Measured 2255ms — probes every fleet device for load/memory. Safe to cache: the
+    # output has no session or cwd dependency, so a shared entry is the correct answer for
+    # every caller. Keyed global for that reason.
+    #
+    # TTL is 60s, not 5m: the load figures steer "prefer an idle box", and a 5-minute-old
+    # reading can route work to a box that is now busy. 60s still absorbs the common case
+    # (several sessions starting within a minute of each other) while bounding how wrong
+    # the advice can be — and it bounds the blast radius of a background refresh that
+    # keeps failing, which currently has no backoff and would otherwise serve one stale
+    # entry indefinitely.
     cache:
-      ttl: 5m
+      ttl: 60s
       key: global
       prefetch: background
   session-identity:
