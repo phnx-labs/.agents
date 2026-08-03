@@ -45,16 +45,12 @@ if [ -z "${TRANSCRIPT_PATH:-}" ] || [ ! -f "$TRANSCRIPT_PATH" ]; then
   exit 0
 fi
 
-# --- stateful de-escalation --------------------------------------------------
-# A gate that fires the identical "keep driving" text on the 1st and the 20th
-# stop is what makes long sessions LOOP (observed: single sessions blocked 20-40
-# times on the same open PR while a live CI watch was already running). By the
-# 3rd fire on the SAME item the agent is BLOCKED, not abandoning — so on repeat
-# we ADD an escalation banner pointing at the real exits (name the live watcher
-# and stop, escalate to the human out-of-band, coordinate on a shared blocker,
-# or set a monitor and stop). Counting is evidence-based: prior fires are read
-# from the transcript itself. Anchored to the injected 'Stop hook feedback:'
-# prefix so a Read of this hook's own source is never miscounted as a fire.
+# --- repeated-gate guidance --------------------------------------------------
+# Repeating the identical block text eventually stops adding information. On a
+# 3rd+ matching fire, keep the proof standard unchanged but remind the agent to
+# re-check live state and choose its own next tactic. Prior fires are read from
+# the transcript and anchored to the injected 'Stop hook feedback:' prefix so a
+# Read of this hook's source is never miscounted as a fire.
 prior_fires() {   # $1 = a substring unique to the gate's injected message
   python3 - "$TRANSCRIPT_PATH" "$1" <<'PY' 2>/dev/null || echo 0
 import json, sys
@@ -80,31 +76,23 @@ print(n)
 PY
 }
 
-# Print the escalation banner to stderr when this gate has already fired >=2
-# times this session on the same item (so this is the 3rd+). Never weakens the
-# gate — it fires alongside the normal block message to break the loop.
-deescalate_banner() {   # $1 = human name of the looping item, $2 = prior count
+# Add lightweight strategy guidance when this gate has already fired >=2 times
+# this session on the same item (so this is the 3rd+). It supplements the normal
+# block message and never weakens the gate.
+repeat_guidance() {   # $1 = human name of the repeated item, $2 = prior count
   local n="${2:-0}"
   [ "$n" -lt 2 ] && return 0
-  cat >&2 <<DEESC
-NOTE — this gate has now fired $((n + 1)) times this session on $1. Repeating the
-same stop means you are BLOCKED, not abandoning it, and re-asserting will just
-loop (it burns your turns and your usage quota). Do ONE of these, then stop:
-  * A LIVE background watcher/monitor already owns the next step (a
-    'gh pr checks --watch', a ScheduleWakeup, a Monitor)? That IS a valid stop —
-    name it explicitly and stop.
-  * A HUMAN gate is the blocker (merge authorization, release sign-off, plan
-    mode, a Touch ID)? Escalate out-of-band NOW —
-    rush message send --from-agent <you> "<one line + the link>" — then stop.
-  * A SHARED blocker is likely (a downed reviewer/CI, a fleet-wide outage)?
-    Coordinate: 'agents feed post' a one-liner and check 'agents sessions
-    --active' for sibling sessions stuck on the same wall, then stop.
-  * Otherwise set a monitor / ScheduleWakeup that re-invokes you when the blocker
-    clears, and stop — do not sit in this window re-asserting.
+  cat >&2 <<GUIDANCE
+NOTE — this gate has now fired $((n + 1)) times this session on $1. Re-check the
+live state and choose the most useful next move toward the user's goal. If the
+same approach is not working, change tactics. Possibilities include retrying
+differently, using your tools to unblock yourself, advancing another in-scope
+item, coordinating ownership, or escalating a genuinely human-only step. Use
+the actual context to decide; these are suggestions, not a fixed route.
 
-DEESC
+GUIDANCE
 }
-# --- end stateful de-escalation ----------------------------------------------
+# --- end repeated-gate guidance ---------------------------------------------
 
 # --- Open-PR abandonment gate ------------------------------------------------
 # A session that CREATED *or actively WORKED* a pull request may not stop while
@@ -295,7 +283,7 @@ print('yes' if ok else 'no')
 " 2>/dev/null || echo "no")
 
       if [ "$has_handoff" != "yes" ]; then
-        deescalate_banner "an open pull request (${open_prs%%$'\n'*})" "$(prior_fires 'pull request(s) that are still OPEN')"
+        repeat_guidance "an open pull request (${open_prs%%$'\n'*})" "$(prior_fires 'pull request(s) that are still OPEN')"
         cat >&2 <<PRGATE
 STOP GATE: This session created OR worked pull request(s) that are still OPEN:
 
@@ -402,7 +390,7 @@ print('yes' if any(re.search(p, msg) for p in pats) else 'no')
 " 2>/dev/null || echo "no")
 
   if [ "$swarm_done" = "yes" ]; then
-    deescalate_banner "an edit-mode swarm's cross-track seam" "$(prior_fires 'STOP GATE (swarm)')"
+    repeat_guidance "an edit-mode swarm's cross-track seam" "$(prior_fires 'STOP GATE (swarm)')"
     cat >&2 <<SWARMGATE
 STOP GATE (swarm): You ran an edit-mode swarm and are claiming it is done.
 Every track's PR merging green is NOT proof the composed feature works — each
@@ -813,7 +801,7 @@ if [ -z "$first_user_msg" ]; then
 fi
 
 # Block and inject self-audit prompt
-deescalate_banner "a done-claim (full goal re-audit)" "$(prior_fires 'You claimed this work is done')"
+repeat_guidance "a done-claim (full goal re-audit)" "$(prior_fires 'You claimed this work is done')"
 cat >&2 <<GATE
 STOP GATE: You claimed this work is done, but you must verify before stopping.
 
