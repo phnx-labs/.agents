@@ -46,6 +46,20 @@ passing its own `_test.sh` while never running. When a commit touches `agents.ya
 the entry count before and after — a diff that removes registrations under an unrelated
 subject is the exact shape of this bug.
 
+### Registering a hook scopes it to every hook-capable harness, not to a chosen few
+
+The `agents:` field in a hook entry is **deprecated and ignored**
+(`apps/cli/src/lib/types.ts:305`), so there is currently **no way to scope a hook to a
+subset of harnesses**. A registration reaches every agent whose capability table supports
+that event — for `UserPromptSubmit` and `SessionStart` that is roughly ten harnesses, not
+just claude/codex/gemini.
+
+That matters because these scripts emit **Claude-shaped** `hookSpecificOutput` JSON, and
+agents-cli has no adapter translating that shape for grok, kimi, cursor, copilot, kiro,
+goose, hermes, or droid. Before you register a hook that produces output, either confirm
+its payload is harmless when a harness ignores it, or make the script no-op outside the
+harnesses it targets — the manifest cannot do it for you.
+
 **`verify-delivery-chain.py` is the exception, and the reason to check twice.** It has no
 `hooks:` entry either, but it **does** run on every Stop: `00-agent-verify-work-complete.sh`
 pipes into it directly. "No manifest entry" means *not registered as a hook*, not *dead* —
