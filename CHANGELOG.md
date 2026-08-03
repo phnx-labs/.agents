@@ -27,6 +27,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- **`13-feed-forward` still called `rush message send` — a version-skewed path that often does not exist.** After RUSH-2123, owner delivery is `agents notify` / `agents send --to owner` (channel registry). The hook now prefers `agents notify`, keeps OpenClaw Telegram as fallback, and uses a non-login local shell so PATH stubs (and the real agents binary) resolve correctly. Tests stub `agents` instead of `rush`. `cli/rush.yaml` no longer teaches `rush message send` as the agent-facing notify path.
+
 ### Changed
 
 - **Historical context commands now keep the resolved source machine attached to the transcript read.** `/recap <selector>` passes the metadata-only resolver's full ID and machine to its isolated read-only subagent, which reads markdown and artifacts with `--host <machine>`; exit code 2 remains an incomplete fleet answer and cannot become a false match or no-match. `/continue <id> --device <machine>` (or `--host`) now parses the generated source locator and uses it when a dead session's transcript must be loaded from another box, while live attachment remains fleet-aware.

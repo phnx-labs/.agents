@@ -20,5 +20,8 @@ install:
 post_install: |
   Authenticate with: rush login
   Then verify: rush whoami
-  rush is the owner-notification path (`rush message send`) and the api.prix.dev
-  REST client (`rush http`) — a core requirement for the fleet.
+  rush is the api.prix.dev REST client (`rush http`) and the backend that
+  `agents send` shells out to for imessage/slack/telegram/discord providers
+  (`rush send`). For owner pings agents should use `agents notify` /
+  `agents send --to owner` — not `rush message send` (version-skewed; not the
+  agent contract).

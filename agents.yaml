@@ -129,7 +129,7 @@ hooks:
     timeout: 5
   feed-forward:
     # Event-driven (no polling routine): when an agent posts a status update via
-    # `agents feed post`, forward it to the owner's phone (rush iMessage, else
+    # `agents feed post`, forward it to the owner via `agents notify` (else
     # Telegram). Opt-in via owner.md (forward_status: true) — inert until on.
     agents:
       - claude
