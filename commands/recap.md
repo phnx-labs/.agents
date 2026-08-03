@@ -151,7 +151,11 @@ query, `--preview`, `--markdown`, or `--json` without `--resolve` in this receiv
 agent.
 
 - A successful resolution returns a one-element JSON array. Select the full `id`
-  from that metadata object.
+  and `machine` from that metadata object.
+- Exit code 2 means the fleet answer is incomplete because at least one peer did
+  not answer or does not support the safe resolver protocol. Report the failed
+  peer metadata from stderr and stop. Do not turn a partial fleet answer into a
+  unique match, ambiguity, or no-match result.
 - An ambiguous prefix or keyword exits non-zero and lists every matching full ID
   and machine. Show a short numbered list containing only the returned metadata,
   then ask the user to choose a more specific selector. Do not guess and do not
@@ -160,17 +164,18 @@ agent.
   selector used. Do not fall back to the current session and do not invent a recap.
 
 Continue only after exactly one prior session has been selected. Treat its resolved
-full ID as an input locator, not as this session's identity.
+full ID and source machine as input locators, not as this session's identity or host.
 
 ### 2. Isolate the transcript read
 
 Spawn one isolated subagent in read-only/plan mode. Give it only the resolved full
-session ID and the output contract below. The subagent, not this receiving agent,
-must run `agents sessions <full-id> --markdown` and
-`agents sessions <full-id> --artifacts`, read the raw transcript, and return a
-concise structured summary. It must not edit files, run task work, resume or focus
-the session, contact external systems, or include raw transcript passages in its
-response.
+session ID, the resolved source machine, and the output contract below. The
+subagent, not this receiving agent, must run
+`agents sessions <full-id> --markdown --host <machine>` and
+`agents sessions <full-id> --artifacts --host <machine>`, read the raw transcript,
+and return a concise structured summary. It must not edit files, run task work,
+resume or focus the session, contact external systems, or include raw transcript
+passages in its response.
 
 Require the subagent to return only these sections:
 
