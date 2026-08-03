@@ -4,7 +4,18 @@ description: Resume a previous task — reattach if it's still live, otherwise l
 
 Resume previous work: $ARGUMENTS
 
-You are picking up where a previous session left off. Typically called as `/continue <session-id>` (UUID or short prefix) — the invocation you see when resuming from the `agents sessions` picker across versions. The argument may also be a name, a topic, or empty.
+You are picking up where a previous session left off. Typically called as `/continue <session-id>` (UUID or short prefix) — the invocation you see when resuming from the `agents sessions` picker across versions. The argument may also be a name, a topic, or empty. A generated cross-device handoff may append `--device <machine>` or its alias `--host <machine>`.
+
+## Parse an optional source machine
+
+Before interpreting the selector, extract at most one trailing `--device <machine>`
+or `--host <machine>` pair from `$ARGUMENTS`. Remove that pair from the selector
+and retain the machine as the transcript source. Reject a missing machine value,
+multiple source flags, or extra text after the pair rather than guessing.
+
+The source machine is a read locator only. It does not become this session's ID,
+host, or execution target. If no source machine was supplied, use the normal
+fleet-aware behavior below.
 
 ## Step 0: Reattach if the session is still live
 
@@ -12,7 +23,7 @@ The session you are resuming may already be running inside a tmux pane or termin
 
 1. **Resolve the session id (if one was given).**
    - If the user passed an id (UUID or short prefix), use it directly.
-   - If they passed a topic/name/keyword, run `agents sessions "<query>"` to read the index and extract the id. If the query returns multiple candidates, pick the most recent matching one or ask once.
+   - If they passed a topic/name/keyword, run `agents sessions "<query>"` to read the index and extract the id. When a source machine was supplied, add `--host <machine>` to that lookup. If the query returns multiple candidates, pick the most recent matching one or ask once.
    - If they passed nothing, skip to the attach picker in step 2.
 
 2. **Try to attach.**
@@ -36,7 +47,8 @@ Pick the loader based on what the user passed.
 | Input | Command |
 |------|---------|
 | Session ID (UUID or short prefix) | `agents sessions <id>` |
-| Only a topic / name / keyword | `agents sessions "<query>"` to pick an ID, then `agents sessions <id>` |
+| Session ID plus source machine | `agents sessions <id> --host <machine>` |
+| Only a topic / name / keyword | `agents sessions "<query>"` to pick an ID, then `agents sessions <id>`; add `--host <machine>` to both commands when supplied |
 | Nothing | `agents sessions` (interactive picker) — abort if no TTY and ask the user |
 
 The default render is a concise summary: header, original prompt, tool-call groupings, final response. That's enough 90% of the time. Only escalate to `agents sessions <id> --markdown` if the summary leaves a real gap (e.g. you need a specific mid-session message). Narrow with `--include user,assistant` or `--last 5` if the full conversation is too long.
@@ -73,4 +85,5 @@ Pick up exactly where things left off. Don't redo completed work. Follow ACT -> 
 - Do not dump raw transcript output at the user — synthesize it
 - Do not start coding before verifying the prior work is still intact
 - Do not spawn a new resumed copy when the session is still live in tmux/Ghostty — reattach instead
+- Do not drop a supplied `--device` / `--host` locator and then report that its remote transcript is missing
 - Use the `agents sessions` CLI to load context — don't hand-traverse `~/.agents/versions/.../projects/`
