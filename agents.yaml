@@ -127,3 +127,30 @@ hooks:
     matcher: Bash
     script: 01-git-require-clean-tree.sh
     timeout: 5
+  # Restored: accidentally deleted by 606db6e (May 13 2026), a commit whose subject
+  # was the pre-commit validator and which dropped 27 unrelated lines from this file.
+  # All three scripts were verified working before re-registration.
+  expand-promptcuts:
+    events:
+      - UserPromptSubmit
+    script: 02-expand-prompt-user-shortcuts.sh
+    timeout: 5
+  expand-bang-commands:
+    events:
+      - UserPromptSubmit
+    script: 02-expand-prompt-bang-commands.py
+    timeout: 10
+  linear-tasks:
+    events:
+      - SessionStart
+    script: 03-linear-inject-tasks-context.sh
+    timeout: 15
+  # Restored: dropped by 8b006a6 ("remove legacy agents hook config", Jun 24 2026),
+  # which removed rm-guard and large-file-add-guard together. rm-guard was later
+  # re-registered; this one was forgotten. Verified blocking an 11 MiB `git add`.
+  large-file-add-guard:
+    events:
+      - PreToolUse
+    matcher: Bash
+    script: large-file-add-guard.sh
+    timeout: 5

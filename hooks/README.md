@@ -14,6 +14,7 @@ fires on. Layered with `~/.agents/agents.yaml`: a same-named entry in your user 
 | Hook | What it does |
 |---|---|
 | [`04-session-identity.sh`](./04-session-identity.sh) | The single "who am I" hook — session id, transcript path, runtime |
+| [`03-linear-inject-tasks-context.sh`](./03-linear-inject-tasks-context.sh) | Injects a Linear brief and the active-sprint board. Fails soft when the `linear.app` bundle is absent |
 | [`07-inject-device-topology.sh`](./07-inject-device-topology.sh) | Injects the host and fleet topology, with live load and memory per machine |
 | [`08-inject-repo-inflight.sh`](./08-inject-repo-inflight.sh) | Injects the repo's in-flight state — open PRs and other live sessions in this checkout |
 | [`05-session-start-autosync.sh`](./05-session-start-autosync.sh) | Brings the machine current — config repos, secrets, sessions |
@@ -24,6 +25,9 @@ fires on. Layered with `~/.agents/agents.yaml`: a same-named entry in your user 
 |---|---|
 | [`git-guard.sh`](./git-guard.sh) | Blocks the destructive git operations: `reset --hard`, force-push, `checkout -- .`, `stash`, `clean`, history rewrites |
 | [`rm-guard.sh`](./rm-guard.sh) | Blocks destructive `rm` patterns |
+| [`large-file-add-guard.sh`](./large-file-add-guard.sh) | Blocks `git add` of a file over 5 MiB — bypass with `LARGE_FILE_GUARD_MAX_KB=0` |
+| [`02-expand-prompt-user-shortcuts.sh`](./02-expand-prompt-user-shortcuts.sh) | Expands `#shortcut` tokens from `promptcuts.yaml` into the prompt |
+| [`02-expand-prompt-bang-commands.py`](./02-expand-prompt-bang-commands.py) | Runs inline `` `!cmd` `` and injects the output into the prompt |
 | [`01-git-require-clean-tree.sh`](./01-git-require-clean-tree.sh) | Blocks `git pull` / `rebase` / autostash while the working tree is dirty |
 | [`09-mailbox-inject.py`](./09-mailbox-inject.py) | Delivers queued messages into a running session |
 | [`10-mq-read-nudge.py`](./10-mq-read-nudge.py) | On a large whole-file `Read`, suggests mapping it with `mq` and extracting one section |
@@ -71,21 +75,18 @@ merge with **user wins on key collision** — resolution order is user > extra >
 same-named entry in the user repo replaces the system entry wholesale; set `override: true`
 there to silence the shadowing warning.
 
-## Promptcuts — currently inert
+## Promptcuts
 
-`promptcuts.yaml` is data for the prompt-expansion hooks, layered the same way as everything
-else:
+Type `#checkit` in a prompt and it expands into the full verification discipline;
+`` `!date` `` runs the command and injects its output. `promptcuts.yaml` is the data,
+layered the same way as everything else:
 
 - `~/.agents/.system/hooks/promptcuts.yaml` — system-shipped defaults (`#checkit`, `#rethink`, …)
 - `~/.agents/hooks/promptcuts.yaml` — your shortcuts; user keys win
 
-> **These do not run today.** `02-expand-prompt-user-shortcuts.sh` and
-> `02-expand-prompt-bang-commands.py` have no entry in the `hooks:` section of
-> `../agents.yaml`, so `#shortcut` expansion and `` `!cmd` `` bang commands are not wired up
-> from this layer. See the unregistered-scripts list in [`AGENTS.md`](./AGENTS.md).
-
 ## Look here when
 
+- a `#shortcut` did not expand, or a `` `!cmd` `` bang command did not run
 - an agent refuses to stop, or stops when it should not
 - a git command was blocked and you want to know which guard did it
 - agent behavior feels customized in a way that is not obvious
