@@ -284,7 +284,7 @@ watcher_phrase = re.search(r'\b(watcher|poll(?:er|ing)?|background (?:watch|poll
 plan_mode = re.search(r'\bplan mode\b', msg) and re.search(r'\b(cannot|can not|forbid|forbids|blocks?|blocked|prevent|no (?:commit|push|merge))\b', msg)
 # Fix 3 (reviewer/CI down or unconfigured): the required non-author-review path
 # can't complete, so an explicit human handoff is the correct stop.
-reviewer_down = re.search(r'\b(prix-cloud|reviewer|ci)\b.{0,40}\b(down|outage|offline|not posted|not configured|unconfigured|absent)\b', msg) or re.search(r'\bno (?:automated )?(?:reviewer|ci)\b', msg)
+reviewer_down = re.search(r'\b(prix-cloud|reviewer|ci)\b.{0,40}\b(down|outage|offline|not posted|not configured|unconfigured|absent)\b', msg) or re.search(r'\bno (?:automated )?(?:reviewer|ci)\b(?:\s+(?:configured|set up|available|installed|present|enabled)\b|\s+for\s)', msg)
 needs_you = re.search(r'\b(needs? (?:you|muqsit|your)|your (?:merge|approval|sign-?off)|click merge|you (?:own|must) (?:the )?merge)\b', msg)
 ok = (re.search(pat, msg)
       or (blocked and nextstep)
