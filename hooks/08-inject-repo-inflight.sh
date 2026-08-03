@@ -52,9 +52,14 @@ fi
 # is on the real cwd field with a path boundary — repo "…/agents" does not
 # swallow "…/agents-cli" — instead of scraping the human-formatted tree. The
 # session this hook is starting for (session_id in the hook input) is dropped.
+# Budget: measured at 4923ms against the old `_to 5` — a 77ms margin, so any extra
+# load silently dropped this whole section (the `|| true` makes a timeout
+# indistinguishable from "nothing is running"). Raised to 8s, still inside the
+# manifest-level `timeout: 10` backstop. The real fix is making
+# `agents sessions --active --local` faster; this stops the silent data loss meanwhile.
 sessions=""
 if command -v agents >/dev/null 2>&1; then
-  sessions="$(_to 5 agents sessions --active --json --local 2>/dev/null | python3 -c '
+  sessions="$(_to 8 agents sessions --active --json --local 2>/dev/null | python3 -c '
 import json, sys
 repo, self_sid = sys.argv[1], sys.argv[2]
 try:
