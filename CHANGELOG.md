@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.1.94] - 2026-08-03
+
+### Fixed
+
+- **Both escalation hooks resolved the escalate skill from the layer it does not ship in, so neither has ever run.** `12-escalate-on-notification.sh:37` and `13-feed-forward.py:23` defaulted `SKILL` to `$HOME/.agents/skills/escalate` — the **user** layer — while the skill ships in the **system** layer (`.system/skills/escalate`). No box has a user-layer copy, so the shell hook's `[ -x "$SKILL/escalate.sh" ] || exit 0` matched nothing and the Python hook's `owner_json()` never found `owner.py`. Both exited silently on every machine, every time, since they landed: the escalation ladder and the status-forwarding hook were dead code that looked healthy. Verified on a live box — user layer `owner.py` absent, system layer present. Both now resolve **user → system**, matching the documented `project → user → system` order, with `ESCALATE_SKILL_DIR` / `OWNER_PROFILE` overrides still winning for tests. Found while tracing why a blocked agent never reached the owner (RUSH-2110), where this was one of five independent silent failures on the same path.
+- **The hook tests could not have caught it.** Every case in `12-escalate-on-notification_test.sh` and `13-feed-forward_test.sh` forced `ESCALATE_SKILL_DIR`, so the default-resolution branch — the code that was broken — had zero coverage. Each suite gains a case that builds a fake `HOME` with the skill in the **system layer only**, exactly as the fleet has it, plus a case asserting the user layer still wins when both exist. Both new cases are proven to **fail against the pre-fix hooks** and pass after, the same regression standard used for the promptcuts system-layer bug in 0.1.92.
+
 ## [0.1.93] - 2026-08-03
 
 ### Fixed

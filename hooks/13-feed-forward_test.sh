@@ -94,4 +94,26 @@ check "unrelated command does not forward" "$(wc -l < "$LOG")" "0"
 fire "$optin" s6 'git push && agents feed post "pushed and green"'
 check "compound command with a real feed post forwards" "$(wc -l < "$LOG")" "1"
 
+# 7. DEFAULT skill resolution, with ESCALATE_SKILL_DIR UNSET.
+#
+# Every case above forces ESCALATE_SKILL_DIR, so none exercises the default --
+# which is how it defaulted to the USER layer while the skill ships in the
+# SYSTEM layer, so owner.py was never found and this hook forwarded nothing on
+# any machine. Builds a fake HOME with the skill in the SYSTEM layer ONLY,
+# exactly as the fleet has it.
+#
+# Fails on the old default: owner.py is not at $HOME/.agents/skills/escalate,
+# so the opt-in read returns {} and the hook exits before forwarding.
+FAKEHOME="$SANDBOX/home"
+SYS_SKILL="$FAKEHOME/.agents/.system/skills/escalate"
+mkdir -p "$SYS_SKILL"; cp "$REAL_OWNERPY" "$SYS_SKILL/owner.py"
+[ -e "$FAKEHOME/.agents/skills/escalate" ] && { echo "FAIL - fixture leaked a user-layer skill"; fail=1; }
+
+: > "$LOG"; rm -rf "$STATE"
+printf '{"session_id":"s7","hook_event_name":"PostToolUse","tool_name":"Bash","tool_input":{"command":"agents feed post \\"system layer\\""}}' \
+  | env -u ESCALATE_SKILL_DIR HOME="$FAKEHOME" OWNER_PROFILE="$optin" FEED_FORWARD_STATE="$STATE" \
+    PATH="$SANDBOX/bin:$PATH" python3 "$HOOK" >/dev/null 2>&1
+sleep 0.5
+check "resolves owner.py from the SYSTEM layer with no override" "$(wc -l < "$LOG")" "1"
+
 exit $fail
