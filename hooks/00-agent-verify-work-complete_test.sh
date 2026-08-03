@@ -600,7 +600,7 @@ check "'no ci blocking' + 'your sign-off' still blocks" "$rc" "2"
 rc=$(FAKE_GH_STATE=OPEN run_hook "$T" "This repo has no reviewer configured, so PR #42 now needs you to merge it." false)
 check "'no reviewer configured' + needs-you allows stop" "$rc" "0"
 
-# --- Fix 1: stateful de-escalation after the 3rd fire on the same item -------
+# --- Repeated-gate strategy guidance after the 3rd fire on the same item -----
 # A transcript that already carries N prior open-PR fires (real isMeta 'Stop hook
 # feedback:' shape), so the current stop is the (N+1)th on the same open PR.
 mk_looped() {   # $1 = number of prior open-PR fires already in the transcript
@@ -619,22 +619,29 @@ mk_looped() {   # $1 = number of prior open-PR fires already in the transcript
   echo "$t"
 }
 
-# D1. First fire (0 prior) blocks WITHOUT the de-escalation banner.
+# D1. First fire (0 prior) blocks WITHOUT repeated-gate guidance.
 rc=$(FAKE_GH_STATE=OPEN run_hook "$T" "CI is green, waiting for the reviewer." false)
 check "first open-PR fire blocks" "$rc" "2"
-grep -qi "this gate has now fired" "$SANDBOX/stderr" && { echo "FAIL - banner fired on the 1st block"; fail=1; } || echo "ok   - no de-escalation banner on the 1st fire"
+grep -qi "this gate has now fired" "$SANDBOX/stderr" && { echo "FAIL - repeat guidance fired on the 1st block"; fail=1; } || echo "ok   - no repeat guidance on the 1st fire"
 
-# D2. Third fire (2 prior) still blocks AND now carries the de-escalation banner.
+# D2. Third fire (2 prior) still blocks and suggests a context-led tactic change.
 TL=$(mk_looped 2)
 rc=$(FAKE_GH_STATE=OPEN run_hook "$TL" "CI still running, waiting." false)
 check "3rd open-PR fire still blocks" "$rc" "2"
-grep -qi "this gate has now fired 3 times" "$SANDBOX/stderr" && echo "ok   - de-escalation banner appears on the 3rd fire" || { echo "FAIL - no de-escalation banner on the 3rd fire"; fail=1; }
-grep -qi "rush message send\|agents feed post\|ScheduleWakeup" "$SANDBOX/stderr" && echo "ok   - banner names the escalation/coordination exits" || { echo "FAIL - banner missing escalation guidance"; fail=1; }
+grep -qi "this gate has now fired 3 times" "$SANDBOX/stderr" && echo "ok   - repeat guidance appears on the 3rd fire" || { echo "FAIL - no repeat guidance on the 3rd fire"; fail=1; }
+if grep -qi "re-check the" "$SANDBOX/stderr" && grep -qi "live state" "$SANDBOX/stderr"; then
+  echo "ok   - guidance asks the agent to refresh its evidence"
+else
+  echo "FAIL - repeat guidance does not ask for live state"
+  fail=1
+fi
+grep -qi "suggestions, not a fixed route" "$SANDBOX/stderr" && echo "ok   - guidance preserves agent judgment" || { echo "FAIL - repeat guidance is still route-bound"; fail=1; }
+grep -qi "retrying.*differently\|unblock yourself\|advancing another in-scope" "$SANDBOX/stderr" && echo "ok   - guidance offers possible tactics" || { echo "FAIL - repeat guidance has no tactic clues"; fail=1; }
 
-# D3. Second fire (1 prior) does NOT yet de-escalate (threshold is the 3rd).
+# D3. Second fire (1 prior) does NOT yet add repeat guidance.
 TL1=$(mk_looped 1)
 rc=$(FAKE_GH_STATE=OPEN run_hook "$TL1" "still waiting on CI." false)
 check "2nd open-PR fire still blocks" "$rc" "2"
-grep -qi "this gate has now fired" "$SANDBOX/stderr" && { echo "FAIL - banner fired on the 2nd block (threshold is 3rd)"; fail=1; } || echo "ok   - no de-escalation banner on the 2nd fire"
+grep -qi "this gate has now fired" "$SANDBOX/stderr" && { echo "FAIL - repeat guidance fired on the 2nd block (threshold is 3rd)"; fail=1; } || echo "ok   - no repeat guidance on the 2nd fire"
 
 exit $fail
