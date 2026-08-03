@@ -1,34 +1,63 @@
 # Permissions
 
-> Layered with `~/.agents/permissions/`. Same name in your user repo wins; everything else unions in.
+Which tool calls an agent may make without stopping to ask you. Written once as YAML here,
+translated by `agents-cli` into each agent's native format — Claude `settings.json`, OpenCode
+`opencode.jsonc`, Codex `config.toml`.
 
-Canonical YAML permission rules that `agents-cli` translates into each agent's native format (Claude `settings.json`, OpenCode `opencode.jsonc`, Codex `config.toml`).
+Layered with `~/.agents/permissions/`: a same-named file in your user repo wins.
 
-See [`AGENTS.md`](./AGENTS.md) for the full rule syntax, the cross-agent translation table, and authoring guidance — that's the reference.
-
-## Layout
+## How it fits together
 
 ```
-permissions/
-  AGENTS.md         # full reference (also synced into agent context)
-  CLAUDE.md         # symlink -> AGENTS.md
-  GEMINI.md         # symlink -> AGENTS.md
-  groups/           # ordered YAML fragments (01-core.yaml, 09-git.yaml, ...)
-  presets/          # named bundles that include a list of groups
-  build.sh          # concatenates groups -> default.yaml
-  default.yaml      # AUTO-GENERATED; do not edit by hand
+groups/*.yaml   ──build.sh──►  default.yaml  ──agents permissions add──►  each agent's config
+  (you edit)                   (generated)
 ```
 
-## Workflow
+`default.yaml` is **generated**. Edit a file in `groups/`, then run `./build.sh`. Never edit
+`default.yaml` by hand.
 
-1. Edit the relevant file in `groups/`.
-2. Run `./build.sh` to regenerate `default.yaml`.
-3. `agents permissions add` (or `agents pull`) installs it.
+## The groups
+
+Files concatenate in alphabetical order, so the number prefix controls order.
+
+| Group | Covers |
+|---|---|
+| [`00-header.yaml`](./groups/00-header.yaml) | The YAML header — name, description, the `allow:` key |
+| `00-local.yaml` | Your machine only: absolute paths, locally-installed tools. **Gitignored**, never synced |
+| [`01-core.yaml`](./groups/01-core.yaml) | Core shell and file tools |
+| [`02-dotdirs.yaml`](./groups/02-dotdirs.yaml) | Writes into the agent dotdirs |
+| [`02-node.yaml`](./groups/02-node.yaml) · [`03-python.yaml`](./groups/03-python.yaml) · [`04-go.yaml`](./groups/04-go.yaml) · [`05-rust.yaml`](./groups/05-rust.yaml) | Per-language toolchains |
+| [`06-docker.yaml`](./groups/06-docker.yaml) · [`07-k8s.yaml`](./groups/07-k8s.yaml) · [`08-cloud.yaml`](./groups/08-cloud.yaml) | Containers, clusters, cloud CLIs |
+| [`09-git.yaml`](./groups/09-git.yaml) | Git plumbing |
+| [`10-security.yaml`](./groups/10-security.yaml) · [`11-ci.yaml`](./groups/11-ci.yaml) | Security tooling, CI |
+| [`15-misc-bash.yaml`](./groups/15-misc-bash.yaml) | Everything else shell |
+| [`20-webfetch-dev.yaml`](./groups/20-webfetch-dev.yaml) · [`21-webfetch-cloud.yaml`](./groups/21-webfetch-cloud.yaml) · [`22-webfetch-social.yaml`](./groups/22-webfetch-social.yaml) · [`25-webfetch-misc.yaml`](./groups/25-webfetch-misc.yaml) | WebFetch domain allowlists |
+| [`30-paths.yaml`](./groups/30-paths.yaml) | Blanket allows plus Write and Edit path rules |
+| [`99-deny.yaml`](./groups/99-deny.yaml) · [`99-deny-sandbox.yaml`](./groups/99-deny-sandbox.yaml) | Deny lists. Deny always beats allow |
 
 ## Presets
 
-`presets/<name>.yaml` defines a named permission bundle as a list of group includes. `default` is the laptop-strict bundle; `sandbox` is for sandboxed execution. Pick a preset at sync time via `AGENTS_PERMISSION_PRESET=sandbox` (matches the `presets/` convention used by `rules/presets/`).
+A preset is a named bundle listing which groups to include.
 
-## Local-only rules
+| Preset | For |
+|---|---|
+| [`default.yaml`](./presets/default.yaml) | The laptop-strict bundle |
+| [`sandbox.yaml`](./presets/sandbox.yaml) | Sandboxed execution |
 
-Machine-specific allows (paths, custom CLIs) live in `groups/00-local.yaml` — gitignored, never synced.
+Select one at sync time with `AGENTS_PERMISSION_PRESET=sandbox`.
+
+## Changing what an agent may do
+
+```bash
+vim permissions/groups/30-paths.yaml   # edit the right group
+bash permissions/build.sh              # regenerate default.yaml
+agents permissions add permissions/default.yaml -a claude --all -y
+```
+
+For a machine-specific allow — an absolute path, a CLI only you have installed — put it in
+`groups/00-local.yaml`. It is gitignored and stays on that machine.
+
+---
+
+Rule syntax, the cross-agent translation table, and the authoring rules are in
+[`AGENTS.md`](./AGENTS.md).

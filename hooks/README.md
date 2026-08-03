@@ -1,49 +1,94 @@
 # Hooks
 
-Scripts that customize how agents read prompts and handle parts of a session. If behavior feels different from plain Codex or Claude, it usually starts here.
+Shell and Python scripts that run on agent lifecycle events. If agent behavior differs from
+plain Claude or Codex, it usually starts here.
 
-The two most visible:
+A script in this directory does nothing on its own. It runs only once it is **registered**
+in the `hooks:` section of [`../agents.yaml`](../agents.yaml), which names the events it
+fires on. Layered with `~/.agents/agents.yaml`: a same-named entry in your user layer wins.
 
-- `02-expand-prompt-user-shortcuts.sh` — expands `#shortcut` tokens via `promptcuts.yaml`.
-- `02-expand-prompt-bang-commands.py` — runs inline `` `!cmd` `` and injects the result.
+## What runs, and when
 
-Other hooks are operational (session-start context, completion gates, etc.).
+**At session start** — these build the context an agent wakes up with.
 
-## Manifest schema (`../hooks.yaml`)
+| Hook | What it does |
+|---|---|
+| [`04-session-identity.sh`](./04-session-identity.sh) | The single "who am I" hook — session id, transcript path, runtime |
+| [`07-inject-device-topology.sh`](./07-inject-device-topology.sh) | Injects the host and fleet topology, with live load and memory per machine |
+| [`08-inject-repo-inflight.sh`](./08-inject-repo-inflight.sh) | Injects the repo's in-flight state — open PRs and other live sessions in this checkout |
+| [`05-session-start-autosync.sh`](./05-session-start-autosync.sh) | Brings the machine current — config repos, secrets, sessions |
+
+**Before a tool call** — these block, nudge, or enrich.
+
+| Hook | What it does |
+|---|---|
+| [`git-guard.sh`](./git-guard.sh) | Blocks the destructive git operations: `reset --hard`, force-push, `checkout -- .`, `stash`, `clean`, history rewrites |
+| [`rm-guard.sh`](./rm-guard.sh) | Blocks destructive `rm` patterns |
+| [`01-git-require-clean-tree.sh`](./01-git-require-clean-tree.sh) | Blocks `git pull` / `rebase` / autostash while the working tree is dirty |
+| [`09-mailbox-inject.py`](./09-mailbox-inject.py) | Delivers queued messages into a running session |
+| [`10-mq-read-nudge.py`](./10-mq-read-nudge.py) | On a large whole-file `Read`, suggests mapping it with `mq` and extracting one section |
+
+**On stop or notification** — these decide whether the agent is really done.
+
+| Hook | What it does |
+|---|---|
+| [`00-agent-verify-work-complete.sh`](./00-agent-verify-work-complete.sh) | Blocks a stop that claims "done" without verification, an open PR with no handoff, or a hand-back to the user |
+| [`06-attention-sentinel.sh`](./06-attention-sentinel.sh) | Maintains a per-session attention state across notification, stop, and prompt |
+| [`12-escalate-on-notification.sh`](./12-escalate-on-notification.sh) | On a "needs the user" notification, climbs the escalation ladder to reach the owner |
+| [`13-feed-forward.py`](./13-feed-forward.py) | Forwards deliberate feed status posts to the owner's phone |
+
+Guard hooks that belong to a rule ship with that rule, not here — see
+[`rules/subrules/*/hooks.yaml`](../rules/subrules/) for `gh-merge-guard`, `no-pr-footer`,
+`plan-presentation`, and `truly-agentic-git-workflow`.
+
+## Manifest schema (the `hooks:` section of `../agents.yaml`)
 
 ```yaml
-my-hook:
-  script: 02-my-hook.sh
-  events: [UserPromptSubmit]
-  timeout: 5
-  matches:                 # optional pre-filters; AND together
-    prompt_contains: "#"
-  enabled: true            # default; set false to disable a system hook from user side
+hooks:
+  my-hook:
+    script: 02-my-hook.sh
+    events: [UserPromptSubmit]
+    timeout: 5
+    matches:               # optional pre-filters; AND together
+      prompt_contains: "#"
+    enabled: true          # default; set false to disable a system hook from the user side
 ```
 
-- `script` — path relative to this dir.
+- `script` — path relative to this directory.
 - `events` — lifecycle events to register on.
 - `timeout` — seconds.
-- `matches` — `prompt_contains`, `prompt_matches`, `tool_name`, `tool_args_match`, `cwd_includes`, `project_has`, `git_dirty`. All AND together. Empty/missing → always fires.
-- `enabled` — set `false` in user `~/.agents/hooks.yaml` to disable a system-shipped hook.
-- `agents` — **deprecated**. The capability table decides which agents register the hook; the field is parsed for back-compat but ignored.
+- `matches` — `prompt_contains`, `prompt_matches`, `tool_name`, `tool_args_match`,
+  `cwd_includes`, `project_has`, `git_dirty`. All AND together. Empty or missing means always.
+- `enabled` — set `false` in the user layer (`~/.agents/agents.yaml`) to disable a
+  system-shipped hook.
+- `agents` — **deprecated**. The agent capability table decides which agents register a hook;
+  the field is parsed for back-compat and ignored.
 
 ## Layering
 
-System (`~/.agents-system/hooks.yaml`) and user (`~/.agents/hooks.yaml`) merge with **user wins on key collision**. Same name in user repo overrides the system entry wholesale.
+System (`~/.agents/.system/agents.yaml`), extra repos, and user (`~/.agents/agents.yaml`)
+merge with **user wins on key collision** — resolution order is user > extra > system. A
+same-named entry in the user repo replaces the system entry wholesale; set `override: true`
+there to silence the shadowing warning.
 
 ## Promptcuts
 
-`promptcuts.yaml` is data for the expand-promptcuts hook. Layered the same way:
+`promptcuts.yaml` is data for the prompt-expansion hook, layered the same way:
 
-- `~/.agents-system/hooks/promptcuts.yaml` — system-shipped defaults (`#checkit`, `#rethink`, …)
+- `~/.agents/.system/hooks/promptcuts.yaml` — system-shipped defaults (`#checkit`, `#rethink`, …)
 - `~/.agents/hooks/promptcuts.yaml` — your shortcuts; user keys win
 
 ## Look here when
 
-- a shortcut did not expand
-- a bang command did not run
-- a system-shipped hook fires that you want to disable (use `enabled: false` in user repo)
+- a `#shortcut` did not expand, or a `` `!cmd` `` bang command did not run
+- an agent refuses to stop, or stops when it should not
+- a git command was blocked and you want to know which guard did it
 - agent behavior feels customized in a way that is not obvious
 
-The scripts here are the implementations. `../hooks.yaml` shows which are wired into lifecycle events. The installed agent config (e.g. `~/.claude/settings.json`) shows what is currently active.
+The scripts here are the implementations. The `hooks:` section of `../agents.yaml` shows what
+is wired to which event. The installed agent config (`~/.claude/settings.json`) shows what is
+active right now — `agents inspect hooks` reads it for you.
+
+---
+
+Changing something here? Read [`AGENTS.md`](./AGENTS.md).

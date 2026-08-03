@@ -28,35 +28,59 @@
 
 ## What this is
 
-This repo is a **DotAgents repo**: a directory of agent config (commands, skills, plugins, hooks, rules, permissions) that `agents-cli` reads. It's the **system layer** — the npm-shipped baseline that ships with the CLI and lands at `~/.agents/.system/` on every machine.
+A **DotAgents repo**: a directory of agent config that `agents-cli` reads. This one is the
+**system layer** — the baseline that ships with the CLI and lands at `~/.agents/.system/` on
+every machine.
 
-You rarely edit it directly. Instead, `agents-cli` stacks **four repos of the same shape** and merges them, so your personal tweaks live above the shipped defaults:
+You rarely edit it. `agents-cli` stacks four repos of the same shape and merges them, so your
+own tweaks sit above the shipped defaults:
 
-| Layer | Path on disk | Role | Edited by |
-|---|---|---|---|
-| **Project** | `<project>/.agents/` | repo-specific overrides, committed with the project | Project maintainers |
-| **User** | `~/.agents/` | your personal additions and overrides | **You** |
-| **Extras** | `~/.agents-<alias>/` | optional opinionated bundles (opt-in) | Bundle authors |
-| **System** | `~/.agents/.system/` *(this repo)* | npm-shipped defaults | Upstream PRs |
+| Layer | Path on disk | Edited by |
+|---|---|---|
+| **Project** | `<project>/.agents/` | project maintainers |
+| **User** | `~/.agents/` | **you** |
+| **Extras** | `~/.agents-<alias>/` | opt-in bundle authors |
+| **System** | `~/.agents/.system/` *(this repo)* | upstream PRs |
 
-Resources resolve **project → user → extras → system**. A same-named resource at a higher layer wins; everything else unions. The merged result is then **materialized** into every installed agent — Claude, Codex, Gemini, Cursor, OpenCode, and more (see [Lifecycle](#lifecycle-get-sync-stay-fresh) below).
+Resources resolve **project → user → extras → system**. A same-named resource at a higher
+layer wins; everything else unions in.
 
-> **Want to change something?** Don't edit this repo — add the same-named file under `~/.agents/` (the user layer) and it wins. This repo is a **pull-only mirror** on your machine; local edits here are overwritten on the next update.
+> **Want to change something?** Don't edit this repo. Add the same-named file under
+> `~/.agents/` and it wins. On your machine this repo is a **pull-only mirror** — local edits
+> are overwritten on the next update.
 
 ## Quick start
 
 ```bash
 npm install -g @phnx-labs/agents-cli
-agents setup          # first-time: clone this repo into ~/.agents/.system/ + install agent CLIs
-agents view           # show what's installed across every agent + version
-agents doctor         # every warning at a glance: repo-behind, sign-in, sync status, orphans
+agents setup     # clone this repo into ~/.agents/.system/ + install agent CLIs
+agents view      # what's installed across every agent and version
+agents doctor    # every warning at a glance: repo-behind, sign-in, sync status, orphans
 ```
 
-Already installed and just want the repo? `agents setup` is idempotent — re-run it, or `agents repo pull system` to update in place.
+## What's inside
 
-## Lifecycle: get, sync, stay fresh
+Each directory has a `README.md` for humans (a catalog of everything in it) and an
+`AGENTS.md` for agents (the rules for changing it).
 
-The one thing to understand: **editing a layer does not change your agents.** The layers are the *source*; each agent's home (`~/.claude/`, `~/.codex/`, …) is a *materialized copy*. You edit a layer, then **sync** to rebuild those copies. Sync is a deliberate step — **it does not run on launch**.
+| Directory | What it holds |
+|---|---|
+| [`commands/`](commands/README.md) | Slash commands — `/plan`, `/debug`, `/finish`, `/output`, one `.md` per command |
+| [`skills/`](skills/README.md) | Skills — multi-file capabilities like `browser`, `teams`, `sessions`, `mq` |
+| [`plugins/`](plugins/README.md) | Plugins — bundles of related skills and commands (`code`, `swarm`, `fleet`, `share`) |
+| [`hooks/`](hooks/README.md) | Lifecycle scripts — session-start context injection, prompt expansion, Stop-gates, guards |
+| [`rules/`](rules/README.md) | The ruleset every agent gets as its memory file, composed from `subrules/` |
+| [`permissions/`](permissions/README.md) | Canonical YAML permission rules, translated per agent |
+| [`cli/`](cli/README.md) | Manifests for host CLIs (`mq`, `jq`, `linear`) that agents-cli installs |
+| [`routines/`](routines/README.md) | Scheduled agent runs (cron / one-shot) |
+| [`subagents/`](subagents/README.md) | Named sub-agent definitions |
+| [`webhooks/`](webhooks/README.md) | Inbound webhook handlers |
+
+## How a change reaches your agents
+
+Editing a layer does **not** change your agents. The layers are the source; each agent home
+(`~/.claude/`, `~/.codex/`, …) is a materialized copy. You edit, then **sync** — a deliberate
+step that does not run on launch.
 
 ```
    ~/.agents/.system/   ┐
@@ -65,188 +89,66 @@ The one thing to understand: **editing a layer does not change your agents.** Th
    <project>/.agents/   ┘
 ```
 
-**Get / update a repo**
-
 | I want to… | Command |
 |---|---|
-| First-time bootstrap (clone system repo + install CLIs) | `agents setup` |
-| Update the shipped defaults (system repo) | `agents repo pull system` |
-| Add an opt-in extras bundle | `agents repo add gh:owner/.agents-work` |
-| Scaffold my own editable repo | `agents repo init` |
-| Update everything (git-pull every repo, then re-materialize) | `agents sync` |
-
-**Sync into your agents (materialize) — always manual**
-
-| I want to… | Command |
-|---|---|
-| Preview + apply changes into one agent | `agents sync claude` |
-| …into a specific version, or all of them | `agents sync claude@2.1.207` · `agents sync claude@all` |
-| Re-materialize with no git/network (just rebuild homes) | `agents repo refresh` |
+| Update the shipped defaults | `agents repo pull system` |
+| Update everything, then re-materialize | `agents sync` |
+| Sync into one agent, or every version of it | `agents sync claude` · `agents sync claude@all` |
+| Rebuild homes with no git or network | `agents repo refresh` |
 | Heal every gap across every installed version | `agents doctor --fix` |
+| Add an opt-in extras bundle | `agents repo add gh:owner/.agents-work` |
 
-**Is it out of date? — `agents doctor` is the warning surface**
+### Is it out of date?
 
-`agents doctor` is the one place that collects every drift warning for a machine. It reports **two independent kinds of "out of date"**, plus sign-in and orphan issues:
+`agents doctor` is the one place that collects every drift warning, and it reports two
+independent kinds of "out of date":
 
-- **Repo behind origin** — a *source* layer is itself outdated. Doctor prints it at the top, with the fix:
-  ```
-  agents-cli: system is 2 commits behind origin/main — run 'agents repo pull system' to update.
-  ```
-  → `agents repo pull system` (or `user`, or an alias).
-- **Materialization drift** — the source changed but the agent homes weren't rebuilt. Doctor's **Sync status** labels each installed version:
-  - **`fresh`** — homes match the merged sources
-  - **`stale`** — *sources changed since last sync* → `agents sync` / `agents doctor --fix`
-  - **`cold`** — that version was never synced
+- **Repo behind origin** — a *source* layer is outdated → `agents repo pull system`.
+- **Materialization drift** — the source changed but the agent homes weren't rebuilt. The
+  **Sync status** section labels each installed version `fresh`, `stale` (sources changed
+  since last sync → `agents sync`), or `cold` (never synced).
 
-```bash
-agents doctor                     # every warning for this machine: repo-behind, sign-in, sync status, orphans
-agents doctor --host yosemite-s0  # run the same audit on another registered device
-agents doctor --fix               # heal materialization drift across every installed version
-```
+`agents check` is the same detection as a script-friendly exit code for a pre-commit hook or
+CI; `agents check --devices` runs it across every registered device.
 
-`agents check` is that same drift detection as a **script-friendly exit code** — non-zero when any version is stale or never-synced — for a pre-commit hook or a CI step; `agents check --devices` runs it across every registered device.
-
-**Inspect what's in a repo — or one resource**
-
-To look inside a layer instead of the merged result, `agents inspect <target>` takes a repo (`system` — this repo — `user`, `project`, an extra alias, or a path) or an installed `agent@version`. It reports the repo's path, git/sync state, and resource counts, and drills into any kind:
+### Look inside a layer
 
 ```bash
 agents inspect system              # this repo: path, git state, sync ahead/behind, counts
-agents inspect system --skills     # list every skill this layer ships
+agents inspect system --skills     # every skill this layer ships
 agents inspect system --skill learn  # full detail for one resource (fuzzy match)
-agents inspect user                # your override layer; swap for an extra alias or path
 agents resources                   # the merged, first-wins surface across all four layers
 ```
 
-## What's tracked
+## Customizing
 
-```
-.agents/.system/
-  commands/        # slash commands (/plan, /debug, /output, /monitors, ...)
-  skills/          # capabilities (agents-cli, browser, teams, sessions, ...)
-  plugins/         # bundled plugins (cloud, code, fleet, git, share, social, swarm, ...)
-  hooks/           # lifecycle scripts + hooks.yaml manifest
-  rules/           # AGENTS.md + modular rule fragments
-  permissions/     # permission groups + presets
-  subagents/       # named sub-agent definitions
-  routines/        # scheduled-agent definitions
-```
+Two supported paths — both keep this repo pull-only:
 
-Each directory has its own README ([`commands/`](commands/README.md), [`skills/`](skills/README.md), [`hooks/`](hooks/README.md), [`rules/`](rules/README.md), [`permissions/`](permissions/README.md)). Plugins are registered in [`.claude-plugin/marketplace.json`](.claude-plugin/marketplace.json) and materialized into every installed agent version.
-
-## Commands
-
-Slash commands are prompt templates — [`commands/<name>.md`](commands/) becomes `/<name>`, with `$ARGUMENTS` replaced by what you type. Each row links to its source file.
-
-| Command | Purpose |
-|---------|---------|
-| **Plan & build** | |
-| [`/plan`](commands/plan.md) | Plan with research, code reading, artifacts, optional team review |
-| [`/debug`](commands/debug.md) | Root-cause analysis with a full evidence chain |
-| [`/clean`](commands/clean.md) | Remove tech debt, consolidate duplicates |
-| [`/test`](commands/test.md) | Test critical paths with parallel validation |
-| **Ship & review** | |
-| [`/commit`](commands/commit.md) | Alias of `/code:commit` — split into max logical commits, push in background |
-| [`/review`](commands/review.md) | Alias of `/code:review` — review every PR the session opened, then merge / request-changes per verdict |
-| [`/done`](commands/done.md) | Verify work is complete, test, release, file tickets for the remainder |
-| [`/finish`](commands/finish.md) | Drive the current task to done end-to-end instead of stopping at a recap or partial handoff |
-| [`/prune`](commands/prune.md) | Delete merged branches and worktrees, locally and on origin (conservative) |
-| **Recap & resume** | |
-| [`/recap`](commands/recap.md) | Summarize state — facts first, hypotheses grounded |
-| [`/continue`](commands/continue.md) · [`/recover`](commands/recover.md) · [`/restore`](commands/restore.md) | Resume one session / recover many crashed sessions / restore state |
-| [`/hibernate`](commands/hibernate.md) | Sleep this same session until a future time, then wake it (full context) to check on a long wait |
-| **Coordinate** | |
-| [`/tickets`](commands/tickets.md) | Work with the issue tracker (auto-detects Linear/GitHub/Jira) |
-| [`/teams`](commands/teams.md) | Spawn parallel agents for a task |
-| **Observe** | |
-| [`/monitors`](commands/monitors.md) | Set up a durable event-triggered watcher — watch a source, fire an agent/routine/notification on change |
-| [`/output`](commands/output.md) | Fleet-wide token-burn + shipped-output report over a window, rendered as an HTML dashboard + PDF |
-
-See [`commands/README.md`](commands/README.md) for the complete set.
-
-<p align="center">
-  <img src=".assets/monitors.png" alt="/monitors — a general-purpose watcher primitive for the agent fleet" width="82%">
-</p>
-
-Several commands escalate to `agents teams` for complex scopes (debug, plan, clean, test, recap, review).
-
-## Skills
-
-Skills are richer than commands — multi-file capabilities with persistent context. The full set ships in [`skills/`](skills/README.md); highlights (each links to its source):
-
-| Skill | Purpose |
-|-------|---------|
-| [`agents-cli`](skills/agents-cli/) | Manage agent CLIs, versions, config |
-| [`browser`](skills/browser/) | Drive browsers for automation |
-| [`computer`](skills/computer/) | Drive native macOS apps (screenshot, click, type) |
-| [`dither-kit`](skills/dither-kit/) | Default charting library for agent-authored charts and data visualizations |
-| [`teams`](skills/teams/) | Organize agents into parallel teams |
-| [`run`](skills/run/) / [`routines`](skills/routines/) | Dispatch a single agent / schedule recurring agents |
-| [`sessions`](skills/sessions/) | Search and read prior agent transcripts |
-| [`secrets`](skills/secrets/) | Keychain-backed env-var bundles |
-| [`docs`](skills/docs/) / [`release`](skills/release/) | Write docs / publish packages |
-| [`learn`](skills/learn/) | Reflect on a finished session and fold durable lessons back into skills/rules/memory |
-
-See [`skills/README.md`](skills/README.md) for the complete table. Invoke with `/skillname`, or let the agent invoke when relevant.
-
-## Plugins
-
-Plugins bundle related skills, commands, hooks, and subagents into one installable unit. The system layer ships lightweight, no-paid-key plugins by default; heavier or key-gated plugins live in `.agents-extras`.
-
-| Plugin | Purpose |
-|--------|---------|
-| [`cloud`](plugins/cloud/) | Rush Cloud dispatch — `/cloud:run` runs a prompt on a managed cloud worker that opens a PR; `/cloud:accounts` wires Rush + Claude/Codex credentials |
-| [`code`](plugins/code/) | The coding loop — `/code:loop`, `/code:verify`, `/code:review`, `/code:ship`, `/code:quality`, `/code:learn`, `/commit` |
-| [`design`](plugins/design/) | Design workflows — mockups, redesigns, DESIGN.md specs |
-| [`fleet`](plugins/fleet/) | Fleet-wide ops across every registered machine — `/fleet:sync` pulls every repo to latest on every device and refreshes all agents (never clobbers local work); `/fleet:onboard` brings a bare device to parity |
-| [`git`](plugins/git/) | Pure git plumbing — `/git:prune` prunes merged branches/worktrees with hard data-loss guards; `/git:tag-release` cuts and pushes an annotated release tag |
-| [`share`](plugins/share/) | Publish an agent-generated HTML artifact to a shareable link on your own Cloudflare R2 (~$0) — `/share:public` (auto OG cover) / `/share:private` (unlisted, auto-expiring) |
-| [`social`](plugins/social/) | Turn a content agent's post archive into strategy — `/social:audit`, `/social:align`, `/social:schedule` |
-| [`swarm`](plugins/swarm/) | Fan a task across a team of parallel agents — `/swarm:run`, `/swarm:plan`, `/swarm:spec`, `/swarm:debug`, `/swarm:test`, `/swarm:qa` |
-
-See [`.claude-plugin/marketplace.json`](.claude-plugin/marketplace.json) for the registered set.
-
-<p align="center">
-  <img src=".assets/share.png" alt="/share:public — one command turns any agent-generated HTML into a shareable link with an auto OG cover" width="82%">
-</p>
-
-## Rules
-
-[`rules/AGENTS.md`](rules/AGENTS.md) is the canonical instruction file, synced as `CLAUDE.md`, `GEMINI.md`, and `.cursorrules` per agent. Modular fragments in [`rules/subrules/`](rules/subrules/) compose in. See [`rules/README.md`](rules/README.md).
-
-## Hooks
-
-Scripts in [`hooks/`](hooks/README.md) run on agent lifecycle events (`SessionStart`, `UserPromptSubmit`, `Stop`), registered via the `hooks:` block in `agents.yaml`. Key hooks expand `#shortcut` tokens, execute inline `` `!cmd` `` bang commands, and inject context at session start. User overrides go in `~/.agents/agents.yaml` under `hooks:`.
-
-## Customization
-
-Two supported paths — both keep this shipped repo pull-only:
-
-1. **Override individual resources (recommended).** Drop a same-named file under `~/.agents/` — same directory shape as this repo — and the user layer wins. Then materialize it:
+1. **Override one resource.** Drop a same-named file under `~/.agents/` (same directory shape
+   as this repo), then `agents sync`.
+2. **Add a whole bundle.** Register another repo that merges above system, below your user
+   repo:
    ```bash
-   agents sync            # rebuild every agent home from the merged layers
-   ```
-2. **Add a whole extra bundle.** Register another repo (private/team skills) that merges above system, below your user repo:
-   ```bash
-   agents repo add gh:your-handle/.agents-work   # clones to ~/.agents-work/
-   agents repo list                              # confirm it registered
-   agents repo disable work                       # turn off without deleting
+   agents repo add gh:phnx-labs/.agents-extras   # /verify, /animate, /image, /compose
+   agents repo list
+   agents repo disable extras                     # turn off without deleting
    ```
 
-## Going further — extras bundles
+Extras are kept out of the system layer on purpose: they carry heavier dependencies and paid
+API keys, so the default install stays fast and works anywhere with no setup.
 
-This repo is the lean, universal default. Heavier opt-in workflows — parallel coding loops, branded media generation — ship as a separate **extras** bundle:
+## Contributing
 
-```bash
-agents repo add gh:phnx-labs/.agents-extras   # /verify, /animate, /image, /compose, /design
-agents repo list                              # confirm it registered
-```
-
-Extras are kept out of system on purpose — they carry heavier dependencies and paid API keys, so the default install stays fast and works on any OS with no setup. Disable anytime with `agents repo disable <alias>`.
+Read [`AGENTS.md`](./AGENTS.md) first — it is the maintenance contract, and it lists what must
+stay in sync when you add a command, skill, hook, permission, or plugin. Work in a worktree,
+open a PR, never commit on `main`.
 
 ## Local-only (gitignored)
 
-Runtime state written here but never committed: `versions/`, `shims/` (installed CLIs); `sessions/`, `teams/`, `swarm/` (execution state); `agents.yaml`, `*.log`, `*.pid` (local config and logs).
+Runtime state written into this directory on your machine but never committed:
+`versions/`, `shims/` (installed CLIs); `sessions/`, `swarm/`, `runs/`, `logs/` (execution
+state); `permissions/groups/00-local.yaml`, `.environment`, `secrets`, `*.log`, `*.pid`
+(machine-specific config). `agents.yaml` **is** tracked — it carries the hook manifest.
 
 ## License
 

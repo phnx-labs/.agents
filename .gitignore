@@ -73,7 +73,11 @@ linear.json
 /drive/
 /helpers/
 /state/
-/subagents/
+# Subagent definitions are user-layer, never shipped — but the directory's
+# README is documentation and must travel with the repo. Ignore the CONTENTS,
+# not the directory: git cannot re-include a file whose parent dir is excluded.
+/subagents/*
+!/subagents/README.md
 /swarmify/
 /teams/
 
