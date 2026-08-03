@@ -123,12 +123,56 @@ if devices:
             "busy/loaded one — the numbers above are a live snapshot, not the built-in "
             "scheduler'"'"'s teammate count. "
         )
-    guidance += (
-        "To show the user something visual (an HTML plan, a screenshot), open it on "
-        "the online macOS device (where they sit) — SSH the file over and open it "
-        "there if you are remote."
-    )
     lines.append(guidance)
+
+    # Interactive host: the one device that shows the USER artifacts (browser
+    # opens, rendered plans, dashboards). Newer agents-cli marks it in
+    # `devices list --json` (`interactive: true`); older CLIs omit the field and
+    # we fall back to the generic guidance below.
+    interactive = next((d.get("name") for d in devices if d.get("interactive")), None)
+    if interactive and interactive != self_host:
+        lines.append(
+            f"The user sits at **{interactive}** (interactive host). To show them anything "
+            f"visual (an HTML plan, a screenshot, a dashboard), deliver it THERE: "
+            f"`scp <file> {interactive}:/tmp/` then `agents ssh {interactive} "
+            f"'"'"'open /tmp/<file>'"'"'`, or drive their browser with `agents ssh {interactive} "
+            f"'"'"'agents browser start'"'"'`. "
+            f"Do not open it locally — the user is not watching this machine."
+        )
+    elif interactive:
+        lines.append(
+            "The user sits at THIS machine (interactive host) — open visual artifacts "
+            "locally with `open <file>`."
+        )
+    else:
+        lines.append(
+            "To show the user something visual (an HTML plan, a screenshot), open it on "
+            "the online macOS device (where they sit) — SSH the file over and open it "
+            "there if you are remote."
+        )
+
+    # Operator config for this machine (newer CLIs only): caps and notes set via
+    # `agents devices configure` / `agents devices note`.
+    self_cfg = next((d.get("config") for d in devices if d.get("name") == self_host), None) or {}
+    cfg_bits = []
+    cap = self_cfg.get("maxAgents")
+    if isinstance(cap, int):
+        cfg_bits.append(f"max {cap} agents (operator cap)")
+    if self_cfg.get("schedulerEnabled") is False:
+        cfg_bits.append("scheduler off")
+    if self_cfg.get("hooksEnabled") is False:
+        cfg_bits.append("hooks off")
+    notes = self_cfg.get("notes")
+    if isinstance(notes, list) and notes:
+        cfg_bits.append("notes: " + " · ".join(str(n) for n in notes))
+    if cfg_bits:
+        lines.append("This box: " + " · ".join(cfg_bits) + ".")
+
+    lines.append(
+        "Browser: a bare `agents browser start` on any machine uses THAT machine"
+        "'"'"'s configured profile — never pass --profile and never name a browser binary; "
+        "the machine knows."
+    )
 
 print("\n".join(lines))
 ' <<< "$DEVICES_JSON"

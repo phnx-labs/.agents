@@ -94,8 +94,10 @@ re-derive it. (`example.html` shows a fully custom neon skin, dark-default, for 
 
 ## Deliver it — open in the browser + poster PDF in Downloads
 
-Land it on the machine the user sits at (resolve the online macOS device from the **Host &
-Fleet** context — never hardcode a host; `scp` + `agents ssh` if you're remote). Then:
+Land it on the machine the user sits at — the configured **interactive host** when one is
+set (the **Host & Fleet** context names it; or `agents devices list --json` → the row with
+`interactive: true`); only when unset, fall back to resolving the online macOS device from
+that context. Never hardcode a host; `scp` + `agents ssh` if you're remote. Then:
 
 1. **Open the interactive HTML** in their default browser: `open "$HTML"` (or `xdg-open`).
 2. **Drop a poster PDF in `~/Downloads`.** For a shareable/postable artifact you almost

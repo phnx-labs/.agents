@@ -128,10 +128,13 @@ what the download portal will track) in the **user's `~/Downloads`** on the mach
 at, and open the interactive HTML in their browser. Do this **proactively, every time**, so
 an away user finds it waiting.
 
-1. **Resolve the viewing machine.** From the **Host & Fleet** context injected at session
-   start (`hooks/07-inject-device-topology.sh`), find the **online macOS device** where the
-   user sits — resolve it dynamically, **never hardcode a host name**. If several Macs are
-   online, prefer online+direct; ask once only if genuinely ambiguous.
+1. **Resolve the viewing machine.** First check the configured **interactive host**: the
+   **Host & Fleet** context injected at session start (`hooks/07-inject-device-topology.sh`)
+   names it when set ("The user sits at **\<name\>**"), or read it live —
+   `agents devices list --json` → the row with `interactive: true`. When set, that is the
+   delivery target, full stop. Only when unset, fall back to finding the **online macOS
+   device** where the user sits (prefer online+direct; ask once only if genuinely ambiguous).
+   **Never hardcode a host name.**
 
 2. **Make the PDF + drop it in Downloads + open the HTML.** Run this block **on the viewing
    machine** — directly if you're already on it (`hostname` matches), else copy the HTML there
