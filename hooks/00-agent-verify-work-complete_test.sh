@@ -82,9 +82,21 @@ mk_transcript() {
     echo '{"type":"user","message":{"role":"user","content":"Please implement the widget and open a PR for it"}}'
     echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"Working on it"}]}}'
     case "$1" in
-      create|create+view)
+      create|create+view|create+watch|create+monitor)
         echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_create1","name":"Bash","input":{"command":"cd /repo && gh pr create --title widget"}}]}}'
         echo '{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_create1","content":[{"type":"text","text":"https://github.com/acme/widgets/pull/42\n"}]}]}}'
+        ;;
+    esac
+    case "$1" in
+      create+watch)
+        # A live background CI watch owns the next step — the repo's own
+        # "background gh pr checks --watch, then stop" pattern (run_in_background).
+        echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_watch1","name":"Bash","input":{"command":"gh pr checks 42 --watch --fail-fast","run_in_background":true}}]}}'
+        echo '{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_watch1","content":[{"type":"text","text":"watching CI in background"}]}]}}'
+        ;;
+      create+monitor)
+        # A ScheduleWakeup that re-invokes the agent when CI settles.
+        echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_mon1","name":"ScheduleWakeup","input":{"delaySeconds":300,"reason":"re-check CI and merge on green"}}]}}'
         ;;
     esac
     case "$1" in
@@ -544,5 +556,73 @@ check "handback gate respects stop_hook_active" "$rc" "0"
 THBS=$(mk_transcript handback-shell)
 rc=$(FAKE_GH_STATE=MERGED run_hook "$THBS" "The deploy is scripted at /tmp/deploy.sh — paste it into your shell to ship." false)
 check "shell-redirect temp script + 'paste it' blocks" "$rc" "2"
+
+# --- Fix 2: live watcher / monitor is a valid stop (evidence-gated) ----------
+# W1. Open PR + a REAL background `gh pr checks --watch` tool_use + watcher
+#     phrasing -> allow. This is the repo's own watch-then-stop pattern.
+TW=$(mk_transcript create+watch)
+rc=$(FAKE_GH_STATE=OPEN run_hook "$TW" "Not idling — the live background watcher owns the next step and re-invokes me on green." false)
+check "open PR + live background watch + phrasing allows stop" "$rc" "0"
+
+# W2. Open PR + a ScheduleWakeup monitor tool_use + poller phrasing -> allow.
+TM=$(mk_transcript create+monitor)
+rc=$(FAKE_GH_STATE=OPEN run_hook "$TM" "A ScheduleWakeup is set to re-invoke me when CI settles; the poller owns the merge." false)
+check "open PR + ScheduleWakeup monitor allows stop" "$rc" "0"
+
+# W3. REGRESSION (evidence gate): the same watcher PHRASING but NO real background
+#     watch/monitor tool_use this session -> still blocks. Phrasing alone must
+#     never clear the gate (an agent can't claim a watcher it never started).
+rc=$(FAKE_GH_STATE=OPEN run_hook "$T" "The live watcher owns the next step and re-invokes me on green." false)
+check "watcher phrasing WITHOUT a real background watch still blocks" "$rc" "2"
+
+# --- Fix 3: plan mode / reviewer-down context awareness ---------------------
+# P1. Open PR the session cannot advance because plan mode forbids push/merge.
+rc=$(FAKE_GH_STATE=OPEN run_hook "$T" "PR #42 is open but I cannot push or merge it — plan mode forbids that right now." false)
+check "plan mode (cannot push/merge) allows stop on an open PR" "$rc" "0"
+
+# P1b. Incidental mention of 'plan mode' with no can't/forbid cue -> still blocks.
+rc=$(FAKE_GH_STATE=OPEN run_hook "$T" "I sketched a plan mode of attack; PR #42 CI is still running." false)
+check "incidental 'plan mode' phrase without a forbid cue still blocks" "$rc" "2"
+
+# P2. Open PR whose required automated reviewer is down; handed to the user.
+rc=$(FAKE_GH_STATE=OPEN run_hook "$T" "PR #42 CI is green but prix-cloud is down (no reviewer posted). It now needs you to click merge." false)
+check "reviewer down + needs-you handoff allows stop" "$rc" "0"
+
+# --- Fix 1: stateful de-escalation after the 3rd fire on the same item -------
+# A transcript that already carries N prior open-PR fires (real isMeta 'Stop hook
+# feedback:' shape), so the current stop is the (N+1)th on the same open PR.
+mk_looped() {   # $1 = number of prior open-PR fires already in the transcript
+  local t="$SANDBOX/looped-$RANDOM.jsonl" i
+  {
+    echo '{"type":"user","message":{"role":"user","content":"Implement the widget and open a PR for it"}}'
+    echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_lc1","name":"Bash","input":{"command":"gh pr create --title widget"}}]}}'
+    echo '{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_lc1","content":[{"type":"text","text":"https://github.com/acme/widgets/pull/42\n"}]}]}}'
+    i=0
+    while [ "$i" -lt "$1" ]; do
+      echo '{"type":"user","isMeta":true,"message":{"role":"user","content":"Stop hook feedback:\n[~/.claude/hooks/00-agent-verify-work-complete.sh]: STOP GATE: This session created OR worked pull request(s) that are still OPEN:\n\nhttps://github.com/acme/widgets/pull/42\n"}}'
+      echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"still driving it"}]}}'
+      i=$((i + 1))
+    done
+  } > "$t"
+  echo "$t"
+}
+
+# D1. First fire (0 prior) blocks WITHOUT the de-escalation banner.
+rc=$(FAKE_GH_STATE=OPEN run_hook "$T" "CI is green, waiting for the reviewer." false)
+check "first open-PR fire blocks" "$rc" "2"
+grep -qi "this gate has now fired" "$SANDBOX/stderr" && { echo "FAIL - banner fired on the 1st block"; fail=1; } || echo "ok   - no de-escalation banner on the 1st fire"
+
+# D2. Third fire (2 prior) still blocks AND now carries the de-escalation banner.
+TL=$(mk_looped 2)
+rc=$(FAKE_GH_STATE=OPEN run_hook "$TL" "CI still running, waiting." false)
+check "3rd open-PR fire still blocks" "$rc" "2"
+grep -qi "this gate has now fired 3 times" "$SANDBOX/stderr" && echo "ok   - de-escalation banner appears on the 3rd fire" || { echo "FAIL - no de-escalation banner on the 3rd fire"; fail=1; }
+grep -qi "rush message send\|agents feed post\|ScheduleWakeup" "$SANDBOX/stderr" && echo "ok   - banner names the escalation/coordination exits" || { echo "FAIL - banner missing escalation guidance"; fail=1; }
+
+# D3. Second fire (1 prior) does NOT yet de-escalate (threshold is the 3rd).
+TL1=$(mk_looped 1)
+rc=$(FAKE_GH_STATE=OPEN run_hook "$TL1" "still waiting on CI." false)
+check "2nd open-PR fire still blocks" "$rc" "2"
+grep -qi "this gate has now fired" "$SANDBOX/stderr" && { echo "FAIL - banner fired on the 2nd block (threshold is 3rd)"; fail=1; } || echo "ok   - no de-escalation banner on the 2nd fire"
 
 exit $fail
