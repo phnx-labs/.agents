@@ -135,7 +135,8 @@ When an item first lands, pick the execution primitive directly instead of routi
 | Trivial: 1-2 files, < 15 min, no ambiguity | Do it inline. |
 | One surface, one agent | `agents run <agent> "..." --mode edit --cwd <worktree>` |
 | Clear, well-scoped, walk-away task | `cloud:run` (Rush Cloud) or `agents run --lease` (disposable cloud box) |
-| Must run on a specific fleet box | `agents run --device <box>` |
+| Send to the fleet, let the CLI pick | `agents run <agent> "..." --device auto` |
+| Must run on a specific fleet box | `agents run <agent> "..." --device <box>` |
 | 3+ independent surfaces | `agents teams` with boundary contracts (see `/teams`) |
 
 ## Evidence

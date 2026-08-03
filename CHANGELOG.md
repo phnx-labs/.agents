@@ -1,5 +1,11 @@
 # Changelog
 
+## [0.1.90] - 2026-08-03
+
+### Changed
+
+- **Document `agents run --device auto` / `--host auto` across the system.** `code:loop`, `skills/run`, `rules/subrules/remote-fleet-dispatch.md`, and `plugins/code/README.md` now list automatic fleet placement as the default for "send to the fleet" — the CLI picks a reachable device by 14-day affinity + live headroom, degrading to local when no device is eligible. Named `--device <box>` is now reserved for tasks that must land on a specific machine.
+
 ## [0.1.89] - 2026-08-03
 
 ### Added

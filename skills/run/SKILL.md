@@ -236,6 +236,17 @@ agents logs <id> -f          # re-attach to a running one and follow
 
 `agents logs [id]` is the unified viewer over host-dispatch runs and local session transcripts; `agents hosts logs <id>` is the host-only equivalent. See the `devices` skill.
 
+## Automatic fleet placement
+
+`--device auto` (alias `--host auto`) lets the CLI pick the machine from your registered fleet. It weights 14-day launch affinity by live headroom among online, dispatchable devices and degrades to local if no device is eligible.
+
+```bash
+agents run claude "fix the flaky test" --device auto
+agents run claude "summarize logs" --device auto --no-follow
+```
+
+Use this as the default for "send this to the fleet" unless the task must land on a specific box. Mark preferred machines with `agents devices prefer <name>`; exclude a box with `agents devices disable <name>`.
+
 ## Quick reference
 
 | Flag | Purpose |
@@ -255,6 +266,8 @@ agents logs <id> -f          # re-attach to a running one and follow
 | `--fallback codex,antigravity` | Rate-limit fallback chain |
 | `-b, --balanced` | Shortcut for `--strategy balanced` |
 | `--strategy pinned\|available\|balanced` | Version selection |
+| `--host <name>`, `--device <name>` | Run on a specific registered host/device |
+| `--host auto`, `--device auto` | Let the CLI pick a reachable fleet box |
 | `--acp` | Route via Agent Client Protocol |
 
 For everything else, run `agents run --help`.
