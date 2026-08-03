@@ -35,7 +35,17 @@ msg="$(printf '%s' "$parsed" | sed -n 3p)"
 
 # Paths are overridable for tests; default to the real fleet locations.
 OWNER="${OWNER_PROFILE:-$HOME/.agents/owner.md}"
-SKILL="${ESCALATE_SKILL_DIR:-$HOME/.agents/skills/escalate}"
+# Resolve the skill the way resources resolve everywhere else: user layer first,
+# then system. Defaulting to the USER layer alone was a silent kill switch -- the
+# escalate skill ships in the SYSTEM layer (.system/skills/escalate), so the
+# `-x` guard below matched nothing on every box and this hook has never once run.
+if [ -n "${ESCALATE_SKILL_DIR:-}" ]; then
+  SKILL="$ESCALATE_SKILL_DIR"
+elif [ -x "$HOME/.agents/skills/escalate/escalate.sh" ]; then
+  SKILL="$HOME/.agents/skills/escalate"
+else
+  SKILL="$HOME/.agents/.system/skills/escalate"
+fi
 [ -f "$OWNER" ] || exit 0
 [ -x "$SKILL/escalate.sh" ] || exit 0
 
