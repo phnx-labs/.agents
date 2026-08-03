@@ -45,6 +45,67 @@ if [ -z "${TRANSCRIPT_PATH:-}" ] || [ ! -f "$TRANSCRIPT_PATH" ]; then
   exit 0
 fi
 
+# --- stateful de-escalation --------------------------------------------------
+# A gate that fires the identical "keep driving" text on the 1st and the 20th
+# stop is what makes long sessions LOOP (observed: single sessions blocked 20-40
+# times on the same open PR while a live CI watch was already running). By the
+# 3rd fire on the SAME item the agent is BLOCKED, not abandoning — so on repeat
+# we ADD an escalation banner pointing at the real exits (name the live watcher
+# and stop, escalate to the human out-of-band, coordinate on a shared blocker,
+# or set a monitor and stop). Counting is evidence-based: prior fires are read
+# from the transcript itself. Anchored to the injected 'Stop hook feedback:'
+# prefix so a Read of this hook's own source is never miscounted as a fire.
+prior_fires() {   # $1 = a substring unique to the gate's injected message
+  python3 - "$TRANSCRIPT_PATH" "$1" <<'PY' 2>/dev/null || echo 0
+import json, sys
+path, marker = sys.argv[1], sys.argv[2]
+n = 0
+try:
+    with open(path) as f:
+        for raw in f:
+            if 'Stop hook feedback' not in raw or marker not in raw:
+                continue
+            try:
+                rec = json.loads(raw)
+            except Exception:
+                continue
+            if rec.get('type') != 'user' or rec.get('isMeta') is not True:
+                continue
+            c = (rec.get('message') or {}).get('content')
+            if isinstance(c, str) and c.startswith('Stop hook feedback:') and marker in c:
+                n += 1
+except Exception:
+    pass
+print(n)
+PY
+}
+
+# Print the escalation banner to stderr when this gate has already fired >=2
+# times this session on the same item (so this is the 3rd+). Never weakens the
+# gate — it fires alongside the normal block message to break the loop.
+deescalate_banner() {   # $1 = human name of the looping item, $2 = prior count
+  local n="${2:-0}"
+  [ "$n" -lt 2 ] && return 0
+  cat >&2 <<DEESC
+NOTE — this gate has now fired $((n + 1)) times this session on $1. Repeating the
+same stop means you are BLOCKED, not abandoning it, and re-asserting will just
+loop (it burns your turns and your usage quota). Do ONE of these, then stop:
+  * A LIVE background watcher/monitor already owns the next step (a
+    'gh pr checks --watch', a ScheduleWakeup, a Monitor)? That IS a valid stop —
+    name it explicitly and stop.
+  * A HUMAN gate is the blocker (merge authorization, release sign-off, plan
+    mode, a Touch ID)? Escalate out-of-band NOW —
+    rush message send --from-agent <you> "<one line + the link>" — then stop.
+  * A SHARED blocker is likely (a downed reviewer/CI, a fleet-wide outage)?
+    Coordinate: 'agents feed post' a one-liner and check 'agents sessions
+    --active' for sibling sessions stuck on the same wall, then stop.
+  * Otherwise set a monitor / ScheduleWakeup that re-invokes you when the blocker
+    clears, and stop — do not sit in this window re-asserting.
+
+DEESC
+}
+# --- end stateful de-escalation ----------------------------------------------
+
 # --- Open-PR abandonment gate ------------------------------------------------
 # A session that CREATED *or actively WORKED* a pull request may not stop while
 # any is still open, unless the final message explicitly hands the PR off. "PR
@@ -157,12 +218,51 @@ except Exception:
     done <<< "$responsible_prs"
 
     if [ -n "$open_prs" ]; then
+      # Fix 2 (evidence): a LIVE background watcher / scheduled wake-up already
+      # owning the next step is a legitimate stop — it's the repo's own
+      # "background gh pr checks --watch, then stop" pattern (48% of observed
+      # open-PR blocks were sessions doing exactly this, mis-scored as
+      # abandonment). Require an ACTUAL tool_use — a run_in_background
+      # 'gh pr checks --watch', or a ScheduleWakeup/Monitor — never phrasing
+      # alone, so the gate can't be cleared by claiming a watcher never started.
+      live_watcher=$(python3 -c "
+import json, re, sys
+WATCH = re.compile(r'gh\s+pr\s+checks\b.*--watch', re.S)
+found = False
+try:
+    with open(sys.argv[1]) as f:
+        for raw in f:
+            if 'tool_use' not in raw:
+                continue
+            try:
+                rec = json.loads(raw)
+            except Exception:
+                continue
+            m = rec.get('message') if isinstance(rec.get('message'), dict) else rec
+            content = m.get('content') if isinstance(m, dict) else None
+            if not isinstance(content, list):
+                continue
+            for b in content:
+                if not isinstance(b, dict) or b.get('type') != 'tool_use':
+                    continue
+                name = b.get('name') or ''
+                inp = b.get('input') or {}
+                if name in ('ScheduleWakeup', 'Monitor'):
+                    found = True
+                if name == 'Bash' and inp.get('run_in_background') and WATCH.search(str(inp.get('command', ''))):
+                    found = True
+    print('yes' if found else 'no')
+except Exception:
+    print('no')
+" "$TRANSCRIPT_PATH" 2>/dev/null || echo "no")
+
       # Handoff escape: the final message may legitimately stop with an open PR
       # if it explicitly hands it off (named owner/babysitter) — restating that
       # after this gate fires once is enough to pass (stop_hook_active).
-      has_handoff=$(echo "$INPUT_JSON" | python3 -c "
-import json, re, sys
+      has_handoff=$(echo "$INPUT_JSON" | LIVE_WATCHER="$live_watcher" python3 -c "
+import json, os, re, sys
 msg = json.load(sys.stdin).get('last_assistant_message', '').lower()
+live_watcher = os.environ.get('LIVE_WATCHER') == 'yes'
 pat = r'\b(handed off|hand-off|handoff|handing (this|it) off|will babysit|is babysitting|takes over from here|owns (this|the) pr)\b'
 # Structured external-blocker stop — the gate's own option 3. A genuine external
 # blocker the agent CANNOT resolve (CI/GitHub outage, a signing step needing the
@@ -174,11 +274,28 @@ pat = r'\b(handed off|hand-off|handoff|handing (this|it) off|will babysit|is bab
 # is NOT an external blocker (keep driving it, or hand off via the phrase above).
 blocked = re.search(r'\bblocked on\b', msg)
 nextstep = re.search(r'\b(watcher|background watch|gh pr checks --watch|will merge on green)\b|\byour (touch ?id|biometric)\b', msg)
-ok = re.search(pat, msg) or (blocked and nextstep)
+# Fix 2 (phrasing): the natural 'live watcher owns the next step / re-invokes me
+# on green' wording agents actually write — trusted ONLY when a real background
+# watcher/monitor tool_use exists this session (live_watcher).
+watcher_phrase = re.search(r'\b(watcher|poll(?:er|ing)?|background (?:watch|poll)|gh pr checks --watch|re-?invoke|re-?invokes me|will merge on green|owns the (?:next|merge))\b', msg)
+# Fix 3 (plan mode): plan mode mechanically forbids commit/push/merge, so the
+# agent physically cannot drive the PR — demanding it is a loop. Require the
+# 'plan mode' phrase together with a can't/forbid cue to avoid an incidental hit.
+plan_mode = re.search(r'\bplan mode\b', msg) and re.search(r'\b(cannot|can not|forbid|forbids|blocks?|blocked|prevent|no (?:commit|push|merge))\b', msg)
+# Fix 3 (reviewer/CI down or unconfigured): the required non-author-review path
+# can't complete, so an explicit human handoff is the correct stop.
+reviewer_down = re.search(r'\b(prix-cloud|reviewer|ci)\b.{0,40}\b(down|outage|offline|not posted|not configured|unconfigured|absent)\b', msg) or re.search(r'\bno (?:automated )?(?:reviewer|ci)\b(?:\s+(?:configured|set up|available|installed|present|enabled)\b|\s+for\s)', msg)
+needs_you = re.search(r'\b(needs? (?:you|muqsit|your)|your (?:merge|approval|sign-?off)|click merge|you (?:own|must) (?:the )?merge)\b', msg)
+ok = (re.search(pat, msg)
+      or (blocked and nextstep)
+      or (live_watcher and watcher_phrase)
+      or plan_mode
+      or (reviewer_down and (needs_you or watcher_phrase or re.search(pat, msg))))
 print('yes' if ok else 'no')
 " 2>/dev/null || echo "no")
 
       if [ "$has_handoff" != "yes" ]; then
+        deescalate_banner "an open pull request (${open_prs%%$'\n'*})" "$(prior_fires 'pull request(s) that are still OPEN')"
         cat >&2 <<PRGATE
 STOP GATE: This session created OR worked pull request(s) that are still OPEN:
 
@@ -285,6 +402,7 @@ print('yes' if any(re.search(p, msg) for p in pats) else 'no')
 " 2>/dev/null || echo "no")
 
   if [ "$swarm_done" = "yes" ]; then
+    deescalate_banner "an edit-mode swarm's cross-track seam" "$(prior_fires 'STOP GATE (swarm)')"
     cat >&2 <<SWARMGATE
 STOP GATE (swarm): You ran an edit-mode swarm and are claiming it is done.
 Every track's PR merging green is NOT proof the composed feature works — each
@@ -695,6 +813,7 @@ if [ -z "$first_user_msg" ]; then
 fi
 
 # Block and inject self-audit prompt
+deescalate_banner "a done-claim (full goal re-audit)" "$(prior_fires 'You claimed this work is done')"
 cat >&2 <<GATE
 STOP GATE: You claimed this work is done, but you must verify before stopping.
 

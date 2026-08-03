@@ -1,5 +1,15 @@
 # Changelog
 
+## [Unreleased]
+
+### Changed
+
+- **The `verify-work-complete` Stop hook no longer loops sessions that are correctly waiting or genuinely blocked.** A fleet audit of the last ~6 days (1,594 sessions) found the open-PR gate fired **434×** across 82 sessions — 22 looped ≥10×, 7 ≥20× (one hit its usage limit mid-loop). Attribution was already precise (382/382 cited PRs were the session's own; no blind strands), so the defect was over-firing, not blindness. Three changes:
+  - **Stateful de-escalation.** After a gate fires ≥3 times on the same item this session, it appends an escalation banner (name the live watcher and stop / escalate out-of-band via `rush message send` / coordinate via `agents feed post` + `agents sessions --active` / set a `ScheduleWakeup` and stop) instead of repeating the identical "keep driving" text. Prior fires are counted from the transcript, anchored to the injected `Stop hook feedback:` prefix.
+  - **Live-watcher recognition (evidence-gated).** The open-PR gate now treats a real background `gh pr checks --watch` (or a `ScheduleWakeup`/`Monitor`) tool_use as a valid handoff — the repo's own watch-then-stop pattern. Only a genuine tool_use clears it (48% of open-PR blocks were sessions doing exactly this, mis-scored); phrasing alone never clears the gate.
+  - **Context awareness.** Plan mode (cannot push/merge), a named down/unconfigured reviewer or CI handed to the user, are accepted as correct stops rather than abandonment.
+  - Test harness extended with 13 fixtures (evidence-gate regression, plan-mode incidental-mention guard, banner threshold). Verified by replaying the 5 worst-looping real transcripts through the patched hook.
+
 ## [0.1.92] - 2026-08-03
 
 ### Fixed
@@ -10,7 +20,6 @@
 - **`03-linear-inject-tasks-context.sh` bounds its own network call.** The `curl` to `api.linear.app` carried no `--max-time`, so the only limit was whichever harness's hook runtime enforced `timeout: 15`. A reachable-but-slow API would stall every session start. Now `--connect-timeout 3 --max-time 8`.
 - **`promptcuts.yaml` cited a rule scheme that no longer exists.** 22 references to `Hard Line #N` survived the 0.1.83 migration that replaced `core-hard-lines` with the F1–F5 foundations, so every promptcut that fired pointed at a rule name nothing defines. Each is rewritten to its real home, mapped from the pre-removal `core-hard-lines.md` (an 11-item list): #1 → `F3`, #9/#10 → `F2`, #2/#3/#5/#6/#8 → `research-discipline`, #4 → `code-quality`, #7/#11 → `fleet-delegation`. One reference, `#15` ("cross-cutting changes go to the source"), predates that file entirely — it traces to an older numbered list in the root `AGENTS.md` — and is mapped to `code-quality` on content, not on the `core-hard-lines` numbering.
 - **`hooks/README.md` and `hooks/AGENTS.md` now describe the fixed state**, not the broken one. The Promptcuts section no longer opens with "currently inert", the four restored hooks have rows in the event tables, and the drift section is down to the single script that was *never* registered (`02-expand-prompt-skill-refs.py` — `git log -S` over the manifest returns zero commits, so it is an unfinished feature, not a regression). The root `AGENTS.md` mistakes table now names the actual failure mode: a bulk edit dropping registrations under an unrelated subject.
-
 ## [0.1.91] - 2026-08-03
 
 ### Fixed
