@@ -22,6 +22,11 @@ Less is more. Agents and humans can gather context on the fly. Only document wha
 | Runbooks | `write-runbook.md` | Operational procedures, troubleshooting |
 | Onboarding | `write-onboarding.md` | New contributor guide |
 | Changelogs | `write-changelog.md` | Release notes |
+| For an agent, not a human | the [`agents-md`](../agents-md/SKILL.md) skill | `AGENTS.md` / `CLAUDE.md` / `GEMINI.md`, and the README that pairs with one |
+
+Documenting a **directory** rather than a system? That is the `agents-md` skill, not a
+subskill here — it owns both halves of the pair (`README.md` = the human catalog,
+`AGENTS.md` = the agent's contract) and the rule for when a directory wants neither.
 
 ## Core Principles
 

@@ -52,8 +52,11 @@ self-unblock ladder is exhausted.
 | [`visualize`](./visualize/SKILL.md) | Turn a concept, dataset, or finding into one self-contained shareable HTML visualization |
 | [`dither-kit`](./dither-kit/SKILL.md) | The default charting library for any agent-authored chart or data visualization |
 | [`docs`](./docs/SKILL.md) | Write documentation — user-facing, technical, runbooks, onboarding, changelogs |
+| [`agents-md`](./agents-md/SKILL.md) | Write the docs a *directory* carries — `AGENTS.md` (the agent's contract) and the `README.md` catalog that pairs with it |
 
-Reach for `dither-kit` before hand-rolling SVG or pulling in Chart.js.
+Reach for `dither-kit` before hand-rolling SVG or pulling in Chart.js. `docs` writes
+about a **system**; `agents-md` writes about a **directory**, for an agent that will
+re-read the source anyway.
 
 ## Machine-specific values stay out of the skill
 
