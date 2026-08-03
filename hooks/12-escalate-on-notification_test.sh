@@ -97,4 +97,56 @@ if grep -q "FIRED:" "$SANDBOX/fired.log"; then echo "ok   - a different session 
 rc=$(fire "Notification" "$SANDBOX/nope.md" "s5"); check "missing owner.md exits 0" "$rc" "0"
 check "missing owner.md does not fire" "$(wc -l < "$SANDBOX/fired.log")" "0"
 
+# 7. DEFAULT skill resolution, with ESCALATE_SKILL_DIR UNSET.
+#
+# Every case above forces ESCALATE_SKILL_DIR, so none of them exercises the
+# default path -- which is how the skill dir defaulted to the USER layer while
+# the skill actually ships in the SYSTEM layer, silently disabling this hook on
+# every machine. This case pins the real resolution order by building a fake
+# HOME with the skill in the SYSTEM layer ONLY, exactly as the fleet has it.
+#
+# Fails on the old default (`$HOME/.agents/skills/escalate`): the `-x` guard
+# finds nothing there and the hook exits before escalating.
+FAKEHOME="$SANDBOX/home"
+SYS_SKILL="$FAKEHOME/.agents/.system/skills/escalate"
+mkdir -p "$SYS_SKILL"
+cp "$SKILL/escalate.sh" "$SYS_SKILL/escalate.sh"; chmod +x "$SYS_SKILL/escalate.sh"
+cp "$REAL_OWNERPY" "$SYS_SKILL/owner.py"
+[ -e "$FAKEHOME/.agents/skills/escalate" ] && { echo "FAIL - fixture leaked a user-layer skill"; fail=1; }
+
+: > "$SANDBOX/fired.log"; rm -rf "$STATE"
+rc=$(printf '{"session_id":"s6","hook_event_name":"Notification","message":"system-layer resolution"}' \
+  | env -u ESCALATE_SKILL_DIR HOME="$FAKEHOME" OWNER_PROFILE="$owner_optin" ESCALATE_STATE_DIR="$STATE" \
+    bash "$HOOK" >/dev/null 2>&1; echo $?)
+check "system-layer skill resolves with no override (exit)" "$rc" "0"
+# The stub writes to $SANDBOX/fired.log via an absolute path, so it records
+# regardless of the fake HOME.
+sleep 0.3
+if grep -q "FIRED: system-layer resolution" "$SANDBOX/fired.log"; then
+  echo "ok   - resolves the skill from the SYSTEM layer when no override is set"
+else
+  echo "FAIL - system-layer skill was not resolved (the layer bug this fixes)"; fail=1
+fi
+
+# 8. User layer still WINS over system when both exist (documented order).
+USER_SKILL="$FAKEHOME/.agents/skills/escalate"
+mkdir -p "$USER_SKILL"
+cat > "$USER_SKILL/escalate.sh" <<STUB
+#!/usr/bin/env bash
+echo "USERLAYER: \$*" >> "$SANDBOX/fired.log"
+STUB
+chmod +x "$USER_SKILL/escalate.sh"
+cp "$REAL_OWNERPY" "$USER_SKILL/owner.py"
+
+: > "$SANDBOX/fired.log"; rm -rf "$STATE"
+printf '{"session_id":"s7","hook_event_name":"Notification","message":"prefers user layer"}' \
+  | env -u ESCALATE_SKILL_DIR HOME="$FAKEHOME" OWNER_PROFILE="$owner_optin" ESCALATE_STATE_DIR="$STATE" \
+    bash "$HOOK" >/dev/null 2>&1
+sleep 0.3
+if grep -q "USERLAYER: prefers user layer" "$SANDBOX/fired.log"; then
+  echo "ok   - user layer wins over system when both are present"
+else
+  echo "FAIL - resolution did not prefer the user layer"; fail=1
+fi
+
 exit $fail
