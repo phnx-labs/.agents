@@ -206,6 +206,7 @@ run_guard 2 "worktree add -b, implicit base"       "$(bj "git -C $CLONE worktree
 run_guard 2 "worktree add -b, local-branch base"   "$(bj "git -C $CLONE worktree add -b feat/z2 $TMP/wt_local trunk")"
 run_guard 2 "worktree add -B, local-branch base"   "$(bj "git -C $CLONE worktree add -B feat/z3 $TMP/wt_localB trunk")"
 # ALLOW: new-branch worktree based on a remote-tracking ref (the required form).
+# Clone just created origin/trunk — mtime is fresh under the default 900s max age.
 run_guard 0 "worktree add -b, origin/ base"        "$(bj "git -C $CLONE worktree add -b feat/z4 $TMP/wt_remote origin/trunk")"
 # ALLOW: non-creating worktree add (materialize an existing ref) is not gated.
 run_guard 0 "worktree add (no -b) existing ref"    "$(bj "git -C $CLONE worktree add $TMP/wt_nob origin/trunk")"
@@ -227,6 +228,29 @@ run_guard 2 "worktree add -b, refs/heads/ ref"     "$(bj "git -C $CLONE worktree
 run_guard 0 "worktree add -b, refs/remotes/ ref"   "$(bj "git -C $CLONE worktree add -b feat/q3 $TMP/wt_q3 refs/remotes/origin/trunk")"
 # DENY: --force interleaved before -b with a local base still caught.
 run_guard 2 "worktree add --force -b, local base"  "$(bj "git -C $CLONE worktree add --force -b feat/q4 $TMP/wt_q4 trunk")"
+
+# --- Real freshness (age), not form-only origin/* ---
+# Age the remote-tracking ref + FETCH_HEAD to simulate a days-stale origin/trunk.
+# --path-format=absolute: plain --git-path is cwd-relative and would touch the wrong file.
+_REF_PATH=$(git -C "$CLONE" rev-parse --path-format=absolute --git-path refs/remotes/origin/trunk)
+_FH_PATH=$(git -C "$CLONE" rev-parse --path-format=absolute --git-path FETCH_HEAD)
+# touch -t is portable (GNU + BSD); 2020-01-01 is well past any default max age.
+[ -f "$_REF_PATH" ] && touch -t 202001011200 "$_REF_PATH"
+[ -f "$_FH_PATH" ] && touch -t 202001011200 "$_FH_PATH"
+run_guard 2 "worktree add -b, stale origin/ base"  "$(bj "git -C $CLONE worktree add -b feat/stale $TMP/wt_stale origin/trunk")"
+# A no-op fetch does not always bump ref mtime; re-touch to "now" to model a
+# successful refresh (the production path is: agent runs fetch, then worktree add).
+touch "$_REF_PATH" 2>/dev/null
+touch "$_FH_PATH" 2>/dev/null
+run_guard 0 "worktree add -b, origin/ after refresh" "$(bj "git -C $CLONE worktree add -b feat/fresh $TMP/wt_fresh origin/trunk")"
+# AGENTS_WORKTREE_FETCH_MAX_AGE_SEC=0 disables the age gate (form-only escape).
+[ -f "$_REF_PATH" ] && touch -t 202001011200 "$_REF_PATH"
+[ -f "$_FH_PATH" ] && touch -t 202001011200 "$_FH_PATH"
+AGENTS_WORKTREE_FETCH_MAX_AGE_SEC=0 run_guard 0 "worktree add -b, age gate disabled" \
+  "$(bj "git -C $CLONE worktree add -b feat/age0 $TMP/wt_age0 origin/trunk")"
+# Restore fresh mtimes so later origin/* ALLOW cases (camelCase suite) stay green.
+touch "$_REF_PATH" 2>/dev/null
+touch "$_FH_PATH" 2>/dev/null
 
 # --- Harness portability: Grok CLI camelCase payloads (toolName/toolInput) ---
 # The old snake_case-only extraction resolved empty under Grok and fail-OPEN'd,

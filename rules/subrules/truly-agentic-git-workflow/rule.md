@@ -59,9 +59,11 @@ run git — `git worktree add -b` is the allowed, isolated branch-creation path.
    Worktrees live **only** under `<repo>/.agents/worktrees/<slug>/`. The
    `origin/<default>` base is **mechanically enforced** — `main-branch-guard`
    denies `git worktree add -b/-B` with an implicit (current-HEAD) or local-branch
-   base, so a new branch can never fork off a stale local commit. Pass an explicit
-   `origin/<default>` (a raw commit SHA or tag is allowed for the rare deliberate
-   case).
+   base, **and** denies a remote-tracking base whose ref (or `FETCH_HEAD`) is older
+   than `AGENTS_WORKTREE_FETCH_MAX_AGE_SEC` (default 900s / 15 minutes). Form-only
+   `origin/*` was not enough: agents passed a days-stale `origin/main` and only
+   discovered the lag at merge. Fetch first, then base off `origin/<default>` (a
+   raw commit SHA or tag is still allowed for the rare deliberate pin).
 2. **End-to-end inside `$WT`:** implement → test → verify the real flow → commit →
    push → open PR, all in the worktree.
 3. **Worktree integrity (multi-agent safe).** Create worktrees **foreground**,
