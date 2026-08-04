@@ -1,5 +1,11 @@
 # Changelog
 
+## [Unreleased]
+
+### Fixed
+
+- **`main-branch-guard` now denies stale `origin/*` worktree bases, not just wrong form.** The worktree gate already required `origin/<default>` (not local `main` / implicit `HEAD`), but a days-old remote-tracking ref still passed — agents forked off stale main and only hit the cost at merge. After the form check, the guard now requires the remote-tracking ref (or `FETCH_HEAD`) to be newer than `AGENTS_WORKTREE_FETCH_MAX_AGE_SEC` (default 900s). Deny message tells the agent to `git fetch origin` and retry. Set the env var to `0` to disable the age gate. Source: `rules/subrules/truly-agentic-git-workflow/main-branch-guard.sh`.
+
 ## [0.1.94] - 2026-08-03
 
 ### Fixed

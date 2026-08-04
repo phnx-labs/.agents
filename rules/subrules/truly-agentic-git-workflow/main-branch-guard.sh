@@ -18,6 +18,9 @@
 #   - Bash -> also gates `git worktree add -b/-B`: a new-branch worktree must be
 #     based on a freshly-fetched remote ref (origin/<default>), never an implicit
 #     HEAD or a local branch (the "worktree-ing off a stale local commit" trap).
+#     "Freshly-fetched" is mechanical: the remote-tracking ref (or FETCH_HEAD)
+#     must be newer than AGENTS_WORKTREE_FETCH_MAX_AGE_SEC (default 900s / 15m).
+#     Form-only origin/* was not enough — agents passed a days-stale origin/main.
 #
 # Exits 0 (allow) or 2 (deny, message on stderr).
 #
@@ -240,6 +243,62 @@ off an old commit. Fetch first and base off origin/<default>:
   git -C \"\$REPO\" worktree add -b $_bn \"\$REPO/.agents/worktrees/$_bn\" \"origin/\$BASE\""
 }
 
+# _file_mtime_epoch <path> — portable mtime as unix seconds (GNU + BSD stat).
+_file_mtime_epoch() {
+  # GNU coreutils first, then BSD/macOS.
+  stat -c %Y "$1" 2>/dev/null || stat -f %m "$1" 2>/dev/null || echo ""
+}
+
+# check_remote_ref_freshness <repo> <symbolic-full-name> <base-label> <newbr>
+# After the base has passed the refs/remotes/* form check, require that the
+# remote-tracking ref (or FETCH_HEAD) was refreshed recently. Default max age
+# is 900s (15m); override with AGENTS_WORKTREE_FETCH_MAX_AGE_SEC. Set to 0 to
+# disable the age check (form-only). Does NOT network-fetch here — that belongs
+# in the agent recipe / createWorktree, not inside PreToolUse.
+check_remote_ref_freshness() {
+  _fr_repo=$1
+  _fr_full=$2
+  _fr_label=$3
+  _fr_newbr=$4
+  _max_age=${AGENTS_WORKTREE_FETCH_MAX_AGE_SEC:-900}
+  # Non-numeric or empty → default. 0 disables (tests / offline deliberate).
+  case "$_max_age" in
+    ''|*[!0-9]*) _max_age=900 ;;
+  esac
+  [ "$_max_age" -eq 0 ] && return 0
+
+  _check_path=""
+  # Paths from `rev-parse --git-path` are relative to the *process cwd*, not the
+  # repo — resolve absolute or the age check looks at the wrong file (or none).
+  _ref_path=$(git -C "$_fr_repo" rev-parse --path-format=absolute --git-path "$_fr_full" 2>/dev/null) \
+    || _ref_path=""
+  if [ -n "$_ref_path" ] && [ -f "$_ref_path" ]; then
+    _check_path=$_ref_path
+  else
+    # Packed-refs or missing loose file → FETCH_HEAD is the last-fetch stamp.
+    _fh=$(git -C "$_fr_repo" rev-parse --path-format=absolute --git-path FETCH_HEAD 2>/dev/null) \
+      || _fh=""
+    if [ -n "$_fh" ] && [ -f "$_fh" ]; then
+      _check_path=$_fh
+    fi
+  fi
+  # Cannot determine age → form already required origin/*; fail open on age only.
+  [ -z "$_check_path" ] && return 0
+
+  _mtime=$(_file_mtime_epoch "$_check_path")
+  [ -z "$_mtime" ] && return 0
+  _now=$(date +%s)
+  _age=$((_now - _mtime))
+  # Clock skew / future mtime: treat as fresh.
+  [ "$_age" -lt 0 ] && return 0
+  if [ "$_age" -gt "$_max_age" ]; then
+    set_worktree_deny "$_fr_newbr" \
+      "a stale remote-tracking ref '$_fr_label' (last refreshed ${_age}s ago; max ${_max_age}s — run git fetch origin first)"
+    return 1
+  fi
+  return 0
+}
+
 # check_worktree_base <repo> <args-after-`worktree`...> — gate NEW-branch worktree
 # creation so the branch is based on a freshly-fetched remote-tracking ref
 # (origin/<default>), never an implicit HEAD or a local branch (either can be a
@@ -281,8 +340,9 @@ check_worktree_base() {
   # refs/remotes/... A raw SHA / tag has no branch ref -> deliberate, allow.
   _full=$(git -C "$_wrepo" rev-parse --symbolic-full-name "$_wbase" 2>/dev/null) || _full=""
   case "$_full" in
-    refs/remotes/*)                       # freshly-fetched remote base — required form
-      return 0 ;;
+    refs/remotes/*)                       # remote form — then require recent fetch
+      check_remote_ref_freshness "$_wrepo" "$_full" "$_wbase" "$_newbr"
+      return $? ;;
     refs/heads/*)                         # local branch — the stale trap we're closing
       set_worktree_deny "$_newbr" "the local branch '$_wbase'"
       return 1 ;;
