@@ -28,6 +28,7 @@ agents teams disband <slug>                                  # tear down when sy
 
 - **Mix agents** when available (`claude`, `codex`, `antigravity`, `cursor`, `opencode`) — different models have different blind spots. That diversity is the entire point of a swarm; never spawn three of the same model to "verify" each other.
 - **`--mode plan`** (read-only) for research, audit, planning, verification. **`--mode edit`** only when the track changes code.
+- **Steer cost per track** with `--model cheap|default|best|ultra` on `teams add` — a stable tier that resolves per harness+version to a supported model (cheap for grunt tracks, best/ultra for the hard one). See `agents models <agent>` for the resolved map.
 - **Never** leave a team running. Disband when done.
 
 ## Pick the swarm — discover who's available, then size by judgment
