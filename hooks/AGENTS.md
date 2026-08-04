@@ -134,3 +134,17 @@ five seconds costs five seconds on every session on every box.
 mocking. For a guard, include a fixture proving it blocks the bad input **and** one proving
 it fails closed with no JSON parser on `PATH`. For a detector, include the transcript that
 produced a past false positive; three of the gates here regressed on exactly that.
+
+### The pre-PR gate: `hooks/run_tests.sh`
+
+Run **`hooks/run_tests.sh`** before opening any PR that touches `hooks/`, `rules/subrules/`,
+or `agents.yaml`. It runs every `*_test.sh` in `hooks/` and in `rules/subrules/*/` and exits
+non-zero if any fails — one command instead of remembering the full list.
+
+It includes **`hooks/registration_test.sh`**, the integrity check this directory never had:
+the failing test for *"is this hook registered."* For every `*.sh`/`*.py` in `hooks/` (minus
+the test harness) it asserts one of — a `script:` entry in `../agents.yaml`, or invocation by
+a script that itself is registered (the `verify-delivery-chain.py` case), or a listing in the
+test's `INTENTIONALLY_UNREGISTERED` allowlist with a reason. A script that matches none fails,
+which is exactly what would have caught `606db6e` and `8b006a6` dropping registrations under
+unrelated subjects. When you add or remove a hook, this is the test that must go green.
