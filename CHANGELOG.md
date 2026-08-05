@@ -4,6 +4,8 @@
 
 ### Changed
 
+- **The sessions and devices skills now teach direct live-state filters and the real fleet default.** `agents sessions --working`, `--idle`, `--waiting`, `--orphan`/`--orphaned`, `--crashed`, `--closed`, `--abandoned`, `--queued`, and `--unknown` each imply the live scan and compose as a union. Both skills now state that registered online devices are already included, `--local` opts out, and `--all` widens historical directory/time scope rather than device scope. Companion: agents-cli issue #2009.
+
 - **Friendlier plan figure gate copy.** Skills now describe the compiler error as `No SVG figure found` and steer agents to add a visualization via **plan-render** / **artifacts**, matching `@phnx-labs/artifacts-cli@0.2.1`.
 
 ### Changed
