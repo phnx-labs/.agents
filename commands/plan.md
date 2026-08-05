@@ -321,7 +321,7 @@ reference this step.
    ```
    This writes the HTML next to the Markdown source. Include the goal, the
    implementation table, existing-primitives-to-reuse, the design questions, and
-   **≥1 visual figure** (Dither Kit for quantitative charts; hand-authored inline SVG for
+   **≥1 visual figure** (hand-authored inline SVG for
    timeline / architecture / before-after diagrams — not mermaid). Skin it in the
    **target product's brand** via `DESIGN.md`; fall back to the dark **+ light** editorial
    house palette (with the in-page toggle) only when the product declares no brand.

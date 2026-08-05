@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+### Changed
+
+- **After opening a PR, agents no longer open the PR link for the user — they drive review + merge themselves.** F4 no longer uses "review + merge PR #N" as the handoff example (routine PRs are not handoffs). `truly-agentic-git-workflow` replaces "open the PR on the user's interactive device" with: watch CI and **immediately check whether the automated code reviewer is functioning** (config + live post on this PR); if the bot is working, wait for it; if it is missing, silent, down, or unconfigured, **spawn a non-author subagent review as soon as possible** (`code:review`) and merge on green — never hand the merge to the user because the bot is down. `gh-merge-guard` states the same non-author review source rule. `code:review` skill documents when it is the default path vs skip-when-bot-posted. The `verify-work-complete` Stop gate no longer treats "prix-cloud is down / no reviewer configured + needs you to click merge" as a valid stop; its PRGATE text tells the agent to spawn a subagent review instead. Tests updated (reviewer-down + needs-you blocks; explicit named handoff still allows). Source: `rules/subrules/{foundations,truly-agentic-git-workflow,gh-merge-guard}/`, `hooks/00-agent-verify-work-complete.sh`, `plugins/code/skills/review/SKILL.md`, `rules/AGENTS.md`.
+
+### Removed
+
+- **Skill and plugin bloat cut (discovery surface).** Deleted top-level skills `dither-kit` and `git-workflow` (git procedure lives only in the always-on `truly-agentic-git-workflow` rule), folded `agents-md` into `skills/docs/write-agents-md.md`, and removed system plugins `clify` and `cloud` (Rush Cloud docs belong in the product/extension; marketplace entries dropped). Stripped Dither Kit from `tech-stack`, plan-presentation, docs, and related catalogs. Source: skills/, plugins/, `.claude-plugin/marketplace.json`, `rules/subrules/`.
+
 ### Added
 
 - **`reflect` command and skill restored as system defaults.** `/reflect` handles mid-conversation feedback recall before another revision; `/learn` remains the post-session workflow that writes durable lessons forward. Source: `commands/reflect.md`, `skills/reflect/SKILL.md`.
@@ -94,7 +102,7 @@
 - **The `verify-work-complete` Stop hook no longer loops sessions that are correctly waiting or genuinely blocked.** A fleet audit of the last ~6 days (1,594 sessions) found the open-PR gate fired **434×** across 82 sessions — 22 looped ≥10×, 7 ≥20× (one hit its usage limit mid-loop). Attribution was already precise (382/382 cited PRs were the session's own; no blind strands), so the defect was over-firing, not blindness. Three changes:
   - **Repeated-gate guidance.** After a gate fires ≥3 times on the same item this session, it asks the agent to re-check live state and choose the most useful next move instead of prescribing a fixed escalation route. It offers retrying differently, self-unblocking, advancing another in-scope item, coordinating ownership, or escalating a genuinely human-only step as possibilities while preserving the agent's judgment. Prior fires are counted from the transcript, anchored to the injected `Stop hook feedback:` prefix.
   - **Live-watcher recognition (evidence-gated).** The open-PR gate now treats a real background `gh pr checks --watch` (or a `ScheduleWakeup`/`Monitor`) tool_use as a valid handoff — the repo's own watch-then-stop pattern. Only a genuine tool_use clears it (48% of open-PR blocks were sessions doing exactly this, mis-scored); phrasing alone never clears the gate.
-  - **Context awareness.** Plan mode (cannot push/merge), a named down/unconfigured reviewer or CI handed to the user, are accepted as correct stops rather than abandonment.
+  - **Context awareness.** Plan mode (cannot push/merge) is accepted as a correct stop rather than abandonment. (A later Unreleased change removes the former escape that treated "automated reviewer down/unconfigured + needs you to merge" as a valid stop — that path now requires a subagent review, not a user handoff.)
   - Test harness extended with 13 fixtures (evidence-gate regression, plan-mode incidental-mention guard, banner threshold). Verified by replaying the 5 worst-looping real transcripts through the patched hook.
 
 ## [0.1.92] - 2026-08-03

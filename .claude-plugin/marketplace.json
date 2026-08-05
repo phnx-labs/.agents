@@ -8,26 +8,6 @@
   },
   "plugins": [
     {
-      "name": "clify",
-      "source": "./plugins/clify",
-      "description": "clify — turn any web service into an installable, verified CLI for humans and agents. `/clify <target>` climbs a reverse-engineering ladder (docs/OpenAPI → authed API → HAR capture → content-script injection), infers a typed command schema, and emits a globally-installable CLI — optionally an MCP server via `--mcp`. No command ships until it has hit the real endpoint and returned real output (the verification gate). Builds on `agents browser` (capture), `agents secrets` (Keychain token persistence), `mcporter`/`agents mcp` (the `--mcp` emit), and `oss` (open-sourcing a generated CLI).",
-      "version": "0.1.0",
-      "author": {
-        "name": "Muqsit Nawaz",
-        "email": "contact@trp.so"
-      }
-    },
-    {
-      "name": "cloud",
-      "source": "./plugins/cloud",
-      "description": "cloud - Rush Cloud dispatch plugin. `/cloud:run` documents the native `rush cloud run` path for Claude Code/Codex harnesses, repo dispatch, execution lifecycle commands, and verification evidence. `/cloud:accounts` covers Rush login plus connected Claude/Codex credentials (`rush cloud accounts add/list/remove`) and distinguishes Rush Cloud access/subscription gates from vendor account capacity.",
-      "version": "0.1.0",
-      "author": {
-        "name": "Muqsit Nawaz",
-        "email": "contact@trp.so"
-      }
-    },
-    {
       "name": "code",
       "source": "./plugins/code",
       "description": "Coding-workflow plugin for the manager/router engineering loop. `/code:loop` drains a queue end-to-end (single ticket or many: plan, code, test, review, rebase, fix CI, merge), `/code:verify` runs the end-to-end gate (canonical test per changed surface, read from the project's CLAUDE.md/AGENTS.md), `/code:review` reviews every PR opened in parallel \u2014 plus a security pass on risk-touching diffs \u2014 and merges per verdict, `/code:ship` is the post-merge gate for distributables (publish, confirm live on the public channel, activate where it runs, verify the real surface), `/code:quality` runs a read-only code-health diagnostic and opens an HTML report, `/code:learn` reflects on a session and routes durable lessons to the right skill/rule/memory without overfitting, `/commit` splits the working tree into the maximum number of small logical commits.",
@@ -40,7 +20,7 @@
     {
       "name": "design",
       "source": "./plugins/design",
-      "description": "design — a keyless, offline-first design front door. `/design` routes a design intent to a mode and renders it as self-contained HTML/SVG (no CDN, no paid keys): UI screens and flows (interface), clickable prototypes (prototype), design systems and tokens (system), architecture/flow/ER diagrams (diagram, via plan-render's diagram-conventions), infographics and data-stories (dataviz), slide decks (deck), and critique of an existing screen (critique). Vector assets (OG cards, SVG logos, icon sets, posters) render offline too; true raster (photo, illustration, painterly cover) is an optional layer that degrades to a spec plus an editable placeholder plus enable-steps rather than hard-failing. Every mode loads design-core first: visual hierarchy, WCAG AA contrast, colorblind-safe palettes, brand-probe, precise non-marketing copy, and render/screenshot/critique verification. Brand plugins layer on top by calling /design; brand is optional, never required.",
+      "description": "design \u2014 a keyless, offline-first design front door. `/design` routes a design intent to a mode and renders it as self-contained HTML/SVG (no CDN, no paid keys): UI screens and flows (interface), clickable prototypes (prototype), design systems and tokens (system), architecture/flow/ER diagrams (diagram, via plan-render's diagram-conventions), infographics and data-stories (dataviz), slide decks (deck), and critique of an existing screen (critique). Vector assets (OG cards, SVG logos, icon sets, posters) render offline too; true raster (photo, illustration, painterly cover) is an optional layer that degrades to a spec plus an editable placeholder plus enable-steps rather than hard-failing. Every mode loads design-core first: visual hierarchy, WCAG AA contrast, colorblind-safe palettes, brand-probe, precise non-marketing copy, and render/screenshot/critique verification. Brand plugins layer on top by calling /design; brand is optional, never required.",
       "version": "0.1.0",
       "author": {
         "name": "Muqsit Nawaz",
@@ -50,7 +30,7 @@
     {
       "name": "fleet",
       "source": "./plugins/fleet",
-      "description": "fleet — fleet-wide operations across every machine registered with `agents devices`. `/fleet:sync` pulls every registered DotAgent repo (system, user, and extras) to origin latest on every online device, then refreshes the installed agents — non-destructive (git merge --ff-only only; reports repos blocked by local edits instead of clobbering), handling the fast-forward workaround, the transient GitHub-SSH throttle, and Windows PowerShell quoting, ending with a repo x device matrix. `/fleet:onboard <device>` brings a bare new device up to fleet parity (agents-cli, agent CLIs, DotAgent repos, shared SSH key, PATH shim, device registration, agent auth) — discovery-first, additive, idempotent, credentials via sanctioned paths only, never copied host-to-host.",
+      "description": "fleet \u2014 fleet-wide operations across every machine registered with `agents devices`. `/fleet:sync` pulls every registered DotAgent repo (system, user, and extras) to origin latest on every online device, then refreshes the installed agents \u2014 non-destructive (git merge --ff-only only; reports repos blocked by local edits instead of clobbering), handling the fast-forward workaround, the transient GitHub-SSH throttle, and Windows PowerShell quoting, ending with a repo x device matrix. `/fleet:onboard <device>` brings a bare new device up to fleet parity (agents-cli, agent CLIs, DotAgent repos, shared SSH key, PATH shim, device registration, agent auth) \u2014 discovery-first, additive, idempotent, credentials via sanctioned paths only, never copied host-to-host.",
       "version": "0.1.0",
       "author": {
         "name": "Muqsit Nawaz",
@@ -70,7 +50,7 @@
     {
       "name": "share",
       "source": "./plugins/share",
-      "description": "share — publish an HTML artifact (a plan, viz, or report) to a shareable link on your own Cloudflare R2 (zero egress, ~$0) via `agents share`. `/share:public` posts a public link with an auto-generated OG cover (a screenshot of the page's hero) so it unfurls into a preview card in Slack/iMessage/Twitter/Discord; `/share:private` posts an unlisted, auto-expiring link with no preview card (unguessable but still public-read — not authenticated). Requires a one-time `agents share setup` (provisions an R2 bucket + Worker) or `agents share join`.",
+      "description": "share \u2014 publish an HTML artifact (a plan, viz, or report) to a shareable link on your own Cloudflare R2 (zero egress, ~$0) via `agents share`. `/share:public` posts a public link with an auto-generated OG cover (a screenshot of the page's hero) so it unfurls into a preview card in Slack/iMessage/Twitter/Discord; `/share:private` posts an unlisted, auto-expiring link with no preview card (unguessable but still public-read \u2014 not authenticated). Requires a one-time `agents share setup` (provisions an R2 bucket + Worker) or `agents share join`.",
       "version": "0.1.0",
       "author": {
         "name": "Muqsit Nawaz",

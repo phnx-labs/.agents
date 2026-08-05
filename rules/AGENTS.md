@@ -92,7 +92,16 @@ the live version); show the result, don't narrate it.
 The user runs many agents and is **almost never watching this window** — a chat
 message here is a note in an empty room. Never stop silently.
 
-- **When you hand off, land it on their device.** Open the PR / issue / dashboard in their browser on the configured interactive host when one is set (`agents devices list --json` → the row with `interactive: true`; `agents ssh <host> 'open <url>'`) — only when unset, fall back to resolving an online macOS box from `agents devices`; never hardcode; open a file for them to eyeball. Make the one action they must take **singular and obvious** ("review + merge PR #119"), in the surface you opened, not buried in prose.
+- **When you hand off, land it on their device.** A handoff is a decision or
+  action only the user can take (scope, product taste, a biometric, a credential
+  only they hold) — **not** a routine PR. Do **not** open PR links for the user
+  to review or merge; you merge on green yourself (see `truly-agentic-git-workflow`,
+  `gh-merge-guard`). For a real handoff, open the relevant surface on the
+  configured interactive host when one is set (`agents devices list --json` → the
+  row with `interactive: true`; `agents ssh <host> 'open <url>'`) — only when
+  unset, fall back to resolving an online macOS box from `agents devices`; never
+  hardcode. Make the one action they must take **singular and obvious** (e.g.
+  "pick A or B on the plan"), in the surface you opened, not buried in prose.
 - **If it needs to reach their phone** (they may be away), also send the out-of-band **Telegram** notification with the link — the harness only notifies *you*, never them. Keep it short: **1–4 lines**, lead with the one thing you need, the text is a pointer (link the PR/ticket), not the payload. Default to the `default` (Jeff) bot for Claude-system notifications. Send iMessage/SMS via `imsg` on a Mac when that's the right channel.
 - **Always close with a back-from-vacation summary** — what landed, what needs them, the one link. A handoff the user can't see is not a handoff.
 - **Lead with the outcome, keep it scannable.** A paragraph the user must mine to find the one thing you did is chatbot output. Cut it.
@@ -226,13 +235,14 @@ run git — `git worktree add -b` is the allowed, isolated branch-creation path.
    swept into your commit. Reproduce CI/build failures in the clean worktree, not
    a dirty checkout (a dirty tree yields false-positive failures).
 
-Full recipe — worktree creation, PR, after-merge cleanup: the `git-workflow` skill.
+The worktree recipe above is complete — there is no separate skill. After merge: `git -C "$REPO" worktree remove "$WT"` then `gh pr merge --rebase --delete-branch`.
 
 ## Open with evidence attached — screenshots, artifacts, a confidential transcript
 
-Opening something for a human — a **PR**, a **GitHub issue**, or a **ticket**
-(Linear/Jira) — is a handoff, not a stopping point. Identify which flow you're in
-and attach what the reviewer needs to judge it without re-running your session.
+Opening a **PR**, **GitHub issue**, or **ticket** (Linear/Jira) is not a stop and
+a PR is not a handoff to the user to merge. Attach what the **non-author reviewer**
+(automated bot or subagent) needs to judge the change without re-running your
+session. Issues/tickets that need a human decision still land where the user is (F4).
 
 **The description must be glanceable — lead with what changed and for whom.** The
 reviewer reads the body, not the diff, so a wall of prose (or a one-liner) is a PR they
@@ -323,28 +333,56 @@ Every `gh pr create` / `gh issue create` / ticket-open carries:
   (`<host>:<session-dir>/<session-id>.jsonl`) so a teammate on the fleet can open it.
   Never paste transcript text anywhere it could be indexed or cached.
 
-## PR open is NOT done — actively wait, never make the user ping
+## PR open is NOT done — drive review + merge yourself
 
-Opening a PR is not a stopping point. After `gh pr create`, **actively wait for
-CI** with the background-command + finish-echo pattern (never `Monitor`,
-`ScheduleWakeup`, or `until` loops — they fail silently), then review and merge:
+Opening a PR is not a stopping point and **not a handoff**. Do **not** open the
+PR URL in the user's browser, drop a "please review + merge" link, or wait for
+them to click anything. Authorization to do the work already carries through to
+**rebase-merge on green** (see `gh-merge-guard`). You own CI, non-author review,
+and the merge.
+
+### Right after `gh pr create` — two tracks in parallel
+
+1. **Watch CI** with the background-command + finish-echo pattern (never
+   `Monitor`, `ScheduleWakeup`, or `until` loops — they fail silently):
 
 ```
 (gh pr checks <pr> --watch --fail-fast; echo "CI settled rc=$? — next: non-author review, then merge on green")
 ```
-run with `run_in_background: true` — the harness re-invokes you the moment checks
-settle. If the PR has no checks configured, go straight to review. A non-author
-review **and** green CI = rebase-merge without asking (see `gh-merge-guard`); fall
-back to `AskUserQuestion` only when the review finds problems, tests fail, or the
-merge conflicts. Don't remove the worktree or delete the branch until merge.
-Never stop with a limp "okay, I'll wait" — that just makes the user ping you.
 
-When the merge genuinely needs the **user** (a governance/sign-off change you
-authored and can't self-review, no CI/reviewer configured), that's a real
-handoff — so **open the PR on the user's interactive device** so they can click
-Merge/Approve there, don't just leave the link in this window (F4 — land the
-handoff where the user is). The user runs many agents and won't be watching this
-chat.
+   run with `run_in_background: true` — the harness re-invokes you when checks
+   settle. If the PR has no checks configured, skip the watch and go to review.
+
+2. **Check whether the automated code reviewer is functioning** — do this
+   immediately, do not wait for CI to finish first:
+
+   - **Is one configured?** Look for a checked-in config (this stack:
+     `.github/rush.yml` declaring a `prix/code-reviewer` agent that posts as
+     `prix-cloud` on `opened`/`reopened`/`synchronize`). A workflow listing alone
+     is not enough — read the config file.
+   - **Is it alive on this PR?** After open (and again after a short settle if
+     needed), check for its review or comment (`gh pr view <n> --json
+     reviews,comments` / `gh api repos/.../pulls/<n>/comments`). A prior PR on
+     the same repo that got a bot review is weak evidence of config; **this PR's
+     thread** is the live signal.
+
+**If the automated reviewer is configured and posting** — wait for its verdict;
+do not spawn a redundant subagent on top of a working bot.
+
+**If it is missing, silent, down, or the repo has no automated reviewer** — do
+**not** wait and do **not** hand the merge to the user. Spawn a non-author
+subagent review **as soon as possible** (`code:review` / the review skill, or an
+in-session `Agent` that did not author the PR). That subagent's clear verdict is
+the non-author review that clears merge-on-green.
+
+A non-author review **and** green CI = rebase-merge without asking; fall back to
+`AskUserQuestion` only when the review finds problems, tests fail, or the merge
+conflicts. Don't remove the worktree or delete the branch until merge. Never
+stop with a limp "okay, I'll wait" or a PR link for the user to open.
+
+The only real user handoff at this boundary is a **governance / product / identity
+sign-off only they can give** (not "please merge this ordinary PR"). Park that
+decision with F4; keep driving everything else.
 
 ## Reconcile with rebase; never `reset --hard`; never stash
 
@@ -370,9 +408,10 @@ which bypasses the agent hook.
 
 Authorization to do the work carries through to the merge — an in-session "build it / open a PR / fix this" authorizes a **rebase-merge on green**, no fresh ask needed. What still needs explicit authorization is merging *past* the safety rails: never bypass branch protection, never rubber-stamp your own code, never merge red.
 
-- **Merge autonomously on green; ask only on red.** A non-author review **and** passing CI = rebase-merge without asking (see `git-workflow`). Fall back to `AskUserQuestion` (merge / iterate / close) only when the review finds problems, tests fail, or the merge conflicts. "Green" means a genuine independent review + CI, never a rubber stamp.
+- **Merge autonomously on green; ask only on red.** A non-author review **and** passing CI = rebase-merge without asking (see `truly-agentic-git-workflow`). Fall back to `AskUserQuestion` (merge / iterate / close) only when the review finds problems, tests fail, or the merge conflicts. "Green" means a genuine independent review + CI, never a rubber stamp. Do **not** open the PR for the user or ask them to click merge on an ordinary green PR.
+- **Non-author review source — check the automated reviewer first.** After you open a PR, determine whether the repo's automated code reviewer is **configured and functioning on this PR** (config file such as `.github/rush.yml` / `prix-cloud`, plus a real review or comment on the thread). **Configured and posting →** wait for that verdict; do not stack a second review on top. **Missing, silent, down, or unconfigured →** do not wait and do not hand the merge to the user — spawn a non-author subagent review immediately (`code:review` or an `Agent` that is not the author). That clear is what unblocks merge-on-green.
 - **Never `gh pr merge --admin`.** Admin bypass merges past branch protection and required reviews. The bundled `merge-guard.sh` (PreToolUse) blocks it. Merge *without* `--admin` so protections still apply — if protections block the merge, that's a red to resolve, not a thing to bypass.
-- **Never self-approve your own PR.** Reviewing and approving code you wrote, then merging it, is not review. The reviewer that clears the green must be someone — or some agent — other than the author.
+- **Never self-approve your own PR.** Reviewing and approving code you wrote, then merging it, is not review. The reviewer that clears the green must be someone — or some agent — other than the author. An automated repo reviewer counts; a subagent you spawned that did not author the PR also counts. You yourself never count.
 - **Never transfer credentials or auth files** (tokens, `~/.rush/user.yaml`, keychain exports) to another host or VM without explicit authorization. Don't attempt the transfer first and surface a question only after a guard blocks you.
 
 # No Claude-Code Footer
@@ -487,19 +526,12 @@ Mechanical backstop: for a session that ran an edit-mode swarm, the `verify-work
 | Credentials | `agents secrets` — OS keychain-backed |
 | Release/publish | `release` skill |
 | See what's already in flight (open PRs, live sessions) before taking work | auto-injected at session start (`inject-repo-inflight` hook); on demand: `gh pr list`, `agents sessions --active` |
-| Charts / dataviz in rendered output | Dither Kit (`dither-kit` skill) — default for charts in HTML, React, dashboards, plans, QA/quality reports, and blog visuals |
 
-## Default Charting Library
+## Charts in rendered artifacts
 
-Use **Dither Kit** by default whenever an agent produces a chart or data
-visualization in a rendered artifact: HTML plans, shareable visualizations,
-dashboards, QA/quality reports, blog visuals, React/Next.js pages, and any
-chart-producing web surface.
-
-- Install copied components with `npx @dither-kit/cli add <chart>` (or `bunx @dither-kit/cli add <chart>`). Use `area-chart`, `bar-chart`, `pie-chart`, `radar-chart`, or `dither-kit`; line charts ship with `area-chart`.
-- Prefer Dither Kit over ad-hoc inline SVG, one-off canvas code, Recharts, Chart.js, Plotly, or D3 for ordinary agent-authored charts.
-- Keep Dither Kit local to the artifact or target project. Do not use a CDN. In shadcn/Tailwind projects, let the CLI copy components into `components/dither-kit/` and commit them with the artifact when appropriate.
-- Plain ASCII or Mermaid remains fine for text-only structural diagrams. Hand-authored inline SVG remains fine for architecture/timeline/process diagrams in self-contained HTML. For numeric charts, use Dither Kit.
+Prefer hand-authored inline SVG or ASCII for diagrams and simple charts in plans and
+reports. No CDN chart libraries; no mandated third-party chart kit. Use the target
+product's design tokens when styling.
 
 # Query Structure Before Reading Whole Files (`mq`)
 
@@ -596,9 +628,7 @@ transport — lives in the **`plan-render` skill**. Load it and follow it.
   never hand-author a complete `.html` file.
 - **Structure (fixed).** Hero (kicker · headline · problem statement · metadata chips ·
   **provenance chips — harness · agent · host · session · date, so a rendered plan is never
-  an orphan** · TOC), numbered sections, **≥1 visual figure** (Dither Kit for quantitative
-  charts; hand-authored inline SVG for timeline / architecture / before-after
-  diagrams — never mermaid), callouts, tagged tables, code blocks. Follow the
+  an orphan** · TOC), numbered sections, **≥1 visual figure** (hand-authored inline SVG for timeline / architecture / before-after / charts — never mermaid), callouts, tagged tables, code blocks. Follow the
   `plan` template (`artifacts template plan`) or scaffold with `artifacts new plan`.
 - **Quality is enforced, not suggested.** `artifacts check`/`render` **error** when a plan
   has no drawn live SVG figure, and they **do not write HTML** on validation failure.
