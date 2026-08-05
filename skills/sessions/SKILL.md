@@ -37,7 +37,22 @@ agents sessions --project agents-cli --all
 | `--until` | `--until 2026-01-01` | Only sessions older than this |
 | `--limit` | `--limit 10` | Maximum sessions to return |
 | `--active` | `--active` | Only currently running sessions |
+| `--working` | `--working` | Live sessions actively doing work |
+| `--idle` | `--idle` | Live sessions stopped between turns |
+| `--waiting` | `--waiting` | Live sessions waiting on the user |
+| `--orphan` | `--orphan` | Live agents whose terminal client disappeared |
+| `--crashed` | `--crashed` | Sessions whose terminal and process disappeared uncleanly |
 | `--teams` | `--teams` | Include team-spawned sessions |
+
+Every live-state flag implies `--active`. The remaining lifecycle filters are
+`--closed`, `--abandoned`, `--queued`, and `--unknown`; `--orphaned` is
+accepted as an alias of `--orphan`. Several status flags form a union.
+`--working` is narrower than `--active`: it excludes idle, waiting, and
+lifecycle-failure rows.
+
+Session listings and live-state filters already fold in every registered online
+device. Use `--local` to opt out. `--all` does not control devices; it widens
+historical directory and time scope.
 
 ## Reading Sessions
 
@@ -107,7 +122,7 @@ agents logs <id> -f       # follow a live one
 
 ## Tips
 
-- Use `--active` to find sessions running right now across terminals, teams, cloud, and headless agents
+- Use `--active` for the full live roster, or a direct status flag such as `--working`, `--idle`, `--orphan`, or `--crashed`
 - Use `--teams` to see what team-spawned agents are doing
 - Use `--since 1h` for recent activity
 - Combine filters: `agents sessions --project myapp --since 1d --agent claude`
