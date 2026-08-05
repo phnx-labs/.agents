@@ -4,6 +4,24 @@
 
 ### Added
 
+- **The done-claim Stop gate now closes the loop instead of leaving a dangling
+  optional idea.** `00-agent-verify-work-complete.sh`'s final self-audit gate
+  (fires when the agent claims a delivery is done) gained a third close-out step
+  alongside the existing goal re-audit and `agents feed post`: file any genuine
+  follow-up ideas as tickets right now instead of dangling them ("say the word",
+  "let me know if you want this") — that pattern (screenshot evidence: a session
+  that shipped and verified everything, then ended with an open-ended "the only
+  optional follow-up is X — say the word") is exactly the "588 hours burned
+  idling" failure mode F1 already bans, just reached via a different final
+  message shape than the gate previously closed. Once every goal is verified,
+  follow-ups are filed (or dropped), and the feed post is up, a headless/
+  dispatched/background run now also self-exits the way `/done` does (SIGTERM to
+  its own harness parent) instead of sitting idle — explicitly skipped when the
+  session looks interactive, so a live terminal someone is watching is never
+  killed out from under them. Source:
+  `hooks/stop/00-agent-verify-work-complete.sh`, `_test.sh` (5 new assertions,
+  98/98 passing).
+
 - **New `/profile` command.** Profiles a sluggish machine, attributes the load to agents-cli surfaces (daemon, menu-bar helper, `doctor`/`sessions` pollers), reads the logs to root-cause it, and files a GitHub issue on the public agents-cli repo with the evidence — codifying the load-300 crash-loop diagnosis (an un-notarized menu-bar helper crash-looping and spawning an orphaned `doctor --json` pile-up).
 
 ### Changed

@@ -822,13 +822,25 @@ Before you can stop, you MUST:
    - DONE but UNTESTED (state what verification is missing, then go do it)
    - NOT DONE (continue working on it now)
 4. If ANY goal is UNTESTED or NOT DONE, keep working. Do not stop.
-5. Once EVERY goal is DONE and verified, post ONE quick status update the way you
-   would update a human manager — the headline outcome + the one link/next-step,
-   not a transcript:
+5. Once EVERY goal is DONE and verified, close out in this order:
+   a. New follow-up ideas, improvements, or issues you noticed along the way that
+      are out of scope for this session: FILE them as tickets via the project's
+      tracker right now. Do not just mention an idea and wait ('say the word',
+      'let me know if you want this') — either do it, file it as tracked work, or
+      drop it. A dangling optional idea is not a finished session.
+   b. Post ONE quick status update the way you would update a human manager — the
+      headline outcome + the one link/next-step, not a transcript:
        agents feed post --title "<short outcome>" "<what you delivered + the one next step>" --level important
-   This records the completion and marks this phone-worthy successful update for
-   owner delivery. Post it, THEN stop.
+      This records the completion and marks this phone-worthy successful update
+      for owner delivery.
+   c. This session is now genuinely finished. If this is a headless, dispatched,
+      or background run — not a live terminal a person might be actively
+      watching right now — self-exit the way /done does: send SIGTERM to your
+      harness parent process as your very last action, so the session actually
+      ends instead of sitting idle. If you are unsure, or this looks like an
+      interactive session someone is driving, skip the self-exit and just stop.
 
-Only stop when every goal has tangible, verified results.
+Only stop when every goal has tangible, verified results, any real follow-ups are
+filed (not dangled), and — if applicable — the session has cleanly exited itself.
 GATE
 exit 2
