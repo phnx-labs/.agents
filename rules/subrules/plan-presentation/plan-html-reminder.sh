@@ -72,14 +72,25 @@ else
   fi
 fi
 
+# A fresh plan HTML is not enough. Prose-only shells (hero + bullets, no figures)
+# used to clear this gate and land unreadable plans in the user's browser. Require
+# at least one live <svg in the body of a fresh candidate. Empty touch files and
+# figure-less dumps fail closed.
 html_ok=0
 for scan_root in $scan_roots; do
   [ -d "$scan_root" ] || continue
-  if find -L "$scan_root" -maxdepth 6 \( -name 'plan-*.html' -o -name '*-plan.html' \) -mmin -90 \
-       -print -quit 2>/dev/null | grep -q .; then
-    html_ok=1
-    break
-  fi
+  while IFS= read -r candidate; do
+    [ -n "$candidate" ] || continue
+    # Drawn figure: <svg with a primitive child (not an empty shell).
+    if grep -Eqi '<svg\b' "$candidate" 2>/dev/null \
+      && grep -Eqi '<(rect|path|circle|ellipse|line|polyline|polygon|text|g)\b' "$candidate" 2>/dev/null; then
+      html_ok=1
+      break
+    fi
+  done <<EOF
+$(find -L "$scan_root" -maxdepth 6 \( -name 'plan-*.html' -o -name '*-plan.html' \) -mmin -90 -print 2>/dev/null)
+EOF
+  [ "$html_ok" = 1 ] && break
 done
 
 # ---- (B) Checklist check (FAILS OPEN) -----------------------------------------
@@ -119,17 +130,18 @@ fi
   echo "Before presenting this plan (plan-presentation rule), finish these:"
   echo
   if [ "$html_ok" != 1 ]; then
-    echo "* Render it as browser-ready HTML and open it on the user's Mac."
-    echo "  Load the plan-render skill: author Markdown in the repo's"
-    echo "  .agents/artifacts/plans/plan-<slug>.md and render with:"
+    echo "* Render a FIGURE-RICH browser-ready HTML plan and open it on the user's Mac."
+    echo "  Load the plan-render skill. Author Markdown in the repo's"
+    echo "  .agents/artifacts/plans/plan-<slug>.md, then:"
     echo "    artifacts render .agents/artifacts/plans/plan-<slug>.md --format html"
-    echo "  The HTML is written next to the Markdown source. Include a hero, TOC, >=1 visual"
-    echo "  figure (hand-authored inline SVG for architecture / timeline / before-after;"
-    echo "  Dither Kit for quantitative charts), callouts, and tagged tables. Preserve the"
-    echo "  product brand via DESIGN.md and ship a light/dark toggle."
-    echo "  Open it on the online macOS device (resolve the host from \`agents devices\`):"
+    echo "  HARD REQUIREMENTS (this gate inspects the HTML, not just the filename):"
+    echo "    - ≥1 live inline <svg with drawn elements (rect/path/text/…) — prose alone fails"
+    echo "    - fenced code blocks for commands/APIs (not only inline \`code\` pills)"
+    echo "    - at least one table (files/risks/validation) and an artifact-callout"
+    echo "  artifacts check/render now ERROR if a plan has no drawn SVG figure."
+    echo "  Open it on the online macOS device (resolve from \`agents devices\`):"
     echo "    scp .agents/artifacts/plans/plan-<slug>.html <host>:/tmp/ && agents ssh <host> 'open /tmp/plan-<slug>.html'"
-    echo "  Headless fleet with no browser host: still render the file (that clears this)."
+    echo "  Headless fleet with no browser host: still render a figure-rich file (that clears this)."
   fi
   if [ "$checklist_ok" != 1 ]; then
     echo "* Create a task checklist for this plan — it has multiple steps."

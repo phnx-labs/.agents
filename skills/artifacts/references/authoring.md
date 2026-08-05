@@ -131,6 +131,22 @@ Example:
   transform, motion, and paint animation are supported.
 - Do not animate URL-bearing attributes such as `href`.
 
+## Plan quality gate
+
+For `kind: plan`, validation is not optional chrome:
+
+| Check | Level | Rule |
+| --- | --- | --- |
+| Live drawn SVG | **error** | Body (outside fenced code) must contain `<svg` with a drawn child (`rect`/`path`/`circle`/`text`/`g`/…) |
+| Markdown table | warning | At least one `| … |` table (files, risks, validation) |
+| Fenced code | warning | At least one fenced code block — commands belong here, not only as inline pills |
+| `artifact-callout` | warning | One load-bearing takeaway for the reviewer |
+
+`artifacts render` **does not write HTML** when any error is present. Fix the
+Markdown source; do not open a partial file.
+
+Empty SVG shells (template placeholders with only a comment) do **not** pass.
+
 ## Diagram Recipe
 
 `<style>` and custom classes are rejected **inside SVG too**, so style every

@@ -10,6 +10,22 @@ user-invocable: true
 
 Every implementation plan should be a beautiful, reviewable HTML page that opens in the user's browser. The source of truth is **Markdown**: concise, token-efficient, and durable. The rendering is handled by `artifacts-cli`.
 
+## Non-negotiable quality bar (read this first)
+
+A plan HTML that is **only prose + inline `code` pills** is a failed delivery.
+Both the compiler and the ExitPlanMode gate now enforce this:
+
+| Must have | Why | Enforced by |
+| --- | --- | --- |
+| ≥1 **live** inline SVG with drawn elements (`rect`/`path`/`text`/…) | Reviewers need a figure, not a wall of bullets | `artifacts check` **error**; plan-html-reminder greps the HTML |
+| ≥1 Markdown **table** (files / risks / validation) | Scanability | `artifacts check` warning |
+| ≥1 **fenced** code block for commands/APIs | Inline `` `code` `` alone has no highlighting surface | `artifacts check` warning |
+| ≥1 `artifact-callout` | Load-bearing takeaway | `artifacts check` warning |
+
+Do **not** present until `artifacts render` exits 0 (it no longer writes HTML on validation errors). Do **not** leave empty SVG shells from the template — fill them with a real diagram.
+
+**Anti-pattern (what just bit us):** dump issue notes as Markdown bullets, run `artifacts render`, open the HTML. That produces a dark page of monochrome pills with no figures and no code wells — unreadable.
+
 ## Output
 
 - **HTML only** — no PDF is produced.
@@ -134,9 +150,10 @@ Every implementation plan should be a beautiful, reviewable HTML page that opens
 
 ## Completion contract
 
-- [ ] Markdown source written to `.agents/artifacts/plans/plan-<slug>.md`
-- [ ] HTML rendered next to the source with `artifacts render ... --format html`
+- [ ] Markdown source written to `.agents/artifacts/plans/plan-<slug>.md` (not `/tmp/scratchpad`)
+- [ ] `artifacts check` reports **no errors** (figure present; required sections present)
+- [ ] HTML rendered next to the source with `artifacts render ... --format html` (exit 0)
+- [ ] Grep the HTML: at least one `<svg` with a drawn primitive; at least one `<pre`/`<table`
 - [ ] Output inspected headlessly in both themes and at desktop/mobile widths
-- [ ] At least one inline SVG figure; interactive/animated elements verified
 - [ ] HTML opened on the user's machine and copied to `~/Downloads`
 - [ ] Source, HTML path, and any warnings reported to the user
