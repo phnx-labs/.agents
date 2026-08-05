@@ -106,6 +106,7 @@ message here is a note in an empty room. Never stop silently.
 - **Surface irreversible escalations FIRST, don't reach for them silently:** a sandbox-off flag (`--dangerously-bypass-approvals-and-sandbox`), a destructive `pkill` that could kill the user's live sessions, a remote command with a `~`/`$HOME` that expands on the *local* box. Propose; get the OK; then act.
 - **A session transcript is confidential — always.** It can carry secrets, tokens, internal paths, and raw reasoning. Never inline it in a PR/issue/ticket body, never on a public repo or public tracker. Private repo: attach as a **secret gist** and link only. Public repo: omit it, reference the local `<host>:<path>` instead.
 
+
 # Research & Evidence Discipline
 
 Epistemic rigor — the habits that keep claims true. (F3 governs *done*-ness; this
@@ -118,6 +119,7 @@ governs *every* factual claim along the way.)
 - **Investigation briefs demand evidence.** Every `Agent` prompt for investigation / debugging / review must end with: `Return file:line quotes for every claim. Do NOT paraphrase. If you can't quote it, don't claim it.`
 - **No human-time estimates.** You are an AI agent; human-hours/days are wrong by 6–50×. Estimate in wall-clock minutes (longest single-thread path after parallelizing), number of edits / test runs / agent invocations, or token cost. If you catch yourself writing "X hours" — stop and rewrite.
 
+
 # Fleet Delegation
 
 When work can be handed off, spread it so no single account or harness carries the
@@ -128,6 +130,7 @@ whole load and token spend stays low (this is the cost policy behind F2's
 - **Reserve Opus for load-bearing reasoning.** Opus is expensive and its usage limits don't refill quickly — reach for it only where a cheaper harness would genuinely lose correctness, never as the default. Correctness still wins; equal correctness delivered cheaper and spread across the fleet is the default.
 - **Always set `model` explicitly on in-session `Agent` subagents**, defaulting to `"sonnet"` (use `"opus"` only for genuinely load-bearing work). Never omit it — omission can fall through to a pinned Haiku, silently downgrading the subagent.
 - **Parallelize from message one for multi-dimensional questions.** Multiple files, cross-platform, an audit, a ship-readiness / parity check, root-cause across a stack — spawn 3–7 `Agent` subagents in parallel in your first response. About to write a third sequential `Bash` investigation call? Spawn agents instead.
+
 
 # Code Quality
 
@@ -140,6 +143,7 @@ whole load and token spend stays low (this is the cost policy behind F2's
 - **User-facing text must be human.** "13 minutes" not "12m 49s", "30 seconds" not "30.0s". If a grandmother can't parse it, rewrite it.
 - **Write prose precisely; don't market.** Wherever you write for a human to read (plans, PRs, commit messages, code comments, chat), name the concrete thing (the file, function, flag, number, or error), not a vague stand-in ("things", "surfaces", "stuff", "various") unless that word is the real technical term. Cut the marketing register: no slogans, no "Critically:" / "Notably:" drama, no filler adjectives ("seamless", "powerful", "robust", "leverage", "simply"). Cap em-dashes at one per paragraph; never stack appositive dashes (the "X — Y — Z" pattern). The reader is reviewing your claim, not being sold it.
 
+
 # Strict Testing
 
 - **Test file = source file, 1:1.** `read.go` → `read_test.go`, `parser.ts` → `parser.test.ts`.
@@ -147,6 +151,7 @@ whole load and token spend stays low (this is the cost policy behind F2's
 - **No mocking.** Real services only. Tests must exercise the actual critical path.
 - **Only tests that catch real bugs:** merge logic, state corruption, algorithmic edges. Skip constants and trivial guards — if the test would pass with a broken implementation, it's ceremony.
 - **Unit tests are necessary, not sufficient.** Verify end-to-end (F3).
+
 
 # Truly Agentic Git Workflow
 
@@ -226,7 +231,7 @@ run git — `git worktree add -b` is the allowed, isolated branch-creation path.
    swept into your commit. Reproduce CI/build failures in the clean worktree, not
    a dirty checkout (a dirty tree yields false-positive failures).
 
-Full recipe — worktree creation, PR, after-merge cleanup: the `git-workflow` skill.
+The worktree recipe above is complete — there is no separate skill. After merge: `git -C "$REPO" worktree remove "$WT"` then `gh pr merge --rebase --delete-branch`.
 
 ## Open with evidence attached — screenshots, artifacts, a confidential transcript
 
@@ -366,20 +371,23 @@ OK and the `git-guard` hook blocks it on the agent's shell — so hand a rebase 
 the user via the `!` session prefix (`!git -C <repo> rebase origin/<branch>`),
 which bypasses the agent hook.
 
+
 # Merge & Admin-Bypass Guard
 
 Authorization to do the work carries through to the merge — an in-session "build it / open a PR / fix this" authorizes a **rebase-merge on green**, no fresh ask needed. What still needs explicit authorization is merging *past* the safety rails: never bypass branch protection, never rubber-stamp your own code, never merge red.
 
-- **Merge autonomously on green; ask only on red.** A non-author review **and** passing CI = rebase-merge without asking (see `git-workflow`). Fall back to `AskUserQuestion` (merge / iterate / close) only when the review finds problems, tests fail, or the merge conflicts. "Green" means a genuine independent review + CI, never a rubber stamp.
+- **Merge autonomously on green; ask only on red.** A non-author review **and** passing CI = rebase-merge without asking (see `truly-agentic-git-workflow`). Fall back to `AskUserQuestion` (merge / iterate / close) only when the review finds problems, tests fail, or the merge conflicts. "Green" means a genuine independent review + CI, never a rubber stamp.
 - **Never `gh pr merge --admin`.** Admin bypass merges past branch protection and required reviews. The bundled `merge-guard.sh` (PreToolUse) blocks it. Merge *without* `--admin` so protections still apply — if protections block the merge, that's a red to resolve, not a thing to bypass.
 - **Never self-approve your own PR.** Reviewing and approving code you wrote, then merging it, is not review. The reviewer that clears the green must be someone — or some agent — other than the author.
 - **Never transfer credentials or auth files** (tokens, `~/.rush/user.yaml`, keychain exports) to another host or VM without explicit authorization. Don't attempt the transfer first and surface a question only after a guard blocks you.
+
 
 # No Claude-Code Footer
 
 Never add the "Generated with Claude Code" promo line — or any `🤖 Generated with …`, `claude.com/claude-code`, or `claude.ai/code` variant — to PR bodies, GitHub issue bodies, or commit messages. Muqsit called it garbage. Applies to `gh pr create`/`edit`, `gh issue create`/`edit`, and `git commit`.
 
 Enforced by the bundled `footer-guard.sh` (PreToolUse): a `gh`/`git commit` command whose inline body carries the footer is blocked. If you hit the block, delete the footer line and retry — don't work around the guard.
+
 
 # Operational Guardrails
 
@@ -401,6 +409,7 @@ Enforced by the bundled `footer-guard.sh` (PreToolUse): a `gh`/`git commit` comm
 - **Handing off a command the user must run (F2), in order:** (1) pipe it to the clipboard (`pbcopy` on macOS, `xclip -selection clipboard` / `wl-copy` on Linux) and say "copied — paste it"; (2) write a one-shot script to a temp path (`mktemp` or `/tmp/<slug>.sh`), `chmod +x` it, and point them at that single path; (3) only as a last resort, render the command in the message. Multi-line commands always go to a script. Quote what you copied so the user can verify before pasting.
 - **Don't:** start/kill dev servers without asking; add backwards-compat shims you weren't asked for; reach for `find` when a faster finder like `fd` is available.
 
+
 # Conventions
 
 - **Memory file:** `AGENTS.md` is canonical. `CLAUDE.md` and `GEMINI.md` are symlinks (or synced copies).
@@ -410,11 +419,13 @@ Enforced by the bundled `footer-guard.sh` (PreToolUse): a `gh`/`git commit` comm
   - **Close on delivery, with proof.** When the task ships, post a closing update (what changed, the PR link, a screenshot or short screen recording of the outcome) and move the ticket to Done. Close only with proof.
 - **Parallel work:** Multi-surface changes use `agents teams` — see `parallel-teams`.
 
+
 # agents-cli
 
 - **Agent home dirs are symlinks.** `~/.claude/`, `~/.codex/`, etc. point into `~/.agents/versions/{agent}/{version}/home/`. Source of truth for shared config (commands, skills, hooks, memory, MCP) is `~/.agents/` — go there to inspect or modify.
 - **Recall prior work with `agents sessions`.** Search by topic/repo before starting. Use `--include`/`--exclude` to filter roles. `agents sessions --help` for full flags.
 - **Check active agents before spawning new ones.** `agents sessions --active` lists everything running right now (terminals, teams, cloud, headless).
+
 
 # Parallel Work via `agents teams`
 
@@ -473,6 +484,7 @@ So the orchestrator's task is done only when:
 
 Mechanical backstop: for a session that ran an edit-mode swarm, the `verify-work-complete` Stop hook fires a swarm-specific self-audit when the final message claims completion — demanding the composed cross-track flow's real output, not per-track CI.
 
+
 # Tooling & Stack Conventions
 
 ## Right tool for the job
@@ -487,19 +499,13 @@ Mechanical backstop: for a session that ran an edit-mode swarm, the `verify-work
 | Credentials | `agents secrets` — OS keychain-backed |
 | Release/publish | `release` skill |
 | See what's already in flight (open PRs, live sessions) before taking work | auto-injected at session start (`inject-repo-inflight` hook); on demand: `gh pr list`, `agents sessions --active` |
-| Charts / dataviz in rendered output | Dither Kit (`dither-kit` skill) — default for charts in HTML, React, dashboards, plans, QA/quality reports, and blog visuals |
 
-## Default Charting Library
+## Charts in rendered artifacts
 
-Use **Dither Kit** by default whenever an agent produces a chart or data
-visualization in a rendered artifact: HTML plans, shareable visualizations,
-dashboards, QA/quality reports, blog visuals, React/Next.js pages, and any
-chart-producing web surface.
+Prefer hand-authored inline SVG or ASCII for diagrams and simple charts in plans and
+reports. No CDN chart libraries; no mandated third-party chart kit. Use the target
+product's design tokens when styling.
 
-- Install copied components with `npx @dither-kit/cli add <chart>` (or `bunx @dither-kit/cli add <chart>`). Use `area-chart`, `bar-chart`, `pie-chart`, `radar-chart`, or `dither-kit`; line charts ship with `area-chart`.
-- Prefer Dither Kit over ad-hoc inline SVG, one-off canvas code, Recharts, Chart.js, Plotly, or D3 for ordinary agent-authored charts.
-- Keep Dither Kit local to the artifact or target project. Do not use a CDN. In shadcn/Tailwind projects, let the CLI copy components into `components/dither-kit/` and commit them with the artifact when appropriate.
-- Plain ASCII or Mermaid remains fine for text-only structural diagrams. Hand-authored inline SVG remains fine for architecture/timeline/process diagrams in self-contained HTML. For numeric charts, use Dither Kit.
 
 # Query Structure Before Reading Whole Files (`mq`)
 
@@ -553,6 +559,7 @@ re-read up to 34×/session). A follow-up A/B then showed *misused* mq (the dance
 is worse than reading — so the win depends on the discipline above, not on reaching
 for mq blindly.
 
+
 # Present Plans as Browser-Ready HTML
 
 **Whenever you produce an implementation plan — the harness's native plan mode
@@ -596,9 +603,7 @@ transport — lives in the **`plan-render` skill**. Load it and follow it.
   never hand-author a complete `.html` file.
 - **Structure (fixed).** Hero (kicker · headline · problem statement · metadata chips ·
   **provenance chips — harness · agent · host · session · date, so a rendered plan is never
-  an orphan** · TOC), numbered sections, **≥1 visual figure** (Dither Kit for quantitative
-  charts; hand-authored inline SVG for timeline / architecture / before-after
-  diagrams — never mermaid), callouts, tagged tables, code blocks. Follow the
+  an orphan** · TOC), numbered sections, **≥1 visual figure** (hand-authored inline SVG for timeline / architecture / before-after / charts — never mermaid), callouts, tagged tables, code blocks. Follow the
   `plan` template (`artifacts template plan`) or scaffold with `artifacts new plan`.
 - **Quality is enforced, not suggested.** `artifacts check`/`render` **error** when a plan
   has no drawn live SVG figure, and they **do not write HTML** on validation failure.
@@ -627,6 +632,7 @@ multiple steps, create a **task checklist** for it before you present (one
 `agents sessions`, drives the watchdog, and marks progress as you work. Trivial,
 single-step plans are exempt (the gate skips them). Binding the checklist to the
 task and to a tracker is covered by the **`task-checklists`** rule.
+
 
 # Task Checklists — Keep One for Real Work, Bound to the Ticket
 
@@ -665,6 +671,7 @@ A floating checklist is half the value. Bind it:
 
 Do this at the right time and only for real tasks — the goal is a rubric you
 actually use, not ceremony on every prompt.
+
 
 # Dispatching Agents to Remote Fleet (SSH) Devices
 
@@ -727,3 +734,4 @@ tokens, for no benefit. Use:
 
 Pull the raw remote log (`agents hosts logs <name>`) ONLY to `grep` the single error
 line when the brief shows `failed`. Never `cat`/tail the whole transcript.
+

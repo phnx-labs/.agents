@@ -15,11 +15,11 @@ One paragraph: what this system does, why it exists.
 
 ## Architecture
 
-[ASCII/Mermaid structural diagram, or a Dither Kit chart for quantitative data]
+[ASCII/Mermaid structural diagram, or inline SVG for quantitative data]
 
 ## Data Flow
 
-[Diagram: how data moves through the system; use Dither Kit if this is a chart]
+[Diagram: how data moves through the system; hand-authored SVG for charts]
 
 ## Key Concepts
 
@@ -54,15 +54,8 @@ flowchart LR
     A[Input] --> B[Process] --> C[Output]
 ```
 
-Dither Kit for rendered charts:
-```bash
-npx @dither-kit/cli add area-chart
-```
+For rendered charts use hand-authored inline SVG or the host document chart API. No mandated chart kit.
 
-Use Dither Kit by default for quantitative charts in HTML, React, dashboards,
-reports, and other rendered outputs. Keep ASCII/Mermaid for structural diagrams
-in Markdown. Do not reach for ad-hoc inline SVG or another charting library for
-ordinary data charts unless the target format cannot use Dither Kit.
 
 ## Anti-Patterns
 

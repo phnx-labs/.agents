@@ -1,9 +1,0 @@
-{
-  "name": "cloud",
-  "version": "0.1.0",
-  "description": "cloud - Rush Cloud dispatch plugin. Documents how to log in to Rush, connect Claude/Codex account credentials for cloud harnesses, dispatch coding agents with `rush cloud run`, and manage cloud executions.",
-  "author": {
-    "name": "Muqsit Nawaz",
-    "email": "contact@trp.so"
-  }
-}

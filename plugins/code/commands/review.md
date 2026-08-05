@@ -19,7 +19,7 @@ A PR that "looks correct" is not the same as a PR that has been demonstrated to 
 
 If you have none of those, the verdict is **request-changes**, not merge. State the missing evidence in the PR comment.
 
-See F1–F5 (`rules/subrules/foundations.md`) and the `git-workflow` skill for the full merge-on-green policy.
+See F1–F5 (`rules/subrules/foundations.md`) and the `truly-agentic-git-workflow` rule for the full merge-on-green policy.
 
 ## No overreview, no overengineering pressure
 
