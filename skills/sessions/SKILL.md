@@ -50,9 +50,10 @@ accepted as an alias of `--orphan`. Several status flags form a union.
 `--working` is narrower than `--active`: it excludes idle, waiting, and
 lifecycle-failure rows.
 
-Session listings and live-state filters already fold in every registered online
-device. Use `--local` to opt out. `--all` does not control devices; it widens
-historical directory and time scope.
+The interactive listing and live-state filters already fold in every registered
+online device. Use `--local` to opt out. Non-interactive historical queries
+stay local unless given `--host`/`--device`. `--all` does not control
+devices; it widens historical directory and time scope.
 
 ## Reading Sessions
 
