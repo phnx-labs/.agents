@@ -584,21 +584,24 @@ check "plan mode (cannot push/merge) allows stop on an open PR" "$rc" "0"
 rc=$(FAKE_GH_STATE=OPEN run_hook "$T" "I sketched a plan mode of attack; PR #42 CI is still running." false)
 check "incidental 'plan mode' phrase without a forbid cue still blocks" "$rc" "2"
 
-# P2. Open PR whose required automated reviewer is down; handed to the user.
+# P2. Automated reviewer down + "needs you to click merge" is NOT a valid stop —
+#     agent must spawn a subagent review and merge itself, not hand the merge to the user.
 rc=$(FAKE_GH_STATE=OPEN run_hook "$T" "PR #42 CI is green but prix-cloud is down (no reviewer posted). It now needs you to click merge." false)
-check "reviewer down + needs-you handoff allows stop" "$rc" "0"
+check "reviewer down + needs-you still blocks (spawn subagent review, do not hand off)" "$rc" "2"
 
-# P2b. REGRESSION: 'no ci failures' / 'no ci blocking' is abandonment prose, NOT a
-#      down-or-unconfigured reviewer. Even with 'your approval would help' it must
-#      still block — the reviewer_down alternative must not over-match a bare 'no ci'.
+# P2b. REGRESSION: 'no ci failures' / 'no ci blocking' is abandonment prose.
 rc=$(FAKE_GH_STATE=OPEN run_hook "$T" "No CI failures detected. Your approval would help get this merged." false)
-check "'no ci failures' + 'your approval' still blocks (reviewer_down not over-broad)" "$rc" "2"
+check "'no ci failures' + 'your approval' still blocks" "$rc" "2"
 rc=$(FAKE_GH_STATE=OPEN run_hook "$T" "No CI blocking this merge, your sign-off is all that's needed." false)
 check "'no ci blocking' + 'your sign-off' still blocks" "$rc" "2"
 
-# P2c. Genuinely unconfigured reviewer ('no reviewer configured') + needs-you -> allow.
+# P2c. No automated reviewer configured + needs-you is also not a stop — spawn subagent review.
 rc=$(FAKE_GH_STATE=OPEN run_hook "$T" "This repo has no reviewer configured, so PR #42 now needs you to merge it." false)
-check "'no reviewer configured' + needs-you allows stop" "$rc" "0"
+check "'no reviewer configured' + needs-you still blocks (spawn subagent review)" "$rc" "2"
+
+# P2d. Reviewer down but PR explicitly handed to a named owner/session still allows stop.
+rc=$(FAKE_GH_STATE=OPEN run_hook "$T" "PR #42 CI is green but prix-cloud is down. Handed off to the code-review session, which owns the PR from here." false)
+check "reviewer down + explicit named handoff allows stop" "$rc" "0"
 
 # --- Repeated-gate strategy guidance after the 3rd fire on the same item -----
 # A transcript that already carries N prior open-PR fires (real isMeta 'Stop hook

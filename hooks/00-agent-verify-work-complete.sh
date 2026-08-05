@@ -270,15 +270,13 @@ watcher_phrase = re.search(r'\b(watcher|poll(?:er|ing)?|background (?:watch|poll
 # agent physically cannot drive the PR — demanding it is a loop. Require the
 # 'plan mode' phrase together with a can't/forbid cue to avoid an incidental hit.
 plan_mode = re.search(r'\bplan mode\b', msg) and re.search(r'\b(cannot|can not|forbid|forbids|blocks?|blocked|prevent|no (?:commit|push|merge))\b', msg)
-# Fix 3 (reviewer/CI down or unconfigured): the required non-author-review path
-# can't complete, so an explicit human handoff is the correct stop.
-reviewer_down = re.search(r'\b(prix-cloud|reviewer|ci)\b.{0,40}\b(down|outage|offline|not posted|not configured|unconfigured|absent)\b', msg) or re.search(r'\bno (?:automated )?(?:reviewer|ci)\b(?:\s+(?:configured|set up|available|installed|present|enabled)\b|\s+for\s)', msg)
-needs_you = re.search(r'\b(needs? (?:you|muqsit|your)|your (?:merge|approval|sign-?off)|click merge|you (?:own|must) (?:the )?merge)\b', msg)
+# A silent/down/unconfigured automated reviewer is NOT a stop reason and NOT a
+# user handoff: spawn a non-author subagent review and keep driving merge-on-green.
+# Do not treat reviewer-down + needs-you-to-click-merge as a valid escape.
 ok = (re.search(pat, msg)
       or (blocked and nextstep)
       or (live_watcher and watcher_phrase)
-      or plan_mode
-      or (reviewer_down and (needs_you or watcher_phrase or re.search(pat, msg))))
+      or plan_mode)
 print('yes' if ok else 'no')
 " 2>/dev/null || echo "no")
 
@@ -291,16 +289,23 @@ $open_prs
 An open PR is not a finished task — merged-or-handed-off is done. Before
 stopping you must do ONE of:
 1. Keep driving it: watch CI (background gh pr checks --watch), get the
-   non-author review, and merge on green.
-2. Hand it off EXPLICITLY: name who or what now owns the PR (a person, a
-   session, a watcher) in your final message.
-3. If stopping is genuinely correct — a GENUINE external blocker you cannot
+   non-author review, and merge on green yourself. Do NOT open the PR link
+   for the user or ask them to click merge.
+2. Non-author review path: if the automated code reviewer is configured and
+   posting (e.g. prix-cloud), wait for it. If it is missing, silent, down, or
+   the repo has none — spawn a non-author subagent review NOW (code:review /
+   Agent that is not the author). Do not wait, and do not hand the merge to
+   the user because the bot is down.
+3. Hand it off EXPLICITLY only when someone/something else truly owns it: name
+   who or what now owns the PR (a person, a session, a watcher) in your final
+   message. "Needs you to merge" / "open the PR" is NOT a handoff.
+4. If stopping is genuinely correct — a GENUINE external blocker you cannot
    resolve — name it ("blocked on <what>") AND point to either a LIVE process
    that will finish it (a background "gh pr checks --watch" / "watcher" that will
    "merge on green") or an action only your biometric can do ("your Touch ID").
-   Wanting a human REVIEW is NOT this case: keep driving it (spawn a reviewer) or
-   hand it off explicitly by naming the owner (option 2) — "awaiting your review"
-   will NOT pass this gate.
+   Wanting a human REVIEW is NOT this case: keep driving it (spawn a reviewer)
+   or hand it off explicitly by naming the owner (option 3) — "awaiting your
+   review" will NOT pass this gate.
 
 Then finish your final message and stop again.
 PRGATE

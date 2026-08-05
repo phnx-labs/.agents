@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Changed
+
+- **After opening a PR, agents no longer open the PR link for the user — they drive review + merge themselves.** F4 no longer uses "review + merge PR #N" as the handoff example (routine PRs are not handoffs). `truly-agentic-git-workflow` replaces "open the PR on the user's interactive device" with: watch CI and **immediately check whether the automated code reviewer is functioning** (config + live post on this PR); if the bot is working, wait for it; if it is missing, silent, down, or unconfigured, **spawn a non-author subagent review as soon as possible** (`code:review`) and merge on green — never hand the merge to the user because the bot is down. `gh-merge-guard` states the same non-author review source rule. `code:review` skill documents when it is the default path vs skip-when-bot-posted. The `verify-work-complete` Stop gate no longer treats "prix-cloud is down / no reviewer configured + needs you to click merge" as a valid stop; its PRGATE text tells the agent to spawn a subagent review instead. Tests updated (reviewer-down + needs-you blocks; explicit named handoff still allows). Source: `rules/subrules/{foundations,truly-agentic-git-workflow,gh-merge-guard}/`, `hooks/00-agent-verify-work-complete.sh`, `plugins/code/skills/review/SKILL.md`, `rules/AGENTS.md`.
+
 ### Removed
 
 - **Skill and plugin bloat cut (discovery surface).** Deleted top-level skills `dither-kit` and `git-workflow` (git procedure lives only in the always-on `truly-agentic-git-workflow` rule), folded `agents-md` into `skills/docs/write-agents-md.md`, and removed system plugins `clify` and `cloud` (Rush Cloud docs belong in the product/extension; marketplace entries dropped). Stripped Dither Kit from `tech-stack`, plan-presentation, docs, and related catalogs. Hooks folder layout left flat — reorg tracked in RUSH-2191 (Low). Source: skills/, plugins/, `.claude-plugin/marketplace.json`, `rules/subrules/`.
