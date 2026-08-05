@@ -64,6 +64,7 @@ code; `/dispatch` always ends with an agent building something.
 |---|---|
 | [`/monitors`](./monitors.md) | Set up a durable event-triggered watcher. Routines fire on a clock; monitors fire on a change |
 | [`/output`](./output.md) | Fleet-wide token-burn and output report across every device, rendered as an HTML dashboard and PDF |
+| [`/profile`](./profile.md) | Profile a sluggish machine, attribute the load to agents-cli surfaces, read the logs to root-cause it, and file a GitHub issue on the public agents-cli repo |
 
 <p align="center">
   <img src="../.assets/monitors.png" alt="/monitors — a general-purpose watcher primitive for the agent fleet" width="82%">
