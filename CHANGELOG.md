@@ -4,6 +4,10 @@
 
 ### Changed
 
+- **Friendlier plan figure gate copy.** Skills now describe the compiler error as `No SVG figure found` and steer agents to add a visualization via **plan-render** / **artifacts**, matching `@phnx-labs/artifacts-cli@0.2.1`.
+
+### Changed
+
 - **Plan quality gate: prose-only plan HTML no longer clears ExitPlanMode.** `plan-html-reminder` now greps the rendered HTML for a live `<svg` with a drawn primitive (`rect`/`path`/`text`/…); empty touch files and wall-of-text shells block. Companion: `artifacts-cli` rejects `kind: plan` without a drawn SVG and refuses to write HTML on validation errors. Skills (`plan-render`, `artifacts`) and the plan-presentation rule document the bar; `plan-render` template ships a filled before/after SVG. Source: `rules/subrules/plan-presentation/`, `skills/plan-render/`, `skills/artifacts/`.
 
 - **`artifacts` skill: multipurpose `links` frontmatter.** Agents are steered to attach ticket/PR/issue/design URLs (Linear, Jira, GitHub, …) in a list of plain `https://` strings or `{url, label?}` objects, seed them at first draft, and append any tickets opened mid-session before re-rendering. Labels auto-derive for common trackers; `tracking` remains a short optional id. Companion change in `artifacts-cli` renders the list as a linked chip row. `plan-render` is unchanged this pass. Source: `skills/artifacts/SKILL.md`, `skills/artifacts/references/authoring.md`.

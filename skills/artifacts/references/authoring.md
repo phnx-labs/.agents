@@ -137,7 +137,7 @@ For `kind: plan`, validation is not optional chrome:
 
 | Check | Level | Rule |
 | --- | --- | --- |
-| Live drawn SVG | **error** | Body (outside fenced code) must contain `<svg` with a drawn child (`rect`/`path`/`circle`/`text`/`g`/…) |
+| Live drawn SVG | **error** | `No SVG figure found.` Add a visualization as live inline SVG. Skills: **plan-render**, **artifacts**. |
 | Markdown table | warning | At least one `| … |` table (files, risks, validation) |
 | Fenced code | warning | At least one fenced code block — commands belong here, not only as inline pills |
 | `artifact-callout` | warning | One load-bearing takeaway for the reviewer |

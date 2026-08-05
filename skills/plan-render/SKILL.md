@@ -22,7 +22,7 @@ Both the compiler and the ExitPlanMode gate now enforce this:
 | ≥1 **fenced** code block for commands/APIs | Inline `` `code` `` alone has no highlighting surface | `artifacts check` warning |
 | ≥1 `artifact-callout` | Load-bearing takeaway | `artifacts check` warning |
 
-Do **not** present until `artifacts render` exits 0 (it no longer writes HTML on validation errors). Do **not** leave empty SVG shells from the template — fill them with a real diagram.
+Do **not** present until `artifacts render` exits 0. A missing figure fails with **`No SVG figure found`** (no HTML written) — make the plan pleasant with a real visualization, not an empty SVG shell.
 
 **Anti-pattern (what just bit us):** dump issue notes as Markdown bullets, run `artifacts render`, open the HTML. That produces a dark page of monochrome pills with no figures and no code wells — unreadable.
 
