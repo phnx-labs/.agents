@@ -1,10 +1,8 @@
----
-name: agents-md
-description: "Write and maintain AGENTS.md files a coding agent will actually use — top-level guidelines, invariant-first declaratives, source-of-truth pointers greppable by symbol, narrowed per-package. Triggers on: create/update AGENTS.md/CLAUDE.md/GEMINI.md, 'context file', 'memory file', 'document this subsystem for agents', 'the AGENTS.md is stale', onboarding a repo or package for agents."
-user-invocable: true
----
-
 # Writing AGENTS.md files agents actually use
+
+This is a subskill of `docs`. Load it when documenting a directory for agents
+(`AGENTS.md` / `CLAUDE.md` / `GEMINI.md`) and the README catalog that pairs with it.
+
 
 An `AGENTS.md` is not documentation for humans. It is read by a coding agent
 mid-task, under token pressure, that navigates by `rg <symbol>` and will re-read

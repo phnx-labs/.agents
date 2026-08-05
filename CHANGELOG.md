@@ -2,9 +2,14 @@
 
 ## [Unreleased]
 
+### Removed
+
+- **Skill and plugin bloat cut (discovery surface).** Deleted top-level skills `dither-kit` and `git-workflow` (git procedure lives only in the always-on `truly-agentic-git-workflow` rule), folded `agents-md` into `skills/docs/write-agents-md.md`, and removed system plugins `clify` and `cloud` (Rush Cloud docs belong in the product/extension; marketplace entries dropped). Stripped Dither Kit from `tech-stack`, plan-presentation, docs, and related catalogs. Hooks folder layout left flat — reorg tracked in RUSH-2191 (Low). Source: skills/, plugins/, `.claude-plugin/marketplace.json`, `rules/subrules/`.
+
 ### Added
 
 - **`reflect` command and skill restored as system defaults.** `/reflect` handles mid-conversation feedback recall before another revision; `/learn` remains the post-session workflow that writes durable lessons forward. Source: `commands/reflect.md`, `skills/reflect/SKILL.md`.
+
 
 ### Changed
 

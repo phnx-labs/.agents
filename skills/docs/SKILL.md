@@ -22,11 +22,11 @@ Less is more. Agents and humans can gather context on the fly. Only document wha
 | Runbooks | `write-runbook.md` | Operational procedures, troubleshooting |
 | Onboarding | `write-onboarding.md` | New contributor guide |
 | Changelogs | `write-changelog.md` | Release notes |
-| For an agent, not a human | the [`agents-md`](../agents-md/SKILL.md) skill | `AGENTS.md` / `CLAUDE.md` / `GEMINI.md`, and the README that pairs with one |
+| For an agent, not a human | `write-agents-md.md` | `AGENTS.md` / `CLAUDE.md` / `GEMINI.md`, and the README that pairs with one |
 
-Documenting a **directory** rather than a system? That is the `agents-md` skill, not a
-subskill here — it owns both halves of the pair (`README.md` = the human catalog,
-`AGENTS.md` = the agent's contract) and the rule for when a directory wants neither.
+Documenting a **directory** rather than a system? Use `write-agents-md.md` — it owns both
+halves of the pair (`README.md` = the human catalog, `AGENTS.md` = the agent's contract)
+and the rule for when a directory wants neither.
 
 ## Core Principles
 
@@ -40,9 +40,8 @@ Document component boundaries, data flow, integration points. Not how functions 
 Write for someone who understands systems but doesn't know THIS system. Skip basics.
 
 **4. Visuals over prose.**
-One visual replaces paragraphs. For rendered charts, use Dither Kit by default.
-For plain-text structural diagrams, ASCII is fine; Mermaid is acceptable only
-when the target renderer supports it.
+One visual replaces paragraphs. Prefer hand-authored inline SVG or ASCII for
+diagrams; Mermaid only when the target renderer supports it. No mandated chart kit.
 
 **5. Reference the code, don't duplicate it.**
 `See src/agent/execution.go:306-500` beats copying code into docs.
@@ -56,5 +55,6 @@ Need documentation?
 ├── Operational procedure? → write-runbook.md
 ├── New contributor setup? → write-onboarding.md
 ├── Release notes? → write-changelog.md
+├── AGENTS.md / directory docs for agents? → write-agents-md.md
 └── Implementation details? → DON'T DOCUMENT. Code is the doc.
 ```

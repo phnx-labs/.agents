@@ -76,7 +76,7 @@ run git — `git worktree add -b` is the allowed, isolated branch-creation path.
    swept into your commit. Reproduce CI/build failures in the clean worktree, not
    a dirty checkout (a dirty tree yields false-positive failures).
 
-Full recipe — worktree creation, PR, after-merge cleanup: the `git-workflow` skill.
+The worktree recipe above is complete — there is no separate skill. After merge: `git -C "$REPO" worktree remove "$WT"` then `gh pr merge --rebase --delete-branch`.
 
 ## Open with evidence attached — screenshots, artifacts, a confidential transcript
 

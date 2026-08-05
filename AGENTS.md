@@ -10,7 +10,7 @@ Everything here ships to every agent on every box, so a broken file here breaks 
 
 This section is **this repo's instance** of the general rule. The rule itself — including
 when a directory wants neither file — lives in the
-[`agents-md`](./skills/agents-md/SKILL.md) skill. Change it there first; this section
+[`write-agents-md`](./skills/docs/write-agents-md.md) docs subskill. Change it there first; this section
 records only how it lands here, plus the `rules/` exception below.
 
 Every directory carries both, and they do different jobs. Do not merge them.

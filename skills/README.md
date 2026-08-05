@@ -39,7 +39,6 @@ self-unblock ladder is exhausted.
 
 | Skill | What it does |
 |---|---|
-| [`git-workflow`](./git-workflow/SKILL.md) | Run PR-bound work in an isolated worktree instead of mutating the user's checkout |
 | [`release`](./release/SKILL.md) | Publish to registries — discover repo structure, run tests, update the changelog, publish, tag |
 | [`mq`](./mq/SKILL.md) | Structure-aware query for large files — extract one section instead of reading the whole file |
 | [`learn`](./learn/SKILL.md) | Reflect on a finished session and write the durable lessons back into skills, rules, or memory |
@@ -51,13 +50,9 @@ self-unblock ladder is exhausted.
 |---|---|
 | [`plan-render`](./plan-render/SKILL.md) | Render an implementation plan as a self-contained, review-grade HTML doc, opened where the user sits |
 | [`visualize`](./visualize/SKILL.md) | Turn a concept, dataset, or finding into one self-contained shareable HTML visualization |
-| [`dither-kit`](./dither-kit/SKILL.md) | The default charting library for any agent-authored chart or data visualization |
-| [`docs`](./docs/SKILL.md) | Write documentation — user-facing, technical, runbooks, onboarding, changelogs |
-| [`agents-md`](./agents-md/SKILL.md) | Write the docs a *directory* carries — `AGENTS.md` (the agent's contract) and the `README.md` catalog that pairs with it |
+| [`docs`](./docs/SKILL.md) | Write documentation — user-facing, technical, runbooks, onboarding, changelogs, and AGENTS.md (`write-agents-md.md`) |
 
-Reach for `dither-kit` before hand-rolling SVG or pulling in Chart.js. `docs` writes
-about a **system**; `agents-md` writes about a **directory**, for an agent that will
-re-read the source anyway.
+`docs` covers system docs; for directory agent contracts use `docs/write-agents-md.md`.
 
 ## Machine-specific values stay out of the skill
 
