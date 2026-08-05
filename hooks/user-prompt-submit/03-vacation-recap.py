@@ -28,6 +28,24 @@ import time
 
 STATE_DIR = os.path.join(os.path.expanduser("~"), ".agents", ".cache", "state", "last-user-prompt")
 DEFAULT_THRESHOLD_SEC = 7200
+RETENTION_SEC = 30 * 86400  # prune session files untouched for 30+ days
+
+
+def prune_stale(exclude_name):
+    try:
+        entries = os.listdir(STATE_DIR)
+    except Exception:
+        return
+    now = time.time()
+    for name in entries:
+        if name == exclude_name:
+            continue
+        path = os.path.join(STATE_DIR, name)
+        try:
+            if now - os.path.getmtime(path) > RETENTION_SEC:
+                os.remove(path)
+        except Exception:
+            continue
 
 
 def human_duration(seconds):
@@ -60,6 +78,8 @@ def main():
         os.makedirs(STATE_DIR, exist_ok=True)
     except Exception:
         sys.exit(0)
+
+    prune_stale(exclude_name=session_id)
 
     state_path = os.path.join(STATE_DIR, session_id)
     now = time.time()
