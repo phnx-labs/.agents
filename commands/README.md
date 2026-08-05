@@ -42,6 +42,7 @@ working until it has. They are easy to confuse.
 | [`/recover`](./recover.md) | Recover *many* crashed sessions — finish the agent-doable work headlessly, hand back the rest as one action |
 | [`/restore`](./restore.md) | Re-open sessions killed by a crash or reboot as Ghostty windows, resuming each |
 | [`/hibernate`](./hibernate.md) | Sleep this same session until a future time, then wake it with full context to check a long wait |
+| [`/reflect`](./reflect.md) | Recall every correction and constraint from the active conversation before revising work |
 
 ## Coordinate
 

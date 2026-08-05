@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- **`reflect` command and skill restored as system defaults.** `/reflect` handles mid-conversation feedback recall before another revision; `/learn` remains the post-session workflow that writes durable lessons forward. Source: `commands/reflect.md`, `skills/reflect/SKILL.md`.
+
 ### Changed
 
 - **Plan quality gate: prose-only plan HTML no longer clears ExitPlanMode.** `plan-html-reminder` now greps the rendered HTML for a live `<svg` with a drawn primitive (`rect`/`path`/`text`/…); empty touch files and wall-of-text shells block. Companion: `artifacts-cli` rejects `kind: plan` without a drawn SVG and refuses to write HTML on validation errors. Skills (`plan-render`, `artifacts`) and the plan-presentation rule document the bar; `plan-render` template ships a filled before/after SVG. Source: `rules/subrules/plan-presentation/`, `skills/plan-render/`, `skills/artifacts/`.

@@ -43,6 +43,7 @@ self-unblock ladder is exhausted.
 | [`release`](./release/SKILL.md) | Publish to registries — discover repo structure, run tests, update the changelog, publish, tag |
 | [`mq`](./mq/SKILL.md) | Structure-aware query for large files — extract one section instead of reading the whole file |
 | [`learn`](./learn/SKILL.md) | Reflect on a finished session and write the durable lessons back into skills, rules, or memory |
+| [`reflect`](./reflect/SKILL.md) | Recall cumulative feedback during an active conversation before revising work |
 
 ## Producing output for humans
 
