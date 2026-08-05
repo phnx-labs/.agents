@@ -2,7 +2,7 @@
 description: Profile a sluggish machine, attribute the load to agents-cli surfaces (daemon, menu-bar helper, doctor/sessions pollers), read the logs to root-cause it, and file a GitHub issue on the public agents-cli repo with the evidence.
 ---
 
-The user's machine is sluggish and suspects agents-cli. Profile it end to end, find the root cause, and file a public GitHub issue. Optional focus: $ARGUMENTS
+The user's machine is sluggish and suspects agents-cli. Profile it end to end, find the root cause, and file a public GitHub issue. Optional focus — a surface name (`menubar`, `daemon`, `doctor`, `sessions`) narrows the investigation to that surface; empty means sweep everything: $ARGUMENTS
 
 You OWN this through to a filed issue — do not stop at "here's what I found." Profile → attribute → read logs → root-cause with evidence → file the issue.
 
@@ -42,7 +42,7 @@ If a checkout of `phnx-labs/agents-cli` is present, read the actual code path (t
 
 - **Title:** the mechanism, not the symptom ("menu-bar helper crash-loop spawns orphaned `doctor --json`, pinning CPU to load 300", not "computer slow").
 - **Body:** the profiling numbers (load/cores, the pile-up count + summed %CPU), the process signature, the log excerpts, and the root-cause `file:line`, plus a short repro and the fix direction if you found one.
-- **PUBLIC-REPO REDACTION (mandatory):** never paste a session transcript, any secret/token, or private paths that leak sensitive info; never anything under `agents secrets`. Reference the local transcript by `<host>:<path>`, don't inline it. Scrub usernames/tokens from log excerpts before pasting.
+- **PUBLIC-REPO REDACTION (mandatory):** never paste a session transcript, any secret/token, or private paths that leak sensitive info; never anything under `agents secrets`. Reference the local transcript by `<host>:<path>`, don't inline it. Scrub usernames/tokens from log excerpts. **Two traps this command itself collects:** (1) never paste raw `ps` argv verbatim — a hot process may be `agents run <agent> "<literal prompt>"` carrying private task text, hostnames, or ssh targets; redact anything past the binary name unless it is clearly agents-cli-internal (a subcommand + flags). (2) Strip the query string from every URL before pasting, including `LSQuarantineDataURLString` — a download URL can itself be a bearer credential (`X-Amz-Signature`, access tokens in the query).
 
 ## 6. Report + offer a scoped mitigation (never kill silently)
 
