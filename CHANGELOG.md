@@ -4,6 +4,8 @@
 
 ### Changed
 
+- **Feed delivery now has one policy path.** The legacy `feed-forward` PostToolUse hook is removed because it forwarded every plain milestone outside `feed.broadcast`, bypassing `minLevel: important` and duplicating owner delivery.
+
 - **Multi-harness hook protocol (claude / codex / kimi / grok / cursor / droid / antigravity).**
   Guards and inject scripts accept both Claude-style snake_case stdin
   (`tool_input.command`, `tool_name`, `session_id`) and Grok-style camelCase
