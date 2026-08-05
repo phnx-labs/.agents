@@ -93,3 +93,5 @@ linear.json
 # an ungitignored one silently blocks every pull, drifting .system behind fleet-wide.
 .mcp.json
 /.worktrees/
+# plan-render / artifacts-cli write rendered plans here (per-box outputs, not source).
+.agents/artifacts/
