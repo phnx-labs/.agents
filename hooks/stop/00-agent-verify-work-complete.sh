@@ -825,7 +825,7 @@ Before you can stop, you MUST:
 5. Once EVERY goal is DONE and verified, post ONE quick status update the way you
    would update a human manager — the headline outcome + the one link/next-step,
    not a transcript:
-       agents feed post "<what you delivered + the one thing that needs the user>" --level important
+       agents feed post --title "<short outcome>" "<what you delivered + the one thing that needs the user>" --level important
    This records the completion and marks this phone-worthy successful update for
    owner delivery. Post it, THEN stop.
 
