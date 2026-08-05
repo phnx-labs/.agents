@@ -1,0 +1,4 @@
+name: watchdog
+schedule: "*/2 * * * *"
+timeout: 10m
+command: agents watchdog --nudge
