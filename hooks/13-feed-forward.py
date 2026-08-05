@@ -9,9 +9,12 @@ a DELIBERATE `agents feed post` (a milestone / the completion recap) is the
 important tier, and THIS hook forwards that one to the owner's iMessage.
 
 Delivery: `agents notify` (channel registry; destination from notify.owner in
-agents.yaml — the RUSH-2123 delivery envelope). Falls back to OpenClaw Telegram
-if agents notify fails. Owner profile for the telegram fallback comes from
-~/.agents/owner.md.
+agents.yaml — the RUSH-2123 delivery envelope). No fallback: if that fails the
+status simply is not forwarded. There is deliberately no second transport here —
+owner.md bans Telegram permanently ("Never contact him via Telegram — not now,
+not ever, no exceptions", rules/subrules/no-telegram.md), and a fallback that
+only stays compliant because nobody configured a target is a trap, not a
+safeguard.
 
 Safety: OPT-IN — does nothing unless owner.md sets `forward_status: true`. Deduped
 per (session, text) with a short cooldown so a re-run can't double-send. Fires the
@@ -88,10 +91,9 @@ def already_sent(session, text):
 
 
 def forward(text, agent):
-    """Send the status to the owner: agents notify first, else Telegram."""
+    """Send the status to the owner via `agents notify` (channel from notify.owner)."""
     o = owner_json()
     host = o.get("host") or ""
-    tg = o.get("telegram") or {}
     def on_host(shell):
         # Local: non-login shell so PATH from the hook env (and test stubs) is
         # preserved — `bash -lc` re-sources the profile and can hide a sandbox
@@ -110,19 +112,6 @@ def forward(text, agent):
             return
     except Exception:
         pass
-    # Fallback: OpenClaw Telegram (works headless), if a target is configured.
-    target = str(tg.get("target") or "")
-    account = str(tg.get("account") or "default")
-    if target:
-        b64 = subprocess.run(["base64"], input=("[status] " + text).encode(),
-                             capture_output=True).stdout.decode().replace("\n", "")
-        tg_cmd = (f"openclaw message send --channel telegram --account {shlex.quote(account)} "
-                  f"--target {shlex.quote(target)} --message \"$(printf %s {shlex.quote(b64)} | base64 -d)\"")
-        try:
-            subprocess.run(on_host(tg_cmd), capture_output=True, timeout=25)
-        except Exception:
-            pass
-
 
 def main():
     raw = sys.stdin.read()
