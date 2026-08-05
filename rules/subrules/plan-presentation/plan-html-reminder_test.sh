@@ -89,7 +89,7 @@ run 0 "Grok camelCase run_terminal_command, no plan html -> allow (not blocked)"
 
 # --- Repo-root artifact path (no PLAN_HTML_SCAN_ROOT override) -----------------
 # When the env override is absent, the hook resolves the repo root and scans
-# .agents/artifacts/plans/ under it.
+# .agents/artifacts/ (dated day dirs: yyyy-mm-dd/<title>.html) under it.
 
 run_no_override() {
   want=$1; label=$2; json=$3; cwd=$4
@@ -108,21 +108,23 @@ run_no_override() {
 
 REPO=$(mktemp -d)
 git -C "$REPO" init -q 2>/dev/null || true
-mkdir -p "$REPO/.agents/artifacts/plans"
+# Canonical layout: .agents/artifacts/yyyy-mm-dd/<artifact-title>.html
+DATE_DIR="2026-08-05"
+mkdir -p "$REPO/.agents/artifacts/$DATE_DIR"
 
-# 14. Fresh figure-bearing HTML under repo-root .agents/artifacts/plans/ -> ALLOW.
-write_figure_html "$REPO/.agents/artifacts/plans/plan-repo-root.html"
-run_no_override 0 "ExitPlanMode, fresh .agents/artifacts/plans/plan-<slug>.html with SVG -> allow" "$EPM" "$REPO"
+# 14. Fresh figure-bearing HTML under dated artifact path -> ALLOW.
+write_figure_html "$REPO/.agents/artifacts/$DATE_DIR/plan-repo-root.html"
+run_no_override 0 "ExitPlanMode, fresh .agents/artifacts/yyyy-mm-dd/plan-<slug>.html with SVG -> allow" "$EPM" "$REPO"
 
-# 15. Stale HTML under repo root does NOT satisfy -> BLOCK.
-rm -f "$REPO/.agents/artifacts/plans"/*.html
-: > "$REPO/.agents/artifacts/plans/plan-stale.html"
-touch -d '2 hours ago' "$REPO/.agents/artifacts/plans/plan-stale.html" 2>/dev/null || touch -t 200001010000 "$REPO/.agents/artifacts/plans/plan-stale.html"
-run_no_override 2 "ExitPlanMode, stale .agents/artifacts/plans HTML -> block" "$EPM" "$REPO"
+# 15. Stale HTML under dated path does NOT satisfy -> BLOCK.
+rm -f "$REPO/.agents/artifacts/$DATE_DIR"/*.html
+: > "$REPO/.agents/artifacts/$DATE_DIR/plan-stale.html"
+touch -d '2 hours ago' "$REPO/.agents/artifacts/$DATE_DIR/plan-stale.html" 2>/dev/null || touch -t 200001010000 "$REPO/.agents/artifacts/$DATE_DIR/plan-stale.html"
+run_no_override 2 "ExitPlanMode, stale .agents/artifacts/yyyy-mm-dd HTML -> block" "$EPM" "$REPO"
 
 # 16. Outside a git repo with no override, legacy /tmp fallback still allows
 # when the HTML has a drawn SVG figure.
-rm -f "$REPO/.agents/artifacts/plans"/*.html
+rm -f "$REPO/.agents/artifacts/$DATE_DIR"/*.html
 LEGACY="/tmp/plan-legacy-test-$$.html"
 write_figure_html "$LEGACY"
 # Move into a non-repo temp dir so git rev-parse fails.

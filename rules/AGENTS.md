@@ -209,9 +209,11 @@ run git — `git worktree add -b` is the allowed, isolated branch-creation path.
    Worktrees live **only** under `<repo>/.agents/worktrees/<slug>/`. The
    `origin/<default>` base is **mechanically enforced** — `main-branch-guard`
    denies `git worktree add -b/-B` with an implicit (current-HEAD) or local-branch
-   base, so a new branch can never fork off a stale local commit. Pass an explicit
-   `origin/<default>` (a raw commit SHA or tag is allowed for the rare deliberate
-   case).
+   base, **and** denies a remote-tracking base whose ref (or `FETCH_HEAD`) is older
+   than `AGENTS_WORKTREE_FETCH_MAX_AGE_SEC` (default 900s / 15 minutes). Form-only
+   `origin/*` was not enough: agents passed a days-stale `origin/main` and only
+   discovered the lag at merge. Fetch first, then base off `origin/<default>` (a
+   raw commit SHA or tag is still allowed for the rare deliberate pin).
 2. **End-to-end inside `$WT`:** implement → test → verify the real flow → commit →
    push → open PR, all in the worktree.
 3. **Worktree integrity (multi-agent safe).** Create worktrees **foreground**,
@@ -555,16 +557,41 @@ for mq blindly.
 
 **Whenever you produce an implementation plan — the harness's native plan mode
 (the `ref-*.md` plan file), the `/plan` command, or `/swarm:plan` — do not leave it
-in terminal scrollback. Author a Markdown source in the repo's `.agents/artifacts/plans/`
-directory, render it to a self-contained HTML doc with `artifacts-cli`, and open it in
+in terminal scrollback. Author a Markdown source under the repo's dated artifact
+layout, render it to a self-contained HTML doc with `artifacts-cli`, and open it in
 the user's default browser on the machine they sit at.**
+
+## Canonical artifact path (plans, HTML, and related items)
+
+All agent-produced durable artifacts — **plans, rendered HTML, visuals, reports,
+and other session outputs** — live under a single dated layout (not kind-based
+subdirs like `plans/` or `viz/`):
+
+```
+.agents/artifacts/yyyy-mm-dd/<artifact-title>.md
+```
+
+Examples:
+
+| Kind | Path |
+| --- | --- |
+| Plan source | `.agents/artifacts/2026-08-05/plan-auth-refresh.md` |
+| Plan HTML (render next to source) | `.agents/artifacts/2026-08-05/plan-auth-refresh.html` |
+| Visual / infographic | `.agents/artifacts/2026-08-05/fleet-status.md` |
+| Report / scan | `.agents/artifacts/2026-08-05/signal-scan.md` |
+
+- **Date** is the day the artifact is authored (`date +%F` → `yyyy-mm-dd`).
+- **Title** is a kebab-case slug that names the artifact (`plan-<slug>`,
+  `fleet-status`, `signal-scan`). No nested kind folder.
+- Create the date directory if missing (`mkdir -p .agents/artifacts/$(date +%F)`).
+- HTML builds land **next to** their Markdown source under the same date dir.
 
 This is mechanically reminded by the bundled `plan-html-reminder` hook (PreToolUse on
 `ExitPlanMode`): it nudges you to render + open before you present. The full LOOK — the
 house structure, the product-brand theming, the light/dark toggle, and the open-on-Mac
 transport — lives in the **`plan-render` skill**. Load it and follow it.
 
-- **Source of truth is Markdown.** Write `plan-<slug>.md` in `.agents/artifacts/plans/`
+- **Source of truth is Markdown.** Write `.agents/artifacts/yyyy-mm-dd/plan-<slug>.md`
   and compile it with `artifacts render ... --format html`. The HTML is a build output;
   never hand-author a complete `.html` file.
 - **Structure (fixed).** Hero (kicker · headline · problem statement · metadata chips ·
@@ -573,6 +600,11 @@ transport — lives in the **`plan-render` skill**. Load it and follow it.
   charts; hand-authored inline SVG for timeline / architecture / before-after
   diagrams — never mermaid), callouts, tagged tables, code blocks. Follow the
   `plan` template (`artifacts template plan`) or scaffold with `artifacts new plan`.
+- **Quality is enforced, not suggested.** `artifacts check`/`render` **error** when a plan
+  has no drawn live SVG figure, and they **do not write HTML** on validation failure.
+  The ExitPlanMode hook greps the rendered HTML for `<svg` + a drawn primitive — a
+  prose-only shell no longer clears the gate. Inline `` `code` `` alone is not enough:
+  put commands in fenced blocks and risks/files in tables.
 - **Theme (adopted).** Skin the plan in the **target product's brand** — probe the repo
   for design tokens, tailwind/CSS vars, logo/manifest colors. Fall back to the dark +
   light editorial house palette only when the product declares no brand.
@@ -647,6 +679,7 @@ agents run <agent> "<prompt>" --device <box> --remote-cwd <ABS repo path> --mode
 ```
 
 - `--device` and `--host` are the same flag (`--device` is an alias of `--host`) and work on both `agents run` and `agents teams`.
+- `--device auto` / `--host auto` lets the CLI pick from your registered, online, dispatchable fleet by 14-day affinity + live headroom. Use this as the default for "send to the fleet"; use a named `--device <box>` only when the task must land on a specific machine.
 - **NEVER** `ssh <box> 'agents run <agent> "<prompt>"'`. That leaks stdin: the remote agent (e.g. `codex exec`) blocks forever reading a stdin that never hits EOF, because the ssh channel stays open. The native `--device` path launches the remote process **detached** (`nohup bash -lc … >/dev/null 2>&1 &`), which is what prevents the hang — it survives a dropped connection and follows via an offset-tail of a remote log + `.exit` file.
 
 ## Fleet/SSH devices are NOT cloud devices — different venue

@@ -63,7 +63,7 @@ re-queries. Report, in plain language:
 ## 4. Render an HTML dashboard + PDF, then open it
 
 The user wants to *see* this, not read a terminal dump. Follow the **`visualize`**
-skill: author a Markdown source in `.agents/artifacts/viz/`, render it with
+skill: author a Markdown source under `.agents/artifacts/yyyy-mm-dd/`, render it with
 `artifacts-cli`, and produce a self-contained HTML doc (brand-dark + light with an
 in-page `◐` toggle defaulting to the OS scheme, stat cards for the headline
 numbers, a by-machine bar chart, by-agent + all-machines tables, and a short

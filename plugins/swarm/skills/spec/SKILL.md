@@ -94,7 +94,7 @@ Requirements you could not pin down from the code, behaviors that are genuinely 
 If specifying this surfaced work to do, name it and point to `/swarm:plan` — this command specifies the *is*, plan proposes the *delta*. Don't blur into a task list here.
 
 ### Review artifact (HTML)
-After the spec is written, author a Markdown source in `.agents/artifacts/plans/`,
+After the spec is written, author a Markdown source under `.agents/artifacts/yyyy-mm-dd/`,
 render it to a self-contained HTML file with `artifacts-cli`, and open it on the machine
 the user sits at — follow the **`plan-render`** skill for the LOOK (house structure,
 product-brand theming, light/dark toggle, ≥1 hand-authored inline-SVG diagram — a

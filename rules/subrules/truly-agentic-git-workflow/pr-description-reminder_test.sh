@@ -46,7 +46,7 @@ check 0 toolInput  "gh asset url"    'gh pr create -t x -b "https://github.com/o
 
 # --- ALLOW (exit 0): ticket / plan link ---
 check 0 tool_input "linear link"     'gh pr create -t x -b "closes https://linear.app/trp/issue/RUSH-9"'
-check 0 tool_input "plan html link"  'gh pr create -t x -b "plan: .agents/artifacts/plans/plan-foo.html"'
+check 0 tool_input "plan html link"  'gh pr create -t x -b "plan: .agents/artifacts/2026-08-05/plan-foo.html"'
 
 # --- ALLOW (exit 0): exempt kinds + no-visible-surface declaration ---
 check 0 tool_input "release"         'gh pr create -t x -b "release v1.2.3"'

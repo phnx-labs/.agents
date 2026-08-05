@@ -315,9 +315,9 @@ reference this step.
 
 1. **Render — in the `plan-render` house style.** Load the **`plan-render`** skill and
    the **`artifacts`** skill. Resolve the repo root and write the Markdown source to
-   `.agents/artifacts/plans/plan-<slug>.md`, then render:
+   `.agents/artifacts/yyyy-mm-dd/plan-<slug>.md`, then render:
    ```bash
-   artifacts render .agents/artifacts/plans/plan-<slug>.md --format html
+   artifacts render .agents/artifacts/yyyy-mm-dd/plan-<slug>.md --format html
    ```
    This writes the HTML next to the Markdown source. Include the goal, the
    implementation table, existing-primitives-to-reuse, the design questions, and
@@ -332,11 +332,11 @@ reference this step.
    marked online + direct if there are several Macs; if genuinely ambiguous, ask
    once). Then:
    - **If you are already on that host** (its name == your `hostname`):
-     `open .agents/artifacts/plans/plan-<slug>.html` (macOS) / `xdg-open` (Linux).
+     `open .agents/artifacts/yyyy-mm-dd/plan-<slug>.html` (macOS) / `xdg-open` (Linux).
    - **If you are on a different host** (e.g. a remote Linux node): copy the file
      over and open it there, reusing the same SSH path the fleet uses —
      ```bash
-     scp .agents/artifacts/plans/plan-<slug>.html <browser-host>:/tmp/ \
+     scp .agents/artifacts/yyyy-mm-dd/plan-<slug>.html <browser-host>:/tmp/ \
        && agents ssh <browser-host> 'open /tmp/plan-<slug>.html'
      ```
      (`agents ssh` resolves the device and auth from `agents devices`; plain
