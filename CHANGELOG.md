@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- **`reflect` command and skill restored as system defaults.** `/reflect` handles mid-conversation feedback recall before another revision; `/learn` remains the post-session workflow that writes durable lessons forward. Source: `commands/reflect.md`, `skills/reflect/SKILL.md`.
+
 ### Changed
 
 - **Agent artifacts (plans, HTML, visuals, reports) now use a single dated layout: `.agents/artifacts/yyyy-mm-dd/<artifact-title>.md`.** Replaces the kind-based `plans/` and `viz/` subdirs. The `plan-presentation` rule documents the layout for plans and any related durable outputs; `plan-html-reminder` scans `.agents/artifacts/` (dated day dirs) for fresh figure-bearing plan HTML and teaches the new path in its block message; `plan-render`, `visualize`, `/plan`, `/swarm:plan`, `/swarm:spec`, and `commands/output` write under the date dir. HTML still renders next to its Markdown source. Source: `rules/subrules/plan-presentation/`, `skills/plan-render/`, `skills/visualize/`, `commands/plan.md`, `plugins/swarm/skills/plan|spec/SKILL.md`, `rules/AGENTS.md`.
