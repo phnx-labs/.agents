@@ -10,6 +10,8 @@ user-invocable: true
 
 > A PR is open. The author (a single agent — often you) wrote it AND tested it. That's not enough. This skill spawns a sub-agent who hasn't seen the work to review it cold, with strict evidence demands. Output: a PR comment + a merge/request-changes verdict. The author never grades their own paper.
 
+**When this skill is the default path:** right after `gh pr create`, check whether the repo's automated code reviewer is configured and posting on this PR (see `gh-merge-guard` / `truly-agentic-git-workflow`). If the bot is working, wait for it — do not stack this skill on top. If the bot is missing, silent, down, or the repo has none, run this skill **immediately** so merge-on-green is not blocked. Never hand the merge to the user because the automated reviewer is down.
+
 ## Anti-bias rule
 
 If you (the orchestrator) opened this PR in the current session — and most of the time you did — you **must not** be the reviewer. Spawn a sub-agent. The whole point is fresh eyes.
@@ -249,7 +251,7 @@ A red required check isn't automatically a code problem. Before you treat "CI fa
 ## When to skip this skill
 
 - Tag-only / release PRs (no code change).
-- PRs from external contributors where another review bot already gated.
+- PRs where the repo's automated reviewer is **configured and has already posted** a clear verdict on this PR (do not duplicate it).
 - PRs you (the orchestrator) explicitly want to merge unreviewed and the user has said "ship it" — but state that you're skipping and why.
 
 ## Hard lines this skill enforces

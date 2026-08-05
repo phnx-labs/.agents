@@ -92,7 +92,16 @@ the live version); show the result, don't narrate it.
 The user runs many agents and is **almost never watching this window** — a chat
 message here is a note in an empty room. Never stop silently.
 
-- **When you hand off, land it on their device.** Open the PR / issue / dashboard in their browser on the configured interactive host when one is set (`agents devices list --json` → the row with `interactive: true`; `agents ssh <host> 'open <url>'`) — only when unset, fall back to resolving an online macOS box from `agents devices`; never hardcode; open a file for them to eyeball. Make the one action they must take **singular and obvious** ("review + merge PR #119"), in the surface you opened, not buried in prose.
+- **When you hand off, land it on their device.** A handoff is a decision or
+  action only the user can take (scope, product taste, a biometric, a credential
+  only they hold) — **not** a routine PR. Do **not** open PR links for the user
+  to review or merge; you merge on green yourself (see `truly-agentic-git-workflow`,
+  `gh-merge-guard`). For a real handoff, open the relevant surface on the
+  configured interactive host when one is set (`agents devices list --json` → the
+  row with `interactive: true`; `agents ssh <host> 'open <url>'`) — only when
+  unset, fall back to resolving an online macOS box from `agents devices`; never
+  hardcode. Make the one action they must take **singular and obvious** (e.g.
+  "pick A or B on the plan"), in the surface you opened, not buried in prose.
 - **If it needs to reach their phone** (they may be away), also send the out-of-band **Telegram** notification with the link — the harness only notifies *you*, never them. Keep it short: **1–4 lines**, lead with the one thing you need, the text is a pointer (link the PR/ticket), not the payload. Default to the `default` (Jeff) bot for Claude-system notifications. Send iMessage/SMS via `imsg` on a Mac when that's the right channel.
 - **Always close with a back-from-vacation summary** — what landed, what needs them, the one link. A handoff the user can't see is not a handoff.
 - **Lead with the outcome, keep it scannable.** A paragraph the user must mine to find the one thing you did is chatbot output. Cut it.
@@ -106,7 +115,6 @@ message here is a note in an empty room. Never stop silently.
 - **Surface irreversible escalations FIRST, don't reach for them silently:** a sandbox-off flag (`--dangerously-bypass-approvals-and-sandbox`), a destructive `pkill` that could kill the user's live sessions, a remote command with a `~`/`$HOME` that expands on the *local* box. Propose; get the OK; then act.
 - **A session transcript is confidential — always.** It can carry secrets, tokens, internal paths, and raw reasoning. Never inline it in a PR/issue/ticket body, never on a public repo or public tracker. Private repo: attach as a **secret gist** and link only. Public repo: omit it, reference the local `<host>:<path>` instead.
 
-
 # Research & Evidence Discipline
 
 Epistemic rigor — the habits that keep claims true. (F3 governs *done*-ness; this
@@ -119,7 +127,6 @@ governs *every* factual claim along the way.)
 - **Investigation briefs demand evidence.** Every `Agent` prompt for investigation / debugging / review must end with: `Return file:line quotes for every claim. Do NOT paraphrase. If you can't quote it, don't claim it.`
 - **No human-time estimates.** You are an AI agent; human-hours/days are wrong by 6–50×. Estimate in wall-clock minutes (longest single-thread path after parallelizing), number of edits / test runs / agent invocations, or token cost. If you catch yourself writing "X hours" — stop and rewrite.
 
-
 # Fleet Delegation
 
 When work can be handed off, spread it so no single account or harness carries the
@@ -130,7 +137,6 @@ whole load and token spend stays low (this is the cost policy behind F2's
 - **Reserve Opus for load-bearing reasoning.** Opus is expensive and its usage limits don't refill quickly — reach for it only where a cheaper harness would genuinely lose correctness, never as the default. Correctness still wins; equal correctness delivered cheaper and spread across the fleet is the default.
 - **Always set `model` explicitly on in-session `Agent` subagents**, defaulting to `"sonnet"` (use `"opus"` only for genuinely load-bearing work). Never omit it — omission can fall through to a pinned Haiku, silently downgrading the subagent.
 - **Parallelize from message one for multi-dimensional questions.** Multiple files, cross-platform, an audit, a ship-readiness / parity check, root-cause across a stack — spawn 3–7 `Agent` subagents in parallel in your first response. About to write a third sequential `Bash` investigation call? Spawn agents instead.
-
 
 # Code Quality
 
@@ -143,7 +149,6 @@ whole load and token spend stays low (this is the cost policy behind F2's
 - **User-facing text must be human.** "13 minutes" not "12m 49s", "30 seconds" not "30.0s". If a grandmother can't parse it, rewrite it.
 - **Write prose precisely; don't market.** Wherever you write for a human to read (plans, PRs, commit messages, code comments, chat), name the concrete thing (the file, function, flag, number, or error), not a vague stand-in ("things", "surfaces", "stuff", "various") unless that word is the real technical term. Cut the marketing register: no slogans, no "Critically:" / "Notably:" drama, no filler adjectives ("seamless", "powerful", "robust", "leverage", "simply"). Cap em-dashes at one per paragraph; never stack appositive dashes (the "X — Y — Z" pattern). The reader is reviewing your claim, not being sold it.
 
-
 # Strict Testing
 
 - **Test file = source file, 1:1.** `read.go` → `read_test.go`, `parser.ts` → `parser.test.ts`.
@@ -151,7 +156,6 @@ whole load and token spend stays low (this is the cost policy behind F2's
 - **No mocking.** Real services only. Tests must exercise the actual critical path.
 - **Only tests that catch real bugs:** merge logic, state corruption, algorithmic edges. Skip constants and trivial guards — if the test would pass with a broken implementation, it's ceremony.
 - **Unit tests are necessary, not sufficient.** Verify end-to-end (F3).
-
 
 # Truly Agentic Git Workflow
 
@@ -235,9 +239,10 @@ The worktree recipe above is complete — there is no separate skill. After merg
 
 ## Open with evidence attached — screenshots, artifacts, a confidential transcript
 
-Opening something for a human — a **PR**, a **GitHub issue**, or a **ticket**
-(Linear/Jira) — is a handoff, not a stopping point. Identify which flow you're in
-and attach what the reviewer needs to judge it without re-running your session.
+Opening a **PR**, **GitHub issue**, or **ticket** (Linear/Jira) is not a stop and
+a PR is not a handoff to the user to merge. Attach what the **non-author reviewer**
+(automated bot or subagent) needs to judge the change without re-running your
+session. Issues/tickets that need a human decision still land where the user is (F4).
 
 **The description must be glanceable — lead with what changed and for whom.** The
 reviewer reads the body, not the diff, so a wall of prose (or a one-liner) is a PR they
@@ -328,28 +333,56 @@ Every `gh pr create` / `gh issue create` / ticket-open carries:
   (`<host>:<session-dir>/<session-id>.jsonl`) so a teammate on the fleet can open it.
   Never paste transcript text anywhere it could be indexed or cached.
 
-## PR open is NOT done — actively wait, never make the user ping
+## PR open is NOT done — drive review + merge yourself
 
-Opening a PR is not a stopping point. After `gh pr create`, **actively wait for
-CI** with the background-command + finish-echo pattern (never `Monitor`,
-`ScheduleWakeup`, or `until` loops — they fail silently), then review and merge:
+Opening a PR is not a stopping point and **not a handoff**. Do **not** open the
+PR URL in the user's browser, drop a "please review + merge" link, or wait for
+them to click anything. Authorization to do the work already carries through to
+**rebase-merge on green** (see `gh-merge-guard`). You own CI, non-author review,
+and the merge.
+
+### Right after `gh pr create` — two tracks in parallel
+
+1. **Watch CI** with the background-command + finish-echo pattern (never
+   `Monitor`, `ScheduleWakeup`, or `until` loops — they fail silently):
 
 ```
 (gh pr checks <pr> --watch --fail-fast; echo "CI settled rc=$? — next: non-author review, then merge on green")
 ```
-run with `run_in_background: true` — the harness re-invokes you the moment checks
-settle. If the PR has no checks configured, go straight to review. A non-author
-review **and** green CI = rebase-merge without asking (see `gh-merge-guard`); fall
-back to `AskUserQuestion` only when the review finds problems, tests fail, or the
-merge conflicts. Don't remove the worktree or delete the branch until merge.
-Never stop with a limp "okay, I'll wait" — that just makes the user ping you.
 
-When the merge genuinely needs the **user** (a governance/sign-off change you
-authored and can't self-review, no CI/reviewer configured), that's a real
-handoff — so **open the PR on the user's interactive device** so they can click
-Merge/Approve there, don't just leave the link in this window (F4 — land the
-handoff where the user is). The user runs many agents and won't be watching this
-chat.
+   run with `run_in_background: true` — the harness re-invokes you when checks
+   settle. If the PR has no checks configured, skip the watch and go to review.
+
+2. **Check whether the automated code reviewer is functioning** — do this
+   immediately, do not wait for CI to finish first:
+
+   - **Is one configured?** Look for a checked-in config (this stack:
+     `.github/rush.yml` declaring a `prix/code-reviewer` agent that posts as
+     `prix-cloud` on `opened`/`reopened`/`synchronize`). A workflow listing alone
+     is not enough — read the config file.
+   - **Is it alive on this PR?** After open (and again after a short settle if
+     needed), check for its review or comment (`gh pr view <n> --json
+     reviews,comments` / `gh api repos/.../pulls/<n>/comments`). A prior PR on
+     the same repo that got a bot review is weak evidence of config; **this PR's
+     thread** is the live signal.
+
+**If the automated reviewer is configured and posting** — wait for its verdict;
+do not spawn a redundant subagent on top of a working bot.
+
+**If it is missing, silent, down, or the repo has no automated reviewer** — do
+**not** wait and do **not** hand the merge to the user. Spawn a non-author
+subagent review **as soon as possible** (`code:review` / the review skill, or an
+in-session `Agent` that did not author the PR). That subagent's clear verdict is
+the non-author review that clears merge-on-green.
+
+A non-author review **and** green CI = rebase-merge without asking; fall back to
+`AskUserQuestion` only when the review finds problems, tests fail, or the merge
+conflicts. Don't remove the worktree or delete the branch until merge. Never
+stop with a limp "okay, I'll wait" or a PR link for the user to open.
+
+The only real user handoff at this boundary is a **governance / product / identity
+sign-off only they can give** (not "please merge this ordinary PR"). Park that
+decision with F4; keep driving everything else.
 
 ## Reconcile with rebase; never `reset --hard`; never stash
 
@@ -371,23 +404,21 @@ OK and the `git-guard` hook blocks it on the agent's shell — so hand a rebase 
 the user via the `!` session prefix (`!git -C <repo> rebase origin/<branch>`),
 which bypasses the agent hook.
 
-
 # Merge & Admin-Bypass Guard
 
 Authorization to do the work carries through to the merge — an in-session "build it / open a PR / fix this" authorizes a **rebase-merge on green**, no fresh ask needed. What still needs explicit authorization is merging *past* the safety rails: never bypass branch protection, never rubber-stamp your own code, never merge red.
 
-- **Merge autonomously on green; ask only on red.** A non-author review **and** passing CI = rebase-merge without asking (see `truly-agentic-git-workflow`). Fall back to `AskUserQuestion` (merge / iterate / close) only when the review finds problems, tests fail, or the merge conflicts. "Green" means a genuine independent review + CI, never a rubber stamp.
+- **Merge autonomously on green; ask only on red.** A non-author review **and** passing CI = rebase-merge without asking (see `truly-agentic-git-workflow`). Fall back to `AskUserQuestion` (merge / iterate / close) only when the review finds problems, tests fail, or the merge conflicts. "Green" means a genuine independent review + CI, never a rubber stamp. Do **not** open the PR for the user or ask them to click merge on an ordinary green PR.
+- **Non-author review source — check the automated reviewer first.** After you open a PR, determine whether the repo's automated code reviewer is **configured and functioning on this PR** (config file such as `.github/rush.yml` / `prix-cloud`, plus a real review or comment on the thread). **Configured and posting →** wait for that verdict; do not stack a second review on top. **Missing, silent, down, or unconfigured →** do not wait and do not hand the merge to the user — spawn a non-author subagent review immediately (`code:review` or an `Agent` that is not the author). That clear is what unblocks merge-on-green.
 - **Never `gh pr merge --admin`.** Admin bypass merges past branch protection and required reviews. The bundled `merge-guard.sh` (PreToolUse) blocks it. Merge *without* `--admin` so protections still apply — if protections block the merge, that's a red to resolve, not a thing to bypass.
-- **Never self-approve your own PR.** Reviewing and approving code you wrote, then merging it, is not review. The reviewer that clears the green must be someone — or some agent — other than the author.
+- **Never self-approve your own PR.** Reviewing and approving code you wrote, then merging it, is not review. The reviewer that clears the green must be someone — or some agent — other than the author. An automated repo reviewer counts; a subagent you spawned that did not author the PR also counts. You yourself never count.
 - **Never transfer credentials or auth files** (tokens, `~/.rush/user.yaml`, keychain exports) to another host or VM without explicit authorization. Don't attempt the transfer first and surface a question only after a guard blocks you.
-
 
 # No Claude-Code Footer
 
 Never add the "Generated with Claude Code" promo line — or any `🤖 Generated with …`, `claude.com/claude-code`, or `claude.ai/code` variant — to PR bodies, GitHub issue bodies, or commit messages. Muqsit called it garbage. Applies to `gh pr create`/`edit`, `gh issue create`/`edit`, and `git commit`.
 
 Enforced by the bundled `footer-guard.sh` (PreToolUse): a `gh`/`git commit` command whose inline body carries the footer is blocked. If you hit the block, delete the footer line and retry — don't work around the guard.
-
 
 # Operational Guardrails
 
@@ -409,7 +440,6 @@ Enforced by the bundled `footer-guard.sh` (PreToolUse): a `gh`/`git commit` comm
 - **Handing off a command the user must run (F2), in order:** (1) pipe it to the clipboard (`pbcopy` on macOS, `xclip -selection clipboard` / `wl-copy` on Linux) and say "copied — paste it"; (2) write a one-shot script to a temp path (`mktemp` or `/tmp/<slug>.sh`), `chmod +x` it, and point them at that single path; (3) only as a last resort, render the command in the message. Multi-line commands always go to a script. Quote what you copied so the user can verify before pasting.
 - **Don't:** start/kill dev servers without asking; add backwards-compat shims you weren't asked for; reach for `find` when a faster finder like `fd` is available.
 
-
 # Conventions
 
 - **Memory file:** `AGENTS.md` is canonical. `CLAUDE.md` and `GEMINI.md` are symlinks (or synced copies).
@@ -419,13 +449,11 @@ Enforced by the bundled `footer-guard.sh` (PreToolUse): a `gh`/`git commit` comm
   - **Close on delivery, with proof.** When the task ships, post a closing update (what changed, the PR link, a screenshot or short screen recording of the outcome) and move the ticket to Done. Close only with proof.
 - **Parallel work:** Multi-surface changes use `agents teams` — see `parallel-teams`.
 
-
 # agents-cli
 
 - **Agent home dirs are symlinks.** `~/.claude/`, `~/.codex/`, etc. point into `~/.agents/versions/{agent}/{version}/home/`. Source of truth for shared config (commands, skills, hooks, memory, MCP) is `~/.agents/` — go there to inspect or modify.
 - **Recall prior work with `agents sessions`.** Search by topic/repo before starting. Use `--include`/`--exclude` to filter roles. `agents sessions --help` for full flags.
 - **Check active agents before spawning new ones.** `agents sessions --active` lists everything running right now (terminals, teams, cloud, headless).
-
 
 # Parallel Work via `agents teams`
 
@@ -484,7 +512,6 @@ So the orchestrator's task is done only when:
 
 Mechanical backstop: for a session that ran an edit-mode swarm, the `verify-work-complete` Stop hook fires a swarm-specific self-audit when the final message claims completion — demanding the composed cross-track flow's real output, not per-track CI.
 
-
 # Tooling & Stack Conventions
 
 ## Right tool for the job
@@ -505,7 +532,6 @@ Mechanical backstop: for a session that ran an edit-mode swarm, the `verify-work
 Prefer hand-authored inline SVG or ASCII for diagrams and simple charts in plans and
 reports. No CDN chart libraries; no mandated third-party chart kit. Use the target
 product's design tokens when styling.
-
 
 # Query Structure Before Reading Whole Files (`mq`)
 
@@ -558,7 +584,6 @@ in 3 days while 62% of tool calls were context reads (whole-file dumps; same fil
 re-read up to 34×/session). A follow-up A/B then showed *misused* mq (the dance)
 is worse than reading — so the win depends on the discipline above, not on reaching
 for mq blindly.
-
 
 # Present Plans as Browser-Ready HTML
 
@@ -633,7 +658,6 @@ multiple steps, create a **task checklist** for it before you present (one
 single-step plans are exempt (the gate skips them). Binding the checklist to the
 task and to a tracker is covered by the **`task-checklists`** rule.
 
-
 # Task Checklists — Keep One for Real Work, Bound to the Ticket
 
 A real task earns a checklist — not just in plan mode. When the user hands you
@@ -671,7 +695,6 @@ A floating checklist is half the value. Bind it:
 
 Do this at the right time and only for real tasks — the goal is a rubric you
 actually use, not ceremony on every prompt.
-
 
 # Dispatching Agents to Remote Fleet (SSH) Devices
 
@@ -734,4 +757,3 @@ tokens, for no benefit. Use:
 
 Pull the raw remote log (`agents hosts logs <name>`) ONLY to `grep` the single error
 line when the brief shows `failed`. Never `cat`/tail the whole transcript.
-
