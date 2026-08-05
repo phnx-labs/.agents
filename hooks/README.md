@@ -16,7 +16,7 @@ fires on. Layered with `~/.agents/agents.yaml`: a same-named entry in your user 
 | [`04-session-identity.sh`](./04-session-identity.sh) | The single "who am I" hook — session id, transcript path, runtime |
 | [`03-linear-inject-tasks-context.sh`](./03-linear-inject-tasks-context.sh) | Injects a Linear brief and the active-sprint board. Fails soft when the `linear.app` bundle is absent |
 | [`07-inject-device-topology.sh`](./07-inject-device-topology.sh) | Injects the host and fleet topology, with live load and memory per machine |
-| [`08-inject-repo-inflight.sh`](./08-inject-repo-inflight.sh) | Injects the repo's in-flight state — open PRs and other live sessions in this checkout |
+| [`08-inject-repo-inflight.sh`](./08-inject-repo-inflight.sh) | Injects the repo's in-flight state — open PRs and the other agents actively working on this project (activity-ranked, capped), resolving worktrees to their main repo |
 | [`05-session-start-autosync.sh`](./05-session-start-autosync.sh) | Brings the machine current — config repos, secrets, sessions |
 
 **Before a tool call** — these block, nudge, or enrich.
