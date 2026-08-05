@@ -85,5 +85,19 @@ if [[ $rc -eq 0 ]]; then pass=$((pass+1)); echo "  ok   malformed stdin -> rc 0 
 else fail=$((fail+1)); echo "  FAIL malformed stdin -> rc $rc, expected 0"; fi
 rm -rf "$h"
 
+# 8. State dir doesn't grow unbounded: a stale (30+ day old) other-session file
+#    gets pruned, but the current session's own fresh entry is left alone.
+h="$(mktemp -d)"
+mkdir -p "$h/.agents/.cache/state/last-user-prompt"
+touch -d "40 days ago" "$h/.agents/.cache/state/last-user-prompt/stale-session" 2>/dev/null \
+  || python3 -c "import os,time; p='$h/.agents/.cache/state/last-user-prompt/stale-session'; open(p,'w').write('0'); t=time.time()-40*86400; os.utime(p,(t,t))"
+out=$(HOME="$h" python3 "$HOOK" <<< '{"session_id":"s8","prompt":"hi","hook_event_name":"UserPromptSubmit"}' 2>&1)
+check_empty "prune run -> no output (first prompt for s8)" "$out"
+if [[ ! -f "$h/.agents/.cache/state/last-user-prompt/stale-session" ]]; then pass=$((pass+1)); echo "  ok   40-day-old other-session file pruned";
+else fail=$((fail+1)); echo "  FAIL stale-session file was not pruned"; fi
+if [[ -f "$h/.agents/.cache/state/last-user-prompt/s8" ]]; then pass=$((pass+1)); echo "  ok   current session's own fresh file untouched";
+else fail=$((fail+1)); echo "  FAIL current session's own file missing after prune"; fi
+rm -rf "$h"
+
 echo "  $pass passed, $fail failed"
 [[ $fail -eq 0 ]]
