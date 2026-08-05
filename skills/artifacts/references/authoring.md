@@ -28,9 +28,35 @@ session: fcd64597
 date: "2026-08-03"
 facts:
   - One Markdown source
+links:
+  - https://github.com/phnx-labs/artifacts-cli/issues/12
+  - https://github.com/phnx-labs/artifacts-cli/pull/34
+  - url: https://linear.app/phnx/issue/RUSH-2119/title
+    label: RUSH-2119
 assets: []
 ---
 ```
+
+### Work links (`links`)
+
+`links` is multipurpose — tickets, PRs, issues, design docs from any tracker.
+Each entry is either a plain `https://` URL or `{url, label?}`. When `label` is
+omitted, the chip text is derived:
+
+| URL shape | Chip text |
+| --- | --- |
+| GitHub `…/pull/N` | `PR #N` |
+| GitHub `…/issues/N` | `#N` |
+| Jira `…/browse/KEY-N` | `KEY-N` |
+| Path containing `KEY-N` (Linear, etc.) | `KEY-N` |
+| Explicit `label` | that label |
+| Otherwise | last path segment or host |
+
+Seed every related URL you already have when authoring. If you create tickets
+during the session, append them to `links` and re-render before presenting. Also
+list the same URLs under `## Tracking` as Markdown links so the body is readable
+without relying on the chip row. Keep optional short ids in `tracking`; do not
+add purpose-specific fields (`tickets:`, `prs:`) beside `links`.
 
 Required body sections come from the kind's template (`artifacts template <kind>`
 prints it). Keep them instead of inventing a second schema.
