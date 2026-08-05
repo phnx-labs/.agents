@@ -7,6 +7,13 @@ A script in this directory does nothing on its own. It runs only once it is **re
 in the `hooks:` section of [`../agents.yaml`](../agents.yaml), which names the events it
 fires on. Layered with `~/.agents/agents.yaml`: a same-named entry in your user layer wins.
 
+**A hook must never pop Touch ID or hang a session.** Hooks use only documented
+non-interactive surfaces: `--json`-style flags and the tool's own plaintext config
+(e.g. `~/.linear-cli/config.json`). Never `agents secrets` from a hook, and never
+internal env knobs. SessionStart hooks are the sharp edge — they fire on every
+session, on every harness, and a biometric sheet behind one blocks the session
+until a human touches the sensor.
+
 ## What runs, and when
 
 **At session start** — these build the context an agent wakes up with.
@@ -14,7 +21,7 @@ fires on. Layered with `~/.agents/agents.yaml`: a same-named entry in your user 
 | Hook | What it does |
 |---|---|
 | [`04-session-identity.sh`](./04-session-identity.sh) | The single "who am I" hook — session id, transcript path, runtime |
-| [`03-linear-inject-tasks-context.sh`](./03-linear-inject-tasks-context.sh) | Injects a Linear brief and the active-sprint board. Fails soft when the `linear.app` bundle is absent |
+| [`03-linear-inject-tasks-context.sh`](./03-linear-inject-tasks-context.sh) | Injects a Linear brief and the active-sprint board. Reads credentials from `~/.linear-cli/config.json` (env vars win); skips silently when absent |
 | [`07-inject-device-topology.sh`](./07-inject-device-topology.sh) | Injects the host and fleet topology, with live load and memory per machine |
 | [`08-inject-repo-inflight.sh`](./08-inject-repo-inflight.sh) | Injects the repo's in-flight state — open PRs and the other agents actively working on this project (activity-ranked, capped), resolving worktrees to their main repo |
 | [`05-session-start-autosync.sh`](./05-session-start-autosync.sh) | Brings the machine current — config repos, secrets, sessions |
