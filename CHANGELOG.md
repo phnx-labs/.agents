@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- **New `/profile` command.** Profiles a sluggish machine, attributes the load to agents-cli surfaces (daemon, menu-bar helper, `doctor`/`sessions` pollers), reads the logs to root-cause it, and files a GitHub issue on the public agents-cli repo with the evidence — codifying the load-300 crash-loop diagnosis (an un-notarized menu-bar helper crash-looping and spawning an orphaned `doctor --json` pile-up).
+
 ### Changed
 
 - **Feed delivery now has one policy path.** The legacy `feed-forward` PostToolUse hook is removed because it forwarded every plain milestone outside `feed.broadcast`, bypassing `minLevel: important` and duplicating owner delivery.
