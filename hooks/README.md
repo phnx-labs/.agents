@@ -14,94 +14,136 @@ internal env knobs. SessionStart hooks are the sharp edge — they fire on every
 session, on every harness, and a biometric sheet behind one blocks the session
 until a human touches the sensor.
 
+## Layout — `hooks/<event-name>/<hook-name>`
+
+Scripts live under a **one-level event directory** (kebab-case of the harness event):
+
+```
+hooks/
+  session-start/          SessionStart
+  pre-tool-use/           PreToolUse
+  post-tool-use/          PostToolUse
+  user-prompt-submit/     UserPromptSubmit
+  stop/                   Stop
+  notification/           Notification (+ multi-event hooks that start there)
+  promptcuts.yaml         data for expand-promptcuts (stays at hooks/ root)
+  registration_test.sh    integrity gate (top-level)
+  run_tests.sh
+```
+
+agents-cli discovers scripts one level under group dirs; the install name is the
+**file basename** so version homes stay flat. `agents.yaml` `script:` is relative
+to `hooks/` (e.g. `session-start/04-session-identity.sh`).
+
+Rule-bundled guards do **not** live here — they ship with the subrule under
+`rules/subrules/<rule>/` via that dir's `hooks.yaml` (absolute script paths at
+register time). See [§Subrule hooks](#subrule-hooks-rules-not-this-tree).
+
 ## What runs, and when
 
-**At session start** — these build the context an agent wakes up with.
+### `session-start/` — SessionStart
 
 | Hook | What it does |
 |---|---|
-| [`04-session-identity.sh`](./04-session-identity.sh) | The single "who am I" hook — session id, transcript path, runtime |
-| [`03-linear-inject-tasks-context.sh`](./03-linear-inject-tasks-context.sh) | Injects a Linear brief and the active-sprint board. Reads credentials from `~/.linear-cli/config.json` (env vars win); skips silently when absent |
-| [`07-inject-device-topology.sh`](./07-inject-device-topology.sh) | Injects the host and fleet topology, with live load and memory per machine |
-| [`08-inject-repo-inflight.sh`](./08-inject-repo-inflight.sh) | Injects the repo's in-flight state — open PRs and the other agents actively working on this project (activity-ranked, capped), resolving worktrees to their main repo |
-| [`05-session-start-autosync.sh`](./05-session-start-autosync.sh) | Brings the machine current — config repos, secrets, sessions |
+| [`04-session-identity.sh`](./session-start/04-session-identity.sh) | The single "who am I" hook — session id, transcript path, runtime |
+| [`03-linear-inject-tasks-context.sh`](./session-start/03-linear-inject-tasks-context.sh) | Injects a Linear brief and the active-sprint board. Reads `~/.linear-cli/config.json`; skips silently when absent |
+| [`07-inject-device-topology.sh`](./session-start/07-inject-device-topology.sh) | Host and fleet topology, live load/memory per machine |
+| [`08-inject-repo-inflight.sh`](./session-start/08-inject-repo-inflight.sh) | In-flight PRs and agents working on this project |
+| [`05-session-start-autosync.sh`](./session-start/05-session-start-autosync.sh) | Brings the machine current — config repos, secrets, sessions |
+| [`09-git-pull-forward.sh`](./session-start/09-git-pull-forward.sh) | Fast-forwards the session cwd git repo when clean (ff-only) |
 
-**Before a tool call** — these block, nudge, or enrich.
-
-| Hook | What it does |
-|---|---|
-| [`git-guard.sh`](./git-guard.sh) | Blocks the destructive git operations: `reset --hard`, force-push, `checkout -- .`, `stash`, `clean`, history rewrites |
-| [`rm-guard.sh`](./rm-guard.sh) | Blocks destructive `rm` patterns |
-| [`large-file-add-guard.sh`](./large-file-add-guard.sh) | Blocks `git add` of a file over 5 MiB — bypass with `LARGE_FILE_GUARD_MAX_KB=0` |
-| [`02-expand-prompt-user-shortcuts.sh`](./02-expand-prompt-user-shortcuts.sh) | Expands `#shortcut` tokens from `promptcuts.yaml` into the prompt |
-| [`02-expand-prompt-bang-commands.py`](./02-expand-prompt-bang-commands.py) | Runs inline `` `!cmd` `` and injects the output into the prompt |
-| [`01-git-require-clean-tree.sh`](./01-git-require-clean-tree.sh) | Blocks `git pull` / `rebase` / autostash while the working tree is dirty |
-| [`09-mailbox-inject.py`](./09-mailbox-inject.py) | Delivers queued messages into a running session |
-| [`10-mq-read-nudge.py`](./10-mq-read-nudge.py) | On a large whole-file `Read`, suggests mapping it with `mq` and extracting one section |
-
-**On stop or notification** — these decide whether the agent is really done.
+### `pre-tool-use/` — PreToolUse
 
 | Hook | What it does |
 |---|---|
-| [`00-agent-verify-work-complete.sh`](./00-agent-verify-work-complete.sh) | Blocks a stop that claims "done" without verification, an open PR with no handoff, or a hand-back to the user |
-| [`06-attention-sentinel.sh`](./06-attention-sentinel.sh) | Maintains a per-session attention state across notification, stop, and prompt |
-| [`12-escalate-on-notification.sh`](./12-escalate-on-notification.sh) | On a "needs the user" notification, climbs the escalation ladder to reach the owner |
-| [`13-feed-forward.py`](./13-feed-forward.py) | Forwards deliberate feed status posts to the owner's phone |
+| [`git-guard.sh`](./pre-tool-use/git-guard.sh) | Blocks destructive git: `reset --hard`, force-push, `checkout -- .`, `stash`, `clean`, history rewrites |
+| [`rm-guard.sh`](./pre-tool-use/rm-guard.sh) | Blocks destructive `rm` patterns |
+| [`large-file-add-guard.sh`](./pre-tool-use/large-file-add-guard.sh) | Blocks `git add` of a file over 5 MiB |
+| [`01-git-require-clean-tree.sh`](./pre-tool-use/01-git-require-clean-tree.sh) | Blocks `git pull` / `rebase` / autostash while the tree is dirty |
+| [`09-mailbox-inject.py`](./pre-tool-use/09-mailbox-inject.py) | Delivers queued messages into a running session |
+| [`10-mq-read-nudge.py`](./pre-tool-use/10-mq-read-nudge.py) | On a large whole-file `Read`, suggests `mq` |
 
-Guard hooks that belong to a rule ship with that rule, not here — see
-[`rules/subrules/*/hooks.yaml`](../rules/subrules/) for `gh-merge-guard`, `no-pr-footer`,
-`plan-presentation`, and `truly-agentic-git-workflow`.
+### `user-prompt-submit/` — UserPromptSubmit
 
-## Manifest schema (the `hooks:` section of `../agents.yaml`)
+| Hook | What it does |
+|---|---|
+| [`02-expand-prompt-user-shortcuts.sh`](./user-prompt-submit/02-expand-prompt-user-shortcuts.sh) | Expands `#shortcut` tokens from `promptcuts.yaml` |
+| [`02-expand-prompt-bang-commands.py`](./user-prompt-submit/02-expand-prompt-bang-commands.py) | Runs inline `` `!cmd` `` and injects output |
+
+### `stop/` — Stop
+
+| Hook | What it does |
+|---|---|
+| [`00-agent-verify-work-complete.sh`](./stop/00-agent-verify-work-complete.sh) | Blocks a stop that claims "done" without verification / open PR with no handoff |
+| [`verify-delivery-chain.py`](./stop/verify-delivery-chain.py) | Invoked by the Stop gate (not registered alone) |
+
+### `notification/` — Notification
+
+| Hook | What it does |
+|---|---|
+| [`06-attention-sentinel.sh`](./notification/06-attention-sentinel.sh) | Per-session attention state (also fires on Stop + UserPromptSubmit) |
+| [`12-escalate-on-notification.sh`](./notification/12-escalate-on-notification.sh) | Escalation ladder when the agent needs the user |
+
+### `post-tool-use/` — PostToolUse
+
+| Hook | What it does |
+|---|---|
+| [`13-feed-forward.py`](./post-tool-use/13-feed-forward.py) | Forwards deliberate feed status posts to the owner's channel |
+
+## Subrule hooks (rules, not this tree)
+
+Guards that enforce a **standing rule** ship next to that rule:
+
+```
+rules/subrules/<rule-name>/
+  rule.md
+  hooks.yaml          # bare map: name → { script, events, matcher?, timeout? }
+  <script>.sh
+  <script>_test.sh
+```
+
+`collectSubruleHooks` rewrites `script` to an **absolute** path under the subrule
+dir and namespaces the manifest key as `<rule>__<hook>`. Do not copy these into
+`hooks/<event>/` — they would double-register and drift from the rule.
+
+| Subrule | Hook(s) | Events |
+|---|---|---|
+| `gh-merge-guard` | `merge-guard` | PreToolUse (Bash) |
+| `no-pr-footer` | `footer-guard` | PreToolUse (Bash) |
+| `plan-presentation` | `plan-html-reminder` | PreToolUse (ExitPlanMode) |
+| `truly-agentic-git-workflow` | `main-branch-guard`, `pr-description-reminder` | PreToolUse |
+
+## Manifest schema (`hooks:` in `../agents.yaml`)
 
 ```yaml
 hooks:
   my-hook:
-    script: 02-my-hook.sh
-    events: [UserPromptSubmit]
+    script: pre-tool-use/02-my-hook.sh   # path relative to hooks/
+    events: [PreToolUse]
     timeout: 5
     matches:               # optional pre-filters; AND together
       prompt_contains: "#"
-    enabled: true          # default; set false to disable a system hook from the user side
+    enabled: true
 ```
 
-- `script` — path relative to this directory.
+- `script` — path relative to this directory (event dir + filename).
 - `events` — lifecycle events to register on.
 - `timeout` — seconds.
-- `matches` — `prompt_contains`, `prompt_matches`, `tool_name`, `tool_args_match`,
-  `cwd_includes`, `project_has`, `git_dirty`. All AND together. Empty or missing means always.
-- `enabled` — set `false` in the user layer (`~/.agents/agents.yaml`) to disable a
-  system-shipped hook.
-- `agents` — **deprecated**. The agent capability table decides which agents register a hook;
-  the field is parsed for back-compat and ignored.
+- `matches` — optional predicates.
+- `enabled` — set `false` in the user layer to disable a system-shipped hook.
+- `agents` — **deprecated**; ignored.
 
 ## Layering
 
 System (`~/.agents/.system/agents.yaml`), extra repos, and user (`~/.agents/agents.yaml`)
-merge with **user wins on key collision** — resolution order is user > extra > system. A
-same-named entry in the user repo replaces the system entry wholesale; set `override: true`
-there to silence the shadowing warning.
+merge with **user wins on key collision**. Same-named entry in the user repo replaces
+the system entry wholesale; set `override: true` to silence the shadowing warning.
 
 ## Promptcuts
 
-Type `#checkit` in a prompt and it expands into the full verification discipline;
-`` `!date` `` runs the command and injects its output. `promptcuts.yaml` is the data,
-layered the same way as everything else:
+Type `#checkit` in a prompt and it expands into the full verification discipline.
+`promptcuts.yaml` stays at **`hooks/promptcuts.yaml`** (not under an event dir) —
+agents-cli and the expand-promptcuts hook resolve that fixed path.
 
-- `~/.agents/.system/hooks/promptcuts.yaml` — system-shipped defaults (`#checkit`, `#rethink`, …)
+- `~/.agents/.system/hooks/promptcuts.yaml` — system defaults
 - `~/.agents/hooks/promptcuts.yaml` — your shortcuts; user keys win
-
-## Look here when
-
-- a `#shortcut` did not expand, or a `` `!cmd` `` bang command did not run
-- an agent refuses to stop, or stops when it should not
-- a git command was blocked and you want to know which guard did it
-- agent behavior feels customized in a way that is not obvious
-
-The scripts here are the implementations. The `hooks:` section of `../agents.yaml` shows what
-is wired to which event. The installed agent config (`~/.claude/settings.json`) shows what is
-active right now — `agents inspect hooks` reads it for you.
-
----
-
-Changing something here? Read [`AGENTS.md`](./AGENTS.md).

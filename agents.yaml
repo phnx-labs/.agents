@@ -12,7 +12,7 @@ hooks:
     events:
       - PreToolUse
     matcher: Read
-    script: 10-mq-read-nudge.py
+    script: pre-tool-use/10-mq-read-nudge.py
     timeout: 5
   session-start-autosync:
     agents:
@@ -21,14 +21,21 @@ hooks:
       - gemini
     events:
       - SessionStart
-    script: 05-session-start-autosync.sh
+    script: session-start/05-session-start-autosync.sh
     timeout: 5
+
+  # SessionStart: fast-forward the cwd git repo when the tree is clean.
+  # Never force, never rebase over local commits, never autostash.
+  git-pull-forward:
+    events: [SessionStart]
+    script: session-start/09-git-pull-forward.sh
+    timeout: 20
   verify-work-complete:
     agents:
       - claude
     events:
       - Stop
-    script: 00-agent-verify-work-complete.sh
+    script: stop/00-agent-verify-work-complete.sh
     timeout: 20
   inject-repo-inflight:
     agents:
@@ -37,7 +44,7 @@ hooks:
       - gemini
     events:
       - SessionStart
-    script: 08-inject-repo-inflight.sh
+    script: session-start/08-inject-repo-inflight.sh
     timeout: 10
     # NOT cached, deliberately. The hook excludes the CALLING session from the live-session
     # list (`self_sid`, 08-inject-repo-inflight.sh:72), so its correct output differs per
@@ -53,7 +60,7 @@ hooks:
       - Notification
       - Stop
       - UserPromptSubmit
-    script: 06-attention-sentinel.sh
+    script: notification/06-attention-sentinel.sh
     timeout: 5
   escalate-on-notification:
     # Opt-in (owner.md `auto_escalate: true`): reach the user out-of-band per
@@ -63,7 +70,7 @@ hooks:
       - claude
     events:
       - Notification
-    script: 12-escalate-on-notification.sh
+    script: notification/12-escalate-on-notification.sh
     timeout: 10
   inject-device-topology:
     agents:
@@ -72,7 +79,7 @@ hooks:
       - gemini
     events:
       - SessionStart
-    script: 07-inject-device-topology.sh
+    script: session-start/07-inject-device-topology.sh
     timeout: 5
     # Measured 2255ms — probes every fleet device for load/memory. Safe to cache: the
     # output has no session or cwd dependency, so a shared entry is the correct answer for
@@ -98,14 +105,14 @@ hooks:
       - antigravity
     events:
       - SessionStart
-    script: 04-session-identity.sh
+    script: session-start/04-session-identity.sh
     timeout: 5
   mailbox-inject:
     agents:
       - claude
     events:
       - PreToolUse
-    script: 09-mailbox-inject.py
+    script: pre-tool-use/09-mailbox-inject.py
     timeout: 5
   git-guard:
     agents:
@@ -115,7 +122,7 @@ hooks:
     events:
       - PreToolUse
     matcher: Bash
-    script: git-guard.sh
+    script: pre-tool-use/git-guard.sh
     timeout: 5
   rm-guard:
     agents:
@@ -125,7 +132,7 @@ hooks:
     events:
       - PreToolUse
     matcher: Bash
-    script: rm-guard.sh
+    script: pre-tool-use/rm-guard.sh
     timeout: 5
   feed-forward:
     # Event-driven (no polling routine): when an agent posts a status update via
@@ -136,7 +143,7 @@ hooks:
     events:
       - PostToolUse
     matcher: Bash
-    script: 13-feed-forward.py
+    script: post-tool-use/13-feed-forward.py
     timeout: 10
   git-require-clean-tree:
     agents:
@@ -146,7 +153,7 @@ hooks:
     events:
       - PreToolUse
     matcher: Bash
-    script: 01-git-require-clean-tree.sh
+    script: pre-tool-use/01-git-require-clean-tree.sh
     timeout: 5
   # Restored: accidentally deleted by 606db6e (May 13 2026), a commit whose subject
   # was the pre-commit validator and which dropped 27 unrelated lines from this file.
@@ -154,17 +161,17 @@ hooks:
   expand-promptcuts:
     events:
       - UserPromptSubmit
-    script: 02-expand-prompt-user-shortcuts.sh
+    script: user-prompt-submit/02-expand-prompt-user-shortcuts.sh
     timeout: 5
   expand-bang-commands:
     events:
       - UserPromptSubmit
-    script: 02-expand-prompt-bang-commands.py
+    script: user-prompt-submit/02-expand-prompt-bang-commands.py
     timeout: 10
   linear-tasks:
     events:
       - SessionStart
-    script: 03-linear-inject-tasks-context.sh
+    script: session-start/03-linear-inject-tasks-context.sh
     timeout: 15
   # Restored: dropped by 8b006a6 ("remove legacy agents hook config", Jun 24 2026),
   # which removed rm-guard and large-file-add-guard together. rm-guard was later
@@ -173,5 +180,5 @@ hooks:
     events:
       - PreToolUse
     matcher: Bash
-    script: large-file-add-guard.sh
+    script: pre-tool-use/large-file-add-guard.sh
     timeout: 5

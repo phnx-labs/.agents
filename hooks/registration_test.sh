@@ -10,9 +10,10 @@
 # nothing about it. `large-file-add-guard` — a data-loss guard — was off for six
 # weeks that way. This is the failing test that "is it registered" never had.
 #
-# For every *.sh / *.py in hooks/ (excluding the test harness itself —
-# *_test.sh and run_tests.sh) it asserts ONE of:
-#   1. it has a `script:` entry in ../agents.yaml, OR
+# For every *.sh / *.py in hooks/ and one-level group dirs (hooks/session-starts/,
+# …), excluding the test harness itself (*_test.sh and run_tests.sh), it asserts
+# ONE of:
+#   1. it has a `script:` entry in ../agents.yaml (basename match), OR
 #   2. it is invoked by a script that itself IS registered — the
 #      verify-delivery-chain.py case: no entry of its own, but piped into by
 #      00-agent-verify-work-complete.sh, which is registered as
@@ -48,11 +49,16 @@ if [ ! -f "$MANIFEST" ]; then
 fi
 
 # Registered scripts = every `script:` value under the hooks: mapping, as a
-# basename. The whole manifest is the hooks block, so every `script:` line is a
-# hook registration; nothing else in this file uses that key.
+# basename. Nested paths like session-starts/foo.sh still match as foo.sh.
 REG_LIST="$(
   grep -E '^[[:space:]]*script:[[:space:]]' "$MANIFEST" \
     | sed -E 's/^[[:space:]]*script:[[:space:]]*//; s/[[:space:]]*$//; s#.*/##'
+)"
+
+# Full relative script paths from the manifest (for locating the file on disk).
+REG_PATHS="$(
+  grep -E '^[[:space:]]*script:[[:space:]]' "$MANIFEST" \
+    | sed -E 's/^[[:space:]]*script:[[:space:]]*//; s/[[:space:]]*$//'
 )"
 
 if [ -z "$REG_LIST" ]; then
@@ -62,16 +68,45 @@ fi
 
 is_registered() { printf '%s\n' "$REG_LIST" | grep -qxF "$1"; }
 
+# Resolve a registered script basename or relative path to an on-disk file.
+resolve_registered_path() {
+  local rs="$1"
+  if [ -f "$HERE/$rs" ]; then
+    printf '%s\n' "$HERE/$rs"
+    return 0
+  fi
+  # Basename-only: search top-level then one-level group dirs.
+  local base
+  base="$(basename "$rs")"
+  if [ -f "$HERE/$base" ]; then
+    printf '%s\n' "$HERE/$base"
+    return 0
+  fi
+  local d
+  for d in "$HERE"/*/; do
+    [ -d "$d" ] || continue
+    case "$(basename "$d")" in
+      tests|test) continue ;;
+    esac
+    if [ -f "$d$base" ]; then
+      printf '%s\n' "$d$base"
+      return 0
+    fi
+  done
+  return 1
+}
+
 # True if $1 is referenced (by basename) inside any script that is itself
 # registered. Only registered scripts are searched — an unregistered caller
 # does not make its callee reachable.
 is_invoked_by_registered() {
-  local target="$1" rs
+  local target="$1" rs path
   while IFS= read -r rs; do
     [ -n "$rs" ] || continue
-    [ -f "$HERE/$rs" ] || continue
-    if grep -qF "$target" "$HERE/$rs"; then return 0; fi
+    path="$(resolve_registered_path "$rs" 2>/dev/null)" || continue
+    if grep -qF "$target" "$path"; then return 0; fi
   done <<EOF
+$REG_PATHS
 $REG_LIST
 EOF
   return 1
@@ -81,33 +116,53 @@ allowlist_reason() {
   printf '%s\n' "$INTENTIONALLY_UNREGISTERED" | awk -F'|' -v s="$1" '$1==s{print $2; exit}'
 }
 
-for f in "$HERE"/*.sh "$HERE"/*.py; do
-  [ -e "$f" ] || continue
+check_script() {
+  local f="$1"
+  local base
   base="$(basename "$f")"
   # Skip the test harness itself — the tests and the runner are not event hooks.
   case "$base" in
-    *_test.sh | run_tests.sh) continue ;;
+    *_test.sh | run_tests.sh | registration_test.sh) return 0 ;;
   esac
 
   if is_registered "$base"; then
     echo "ok   - $base: registered in agents.yaml"
-    continue
+    return 0
   fi
 
   if is_invoked_by_registered "$base"; then
     echo "ok   - $base: invoked by a registered script"
-    continue
+    return 0
   fi
 
+  local reason
   reason="$(allowlist_reason "$base")"
   if [ -n "$reason" ]; then
     echo "ok   - $base: intentionally unregistered ($reason)"
-    continue
+    return 0
   fi
 
   echo "FAIL - $base: no hooks: entry in agents.yaml, not invoked by any registered script, and not allowlisted — it never fires"
   missing="$missing $base"
   fail=1
+}
+
+# Top-level scripts.
+for f in "$HERE"/*.sh "$HERE"/*.py; do
+  [ -e "$f" ] || continue
+  check_script "$f"
+done
+
+# One-level group dirs (session-starts/, …). Skip tests/.
+for d in "$HERE"/*/; do
+  [ -d "$d" ] || continue
+  case "$(basename "$d")" in
+    tests|test) continue ;;
+  esac
+  for f in "$d"*.sh "$d"*.py; do
+    [ -e "$f" ] || continue
+    check_script "$f"
+  done
 done
 
 echo

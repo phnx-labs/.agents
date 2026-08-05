@@ -27,8 +27,14 @@ run_one() {
   echo
 }
 
-# Hooks (registration_test.sh matches this glob).
+# Hooks at the root (registration_test.sh matches this glob).
 for t in "$HERE"/*_test.sh; do
+  [ -e "$t" ] || continue
+  run_one "$t"
+done
+
+# Hooks in one-level group dirs (e.g. session-starts/).
+for t in "$HERE"/*/*_test.sh; do
   [ -e "$t" ] || continue
   run_one "$t"
 done

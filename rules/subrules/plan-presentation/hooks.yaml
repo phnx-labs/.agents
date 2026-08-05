@@ -6,6 +6,8 @@
 # it blocks the tool once with a reminder to render the plan (plan-render skill) and
 # open it on the user's Mac — then the agent renders and re-calls ExitPlanMode, which
 # now passes. Self-terminating; never loops.
+# Co-located with this subrule (NOT under hooks/<event>/). agents-cli
+# collectSubruleHooks rewrites script: to an absolute path under this dir.
 plan-html-reminder:
   script: plan-html-reminder.sh
   events: [PreToolUse]
