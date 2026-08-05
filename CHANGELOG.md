@@ -38,6 +38,17 @@
 
 ### Added
 
+- **`vacation-recap` UserPromptSubmit hook.** Tracks a per-session last-prompt
+  timestamp (`~/.agents/.cache/state/last-user-prompt/<session_id>`, same
+  convention as the attention sentinel) and, when a new prompt arrives more than
+  `AGENTS_VACATION_RECAP_THRESHOLD_SEC` (default 7200s / 2h) after the previous
+  one, reminds the agent to open with a quick back-from-vacation recap — problem,
+  what was accomplished, suggested next step — before addressing the new prompt.
+  Additive only: plain stdout for Claude (never the `<user-prompt-submit-hook>`
+  replace wrapper the other two UserPromptSubmit hooks use), JSON
+  `additionalContext` for other harnesses. Source:
+  `hooks/user-prompt-submit/03-vacation-recap.py`, `agents.yaml`.
+
 - **`/triage` and `/dispatch` commands.** `/triage` sweeps the whole issue tracker, grounds
   in the real product goal spine (Linear Initiative→Project→Milestone, or a repo's
   roadmap/milestones for GitHub), then forces every open item to exactly one of two
