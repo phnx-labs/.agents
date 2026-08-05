@@ -5,10 +5,15 @@
 # HTML doc (plan-render skill) before it is presented, so the user reviews it in the
 # browser — skinned in the product's brand, light/dark, opened on the Mac they sit at.
 #
+# The source of truth is Markdown in the repo's `.agents/artifacts/plans/` directory;
+# `artifacts render ... --format html` produces the HTML next to it. The gate detects
+# a fresh rendered HTML under that path.
+#
 # Mechanism: the moment an agent goes to present a plan (ExitPlanMode), check whether a
 # fresh plan HTML was written this session. If yes -> allow. If no -> block ONCE (exit 2)
-# with a reminder; the agent renders `/tmp/plan-<slug>.html`, opens it, and re-calls
-# ExitPlanMode, which now finds the file and passes. Self-terminating; never loops.
+# with a reminder; the agent authors the Markdown source, renders the HTML, opens it,
+# and re-calls ExitPlanMode, which now finds the file and passes. Self-terminating;
+# never loops.
 #
 # The gate is on the RENDER (a file we can detect). Opening on the Mac and theming are
 # driven by the always-on rule text — a headless fleet still renders the file (allowed)
@@ -47,18 +52,35 @@ esac
 # ExitPlanMode, which now passes.
 
 # ---- (A) HTML render check ----------------------------------------------------
-# A fresh plan HTML rendered in the last 90 min satisfies this. Covers both the
-# canonical `/tmp/plan-<slug>.html` and the `<slug>-plan.html` scratchpad convention.
-# Scan root is /tmp (where the recipe renders); overridable for tests.
+# A fresh plan HTML rendered in the last 90 min satisfies this. The canonical
+# location is `<repo>/.agents/artifacts/plans/` (per the plan-render skill).
+# Scan root is overridable for tests via PLAN_HTML_SCAN_ROOT.
 # -L: follow symlinks. On macOS /tmp is a symlink to /private/tmp, and BSD find
 # will NOT descend a symlinked start path without -L — so the gate could never
 # detect a rendered plan on a Mac and blocked ExitPlanMode indefinitely.
-scan_root="${PLAN_HTML_SCAN_ROOT:-/tmp}"
-html_ok=0
-if find -L "$scan_root" -maxdepth 6 \( -name 'plan-*.html' -o -name '*-plan.html' \) -mmin -90 \
-     -print -quit 2>/dev/null | grep -q .; then
-  html_ok=1
+scan_roots=""
+if [ -n "${PLAN_HTML_SCAN_ROOT:-}" ]; then
+  scan_roots="$PLAN_HTML_SCAN_ROOT"
+else
+  repo_root=$(git rev-parse --show-toplevel 2>/dev/null || true)
+  if [ -n "$repo_root" ]; then
+    scan_roots="$repo_root/.agents/artifacts/plans"
+  else
+    # Legacy fallback: /tmp only when we are not inside a git repo. Inside a repo
+    # the canonical artifact path is the only accepted location.
+    scan_roots="/tmp"
+  fi
 fi
+
+html_ok=0
+for scan_root in $scan_roots; do
+  [ -d "$scan_root" ] || continue
+  if find -L "$scan_root" -maxdepth 6 \( -name 'plan-*.html' -o -name '*-plan.html' \) -mmin -90 \
+       -print -quit 2>/dev/null | grep -q .; then
+    html_ok=1
+    break
+  fi
+done
 
 # ---- (B) Checklist check (FAILS OPEN) -----------------------------------------
 # Only enforced for a genuinely multi-step plan, and only when we can read the
@@ -98,12 +120,15 @@ fi
   echo
   if [ "$html_ok" != 1 ]; then
     echo "* Render it as browser-ready HTML and open it on the user's Mac."
-    echo "  Load the plan-render skill: write /tmp/plan-<slug>.html (hero, TOC, >=1 visual"
-    echo "  figure: a Dither Kit chart for data or a hand-authored inline-SVG diagram,"
-    echo "  callouts, tagged tables), skinned in the product brand with a light/dark toggle."
-    echo "  Start from the skill's template.html."
+    echo "  Load the plan-render skill: author Markdown in the repo's"
+    echo "  .agents/artifacts/plans/plan-<slug>.md and render with:"
+    echo "    artifacts render .agents/artifacts/plans/plan-<slug>.md --format html"
+    echo "  The HTML is written next to the Markdown source. Include a hero, TOC, >=1 visual"
+    echo "  figure (hand-authored inline SVG for architecture / timeline / before-after;"
+    echo "  Dither Kit for quantitative charts), callouts, and tagged tables. Preserve the"
+    echo "  product brand via DESIGN.md and ship a light/dark toggle."
     echo "  Open it on the online macOS device (resolve the host from \`agents devices\`):"
-    echo "    scp /tmp/plan-<slug>.html <host>:/tmp/ && agents ssh <host> 'open /tmp/plan-<slug>.html'"
+    echo "    scp .agents/artifacts/plans/plan-<slug>.html <host>:/tmp/ && agents ssh <host> 'open /tmp/plan-<slug>.html'"
     echo "  Headless fleet with no browser host: still render the file (that clears this)."
   fi
   if [ "$checklist_ok" != 1 ]; then

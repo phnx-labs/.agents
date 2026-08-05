@@ -6,7 +6,8 @@ set -eu
 DIR=$(CDPATH= cd "$(dirname "$0")" && pwd)
 HOOK="$DIR/plan-html-reminder.sh"
 SCAN=$(mktemp -d)
-trap 'rm -rf "$SCAN"' EXIT
+REPO=""
+trap 'rm -rf "$SCAN" "$REPO"' EXIT
 export PLAN_HTML_SCAN_ROOT="$SCAN"
 
 pass=0; fail=0
@@ -67,6 +68,49 @@ run 0 "Grok exit_plan_mode, fresh plan html -> allow" \
 rm -f "$SCAN"/*.html 2>/dev/null || true
 run 0 "Grok camelCase run_terminal_command, no plan html -> allow (not blocked)" \
   '{"toolName":"run_terminal_command","toolInput":{"command":"npm test"}}'
+
+# --- Repo-root artifact path (no PLAN_HTML_SCAN_ROOT override) -----------------
+# When the env override is absent, the hook resolves the repo root and scans
+# .agents/artifacts/plans/ under it.
+
+run_no_override() {
+  want=$1; label=$2; json=$3; cwd=$4
+  got=0
+  (
+    unset PLAN_HTML_SCAN_ROOT
+    cd "$cwd"
+    printf '%s' "$json" | sh "$HOOK" >/dev/null 2>&1 || exit $?
+  ) || got=$?
+  if [ "$got" = "$want" ]; then
+    pass=$((pass+1)); echo "ok   — $label (rc=$got)"
+  else
+    fail=$((fail+1)); echo "FAIL — $label (want rc=$want, got rc=$got)"
+  fi
+}
+
+REPO=$(mktemp -d)
+git -C "$REPO" init -q 2>/dev/null || true
+mkdir -p "$REPO/.agents/artifacts/plans"
+
+# 14. Fresh HTML under repo-root .agents/artifacts/plans/ -> ALLOW.
+: > "$REPO/.agents/artifacts/plans/plan-repo-root.html"
+run_no_override 0 "ExitPlanMode, fresh .agents/artifacts/plans/plan-<slug>.html -> allow" "$EPM" "$REPO"
+
+# 15. Stale HTML under repo root does NOT satisfy -> BLOCK.
+rm -f "$REPO/.agents/artifacts/plans"/*.html
+: > "$REPO/.agents/artifacts/plans/plan-stale.html"
+touch -d '2 hours ago' "$REPO/.agents/artifacts/plans/plan-stale.html" 2>/dev/null || touch -t 200001010000 "$REPO/.agents/artifacts/plans/plan-stale.html"
+run_no_override 2 "ExitPlanMode, stale .agents/artifacts/plans HTML -> block" "$EPM" "$REPO"
+
+# 16. Outside a git repo with no override, legacy /tmp fallback still allows.
+rm -f "$REPO/.agents/artifacts/plans"/*.html
+LEGACY="/tmp/plan-legacy-test-$$.html"
+: > "$LEGACY"
+# Move into a non-repo temp dir so git rev-parse fails.
+OUTSIDE=$(mktemp -d)
+run_no_override 0 "ExitPlanMode, legacy /tmp fallback outside repo -> allow" "$EPM" "$OUTSIDE"
+rm -f "$LEGACY"
+rm -rf "$OUTSIDE"
 
 # --- Part B: checklist gate for multi-step plans -------------------------------
 # These need a fresh HTML present so part A always passes and we isolate part B.

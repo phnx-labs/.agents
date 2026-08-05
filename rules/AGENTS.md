@@ -555,20 +555,24 @@ for mq blindly.
 
 **Whenever you produce an implementation plan — the harness's native plan mode
 (the `ref-*.md` plan file), the `/plan` command, or `/swarm:plan` — do not leave it
-in terminal scrollback. Render it as a self-contained HTML doc and open it in the
-user's default browser on the machine they sit at.**
+in terminal scrollback. Author a Markdown source in the repo's `.agents/artifacts/plans/`
+directory, render it to a self-contained HTML doc with `artifacts-cli`, and open it in
+the user's default browser on the machine they sit at.**
 
 This is mechanically reminded by the bundled `plan-html-reminder` hook (PreToolUse on
 `ExitPlanMode`): it nudges you to render + open before you present. The full LOOK — the
 house structure, the product-brand theming, the light/dark toggle, and the open-on-Mac
 transport — lives in the **`plan-render` skill**. Load it and follow it.
 
+- **Source of truth is Markdown.** Write `plan-<slug>.md` in `.agents/artifacts/plans/`
+  and compile it with `artifacts render ... --format html`. The HTML is a build output;
+  never hand-author a complete `.html` file.
 - **Structure (fixed).** Hero (kicker · headline · problem statement · metadata chips ·
   **provenance chips — harness · agent · host · session · date, so a rendered plan is never
   an orphan** · TOC), numbered sections, **≥1 visual figure** (Dither Kit for quantitative
   charts; hand-authored inline SVG for timeline / architecture / before-after
-  diagrams — never mermaid), callouts, tagged tables, code blocks. Start from
-  the skill's `template.html`; `example.html` is the gold reference.
+  diagrams — never mermaid), callouts, tagged tables, code blocks. Follow the
+  `plan` template (`artifacts template plan`) or scaffold with `artifacts new plan`.
 - **Theme (adopted).** Skin the plan in the **target product's brand** — probe the repo
   for design tokens, tailwind/CSS vars, logo/manifest colors. Fall back to the dark +
   light editorial house palette only when the product declares no brand.
