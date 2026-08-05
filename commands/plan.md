@@ -308,40 +308,46 @@ Note what the panel caught that your own plan missed.
 ## Step 9: Render the plan as HTML and open it in the user's browser
 
 A plan buried in terminal scrollback is hard to review. Once the plan is drafted
-(artifacts + summary), render it as a **self-contained HTML file** and open it on
-the machine the user is actually sitting at. This is the canonical recipe — other
-plan verbs (e.g. `/swarm:plan`) reference this step.
+(artifacts + summary), author a Markdown source, render it to a **self-contained
+HTML file** with `artifacts-cli`, and open it on the machine the user is actually
+sitting at. This is the canonical recipe — other plan verbs (e.g. `/swarm:plan`)
+reference this step.
 
 1. **Render — in the `plan-render` house style.** Load the **`plan-render`** skill and
-   write one self-contained `.html` (inline CSS, no CDN) to `/tmp/plan-<slug>.html`,
-   starting from its `template.html` (`example.html` is the gold reference). Include the
-	   goal, the implementation table, existing-primitives-to-reuse, the design questions, and
-	   **≥1 visual figure** (Dither Kit for quantitative charts; hand-authored inline SVG for
-	   timeline / architecture / before-after diagrams — not mermaid). Skin it in the
-	   **target product's brand** (design tokens → tailwind → logo);
-   fall back to the dark **+ light** editorial house palette (with the in-page toggle) only
-   when the product declares no brand. It must open offline by double-click.
+   the **`artifacts`** skill. Resolve the repo root and write the Markdown source to
+   `.agents/artifacts/plans/plan-<slug>.md`, then render:
+   ```bash
+   artifacts render .agents/artifacts/plans/plan-<slug>.md --format html
+   ```
+   This writes the HTML next to the Markdown source. Include the goal, the
+   implementation table, existing-primitives-to-reuse, the design questions, and
+   **≥1 visual figure** (Dither Kit for quantitative charts; hand-authored inline SVG for
+   timeline / architecture / before-after diagrams — not mermaid). Skin it in the
+   **target product's brand** via `DESIGN.md`; fall back to the dark **+ light** editorial
+   house palette (with the in-page toggle) only when the product declares no brand.
+   The output must open offline by double-click.
 
 2. **Open it on the user's browser host.** Use the **Host & Fleet** context injected
    at session start (the online macOS device is where the user sits — pick the one
    marked online + direct if there are several Macs; if genuinely ambiguous, ask
    once). Then:
    - **If you are already on that host** (its name == your `hostname`):
-     `open /tmp/plan-<slug>.html` (macOS) / `xdg-open` (Linux).
+     `open .agents/artifacts/plans/plan-<slug>.html` (macOS) / `xdg-open` (Linux).
    - **If you are on a different host** (e.g. a remote Linux node): copy the file
      over and open it there, reusing the same SSH path the fleet uses —
      ```bash
-     scp /tmp/plan-<slug>.html <browser-host>:/tmp/ \
+     scp .agents/artifacts/plans/plan-<slug>.html <browser-host>:/tmp/ \
        && agents ssh <browser-host> 'open /tmp/plan-<slug>.html'
      ```
      (`agents ssh` resolves the device and auth from `agents devices`; plain
      `ssh <browser-host>` also works if the registry was rendered to ssh_config.)
 
 3. **Tell the user** the plan opened in their browser, with a 2-3 line spoken summary
-   and the temp path. Then proceed to the design questions / `ExitPlanMode` as usual.
+   and the source path. Then proceed to the design questions / `ExitPlanMode` as usual.
 
-Skip this only when there is no reachable browser host (headless-only fleet) — fall
-back to presenting the plan inline and say why.
+Skip this only when there is no reachable browser host (headless-only fleet) — still
+render the Markdown + HTML, then present the plan inline and say why the browser
+open was skipped.
 
 ## Constraints
 

@@ -86,12 +86,12 @@ Enumerated, each with how the plan handles it.
 Scenarios to cover — happy path and the edges that matter.
 
 ### Review artifact (HTML)
-After the proposal is written, render the plan as a self-contained HTML file and open
-it on the machine the user sits at — follow the **`plan-render`** skill for the LOOK
-(house structure, product-brand theming, light/dark toggle, ≥1 hand-authored inline-SVG
-diagram) and the `/plan` command's Step 9 for the open-on-Mac transport, using the
-injected **Host & Fleet** context to pick and reach the browser host. Don't duplicate the
-recipe; reuse it.
+After the proposal is written, author a Markdown source in `.agents/artifacts/plans/`,
+render it to a self-contained HTML file with `artifacts-cli`, and open it on the machine
+the user sits at — follow the **`plan-render`** skill for the LOOK (house structure,
+product-brand theming, light/dark toggle, ≥1 hand-authored inline-SVG diagram) and the
+`/plan` command's Step 9 for the open-on-Mac transport, using the injected **Host &
+Fleet** context to pick and reach the browser host. Don't duplicate the recipe; reuse it.
 
 ## Constraints
 

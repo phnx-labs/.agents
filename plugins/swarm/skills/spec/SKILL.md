@@ -94,12 +94,13 @@ Requirements you could not pin down from the code, behaviors that are genuinely 
 If specifying this surfaced work to do, name it and point to `/swarm:plan` — this command specifies the *is*, plan proposes the *delta*. Don't blur into a task list here.
 
 ### Review artifact (HTML)
-After the spec is written, render it as a self-contained HTML file and open it on the
-machine the user sits at — follow the **`plan-render`** skill for the LOOK (house
-structure, product-brand theming, light/dark toggle, ≥1 hand-authored inline-SVG
-diagram — a requirements map or a spec-vs-code drift table reads well as SVG) and the
-`/plan` command's Step 9 for the open-on-Mac transport, using the injected **Host &
-Fleet** context to pick and reach the browser host. Don't duplicate the recipe; reuse it.
+After the spec is written, author a Markdown source in `.agents/artifacts/plans/`,
+render it to a self-contained HTML file with `artifacts-cli`, and open it on the machine
+the user sits at — follow the **`plan-render`** skill for the LOOK (house structure,
+product-brand theming, light/dark toggle, ≥1 hand-authored inline-SVG diagram — a
+requirements map or a spec-vs-code drift table reads well as SVG) and the `/plan`
+command's Step 9 for the open-on-Mac transport, using the injected **Host & Fleet**
+context to pick and reach the browser host. Don't duplicate the recipe; reuse it.
 
 ## Constraints
 

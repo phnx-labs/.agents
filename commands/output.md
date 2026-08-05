@@ -63,24 +63,14 @@ re-queries. Report, in plain language:
 ## 4. Render an HTML dashboard + PDF, then open it
 
 The user wants to *see* this, not read a terminal dump. Follow the **`visualize`**
-skill's house style: a self-contained HTML doc, brand-dark + light with an in-page
-`◐` toggle defaulting to the OS scheme, stat cards for the headline numbers, a
-by-machine bar chart, by-agent + all-machines tables, and a short **Method +
-Caveats** footnote (how it was computed, which machines were relay-rechecked, the
-uncosted/no-accounting agents).
+skill: author a Markdown source in `.agents/artifacts/viz/`, render it with
+`artifacts-cli`, and produce a self-contained HTML doc (brand-dark + light with an
+in-page `◐` toggle defaulting to the OS scheme, stat cards for the headline
+numbers, a by-machine bar chart, by-agent + all-machines tables, and a short
+**Method + Caveats** footnote). Use `artifacts render ... --format html,pdf` for
+both outputs.
 
-Then:
-
-```bash
-cp report.html ~/Downloads/fleet-tokens-<WINDOW>.html
-python3 -c "import weasyprint; weasyprint.HTML('report.html').write_pdf('$HOME/Downloads/fleet-tokens-<WINDOW>.pdf')"
-open ~/Downloads/fleet-tokens-<WINDOW>.html   # macOS default browser (use the online mac in the fleet if remote)
-```
-
-`weasyprint` is the reliable local HTML→PDF path — Comet's headless
-`--print-to-pdf` is disabled in the Perplexity fork, and the `agents browser` CDP
-export needs a live debug-port browser that usually isn't running. If `weasyprint`
-is absent, fall back to `pandoc` or a running Chromium's CDP `pdf`, but don't
-rabbit-hole — the HTML is the primary artifact.
+Then copy the rendered HTML/PDF into `~/Downloads` and open the HTML on the user's
+machine (use the online macOS device from the fleet if remote).
 
 Report the on-disk paths (full paths, clickable) and confirm the browser opened.
