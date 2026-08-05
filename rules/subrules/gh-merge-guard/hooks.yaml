@@ -1,6 +1,8 @@
 # Hooks bundled with the gh-merge-guard subrule. agents-cli folds these into
 # the hook manifest (collectSubruleHooks) and registers them as PreToolUse(Bash)
 # guards. Scripts resolve relative to this directory.
+# Co-located with this subrule (NOT under hooks/<event>/). agents-cli
+# collectSubruleHooks rewrites script: to an absolute path under this dir.
 merge-guard:
   script: merge-guard.sh
   events: [PreToolUse]

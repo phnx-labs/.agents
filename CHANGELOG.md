@@ -6,26 +6,27 @@
 
 - **`reflect` command and skill restored as system defaults.** `/reflect` handles mid-conversation feedback recall before another revision; `/learn` remains the post-session workflow that writes durable lessons forward. Source: `commands/reflect.md`, `skills/reflect/SKILL.md`.
 
-- **`session-starts/09-git-pull-forward.sh` — SessionStart fast-forward of the cwd
+- **`session-start/09-git-pull-forward.sh` — SessionStart fast-forward of the cwd
   git repo when clean.** Fetches upstream and runs `git merge --ff-only` only when
   the tree is clean, HEAD is not detached, an upstream is configured, and HEAD is
   an ancestor of upstream. Never force, never rebase, never autostash, never
   overrides local commits. Opt out: `AGENTS_NO_GIT_PULL_FORWARD=1`. Source:
-  `hooks/session-starts/09-git-pull-forward.sh`, `_test.sh`, `agents.yaml`.
+  `hooks/session-start/09-git-pull-forward.sh`, `_test.sh`, `agents.yaml`.
 
 ### Changed
 
-- **SessionStart hooks live under `hooks/session-starts/`.** The five SessionStart
-  scripts (`03-linear-inject-tasks-context`, `04-session-identity`,
-  `05-session-start-autosync`, `07-inject-device-topology`, `08-inject-repo-inflight`)
-  and their tests moved into the group dir; `agents.yaml` `script:` paths are
-  `session-starts/<file>`. agents-cli discovers one-level group dirs (companion
-  CLI PR). `registration_test.sh` and `run_tests.sh` walk the group. Source:
-  `hooks/session-starts/`, `agents.yaml`, `hooks/README.md`, `hooks/AGENTS.md`.
+- **Hooks layout is `hooks/<event-name>/<hook-file>`.** Every system hook lives under
+  a kebab-case event dir (`session-start/`, `pre-tool-use/`, `post-tool-use/`,
+  `user-prompt-submit/`, `stop/`, `notification/`). `agents.yaml` `script:` paths are
+  relative to `hooks/` (e.g. `session-start/04-session-identity.sh`). `promptcuts.yaml`
+  stays at `hooks/` root. agents-cli discovers one-level event dirs (companion
+  agents-cli#2053). Subrule guards stay co-located under `rules/subrules/<rule>/`
+  via `hooks.yaml` — not moved into `hooks/<event>/`. Source: `hooks/`, `agents.yaml`,
+  `hooks/README.md`, `hooks/AGENTS.md`, `rules/subrules/*/hooks.yaml`.
 
 - **Agent artifacts (plans, HTML, visuals, reports) now use a single dated layout: `.agents/artifacts/yyyy-mm-dd/<artifact-title>.md`.** Replaces the kind-based `plans/` and `viz/` subdirs. The `plan-presentation` rule documents the layout for plans and any related durable outputs; `plan-html-reminder` scans `.agents/artifacts/` (dated day dirs) for fresh figure-bearing plan HTML and teaches the new path in its block message; `plan-render`, `visualize`, `/plan`, `/swarm:plan`, `/swarm:spec`, and `commands/output` write under the date dir. HTML still renders next to its Markdown source. Source: `rules/subrules/plan-presentation/`, `skills/plan-render/`, `skills/visualize/`, `commands/plan.md`, `plugins/swarm/skills/plan|spec/SKILL.md`, `rules/AGENTS.md`.
 
-- **`03-linear-inject-tasks-context.sh` no longer uses `agents secrets`; it reads the Linear CLI's own `~/.linear-cli/config.json` (`apiKey` + `teamId`, 0600) with `LINEAR_API_KEY`/`LINEAR_TEAM_ID` env still winning.** The secrets-broker path was biometry-gated whenever the broker hold expired, and its skip path nagged for an unlock on every session start. The config.json path is plaintext, silent, and identical on macOS/Linux/Windows — the `agents secrets status` gate, the `agents secrets exec` self re-exec, and `_HOOK_SECRETS_TRIED` are deleted. Missing or malformed config degrades to a one-line skip naming `linear setup`. `hooks/README.md` now states the invariant: a hook must never pop Touch ID or hang a session — documented `--json`-style flags and plaintext tool configs only, never `agents secrets`. New `hooks/session-starts/03-linear-inject-tasks-context_test.sh` proves credentials come from the fixture config, env wins, and the `agents` CLI is never invoked. Companion: agents-cli RUSH-2190 gates `devices list`'s keychain-scanning "Leased boxes" tail behind `--all`, closing the same Touch ID sheet in `07-inject-device-topology.sh` without changing the hook.
+- **`03-linear-inject-tasks-context.sh` no longer uses `agents secrets`; it reads the Linear CLI's own `~/.linear-cli/config.json` (`apiKey` + `teamId`, 0600) with `LINEAR_API_KEY`/`LINEAR_TEAM_ID` env still winning.** The secrets-broker path was biometry-gated whenever the broker hold expired, and its skip path nagged for an unlock on every session start. The config.json path is plaintext, silent, and identical on macOS/Linux/Windows — the `agents secrets status` gate, the `agents secrets exec` self re-exec, and `_HOOK_SECRETS_TRIED` are deleted. Missing or malformed config degrades to a one-line skip naming `linear setup`. `hooks/README.md` now states the invariant: a hook must never pop Touch ID or hang a session — documented `--json`-style flags and plaintext tool configs only, never `agents secrets`. New `hooks/session-start/03-linear-inject-tasks-context_test.sh` proves credentials come from the fixture config, env wins, and the `agents` CLI is never invoked. Companion: agents-cli RUSH-2190 gates `devices list`'s keychain-scanning "Leased boxes" tail behind `--all`, closing the same Touch ID sheet in `07-inject-device-topology.sh` without changing the hook.
 
 - **The sessions and devices skills now teach direct live-state filters and the real fleet default.** `agents sessions --working`, `--idle`, `--waiting`, `--orphan`/`--orphaned`, `--crashed`, `--closed`, `--abandoned`, `--queued`, and `--unknown` each imply the live scan and compose as a union. Both skills now state that interactive/live views include registered online devices, `--local` opts out, non-interactive history needs explicit `--host`/`--device`, and `--all` widens historical directory/time scope rather than device scope. Companion: agents-cli issue #2009.
 

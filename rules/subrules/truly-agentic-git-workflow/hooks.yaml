@@ -5,6 +5,8 @@
 # One entry, one script, one combined matcher: the guard fires on Bash (to gate
 # `git commit|add`) and on the file tools (to gate create/update/delete), and
 # dispatches internally on tool_name.
+# Co-located with this subrule (NOT under hooks/<event>/). agents-cli
+# collectSubruleHooks rewrites script: to an absolute path under this dir.
 main-branch-guard:
   script: main-branch-guard.sh
   events: [PreToolUse]

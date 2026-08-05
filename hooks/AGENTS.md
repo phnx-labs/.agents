@@ -6,155 +6,86 @@ A hook runs on every agent, on every machine, on an event the user did not ask f
 highest-blast-radius thing in this repo. A hook that throws, hangs, or writes to stdout at the
 wrong moment corrupts the session it fires in.
 
+## Layout
+
+```
+hooks/<event-name>/<hook-file>.{sh,py}
+```
+
+| Event dir | Harness event |
+|---|---|
+| `session-start/` | SessionStart |
+| `pre-tool-use/` | PreToolUse |
+| `post-tool-use/` | PostToolUse |
+| `user-prompt-submit/` | UserPromptSubmit |
+| `stop/` | Stop |
+| `notification/` | Notification (and multi-event hooks whose primary event is Notification) |
+
+- **Install name** = file **basename** (agents-cli flattens into version homes).
+- **`script:` in agents.yaml** = path relative to `hooks/` (e.g. `session-start/04-session-identity.sh`).
+- **Do not nest deeper** than one event dir.
+- **Fixture-only dirs** under `hooks/` (e.g. `tests/` with no top-level scripts) are
+  directory *bundles*, not event groups — leave them alone.
+- **`promptcuts.yaml`** stays at `hooks/promptcuts.yaml` (hardcoded consumer paths).
+
 ## The script alone does nothing
 
 Registration is the `hooks:` entry in [`../agents.yaml`](../agents.yaml). A script with no
 entry is dead code that looks alive. Adding a hook is always two edits:
 
-1. `hooks/<NN>-<name>.{sh,py}` (or `hooks/<group>/<NN>-<name>.{sh,py}` for an
-   event family — e.g. `session-starts/`), executable (`chmod +x`).
-2. A `hooks:` entry in `../agents.yaml` naming the script (relative to `hooks/`,
-   e.g. `session-starts/04-session-identity.sh`), its `events`, and a `timeout`.
+1. `hooks/<event-name>/<NN>-<name>.{sh,py}`, executable (`chmod +x`).
+2. A `hooks:` entry in `../agents.yaml` with `script: <event-name>/<file>`, `events`, `timeout`.
 
-Then add a row to [`README.md`](./README.md) under the right event group, ship a
-`<name>_test.sh` beside the script, and add a `CHANGELOG.md` entry.
+Then add a row to [`README.md`](./README.md) under that event, ship a `<name>_test.sh`
+beside the script, and add a `CHANGELOG.md` entry.
 
-### Group subdirs (session-starts/)
+### Subrule hooks stay with the rule
 
-SessionStart hooks live under `hooks/session-starts/`. agents-cli ≥ the
-group-dir discovery change lists, resolves, syncs, and registers them the same
-as top-level scripts; the install name remains the **basename** so version-home
-copies stay flat and doctor/diff keep matching. Other event families may use the
-same one-level layout later; do not nest deeper than one group dir.
+Rule-enforcing guards ship under `rules/subrules/<rule>/` with a local `hooks.yaml`
+(relative `script:` → absolute path at register time via `collectSubruleHooks`). They
+are **not** moved into `hooks/<event>/`. Moving them would double-fire and desync from
+the rule text. When you change a subrule guard, edit that subrule dir only.
 
-### Execution order is NOT guaranteed — never depend on it
+## Execution order is NOT guaranteed — never depend on it
 
-The `NN-` prefix is **cosmetic**. It keeps this directory readable; it does not order
-anything. Two facts, both checkable:
+The `NN-` prefix is **cosmetic**. Registration order is YAML declaration order in
+`../agents.yaml`. Claude runs matching hooks **concurrently**. A hook must be
+independent: no reading another same-event hook's side effects. Ordered steps belong
+in **one** script.
 
-- **Nothing sorts by it.** Registration order is `Object.entries(manifest)` order
-  (`apps/cli/src/lib/hooks.ts`) — i.e. YAML declaration order in `../agents.yaml` —
-  and there is no `.sort()` anywhere between `parseHookManifest` and any registrar's write.
-  The manifest declaration order is the registration order; the `NN-` prefix is cosmetic.
-- **Claude runs them concurrently anyway.** *"All matching hooks run in parallel, and
-  identical handlers are deduplicated automatically"*
-  ([hooks reference](https://code.claude.com/docs/en/hooks)), with a per-hook `timeout`.
-  When several return `additionalContext`, Claude receives all of the values.
+## `cache:` — the only instrumentation there is
 
-So a hook must be **independent**: it may not read a file another hook writes in the same
-event, and it may not assume it runs before or after anything. If two steps genuinely must
-be ordered, they belong in **one** script — that is exactly why `04-session-identity.sh`
-merged three former hooks that all parsed the same `SessionStart` stdin.
-
-One consequence worth knowing: because Claude parallelises, splitting slow work into more
-hooks is free, and **merging** slow hooks makes an event slower — wall-clock goes from
-`max` to `sum`. The lever for a slow hook is `cache:`, not consolidation.
-
-### `cache:` — the only instrumentation there is
-
-A hook with a `cache:` entry is wrapped in a generated shim that adds stale-while-revalidate
-caching **and** emits a `hook.fire` event (`ms`, `cache`, `exit`) to
-`~/.agents/.cache/logs/events-<date>.jsonl`. That event stream is the sole input to
-`agents hooks profile` (p50 / p99 / mean / max, cache ratios, slow-hook warnings).
-
-A hook **without** `cache:` is invisible to the profiler — timing appears in neither the
-session transcript nor the hook's own output. If you want a hook's cost tracked, give it a
-`cache:` entry; `5m-bg` serves stale instantly and refreshes in the background.
+A hook with a `cache:` entry is wrapped in a generated shim (timing + optional SWR).
+Without `cache:`, the profiler cannot see it.
 
 ## One script is present but never fires
 
-`02-expand-prompt-skill-refs.py` has no entry in `../agents.yaml` and has **never** had
-one — `git log -S` over the manifest returns zero commits. It is an unfinished feature,
-not a regression. Register it or delete it; do not copy its patterns assuming it is live.
+`user-prompt-submit/02-expand-prompt-skill-refs.py` has no entry in `../agents.yaml`
+and has never had one. Allowlisted in `registration_test.sh`. Register it or delete it.
 
-### How the other four got here — the failure mode to watch for
-
-Four scripts sat unregistered for months because two unrelated bulk edits dropped their
-entries as collateral, and nothing failed loudly:
-
-| Commit | Subject | Dropped |
-|---|---|---|
-| `606db6e` (May 13) | "fix(hooks): handle missing YAML frontmatter in pre-commit validator" | `-27` lines from `agents.yaml`: `expand-promptcuts`, `expand-bang-commands`, `linear-tasks`, `stop-completion-gate` |
-| `8b006a6` (Jun 24) | "chore: remove legacy agents hook config" | `-34` lines: `rm-guard` **and** `large-file-add-guard` |
-
-In both cases a sibling was later restored — `stop-completion-gate` came back as
-`verify-work-complete`, `rm-guard` was re-registered — while the others were forgotten.
-All four have now been restored and verified working.
-
-**The lesson: a hook has no failing test for "is it registered."** The script keeps
-passing its own `_test.sh` while never running. When a commit touches `agents.yaml`, check
-the entry count before and after — a diff that removes registrations under an unrelated
-subject is the exact shape of this bug.
-
-### Registering a hook scopes it to every hook-capable harness, not to a chosen few
-
-The `agents:` field in a hook entry is **deprecated and ignored**
-(`apps/cli/src/lib/types.ts:305`), so there is currently **no way to scope a hook to a
-subset of harnesses**. A registration reaches every agent whose capability table supports
-that event — for `UserPromptSubmit` and `SessionStart` that is roughly ten harnesses, not
-just claude/codex/gemini.
-
-That matters because these scripts emit **Claude-shaped** `hookSpecificOutput` JSON, and
-agents-cli has no adapter translating that shape for grok, kimi, cursor, copilot, kiro,
-goose, hermes, or droid. Before you register a hook that produces output, either confirm
-its payload is harmless when a harness ignores it, or make the script no-op outside the
-harnesses it targets — the manifest cannot do it for you.
-
-**`verify-delivery-chain.py` is the exception, and the reason to check twice.** It has no
-`hooks:` entry either, but it **does** run on every Stop: `00-agent-verify-work-complete.sh`
-pipes into it directly. "No manifest entry" means *not registered as a hook*, not *dead* —
-a script another hook invokes is live.
-
-The inverse trap is just as easy: `02-expand-prompt-bang-commands.py` **is** referenced,
-but only by `02-expand-prompt-skill-refs.py`, which is itself unregistered. Referenced is
-not reachable — follow the chain to a registered entry point or it is dead either way.
-
-```bash
-# every mention, minus tests and docs — then check whether the caller is itself registered
-grep -rl <script-name> ../agents.yaml . | grep -vE '_test\.sh|README|AGENTS'
-```
+`stop/verify-delivery-chain.py` has no entry but **does** run: `stop/00-agent-verify-work-complete.sh`
+pipes into it. "No manifest entry" ≠ dead when a registered script invokes it.
 
 ## Fail closed, never fail open
 
-A guard that cannot evaluate its input must **refuse**, not allow. The `footer-guard`
-regression is the reference case: it extracted the command with a single `jq` call and
-`|| cmd=""`, then `[ -n "$cmd" ] || exit 0`, so on any machine without `jq` it silently
-permitted exactly what it existed to block. Use the `_json_field` helper pattern
-(`jq` → `node` → `python`) and exit non-zero with an explanation when no parser is available.
+A guard that cannot evaluate its input must **refuse**, not allow. Use the
+`_json_field` helper pattern (`jq` → `node` → `python`) and exit non-zero when no
+parser is available.
 
 ## Exit codes and streams
 
 - `exit 0` — allow. Anything on stdout is injected into the model's context.
-- `exit 2` — block, with the reason on stderr. That text is what the agent reads, so write it
-  as an instruction, not an error dump.
-- Never write to stdout from a `PreToolUse` guard on the allow path. It lands in the prompt.
-- Background work must detach both stdout and stdin (`>/dev/null 2>&1 </dev/null &` on the
-  **subshell**, not the inner command) or the hook hangs the session. Two separate fixes have
-  landed for exactly this.
+- `exit 2` — block, with the reason on stderr.
+- Never write to stdout from a `PreToolUse` guard on the allow path.
 
-## Keep it fast
+## SessionStart specifics
 
-`timeout` is real and it runs on every matching event. Anything that touches the network or
-another machine needs `cache:` or a background detach. A session-start hook that blocks for
-five seconds costs five seconds on every session on every box.
+- Never hang, never Touch ID, never `agents secrets`.
+- Prefer short timeouts; long work detaches (`setsid` + background) or uses `cache:`.
+- Empty stdout unless you intentionally inject context.
 
-## Tests are required
+## Registration integrity
 
-`<name>_test.sh` sits beside the script and must pass before the PR. Test the real path — no
-mocking. For a guard, include a fixture proving it blocks the bad input **and** one proving
-it fails closed with no JSON parser on `PATH`. For a detector, include the transcript that
-produced a past false positive; three of the gates here regressed on exactly that.
-
-### The pre-PR gate: `hooks/run_tests.sh`
-
-Run **`hooks/run_tests.sh`** before opening any PR that touches `hooks/`, `rules/subrules/`,
-or `agents.yaml`. It runs every `*_test.sh` in `hooks/` and in `rules/subrules/*/` and exits
-non-zero if any fails — one command instead of remembering the full list.
-
-It includes **`hooks/registration_test.sh`**, the integrity check this directory never had:
-the failing test for *"is this hook registered."* For every `*.sh`/`*.py` in `hooks/` (minus
-the test harness) it asserts one of — a `script:` entry in `../agents.yaml`, or invocation by
-a script that itself is registered (the `verify-delivery-chain.py` case), or a listing in the
-test's `INTENTIONALLY_UNREGISTERED` allowlist with a reason. A script that matches none fails,
-which is exactly what would have caught `606db6e` and `8b006a6` dropping registrations under
-unrelated subjects. When you add or remove a hook, this is the test that must go green.
+`registration_test.sh` walks `hooks/*/*.{sh,py}` (event groups) and the top level.
+`run_tests.sh` runs every `*_test.sh` under `hooks/` and one-level event dirs.
+Run both before a PR that touches `hooks/`, `rules/subrules/`, or `agents.yaml`.
