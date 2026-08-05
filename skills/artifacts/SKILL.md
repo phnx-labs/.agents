@@ -38,18 +38,29 @@ output format; every kind can compile to HTML and PDF.
    (plan, report, or visual) and `title`; `template` is inferred and provenance
    (project, repository, branch, harness, agent, human, host, session, date)
    auto-fills at render time from the Git checkout and agent environment.
-   Declared values always win — declare `tracking`, `status`, `facts`, `header`,
-   `footer`, or any provenance value you want to control. Follow the section
-   structure for the kind (`artifacts template <kind>` shows it), or scaffold
-   the whole file with `artifacts new <kind> --out <source.md>`. Do not repeat
-   provenance in the body. Use normal headings, lists, tables, images, and fenced
-   code. Reach for direct HTML only for grids, panels, figures, and callouts;
-   reach for inline SVG for architecture, timelines, process diagrams, and other
-   semantic figures. **Illustrate actively**: any concept that has structure —
-   actors, layers, flows, comparisons, states — gets a real SVG figure, not a
-   paragraph approximation. A figure earns its place with tinted concept boxes,
-   labeled connectors, and a caption that names the reading order; follow the
-   palette and layout recipe in
+   Declared values always win — declare `links`, `tracking`, `status`, `facts`,
+   `header`, `footer`, or any provenance value you want to control.
+
+   **Attach work URLs in `links`.** Put every related ticket, PR, issue, or
+   design-doc URL (Linear, Jira, GitHub, Notion, …) in the multipurpose
+   `links` list so they render as clickable chips. Seed URLs you already have at
+   first draft; if you open or create tickets while authoring, append those URLs
+   to `links` and re-render before presenting. Entries are plain `https://`
+   strings or `{url, label?}`. Keep a short primary id in `tracking` if useful;
+   do not invent separate ticket/PR fields. Mirror the same URLs as Markdown
+   links under `## Tracking` (plans) so the body stays readable without chip
+   chrome.
+
+   Follow the section structure for the kind (`artifacts template <kind>` shows
+   it), or scaffold the whole file with `artifacts new <kind> --out <source.md>`.
+   Do not repeat provenance in the body. Use normal headings, lists, tables,
+   images, and fenced code. Reach for direct HTML only for grids, panels,
+   figures, and callouts; reach for inline SVG for architecture, timelines,
+   process diagrams, and other semantic figures. **Illustrate actively**: any
+   concept that has structure — actors, layers, flows, comparisons, states —
+   gets a real SVG figure, not a paragraph approximation. A figure earns its
+   place with tinted concept boxes, labeled connectors, and a caption that names
+   the reading order; follow the palette and layout recipe in
    [references/authoring.md](references/authoring.md#diagram-recipe) so figures
    look designed rather than incidental. Read
    [references/authoring.md](references/authoring.md)
