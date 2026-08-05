@@ -38,6 +38,17 @@
 
 ### Added
 
+- **`/triage` and `/dispatch` commands.** `/triage` sweeps the whole issue tracker, grounds
+  in the real product goal spine (Linear Initiative→Project→Milestone, or a repo's
+  roadmap/milestones for GitHub), then forces every open item to exactly one of two
+  outcomes — keep-and-schedule into the current cycle (building it now if it's small
+  enough) or cancel outright. `Backlog` status, `--cycle none`, and "Low, revisit someday"
+  are banned as landing states — they're hedges that let a ticket rot instead of forcing
+  the decision. `/dispatch` is the single-task counterpart: understand the repo once, spec
+  fast (routing bugs through the `swarm:debug` skill instead of guessing a root cause),
+  show a quick plan, file the ticket, then dispatch to `run`/`teams`/`code:loop` depending
+  on scope. Source: `commands/triage.md`, `commands/dispatch.md`, `commands/README.md`.
+
 - **`reflect` command and skill restored as system defaults.** `/reflect` handles mid-conversation feedback recall before another revision; `/learn` remains the post-session workflow that writes durable lessons forward. Source: `commands/reflect.md`, `skills/reflect/SKILL.md`.
 
 - **`session-start/09-git-pull-forward.sh` — SessionStart fast-forward of the cwd
