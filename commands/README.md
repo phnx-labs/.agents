@@ -72,7 +72,7 @@ code; `/dispatch` always ends with an agent building something.
 ## Related
 
 Several commands escalate to `agents teams` when the scope is wide: `/debug`, `/plan`,
-`/clean`, `/test`, `/recap`, `/review`.
+`/clean`, `/test`, `/recap`, `/review`, `/dispatch`.
 
 Capabilities like `/secrets`, `/sessions`, and `/browser` are **skills**, not commands —
 see [`skills/`](../skills/README.md). They are invoked the same way but carry their own
