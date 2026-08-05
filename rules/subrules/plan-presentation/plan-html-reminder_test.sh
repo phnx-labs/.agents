@@ -29,15 +29,33 @@ EPM='{"tool_name":"ExitPlanMode","tool_input":{"plan":"x"}}'
 rm -f "$SCAN"/*.html 2>/dev/null || true
 run 2 "ExitPlanMode, no rendered plan -> block" "$EPM"
 
-# 2. ExitPlanMode after a fresh /tmp/plan-<slug>.html -> ALLOW (exit 0).
-: > "$SCAN/plan-my-feature.html"
-run 0 "ExitPlanMode, canonical plan-<slug>.html present -> allow" "$EPM"
+# Minimal figure-bearing HTML that satisfies the quality gate.
+write_figure_html() {
+  cat > "$1" <<'HTML'
+<!doctype html><html><body>
+<figure class="artifact-figure"><svg class="artifact-diagram" viewBox="0 0 100 40" role="img" aria-label="t">
+  <rect x="10" y="10" width="80" height="20" rx="4" fill="#171717" stroke="#a3e635"/>
+</svg></figure>
+</body></html>
+HTML
+}
+
+# 2. ExitPlanMode after a fresh plan HTML WITH a drawn SVG -> ALLOW (exit 0).
+write_figure_html "$SCAN/plan-my-feature.html"
+run 0 "ExitPlanMode, canonical plan-<slug>.html with SVG figure -> allow" "$EPM"
+
+# 2b. Fresh HTML with NO svg (prose-only shell) -> BLOCK. This is the regression
+# that let wall-of-text plans clear the gate and open in the browser unreadable.
+rm -f "$SCAN"/*.html
+printf '%s\n' '<!doctype html><html><body><h1>Prose only</h1><p>no figure</p></body></html>' \
+  > "$SCAN/plan-prose-only.html"
+run 2 "ExitPlanMode, fresh prose-only plan HTML (no svg) -> block" "$EPM"
 
 # 3. ExitPlanMode with the scratchpad <slug>-plan.html convention (nested) -> ALLOW.
 rm -f "$SCAN"/*.html
 mkdir -p "$SCAN/a/b/scratchpad"
-: > "$SCAN/a/b/scratchpad/remote-run-plan.html"
-run 0 "ExitPlanMode, nested <slug>-plan.html present -> allow" "$EPM"
+write_figure_html "$SCAN/a/b/scratchpad/remote-run-plan.html"
+run 0 "ExitPlanMode, nested <slug>-plan.html with SVG figure -> allow" "$EPM"
 
 # 4. A stale render (>90 min old) does NOT satisfy the gate -> block.
 rm -rf "$SCAN"/* 2>/dev/null || true
@@ -57,9 +75,9 @@ rm -f "$SCAN"/*.html 2>/dev/null || true
 run 2 "Grok exit_plan_mode, no rendered plan -> block" \
   '{"toolName":"exit_plan_mode","toolInput":{"plan":"x"}}'
 
-# 7. Grok exit_plan_mode after a fresh render -> ALLOW.
-: > "$SCAN/plan-grok.html"
-run 0 "Grok exit_plan_mode, fresh plan html -> allow" \
+# 7. Grok exit_plan_mode after a fresh figure-bearing render -> ALLOW.
+write_figure_html "$SCAN/plan-grok.html"
+run 0 "Grok exit_plan_mode, fresh plan html with SVG -> allow" \
   '{"toolName":"exit_plan_mode","toolInput":{"plan":"x"}}'
 
 # 8. THE BUG: a Grok camelCase NON-plan tool with NO fresh plan HTML must ALLOW.
@@ -92,9 +110,9 @@ REPO=$(mktemp -d)
 git -C "$REPO" init -q 2>/dev/null || true
 mkdir -p "$REPO/.agents/artifacts/plans"
 
-# 14. Fresh HTML under repo-root .agents/artifacts/plans/ -> ALLOW.
-: > "$REPO/.agents/artifacts/plans/plan-repo-root.html"
-run_no_override 0 "ExitPlanMode, fresh .agents/artifacts/plans/plan-<slug>.html -> allow" "$EPM" "$REPO"
+# 14. Fresh figure-bearing HTML under repo-root .agents/artifacts/plans/ -> ALLOW.
+write_figure_html "$REPO/.agents/artifacts/plans/plan-repo-root.html"
+run_no_override 0 "ExitPlanMode, fresh .agents/artifacts/plans/plan-<slug>.html with SVG -> allow" "$EPM" "$REPO"
 
 # 15. Stale HTML under repo root does NOT satisfy -> BLOCK.
 rm -f "$REPO/.agents/artifacts/plans"/*.html
@@ -102,13 +120,14 @@ rm -f "$REPO/.agents/artifacts/plans"/*.html
 touch -d '2 hours ago' "$REPO/.agents/artifacts/plans/plan-stale.html" 2>/dev/null || touch -t 200001010000 "$REPO/.agents/artifacts/plans/plan-stale.html"
 run_no_override 2 "ExitPlanMode, stale .agents/artifacts/plans HTML -> block" "$EPM" "$REPO"
 
-# 16. Outside a git repo with no override, legacy /tmp fallback still allows.
+# 16. Outside a git repo with no override, legacy /tmp fallback still allows
+# when the HTML has a drawn SVG figure.
 rm -f "$REPO/.agents/artifacts/plans"/*.html
 LEGACY="/tmp/plan-legacy-test-$$.html"
-: > "$LEGACY"
+write_figure_html "$LEGACY"
 # Move into a non-repo temp dir so git rev-parse fails.
 OUTSIDE=$(mktemp -d)
-run_no_override 0 "ExitPlanMode, legacy /tmp fallback outside repo -> allow" "$EPM" "$OUTSIDE"
+run_no_override 0 "ExitPlanMode, legacy /tmp fallback with SVG outside repo -> allow" "$EPM" "$OUTSIDE"
 rm -f "$LEGACY"
 rm -rf "$OUTSIDE"
 
@@ -131,8 +150,8 @@ mkfile_cl() {    # human turn, then a TaskCreate tool_use, then its tool_result(
 }
 MULTI='1. first step\n2. second step\n3. third step'
 
-# 9. multi-step plan, no checklist, fresh HTML -> BLOCK (checklist missing).
-: > "$SCAN/plan-cl.html"
+# 9. multi-step plan, no checklist, fresh figure-bearing HTML -> BLOCK (checklist missing).
+write_figure_html "$SCAN/plan-cl.html"
 mkfile_nocl
 run 2 "multi-step plan, no checklist -> block" \
   '{"tool_name":"ExitPlanMode","tool_input":{"plan":"'"$MULTI"'"},"transcript_path":"'"$TX"'"}'

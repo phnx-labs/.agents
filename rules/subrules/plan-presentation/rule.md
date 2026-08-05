@@ -20,6 +20,11 @@ transport — lives in the **`plan-render` skill**. Load it and follow it.
   charts; hand-authored inline SVG for timeline / architecture / before-after
   diagrams — never mermaid), callouts, tagged tables, code blocks. Follow the
   `plan` template (`artifacts template plan`) or scaffold with `artifacts new plan`.
+- **Quality is enforced, not suggested.** `artifacts check`/`render` **error** when a plan
+  has no drawn live SVG figure, and they **do not write HTML** on validation failure.
+  The ExitPlanMode hook greps the rendered HTML for `<svg` + a drawn primitive — a
+  prose-only shell no longer clears the gate. Inline `` `code` `` alone is not enough:
+  put commands in fenced blocks and risks/files in tables.
 - **Theme (adopted).** Skin the plan in the **target product's brand** — probe the repo
   for design tokens, tailwind/CSS vars, logo/manifest colors. Fall back to the dark +
   light editorial house palette only when the product declares no brand.

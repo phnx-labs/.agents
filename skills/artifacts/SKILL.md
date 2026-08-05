@@ -66,6 +66,13 @@ output format; every kind can compile to HTML and PDF.
    [references/authoring.md](references/authoring.md)
    before adding HTML or SVG.
 
+   **Plans are figure-gated.** `kind: plan` fails `artifacts check` / `render`
+   (no HTML written) without ≥1 live inline SVG that contains a drawn element
+   (`rect`/`path`/`text`/…). A wall of Markdown bullets with inline `` `code` ``
+   pills is not a plan artifact. Prefer tables for files/risks/validation,
+   fenced code for commands, and an `artifact-callout` for the takeaway
+   (warnings if missing).
+
 3. Render in one step:
 
    ```bash
