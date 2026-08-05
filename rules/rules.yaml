@@ -24,4 +24,5 @@ presets:
       - context-query-mq
       - plan-presentation
       - task-checklists
+      - feed-status-posts
       - remote-fleet-dispatch

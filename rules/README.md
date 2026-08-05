@@ -35,7 +35,8 @@ script, a `hooks.yaml` registering the guard, and a test. `gh-merge-guard`, `no-
 name instead of restating. Then, in order: `research-discipline`, `fleet-delegation`,
 `code-quality`, `testing-strict`, `truly-agentic-git-workflow`, `gh-merge-guard`,
 `no-pr-footer`, `operational`, `conventions`, `agents-cli`, `parallel-teams`, `tech-stack`,
-`context-query-mq`, `plan-presentation`, `task-checklists`, `remote-fleet-dispatch`.
+`context-query-mq`, `plan-presentation`, `task-checklists`, `feed-status-posts`,
+`remote-fleet-dispatch`.
 
 Your own machine composes more than this — anything in `~/.agents/rules/subrules/` unions in
 on top.

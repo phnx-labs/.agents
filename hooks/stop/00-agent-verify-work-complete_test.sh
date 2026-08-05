@@ -240,6 +240,7 @@ check "mixed create+review only gates the created PR" "$rc" "0"
 #    with the old top-level read the turn count was 0 and this never blocked.
 rc=$(FAKE_GH_STATE=MERGED run_hook "$T" "All done. The widget feature is merged." false)
 check "done-claim on real transcript shape blocks for self-audit" "$rc" "2"
+grep -q 'agents feed post.*--level important' "$SANDBOX/stderr" && echo "ok   - completion post is phone-worthy" || { echo "FAIL - completion post is not important"; fail=1; }
 grep -q "You claimed this work is done" "$SANDBOX/stderr" && echo "ok   - done-claim gate cites the original request" || { echo "FAIL - no done-claim gate message"; fail=1; }
 
 # 8b. Regression: first_user_msg is extracted via `python3 -c "..."` inside $(...).
