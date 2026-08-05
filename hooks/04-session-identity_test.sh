@@ -46,17 +46,41 @@ check "metadata cwd recorded"            "$(metafld cwd)"                     "/
 
 # --- Job 2: registry enrichment (ported from 08 test) ---------------------
 # T1: stdin session_id enriches the launcher entry; launcher fields WIN.
-seed '{"pid":'"$SELF"',"agent":"codex","cwd":"/orig","tmuxPane":"%9"}'
+# terminalId + launchId must survive — they are the Factory / --active join keys
+# (RUSH-2192); wiping them left offloaded Grok/Codex tabs with no status-bar id.
+seed '{"pid":'"$SELF"',"agent":"codex","cwd":"/orig","tmuxPane":"%9","terminalId":"CX-tab-1","launchId":"LID-spawn-1","actor":"muqsit@example.com","initiatedBy":"human"}'
 echo '{"session_id":"sid-stdin","cwd":"/ignored"}' | bash "$HOOK" >/dev/null
 check "stdin session_id recorded"         "$(regfld sessionId)" "sid-stdin"
 check "launcher agent preserved on merge" "$(regfld agent)"     "codex"
 check "launcher cwd preserved on merge"   "$(regfld cwd)"       "/orig"
+check "launcher terminalId preserved"     "$(regfld terminalId)" "CX-tab-1"
+check "launcher launchId preserved"       "$(regfld launchId)"   "LID-spawn-1"
+check "launcher actor preserved"          "$(regfld actor)"      "muqsit@example.com"
+check "launcher initiatedBy preserved"    "$(regfld initiatedBy)" "human"
 
 # T2: Grok delivers the id only via env.
-seed '{"pid":'"$SELF"',"agent":"grok"}'
+seed '{"pid":'"$SELF"',"agent":"grok","terminalId":"GK-tab-9","launchId":"LID-grok"}'
 GROK_SESSION_ID="sid-grok" bash "$HOOK" < /dev/null >/dev/null
 check "grok env session id recorded"      "$(regfld sessionId)" "sid-grok"
 check "grok agent preserved"              "$(regfld agent)"     "grok"
+check "grok terminalId preserved"         "$(regfld terminalId)" "GK-tab-9"
+check "grok launchId preserved"           "$(regfld launchId)"   "LID-grok"
+
+# T2b: no prior registry — pull terminalId/launchId from the env the launcher exported.
+cleanup
+rm -f "$REG_FILE"
+ls "$REG" 2>/dev/null | sort > "/tmp/reg-before-env.$$"
+GROK_SESSION_ID="sid-env" AGENT_TERMINAL_ID="GK-from-env" AGENT_LAUNCH_ID="LID-from-env" \
+  bash "$HOOK" < /dev/null >/dev/null
+ls "$REG" 2>/dev/null | sort > "/tmp/reg-after-env.$$"
+new_env="$(comm -13 "/tmp/reg-before-env.$$" "/tmp/reg-after-env.$$" | head -1)"
+rm -f "/tmp/reg-before-env.$$" "/tmp/reg-after-env.$$"
+NEW_ENV="$REG/$new_env"
+check "env fallback: terminalId from AGENT_TERMINAL_ID" \
+  "$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1])).get("terminalId",""))' "$NEW_ENV" 2>/dev/null)" "GK-from-env"
+check "env fallback: launchId from AGENT_LAUNCH_ID" \
+  "$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1])).get("launchId",""))' "$NEW_ENV" 2>/dev/null)" "LID-from-env"
+[ -n "$new_env" ] && rm -f "$NEW_ENV"
 
 # T3: no id anywhere -> must NOT invent one.
 seed '{"pid":'"$SELF"',"agent":"codex"}'

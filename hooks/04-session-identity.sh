@@ -124,6 +124,12 @@ while cur and cur > 1 and seen < 25:
     seen += 1
 
 reg_path = os.path.join(reg_dir, "%d.json" % agent_pid)
+# sessionId is the only field THIS hook owns (from SessionStart / env). Everything
+# else is launcher-owned and must survive the rewrite — especially terminalId and
+# launchId, which Factory and `agents sessions --active` use to join a tab/spawn
+# to the real session across --host/--device (dropping them left Grok/Codex
+# status bars unbound). Prefer launcher values; fall back to the env the
+# launcher exported when no prior registry file exists.
 entry = {
     "pid": agent_pid,
     "agent": "",
@@ -132,19 +138,37 @@ entry = {
     "tmuxPane": os.environ.get("TMUX_PANE", ""),
     "startedAtMs": int(time.time() * 1000),
 }
-# Merge over the launcher's entry: the launcher's agent/cwd/tmuxPane/startedAtMs
-# are authoritative (recorded at spawn) and WIN — sessionId is the only field
-# this hook owns. So the agent cd-ing after start can't rewrite the registry cwd
-# that active.ts uses to locate the transcript.
+# Fields the launcher stamps at spawn (pid-registry writePidSessionEntry) that
+# this hook must NEVER wipe when it rewrites the file with the real sessionId.
+LAUNCHER_PRESERVE = (
+    "agent",
+    "cwd",
+    "tmuxPane",
+    "startedAtMs",
+    "terminalId",
+    "launchId",
+    "actor",
+    "initiatedBy",
+)
 try:
     with open(reg_path) as f:
         prev = json.load(f)
     if isinstance(prev, dict):
-        for k in ("agent", "cwd", "tmuxPane", "startedAtMs"):
+        for k in LAUNCHER_PRESERVE:
             if prev.get(k):
                 entry[k] = prev[k]
 except Exception:
     pass
+# Env fallbacks when the launcher entry is missing or incomplete (hand-started
+# agent, or a race before writePidSessionEntry lands).
+if not entry.get("terminalId"):
+    tid = (os.environ.get("AGENT_TERMINAL_ID") or "").strip()
+    if tid:
+        entry["terminalId"] = tid
+if not entry.get("launchId"):
+    lid = (os.environ.get("AGENT_LAUNCH_ID") or "").strip()
+    if lid:
+        entry["launchId"] = lid
 # If we still have no agent label, infer from which env var carried the id.
 if not entry["agent"]:
     if os.environ.get("GROK_SESSION_ID"):

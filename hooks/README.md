@@ -20,7 +20,7 @@ until a human touches the sensor.
 
 | Hook | What it does |
 |---|---|
-| [`04-session-identity.sh`](./04-session-identity.sh) | The single "who am I" hook — session id, transcript path, runtime |
+| [`04-session-identity.sh`](./04-session-identity.sh) | The single "who am I" hook — session id, transcript path, runtime. Enriches by-pid with `sessionId` while **preserving** launcher `terminalId` / `launchId` (Factory / `--active` join keys) |
 | [`03-linear-inject-tasks-context.sh`](./03-linear-inject-tasks-context.sh) | Injects a Linear brief and the active-sprint board. Reads credentials from `~/.linear-cli/config.json` (env vars win); skips silently when absent |
 | [`07-inject-device-topology.sh`](./07-inject-device-topology.sh) | Injects the host and fleet topology, with live load and memory per machine |
 | [`08-inject-repo-inflight.sh`](./08-inject-repo-inflight.sh) | Injects the repo's in-flight state — open PRs and the other agents actively working on this project (activity-ranked, capped), resolving worktrees to their main repo |
