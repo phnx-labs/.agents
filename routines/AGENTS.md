@@ -50,5 +50,6 @@ the large-fleet case, with no coordinator to go stale.
 4. Run it once with `agents routines run <name>` and quote the real output in the PR. A
    routine that has never fired is untested.
 
-Users override a shipped routine with a same-named file in `~/.agents/routines/`, or disable
-it with `agents routines disable <name>`. Never expect to mutate this file on their machine.
+Users override a shipped routine with a same-named file in `~/.agents/routines/`. Device
+activation is membership in `~/.agents/devices/<hostname>/agents.yaml`; never put mutable
+`enabled:` or `devices:` state in a shipped definition and never mutate this file on a machine.
