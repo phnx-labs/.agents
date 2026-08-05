@@ -1,17 +1,12 @@
 #!/bin/bash
 # SessionStart hook: inject a short Linear brief + the active-sprint task board.
 #
-# Credentials come from the `linear.app` secrets bundle (LINEAR_API_KEY +
-# LINEAR_TEAM_ID), resolved per-platform:
-#   - macOS: gate on the secrets-agent BROKER holding the bundle. Checking broker
-#     membership (`agents secrets status`) is silent — it never touches the
-#     keychain, so this hook NEVER pops Touch ID at session start. Unlock once a
-#     day with `agents secrets unlock linear.app` (held ~7d) and sessions read
-#     silently after that. If the broker isn't holding it, we skip (no prompt).
-#   - Windows / Linux: there is no secrets-agent (it's macOS-only), so we read the
-#     bundle directly from the native backend (Windows Credential Manager / Linux
-#     libsecret or the headless AES-256-GCM file store) via `agents secrets exec`.
-#     No broker, no biometry, silent every time.
+# Credentials come from the Linear CLI's own config at ~/.linear-cli/config.json
+# (0600, written by `linear setup`): apiKey + teamId. LINEAR_API_KEY /
+# LINEAR_TEAM_ID in the env still win. A SessionStart hook must never pop
+# Touch ID or hang a session, so this hook never calls `agents secrets` — when
+# neither source has credentials it prints a one-line skip and exits 0. Same
+# code path on macOS, Linux, and Windows.
 #
 # The brief (humans, assignable agents, and — when the cwd maps to a Linear
 # project like `agents-cli` -> "Agents CLI" — that project's progress, milestones
@@ -29,48 +24,32 @@ export AGENT_SELF="${AGENT_SELF:-claude}"
 git_root=$(git rev-parse --show-toplevel 2>/dev/null)
 export CWD_PROJECT_HINTS="$(basename "$git_root" 2>/dev/null),$(basename "$PWD" 2>/dev/null)"
 
-case "$(uname -s 2>/dev/null)" in
-  Darwin) IS_MAC=1 ;;
-  *)      IS_MAC=0 ;;
-esac
-
-# Resolve credentials from the linear.app bundle unless already in the env.
-# IMPORTANT: a session-start hook must never hang or pop Touch ID. So the only
-# call made on the biometry-capable path (macOS) BEFORE we know the bundle is
-# safe to read is `agents secrets status` — a broker-socket query that never
-# touches the keychain. (Do NOT add `agents secrets list` here: piped into a
-# short-circuiting `grep -q` it can SIGPIPE-deadlock and hang the session.)
+# Resolve credentials: env first, then the Linear CLI's plaintext config
+# (~/.linear-cli/config.json, 0600 — written by `linear setup`). No secrets
+# broker, no keychain, so this hook can never pop Touch ID or hang. The config
+# path is overridable via LINEAR_CLI_CONFIG for tests. Each var is filled only
+# when the env doesn't already carry it.
 if [ -z "$LINEAR_API_KEY" ] || [ -z "$LINEAR_TEAM_ID" ]; then
-  if [ "$IS_MAC" = 1 ]; then
-    # macOS: only read when the broker is already HOLDING the bundle (silent).
-    # If it isn't, skip WITHOUT reading the keychain -> no Touch ID prompt.
-    if ! agents secrets status 2>/dev/null | awk 'NR>2 {print $1}' | grep -qx 'linear.app'; then
-      cat <<'EOF'
-Linear context skipped (linear.app not unlocked). Unlock once (held ~7d):
-  agents secrets unlock linear.app
-EOF
-      exit 0
-    fi
+  cfg="${LINEAR_CLI_CONFIG:-$HOME/.linear-cli/config.json}"
+  if [ -f "$cfg" ]; then
+    eval "$(python3 -c '
+import json, os, shlex, sys
+try:
+    c = json.load(open(os.path.expanduser(sys.argv[1])))
+except Exception:
+    sys.exit(0)
+if not os.environ.get("LINEAR_API_KEY") and c.get("apiKey"):
+    print("LINEAR_API_KEY=" + shlex.quote(c["apiKey"]))
+if not os.environ.get("LINEAR_TEAM_ID") and c.get("teamId"):
+    print("LINEAR_TEAM_ID=" + shlex.quote(c["teamId"]))
+' "$cfg" 2>/dev/null)"
   fi
-
-  # macOS (broker holds it -> silent) or Windows/Linux (no broker -> direct
-  # Credential Manager / libsecret / file-store read, also silent). We CAPTURE
-  # rather than `exec` so a missing/locked bundle degrades to a clean one-line
-  # skip instead of a raw "bundle not found" (and can never hang). The re-run of
-  # this script inherits the injected LINEAR_* env and _HOOK_SECRETS_TRIED, which
-  # guards against an infinite loop if the bundle lacks one of the two keys.
-  if [ -z "$_HOOK_SECRETS_TRIED" ]; then
-    export _HOOK_SECRETS_TRIED=1
-    if brief=$(agents secrets exec linear.app -- "$0" 2>/dev/null) && [ -n "$brief" ]; then
-      printf '%s\n' "$brief"
-    else
-      echo "Linear context skipped: linear.app bundle unavailable on this host (export it here with 'agents secrets export linear.app --host <this-host>')."
-    fi
+  if [ -z "$LINEAR_API_KEY" ] || [ -z "$LINEAR_TEAM_ID" ]; then
+    echo "Linear context skipped (no credentials): run 'linear setup' once (writes ~/.linear-cli/config.json), or export LINEAR_API_KEY + LINEAR_TEAM_ID."
     exit 0
   fi
-  echo "linear.app is available but missing LINEAR_API_KEY or LINEAR_TEAM_ID."
-  exit 0
 fi
+export LINEAR_API_KEY LINEAR_TEAM_ID
 
 # One round trip: workspace users (humans + agent apps), every team project (name
 # + progress + milestones + top open issues, for the cwd match), and the active
