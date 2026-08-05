@@ -105,5 +105,8 @@ What each verifier concluded and whether they converged. Note disagreements and 
 ### Fixes
 Recommended fix first. For each: what changes, how it addresses the root cause, tradeoffs.
 
+### Tests
+The tests to run to confirm the fix, and the regression test to add (from Spec & gap) so this can't recur.
+
 ### Ticket & dispatch
 The artifact path/link, the ticket id/URL, and where the fix was dispatched — or "throwaway diagnosis, not filed."
