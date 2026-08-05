@@ -1,6 +1,6 @@
 ---
 name: visualize
-description: "Turn a concept, dataset, or codebase/session finding into ONE beautiful, self-contained HTML visual by authoring Markdown and compiling it with artifacts-cli. Produces interactive inline-SVG figures, branded light/dark output, and opens it in the user's browser. The Markdown source lives in the repo's .agents/artifacts/viz/ directory. The general-purpose sibling of plan-render. Triggers on: visualize this, make an infographic, turn this into a shareable page/poster, explain this visually, data story, status dashboard, 'show X as a graphic', content I can post."
+description: "Turn a concept, dataset, or codebase/session finding into ONE beautiful, self-contained HTML visual by authoring Markdown and compiling it with artifacts-cli. Produces interactive inline-SVG figures, branded light/dark output, and opens it in the user's browser. The Markdown source lives under the repo's dated artifact layout: .agents/artifacts/yyyy-mm-dd/. The general-purpose sibling of plan-render. Triggers on: visualize this, make an infographic, turn this into a shareable page/poster, explain this visually, data story, status dashboard, 'show X as a graphic', content I can post."
 argument-hint: "[topic]"
 allowed-tools: Bash(scp*), Bash(agents ssh*), Bash(agents browser*), Bash(open*), Bash(xdg-open*), Bash(find*), Bash(cp*), Bash(mkdir*), Bash(test*), Bash(git rev-parse*), Bash(artifacts*), Write
 user-invocable: true
@@ -15,7 +15,7 @@ The source of truth is **Markdown**; the rendering is handled by `artifacts-cli`
 ## Output
 
 - **HTML only** — no PDF is produced.
-- **Destination** — write the Markdown source and rendered HTML into the repo's `.agents/artifacts/viz/` directory (create it if missing).
+- **Destination** — write the Markdown source and rendered HTML under `.agents/artifacts/yyyy-mm-dd/` (create the date dir if missing). Same layout as plans and other artifacts.
 - **Self-contained** — inline CSS/SVG, no CDN, opens offline by double-click.
 
 ## Workflow
@@ -28,11 +28,12 @@ The source of truth is **Markdown**; the rendering is handled by `artifacts-cli`
 
    If `artifacts` is missing, install artifacts-cli first and report the prerequisite.
 
-2. **Resolve the repo root and artifact home.**
+2. **Resolve the repo root and dated artifact home.**
 
    ```bash
    ROOT=$(git rev-parse --show-toplevel 2>/dev/null)
-   ARTIFACTS_DIR="${ROOT:-.}/.agents/artifacts/viz"
+   DATE=$(date +%F)
+   ARTIFACTS_DIR="${ROOT:-.}/.agents/artifacts/$DATE"
    mkdir -p "$ARTIFACTS_DIR"
    ```
 
@@ -145,7 +146,7 @@ The source of truth is **Markdown**; the rendering is handled by `artifacts-cli`
 
 ## Completion contract
 
-- [ ] Markdown source written to `.agents/artifacts/viz/<slug>.md`
+- [ ] Markdown source written to `.agents/artifacts/yyyy-mm-dd/<slug>.md`
 - [ ] HTML rendered next to the source with `artifacts render ... --format html`
 - [ ] Output inspected headlessly in both themes and at desktop/mobile widths
 - [ ] ≥1 inline SVG figure; interactive/animated elements verified

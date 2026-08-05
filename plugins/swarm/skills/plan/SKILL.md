@@ -86,7 +86,7 @@ Enumerated, each with how the plan handles it.
 Scenarios to cover — happy path and the edges that matter.
 
 ### Review artifact (HTML)
-After the proposal is written, author a Markdown source in `.agents/artifacts/plans/`,
+After the proposal is written, author a Markdown source under `.agents/artifacts/yyyy-mm-dd/`,
 render it to a self-contained HTML file with `artifacts-cli`, and open it on the machine
 the user sits at — follow the **`plan-render`** skill for the LOOK (house structure,
 product-brand theming, light/dark toggle, ≥1 hand-authored inline-SVG diagram) and the

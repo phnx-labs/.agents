@@ -2,16 +2,41 @@
 
 **Whenever you produce an implementation plan — the harness's native plan mode
 (the `ref-*.md` plan file), the `/plan` command, or `/swarm:plan` — do not leave it
-in terminal scrollback. Author a Markdown source in the repo's `.agents/artifacts/plans/`
-directory, render it to a self-contained HTML doc with `artifacts-cli`, and open it in
+in terminal scrollback. Author a Markdown source under the repo's dated artifact
+layout, render it to a self-contained HTML doc with `artifacts-cli`, and open it in
 the user's default browser on the machine they sit at.**
+
+## Canonical artifact path (plans, HTML, and related items)
+
+All agent-produced durable artifacts — **plans, rendered HTML, visuals, reports,
+and other session outputs** — live under a single dated layout (not kind-based
+subdirs like `plans/` or `viz/`):
+
+```
+.agents/artifacts/yyyy-mm-dd/<artifact-title>.md
+```
+
+Examples:
+
+| Kind | Path |
+| --- | --- |
+| Plan source | `.agents/artifacts/2026-08-05/plan-auth-refresh.md` |
+| Plan HTML (render next to source) | `.agents/artifacts/2026-08-05/plan-auth-refresh.html` |
+| Visual / infographic | `.agents/artifacts/2026-08-05/fleet-status.md` |
+| Report / scan | `.agents/artifacts/2026-08-05/signal-scan.md` |
+
+- **Date** is the day the artifact is authored (`date +%F` → `yyyy-mm-dd`).
+- **Title** is a kebab-case slug that names the artifact (`plan-<slug>`,
+  `fleet-status`, `signal-scan`). No nested kind folder.
+- Create the date directory if missing (`mkdir -p .agents/artifacts/$(date +%F)`).
+- HTML builds land **next to** their Markdown source under the same date dir.
 
 This is mechanically reminded by the bundled `plan-html-reminder` hook (PreToolUse on
 `ExitPlanMode`): it nudges you to render + open before you present. The full LOOK — the
 house structure, the product-brand theming, the light/dark toggle, and the open-on-Mac
 transport — lives in the **`plan-render` skill**. Load it and follow it.
 
-- **Source of truth is Markdown.** Write `plan-<slug>.md` in `.agents/artifacts/plans/`
+- **Source of truth is Markdown.** Write `.agents/artifacts/yyyy-mm-dd/plan-<slug>.md`
   and compile it with `artifacts render ... --format html`. The HTML is a build output;
   never hand-author a complete `.html` file.
 - **Structure (fixed).** Hero (kicker · headline · problem statement · metadata chips ·

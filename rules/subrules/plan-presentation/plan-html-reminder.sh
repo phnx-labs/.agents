@@ -5,9 +5,11 @@
 # HTML doc (plan-render skill) before it is presented, so the user reviews it in the
 # browser — skinned in the product's brand, light/dark, opened on the Mac they sit at.
 #
-# The source of truth is Markdown in the repo's `.agents/artifacts/plans/` directory;
-# `artifacts render ... --format html` produces the HTML next to it. The gate detects
-# a fresh rendered HTML under that path.
+# The source of truth is Markdown under the repo's dated artifact layout:
+#   `.agents/artifacts/yyyy-mm-dd/<artifact-title>.md`
+# (plans: `.../plan-<slug>.md`). `artifacts render ... --format html` produces the
+# HTML next to the source. The gate detects a fresh rendered plan HTML under
+# `.agents/artifacts/`.
 #
 # Mechanism: the moment an agent goes to present a plan (ExitPlanMode), check whether a
 # fresh plan HTML was written this session. If yes -> allow. If no -> block ONCE (exit 2)
@@ -53,8 +55,10 @@ esac
 
 # ---- (A) HTML render check ----------------------------------------------------
 # A fresh plan HTML rendered in the last 90 min satisfies this. The canonical
-# location is `<repo>/.agents/artifacts/plans/` (per the plan-render skill).
-# Scan root is overridable for tests via PLAN_HTML_SCAN_ROOT.
+# location is `<repo>/.agents/artifacts/yyyy-mm-dd/` (per plan-presentation /
+# plan-render). Scan the whole `.agents/artifacts/` tree so dated day dirs and
+# any transitional layout still clear the gate. Scan root is overridable for
+# tests via PLAN_HTML_SCAN_ROOT.
 # -L: follow symlinks. On macOS /tmp is a symlink to /private/tmp, and BSD find
 # will NOT descend a symlinked start path without -L — so the gate could never
 # detect a rendered plan on a Mac and blocked ExitPlanMode indefinitely.
@@ -64,7 +68,7 @@ if [ -n "${PLAN_HTML_SCAN_ROOT:-}" ]; then
 else
   repo_root=$(git rev-parse --show-toplevel 2>/dev/null || true)
   if [ -n "$repo_root" ]; then
-    scan_roots="$repo_root/.agents/artifacts/plans"
+    scan_roots="$repo_root/.agents/artifacts"
   else
     # Legacy fallback: /tmp only when we are not inside a git repo. Inside a repo
     # the canonical artifact path is the only accepted location.
@@ -131,17 +135,20 @@ fi
   echo
   if [ "$html_ok" != 1 ]; then
     echo "* Render a FIGURE-RICH browser-ready HTML plan and open it on the user's Mac."
-    echo "  Load the plan-render skill. Author Markdown in the repo's"
-    echo "  .agents/artifacts/plans/plan-<slug>.md, then:"
-    echo "    artifacts render .agents/artifacts/plans/plan-<slug>.md --format html"
+    echo "  Load the plan-render skill. Author Markdown under the dated artifact layout:"
+    echo "    .agents/artifacts/yyyy-mm-dd/plan-<slug>.md"
+    echo "  then:"
+    echo "    DATE=\$(date +%F)"
+    echo "    artifacts render .agents/artifacts/\$DATE/plan-<slug>.md --format html"
     echo "  HARD REQUIREMENTS (this gate inspects the HTML, not just the filename):"
     echo "    - ≥1 live inline <svg with drawn elements (rect/path/text/…) — prose alone fails"
     echo "    - fenced code blocks for commands/APIs (not only inline \`code\` pills)"
     echo "    - at least one table (files/risks/validation) and an artifact-callout"
     echo "  artifacts check/render now ERROR if a plan has no drawn SVG figure."
     echo "  Open it on the online macOS device (resolve from \`agents devices\`):"
-    echo "    scp .agents/artifacts/plans/plan-<slug>.html <host>:/tmp/ && agents ssh <host> 'open /tmp/plan-<slug>.html'"
+    echo "    scp .agents/artifacts/\$DATE/plan-<slug>.html <host>:/tmp/ && agents ssh <host> 'open /tmp/plan-<slug>.html'"
     echo "  Headless fleet with no browser host: still render a figure-rich file (that clears this)."
+    echo "  Same layout for any related artifact (visuals, reports): .agents/artifacts/yyyy-mm-dd/<title>.md"
   fi
   if [ "$checklist_ok" != 1 ]; then
     echo "* Create a task checklist for this plan — it has multiple steps."

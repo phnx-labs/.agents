@@ -1,6 +1,6 @@
 ---
 name: plan-render
-description: "Render an implementation plan as a beautiful, self-contained HTML doc by authoring Markdown and compiling it with artifacts-cli. Produces interactive inline-SVG figures, branded light/dark output, and opens it in the user's default browser. The Markdown source lives in the repo's .agents/artifacts/plans/ directory. Triggers on: render a plan, present a plan, plan-as-HTML, open the plan in the browser, plan mode, show the plan visually."
+description: "Render an implementation plan as a beautiful, self-contained HTML doc by authoring Markdown and compiling it with artifacts-cli. Produces interactive inline-SVG figures, branded light/dark output, and opens it in the user's default browser. The Markdown source lives under the repo's dated artifact layout: .agents/artifacts/yyyy-mm-dd/. Triggers on: render a plan, present a plan, plan-as-HTML, open the plan in the browser, plan mode, show the plan visually."
 argument-hint: "[topic]"
 allowed-tools: Bash(scp*), Bash(agents ssh*), Bash(agents browser*), Bash(open*), Bash(xdg-open*), Bash(find*), Bash(cp*), Bash(mkdir*), Bash(test*), Bash(git rev-parse*), Bash(artifacts*), Write
 user-invocable: true
@@ -29,7 +29,7 @@ Do **not** present until `artifacts render` exits 0. A missing figure fails with
 ## Output
 
 - **HTML only** — no PDF is produced.
-- **Destination** — write the Markdown source and rendered HTML into the repo's `.agents/artifacts/plans/` directory (create it if missing).
+- **Destination** — write the Markdown source and rendered HTML under `.agents/artifacts/yyyy-mm-dd/` (create the date dir if missing). Same layout as any related artifact.
 - **Self-contained** — the HTML has inline CSS, no CDN, and opens offline.
 
 ## Workflow
@@ -42,17 +42,18 @@ Do **not** present until `artifacts render` exits 0. A missing figure fails with
 
    If `artifacts` is missing, install artifacts-cli first and report the prerequisite.
 
-2. **Resolve the repo root and artifact home.**
+2. **Resolve the repo root and dated artifact home.**
 
    ```bash
    ROOT=$(git rev-parse --show-toplevel 2>/dev/null)
-   ARTIFACTS_DIR="${ROOT:-.}/.agents/artifacts/plans"
+   DATE=$(date +%F)
+   ARTIFACTS_DIR="${ROOT:-.}/.agents/artifacts/$DATE"
    mkdir -p "$ARTIFACTS_DIR"
    ```
 
 3. **Author the Markdown source.**
 
-   Write `"$ARTIFACTS_DIR/plan-<slug>.md"` with at least this frontmatter:
+   Write `"$ARTIFACTS_DIR/plan-<slug>.md"` (i.e. `.agents/artifacts/yyyy-mm-dd/plan-<slug>.md`) with at least this frontmatter:
 
    ```yaml
    ---
@@ -150,7 +151,7 @@ Do **not** present until `artifacts render` exits 0. A missing figure fails with
 
 ## Completion contract
 
-- [ ] Markdown source written to `.agents/artifacts/plans/plan-<slug>.md` (not `/tmp/scratchpad`)
+- [ ] Markdown source written to `.agents/artifacts/yyyy-mm-dd/plan-<slug>.md` (not `/tmp/scratchpad`)
 - [ ] `artifacts check` reports **no errors** (figure present; required sections present)
 - [ ] HTML rendered next to the source with `artifacts render ... --format html` (exit 0)
 - [ ] Grep the HTML: at least one `<svg` with a drawn primitive; at least one `<pre`/`<table`
