@@ -8,6 +8,8 @@
 
 ### Removed
 
+- **Built-in Watchdog routine removed.** Session recovery remains available through explicit `agents watchdog` commands, but the system DotAgents layer no longer schedules the two-minute watchdog routine by default. Source: `routines/watchdog.yml`, `routines/README.md`.
+
 - **Skill and plugin bloat cut (discovery surface).** Deleted top-level skills `dither-kit` and `git-workflow` (git procedure lives only in the always-on `truly-agentic-git-workflow` rule), folded `agents-md` into `skills/docs/write-agents-md.md`, and removed system plugins `clify` and `cloud` (Rush Cloud docs belong in the product/extension; marketplace entries dropped). Stripped Dither Kit from `tech-stack`, plan-presentation, docs, and related catalogs. Source: skills/, plugins/, `.claude-plugin/marketplace.json`, `rules/subrules/`.
 
 ### Added
