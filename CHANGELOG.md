@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- **`session-start/04-session-identity` no longer wipes Factory join keys on by-pid merge (RUSH-2192).** SessionStart rewrote `~/.agents/.cache/terminals/by-pid/<pid>.json` with the real `sessionId` but only preserved `agent` / `cwd` / `tmuxPane` / `startedAtMs` — dropping `terminalId` and `launchId` the launcher had stamped. That left `agents sessions --active` rows without `terminalId`, so Factory status-bar join by `AGENT_TERMINAL_ID` (Grok / Codex / `--device`) could not bind. Merge now keeps `terminalId`, `launchId`, `actor`, `initiatedBy`; if no prior registry file, falls back to `AGENT_TERMINAL_ID` / `AGENT_LAUNCH_ID` env. Tests cover preserve + env fallback. Source: `hooks/session-start/04-session-identity.sh`, `_test.sh`.
+
 ### Changed
 
 - **After opening a PR, agents no longer open the PR link for the user — they drive review + merge themselves.** F4 no longer uses "review + merge PR #N" as the handoff example (routine PRs are not handoffs). `truly-agentic-git-workflow` replaces "open the PR on the user's interactive device" with: watch CI and **immediately check whether the automated code reviewer is functioning** (config + live post on this PR); if the bot is working, wait for it; if it is missing, silent, down, or unconfigured, **spawn a non-author subagent review as soon as possible** (`code:review`) and merge on green — never hand the merge to the user because the bot is down. `gh-merge-guard` states the same non-author review source rule. `code:review` skill documents when it is the default path vs skip-when-bot-posted. The `verify-work-complete` Stop gate no longer treats "prix-cloud is down / no reviewer configured + needs you to click merge" as a valid stop; its PRGATE text tells the agent to spawn a subagent review instead. Tests updated (reviewer-down + needs-you blocks; explicit named handoff still allows). Source: `rules/subrules/{foundations,truly-agentic-git-workflow,gh-merge-guard}/`, `hooks/00-agent-verify-work-complete.sh`, `plugins/code/skills/review/SKILL.md`, `rules/AGENTS.md`.
