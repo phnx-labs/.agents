@@ -8,7 +8,7 @@
 
 ### Changed
 
-- **Feed guidance examples now include the required `--title`.** The completion stop gate and the `feed-status-posts` rule use the real `agents feed post --title <subject> <body>` syntax, so agents can record or deliver the update instead of failing command validation.
+- **Feed delivery now has one policy path.** Feed guidance examples include the required `--title`, and the completion stop gate uses `--level important`. The legacy `feed-forward` PostToolUse hook is removed because it forwarded every plain milestone outside `feed.broadcast`, bypassing `minLevel: important` and duplicating owner delivery.
 
 - **Feed milestones now distinguish record-only progress from owner delivery (RUSH-2193).** Plain `agents feed post` updates stay in the activity stream under `minLevel: important`; phone-worthy successful updates use `--level important`; `--blocked` remains reserved for genuine human blockers. Guidance also says session identity auto-resolves and documents `--session` only as an escape hatch. The completion stop gate now requests an important post explicitly.
 

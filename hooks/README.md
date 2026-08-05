@@ -88,7 +88,6 @@ register time). See [§Subrule hooks](#subrule-hooks-rules-not-this-tree).
 
 | Hook | What it does |
 |---|---|
-| [`13-feed-forward.py`](./post-tool-use/13-feed-forward.py) | Forwards deliberate feed status posts to the owner's channel |
 
 ## Subrule hooks (rules, not this tree)
 
