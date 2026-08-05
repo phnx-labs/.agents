@@ -1,5 +1,5 @@
 ---
-description: Debug with swarm verification — trace the data path, hypothesize the root cause, then have independent agents (blind, different providers) confirm before any fix. Routes to the swarm debug skill instead of solo file-reading.
+description: Debug end to end — clarify intent vs observed, find the spec gap that let it slip, confirm the root cause with blind independent agents, then close the loop (artifact, ticket, dispatch to the worker boxes). Routes to the swarm debug skill instead of solo file-reading.
 ---
 
 Never debug solo — always route through the swarm debug skill.
