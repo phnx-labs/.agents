@@ -14,6 +14,24 @@ internal env knobs. SessionStart hooks are the sharp edge — they fire on every
 session, on every harness, and a biometric sheet behind one blocks the session
 until a human touches the sensor.
 
+## Multi-harness
+
+Target harnesses: **claude, codex, kimi, grok, cursor, droid, antigravity**.
+
+| Fact | Detail |
+|---|---|
+| `agents:` in `agents.yaml` | **Ignored** by agents-cli (`ManifestHook.agents` is deprecated). Every registered hook is written into every hooks-capable version home on sync. |
+| Gemini CLI | Hard-deprecated (Google → Antigravity). Do not list as a target; use `antigravity`. |
+| Stdin field names | Claude / Codex / Kimi / Cursor / Droid: snake_case (`tool_name`, `tool_input.command`, `session_id`). Grok: camelCase (`toolName`, `toolInput.command`, `sessionId`). Guards and inject scripts accept **both**. |
+| Shell tool matcher | Manifest keeps `matcher: Bash`. Grok auto-aliases `Bash` → `run_terminal_command` (and keeps the original name). |
+| SessionStart stdout | Claude / Codex / Kimi / Cursor inject stdout into context. **Grok ignores SessionStart stdout** (passive only) — Linear / topology / inflight text injects do not reach the Grok model. Side-effect SessionStart hooks (autosync, git-pull-forward, session-identity file writes) still run. |
+| Antigravity events | agents-cli maps only `PreToolUse` → `before_tool_call`, `PostToolUse` → `after_model_call`, `Stop` → `on_loop_stop`. No SessionStart / UserPromptSubmit / Notification on agy today. |
+| Block protocol | Exit `2` + reason on stderr for PreToolUse / Stop (Claude-compatible). Grok also accepts `{"decision":"deny"}` on stdout. |
+
+When you add a PreToolUse guard that reads a shell command, always try
+`tool_input.command` then `toolInput.command`. When you read tool or session ids,
+accept snake_case and camelCase.
+
 ## Layout — `hooks/<event-name>/<hook-name>`
 
 Scripts live under a **one-level event directory** (kebab-case of the harness event):

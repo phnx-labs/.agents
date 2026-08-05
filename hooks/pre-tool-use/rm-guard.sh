@@ -69,10 +69,12 @@ case "$input" in *rm*) ;; *) exit 0 ;; esac
 
 # Fail CLOSED if no JSON parser is available — a guard that cannot read the
 # command must not wave a potential `rm -rf` through (the Windows fail-open bug).
+# Claude/Codex/Kimi/Cursor/Droid: tool_input.command; Grok: toolInput.command.
 if ! cmd=$(_json_field "$input" tool_input.command); then
   printf 'rm-guard: no JSON parser (jq/node/python) available — refusing to run the command unchecked (fail-closed). Ensure node or jq is on PATH.\n' >&2
   exit 2
 fi
+[ -z "$cmd" ] && cmd=$(_json_field "$input" toolInput.command) || true
 [ -z "$cmd" ] && exit 0
 
 deny_reason=""

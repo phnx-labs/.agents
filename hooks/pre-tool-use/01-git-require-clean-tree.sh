@@ -45,10 +45,12 @@ report_friction() {  # $1=failureId  $2=error-message
     --error "$2" --command "$cmd" || true) </dev/null >/dev/null 2>&1 &
 }
 
+# Claude/Codex/Kimi/Cursor/Droid: tool_input.command; Grok: toolInput.command.
 if ! cmd=$(_json_field "$input" tool_input.command); then
   echo "git-require-clean-tree: no JSON parser (jq/node/python) available — refusing git pull/rebase unchecked (fail-closed)." >&2
   exit 2
 fi
+[ -z "$cmd" ] && cmd=$(_json_field "$input" toolInput.command) || true
 
 case "$cmd" in
   "git pull"*|"git rebase"*|*" git pull"*|*" git rebase"*|*"--autostash"*) ;;
@@ -56,6 +58,7 @@ case "$cmd" in
 esac
 
 cwd=$(_json_field "$input" cwd) || cwd=""
+[ -z "$cwd" ] && cwd=$(_json_field "$input" workspaceRoot) || true
 [ -n "$cwd" ] && cd "$cwd" 2>/dev/null
 
 [ -z "$(git status --porcelain 2>/dev/null)" ] && exit 0

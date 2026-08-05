@@ -23,8 +23,8 @@ try:
 except Exception:
     sys.exit(0)
 
-prompt = data.get("prompt", "")
-event = data.get("hook_event_name", "")
+prompt = data.get("prompt", "") or data.get("userPrompt", "") or ""
+event = data.get("hook_event_name", "") or data.get("hookEventName", "") or ""
 if not prompt:
     sys.exit(0)
 
@@ -65,16 +65,16 @@ if not matched:
 
 token, expansion = matched
 
-# Claude: replace prompt via wrapper (CLAUDE_PROJECT_DIR is set by claude).
-if os.environ.get("CLAUDE_PROJECT_DIR"):
+# Claude Code harness: replace prompt via wrapper.
+if os.environ.get("CLAUDE_PROJECT_DIR") or os.environ.get("CLAUDECODE"):
     replaced = prompt.replace(token, expansion)
     print("<user-prompt-submit-hook>")
     print(replaced)
     print("</user-prompt-submit-hook>")
     sys.exit(0)
 
-# Codex + Gemini: append as additionalContext. Event name differs
-# (UserPromptSubmit vs BeforeAgent), but the output shape is identical.
+# Codex / Kimi / Grok / Cursor / Droid: append as additionalContext.
+# Event name differs by harness; output shape is the Claude-compatible JSON.
 event_name = event or "UserPromptSubmit"
 context = f"Shortcut `{token}` expands to:\n\n{expansion}"
 out = {

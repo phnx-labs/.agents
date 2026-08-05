@@ -1,3 +1,12 @@
+# System-layer hooks. Registration: agents-cli writes these into every
+# hooks-capable agent version home on sync. The optional `agents:` field on each
+# entry is DEPRECATED and IGNORED by agents-cli (types.ts ManifestHook) — do not
+# use it to filter harnesses. Real coverage is per-event mapping in agents-cli
+# (hooks.ts) + multi-harness stdin protocol in each script (snake_case Claude/
+# Codex/Kimi/Cursor/Droid + camelCase Grok). Gemini CLI is hard-deprecated;
+# use antigravity. Target harnesses: claude, codex, kimi, grok, cursor, droid,
+# antigravity. See hooks/README.md §Multi-harness.
+
 hooks:
   mq-read-nudge:
     # PreToolUse on Read: when the agent is about to read a large (>=16 KiB)
@@ -6,19 +15,13 @@ hooks:
     # Advisory, never blocks; skips targeted reads (offset/limit) and small
     # files. Closes the reach-gap behind the measured pattern — mq used 0x
     # across 835 sessions / 3 days while 62% of tool calls were context reads.
-    # Claude only — relies on PreToolUse additionalContext.
-    agents:
-      - claude
+    # Advisory additionalContext; tool names Read/read_file/ReadFile (multi-harness).
     events:
       - PreToolUse
     matcher: Read
     script: pre-tool-use/10-mq-read-nudge.py
     timeout: 5
   session-start-autosync:
-    agents:
-      - claude
-      - codex
-      - gemini
     events:
       - SessionStart
     script: session-start/05-session-start-autosync.sh
@@ -31,17 +34,11 @@ hooks:
     script: session-start/09-git-pull-forward.sh
     timeout: 20
   verify-work-complete:
-    agents:
-      - claude
     events:
       - Stop
     script: stop/00-agent-verify-work-complete.sh
     timeout: 20
   inject-repo-inflight:
-    agents:
-      - claude
-      - codex
-      - gemini
     events:
       - SessionStart
     script: session-start/08-inject-repo-inflight.sh
@@ -54,8 +51,6 @@ hooks:
     # but useless: SessionStart fires once per session, so every fire would be a miss.
     # Speed comes from parallelising its two probes inside the script instead.
   attention-sentinel:
-    agents:
-      - claude
     events:
       - Notification
       - Stop
@@ -66,17 +61,11 @@ hooks:
     # Opt-in (owner.md `auto_escalate: true`): reach the user out-of-band per
     # their owner profile when an agent raises a needs-you Notification. Inert
     # until the owner turns it on, so it is safe to ship.
-    agents:
-      - claude
     events:
       - Notification
     script: notification/12-escalate-on-notification.sh
     timeout: 10
   inject-device-topology:
-    agents:
-      - claude
-      - codex
-      - gemini
     events:
       - SessionStart
     script: session-start/07-inject-device-topology.sh
@@ -96,39 +85,22 @@ hooks:
       key: global
       prefetch: background
   session-identity:
-    agents:
-      - claude
-      - codex
-      - gemini
-      - kimi
-      - grok
-      - antigravity
     events:
       - SessionStart
     script: session-start/04-session-identity.sh
     timeout: 5
   mailbox-inject:
-    agents:
-      - claude
     events:
       - PreToolUse
     script: pre-tool-use/09-mailbox-inject.py
     timeout: 5
   git-guard:
-    agents:
-      - claude
-      - codex
-      - gemini
     events:
       - PreToolUse
     matcher: Bash
     script: pre-tool-use/git-guard.sh
     timeout: 5
   rm-guard:
-    agents:
-      - claude
-      - codex
-      - gemini
     events:
       - PreToolUse
     matcher: Bash
@@ -138,18 +110,12 @@ hooks:
     # Event-driven (no polling routine): when an agent posts a status update via
     # `agents feed post`, forward it to the owner via `agents notify` (else
     # Telegram). Opt-in via owner.md (forward_status: true) — inert until on.
-    agents:
-      - claude
     events:
       - PostToolUse
     matcher: Bash
     script: post-tool-use/13-feed-forward.py
     timeout: 10
   git-require-clean-tree:
-    agents:
-      - claude
-      - codex
-      - gemini
     events:
       - PreToolUse
     matcher: Bash

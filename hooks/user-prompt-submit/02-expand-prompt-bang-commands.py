@@ -72,9 +72,14 @@ def main():
     except json.JSONDecodeError:
         sys.exit(0)
 
-    prompt = data.get("prompt", "")
-    cwd = data.get("cwd", os.getcwd())
-    event = data.get("hook_event_name", "UserPromptSubmit")
+    # Claude/Codex/Kimi/Cursor: snake_case; Grok: camelCase (prompt still "prompt").
+    prompt = data.get("prompt", "") or data.get("userPrompt", "") or ""
+    cwd = data.get("cwd") or data.get("workspaceRoot") or os.getcwd()
+    event = (
+        data.get("hook_event_name")
+        or data.get("hookEventName")
+        or "UserPromptSubmit"
+    )
 
     if "`!" not in prompt:
         sys.exit(0)
@@ -83,7 +88,9 @@ def main():
     if expanded == prompt:
         sys.exit(0)
 
-    if os.environ.get("CLAUDE_PROJECT_DIR"):
+    # Claude Code: replace prompt. CLAUDECODE is set for Claude-harness runs
+    # (including kimi/deepseek ANTHROPIC_MODEL presets that share the harness).
+    if os.environ.get("CLAUDE_PROJECT_DIR") or os.environ.get("CLAUDECODE"):
         print("<user-prompt-submit-hook>")
         print(expanded)
         print("</user-prompt-submit-hook>")
