@@ -113,26 +113,38 @@ def forward(text, agent):
     except Exception:
         pass
 
+# Shell-tool names across harnesses (Claude Bash; Grok run_terminal_command).
+_SHELL_TOOLS = frozenset({
+    "Bash", "bash", "Shell", "shell", "run_terminal_command", "run_terminal",
+})
+
+
 def main():
     raw = sys.stdin.read()
     try:
         payload = json.loads(raw) if raw.strip() else {}
     except Exception:
         return
-    if payload.get("agent_type"):                       # sub-agent gate
+    if payload.get("agent_type") or payload.get("agentType"):  # sub-agent gate
         return
-    if payload.get("hook_event_name") != "PostToolUse":
+    event = payload.get("hook_event_name") or payload.get("hookEventName") or ""
+    # Normalize Grok/snake variants of PostToolUse.
+    if event not in ("PostToolUse", "post_tool_use", "postToolUse", "after_model_call"):
         return
-    if payload.get("tool_name") != "Bash":
+    tool = payload.get("tool_name") or payload.get("toolName") or ""
+    if tool not in _SHELL_TOOLS:
         return
-    command = str((payload.get("tool_input") or {}).get("command", ""))
+    ti = payload.get("tool_input") or payload.get("toolInput") or {}
+    if not isinstance(ti, dict):
+        ti = {}
+    command = str(ti.get("command", "") or "")
     text = extract_feed_post_text(command)
     if not text:
         return
     # OPT-IN: only forward if the owner turned it on.
     if str(owner_json().get("forward_status", False)).lower() not in ("true", "1"):
         return
-    session = payload.get("session_id", "") or "unknown"
+    session = payload.get("session_id") or payload.get("sessionId") or "unknown"
     if already_sent(session, text):
         return
     agent = os.environ.get("AGENTS_AGENT_NAME") or "claude"

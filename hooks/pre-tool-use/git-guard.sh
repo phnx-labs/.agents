@@ -69,18 +69,24 @@ report_friction() {  # $1=failureId  $2=error-message
 input=$(cat)
 case "$input" in *git*) ;; *) exit 0 ;; esac
 
-# Extract .tool_input.command. Fail CLOSED if no JSON parser is available at all
-# — a guard that cannot read the command must not wave it through (that was the
-# Windows fail-open bug).
+# Extract shell command from PreToolUse JSON. Fail CLOSED if no JSON parser is
+# available — a guard that cannot read the command must not wave it through
+# (that was the Windows fail-open bug).
+#
+# Field names differ by harness (Claude/Codex/Kimi/Cursor/Droid: snake_case
+# tool_input.command; Grok: camelCase toolInput.command). Try both. Empty on
+# both means this event is not a shell tool — allow.
 if ! cmd=$(_json_field "$input" tool_input.command); then
   printf 'git-guard: no JSON parser (jq/node/python) available — refusing to run a git command unchecked (fail-closed). Ensure node or jq is on PATH.\n' >&2
   exit 2
 fi
+[ -z "$cmd" ] && cmd=$(_json_field "$input" toolInput.command) || true
 [ -z "$cmd" ] && exit 0
 
 # Session working directory, used to tell whether a history-rewriting op is
 # scoped to an isolated worktree (safe) vs the user's main checkout (gated).
 cwd=$(_json_field "$input" cwd) || cwd=""
+[ -z "$cwd" ] && cwd=$(_json_field "$input" workspaceRoot) || true
 
 deny_reason=""
 

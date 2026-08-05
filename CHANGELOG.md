@@ -2,6 +2,22 @@
 
 ## [Unreleased]
 
+### Changed
+
+- **Multi-harness hook protocol (claude / codex / kimi / grok / cursor / droid / antigravity).**
+  Guards and inject scripts accept both Claude-style snake_case stdin
+  (`tool_input.command`, `tool_name`, `session_id`) and Grok-style camelCase
+  (`toolInput.command`, `toolName`, `sessionId`). Shell tools recognized as
+  Bash / Shell / `run_terminal_command`; file-read tools as Read / `read_file` /
+  ReadFile. Stripped ignored `agents:` filters from `agents.yaml` (field is
+  deprecated in agents-cli) and documented real coverage limits: Grok ignores
+  SessionStart stdout; Antigravity has no SessionStart/UserPromptSubmit/
+  Notification mapping; Gemini CLI is hard-deprecated in favor of antigravity.
+  Source: `hooks/pre-tool-use/{git-guard,rm-guard,01-git-require-clean-tree,large-file-add-guard,10-mq-read-nudge,09-mailbox-inject}`,
+  `hooks/post-tool-use/13-feed-forward.py`,
+  `hooks/user-prompt-submit/02-expand-prompt-{bang-commands,user-shortcuts}`,
+  `hooks/README.md`, `agents.yaml`.
+
 ### Fixed
 
 - **`session-start/04-session-identity` no longer wipes Factory join keys on by-pid merge (RUSH-2192).** SessionStart rewrote `~/.agents/.cache/terminals/by-pid/<pid>.json` with the real `sessionId` but only preserved `agent` / `cwd` / `tmuxPane` / `startedAtMs` — dropping `terminalId` and `launchId` the launcher had stamped. That left `agents sessions --active` rows without `terminalId`, so Factory status-bar join by `AGENT_TERMINAL_ID` (Grok / Codex / `--device`) could not bind. Merge now keeps `terminalId`, `launchId`, `actor`, `initiatedBy`; if no prior registry file, falls back to `AGENT_TERMINAL_ID` / `AGENT_LAUNCH_ID` env. Tests cover preserve + env fallback. Source: `hooks/session-start/04-session-identity.sh`, `_test.sh`.

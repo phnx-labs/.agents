@@ -117,8 +117,8 @@ def main():
     except Exception:
         payload = {}
 
-    # Sub-agent gate (see module docstring).
-    if payload.get("agent_type"):
+    # Sub-agent gate (see module docstring). snake_case (Claude) + camelCase (Grok).
+    if payload.get("agent_type") or payload.get("agentType"):
         return
 
     box = os.environ.get("AGENTS_MAILBOX_DIR")

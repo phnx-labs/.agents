@@ -33,7 +33,35 @@ case "$input" in
   *) exit 0 ;;
 esac
 
-cmd=$(printf '%s' "$input" | jq -r '.tool_input.command // empty' 2>/dev/null) || cmd=""
+# Portable JSON field (jq → node → python). Claude/Codex: tool_input.command;
+# Grok: toolInput.command. Empty on both → not a shell tool, allow.
+_json_field() {
+  if command -v jq >/dev/null 2>&1; then
+    printf '%s' "$1" | jq -r "(.$2) // empty" 2>/dev/null; return 0
+  fi
+  if command -v node >/dev/null 2>&1; then
+    printf '%s' "$1" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{let o=JSON.parse(s);for(const k of process.argv[1].split("."))o=(o==null?null:o[k]);process.stdout.write(o==null?"":String(o))}catch(e){}})' "$2" 2>/dev/null; return 0
+  fi
+  for _py in python3 python; do
+    command -v "$_py" >/dev/null 2>&1 && "$_py" -c '' >/dev/null 2>&1 || continue
+    printf '%s' "$1" | "$_py" -c 'import json,sys
+try: o=json.load(sys.stdin)
+except Exception: o=None
+for k in sys.argv[1].split("."):
+    o=o.get(k) if isinstance(o,dict) else None
+sys.stdout.write("" if o is None else str(o))' "$2" 2>/dev/null
+    return 0
+  done
+  return 1
+}
+
+if ! cmd=$(_json_field "$input" tool_input.command); then
+  # No parser: fail closed only when the payload clearly looks like git add —
+  # we already matched *git*add* above.
+  printf 'large-file-add-guard: no JSON parser (jq/node/python) — refusing git add unchecked (fail-closed).\n' >&2
+  exit 2
+fi
+[ -z "$cmd" ] && cmd=$(_json_field "$input" toolInput.command) || true
 [ -z "$cmd" ] && exit 0
 
 deny_reason=""

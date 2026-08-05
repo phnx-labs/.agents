@@ -22,7 +22,9 @@ Skips (already efficient, or not mq-addressable):
 Why: a fleet audit found `mq` invoked 0 times across 835 sessions / 3 days while
 62% of tool calls were context reads — whole-file dumps and the same file re-read
 up to 34x per session. The tool already collapses that; this closes the reach-gap
-at the moment of the read. Claude only — relies on PreToolUse additionalContext.
+at the moment of the read. Context injection uses Claude-shaped
+`hookSpecificOutput.additionalContext` (also accepted by Codex/Kimi/Droid
+when they map PreToolUse feedback); Grok may ignore advisory stdout.
 """
 import os
 import sys
@@ -45,11 +47,25 @@ SUPPORTED = {
     "lua", "scala", "cs", "sql",
 }
 
+# File-read tool names across harnesses (Claude Read; Grok read_file; Cursor variants).
+READ_TOOLS = frozenset({
+    "Read", "read_file", "ReadFile", "read", "beforeReadFile",
+})
+
 
 def _marker_for(session_id, path):
     key = hashlib.sha1(f"{session_id}:{path}".encode("utf-8", "replace")).hexdigest()
     d = os.path.join(tempfile.gettempdir(), "agents-mq-nudge")
     return d, os.path.join(d, key)
+
+
+def _tool_name(payload: dict) -> str:
+    return str(payload.get("tool_name") or payload.get("toolName") or "")
+
+
+def _tool_input(payload: dict) -> dict:
+    ti = payload.get("tool_input") or payload.get("toolInput") or {}
+    return ti if isinstance(ti, dict) else {}
 
 
 def main():
@@ -59,17 +75,15 @@ def main():
     except Exception:
         return  # fail open
 
-    if payload.get("tool_name") != "Read":
+    if _tool_name(payload) not in READ_TOOLS:
         return
-    ti = payload.get("tool_input") or {}
-    if not isinstance(ti, dict):
-        return
+    ti = _tool_input(payload)
 
     # Already a targeted read — the agent is narrowing; don't nudge.
     if ti.get("offset") is not None or ti.get("limit") is not None:
         return
 
-    path = ti.get("file_path")
+    path = ti.get("file_path") or ti.get("filePath") or ti.get("path") or ti.get("target_file")
     if not isinstance(path, str) or not path:
         return
 
@@ -84,7 +98,9 @@ def main():
     if size < MIN_BYTES:
         return
 
-    session_id = str(payload.get("session_id") or os.getppid())
+    session_id = str(
+        payload.get("session_id") or payload.get("sessionId") or os.getppid()
+    )
     mdir, marker = _marker_for(session_id, os.path.abspath(path))
     try:
         os.makedirs(mdir, exist_ok=True)
