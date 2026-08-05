@@ -702,7 +702,7 @@ Use the feed to record milestones without turning every progress update into a
 phone notification:
 
 ```bash
-agents feed post "<one human line — what just happened>"
+agents feed post --title "<short subject>" "<one human line — what happened>"
 ```
 
 A plain post is **record-only**. The owner's configured `minLevel: important`
@@ -711,7 +711,7 @@ phone. When a successful update is genuinely phone-worthy, mark that same post
 important:
 
 ```bash
-agents feed post "deploy verified — PR #149 is live" --level important
+agents feed post --title "Deploy verified" "PR #149 is live" --level important
 ```
 
 This preserves one event in one stream: `--level important` records the update
@@ -725,7 +725,7 @@ the launch and activity indexes. Do not stop or ask the user because
 documented escape hatch:
 
 ```bash
-agents feed post "<update>" --session <session-id>
+agents feed post --title "<short subject>" "<update>" --session <session-id>
 ```
 
 `--blocked` is not a louder success level. Use it only after exhausting
@@ -733,7 +733,7 @@ self-serve options when work genuinely needs a human decision, credential, or
 physical action:
 
 ```bash
-agents feed post "production signing needs your biometric" --blocked
+agents feed post --title "Signing blocked" "Production needs your biometric" --blocked
 ```
 
 Blocked posts open a needs-you record and deliver fail-loud. Never combine
