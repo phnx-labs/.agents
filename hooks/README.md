@@ -87,6 +87,7 @@ register time). See [§Subrule hooks](#subrule-hooks-rules-not-this-tree).
 |---|---|
 | [`02-expand-prompt-user-shortcuts.sh`](./user-prompt-submit/02-expand-prompt-user-shortcuts.sh) | Expands `#shortcut` tokens from `promptcuts.yaml` |
 | [`02-expand-prompt-bang-commands.py`](./user-prompt-submit/02-expand-prompt-bang-commands.py) | Runs inline `` `!cmd` `` and injects output |
+| [`03-vacation-recap.py`](./user-prompt-submit/03-vacation-recap.py) | On a long gap since the session's last prompt, reminds the agent to open with a back-from-vacation recap |
 
 ### `stop/` — Stop
 

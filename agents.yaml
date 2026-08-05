@@ -125,6 +125,11 @@ hooks:
       - UserPromptSubmit
     script: user-prompt-submit/02-expand-prompt-bang-commands.py
     timeout: 10
+  vacation-recap:
+    events:
+      - UserPromptSubmit
+    script: user-prompt-submit/03-vacation-recap.py
+    timeout: 5
   linear-tasks:
     events:
       - SessionStart
