@@ -78,6 +78,8 @@ registered, online devices over SSH:
 
 ```bash
 agents sessions --active           # this machine + every online device
+agents sessions --idle             # idle sessions across the same fleet
+agents sessions --orphan           # orphaned sessions across the same fleet
 agents sessions --active --local   # this machine only (no SSH fan-out)
 agents sessions --active --host zion --host mac-mini   # specific machines
 agents sessions --active --json    # merged, machine-tagged, for scripts
@@ -85,6 +87,8 @@ agents sessions --active --json    # merged, machine-tagged, for scripts
 
 Unreachable or CLI-less hosts are skipped with a note, never fatal. If no
 devices are registered, it prints a tip pointing you at `agents devices sync`.
+`--all` is unrelated to device scope: it widens historical directory/time
+filters. Cross-device collection is already the default; `--local` opts out.
 
 ## Tips
 
