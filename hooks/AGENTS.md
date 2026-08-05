@@ -11,11 +11,21 @@ wrong moment corrupts the session it fires in.
 Registration is the `hooks:` entry in [`../agents.yaml`](../agents.yaml). A script with no
 entry is dead code that looks alive. Adding a hook is always two edits:
 
-1. `hooks/<NN>-<name>.{sh,py}`, executable (`chmod +x`).
-2. A `hooks:` entry in `../agents.yaml` naming the script, its `events`, and a `timeout`.
+1. `hooks/<NN>-<name>.{sh,py}` (or `hooks/<group>/<NN>-<name>.{sh,py}` for an
+   event family — e.g. `session-starts/`), executable (`chmod +x`).
+2. A `hooks:` entry in `../agents.yaml` naming the script (relative to `hooks/`,
+   e.g. `session-starts/04-session-identity.sh`), its `events`, and a `timeout`.
 
 Then add a row to [`README.md`](./README.md) under the right event group, ship a
 `<name>_test.sh` beside the script, and add a `CHANGELOG.md` entry.
+
+### Group subdirs (session-starts/)
+
+SessionStart hooks live under `hooks/session-starts/`. agents-cli ≥ the
+group-dir discovery change lists, resolves, syncs, and registers them the same
+as top-level scripts; the install name remains the **basename** so version-home
+copies stay flat and doctor/diff keep matching. Other event families may use the
+same one-level layout later; do not nest deeper than one group dir.
 
 ### Execution order is NOT guaranteed — never depend on it
 
@@ -23,9 +33,9 @@ The `NN-` prefix is **cosmetic**. It keeps this directory readable; it does not 
 anything. Two facts, both checkable:
 
 - **Nothing sorts by it.** Registration order is `Object.entries(manifest)` order
-  (`apps/cli/src/lib/hooks.ts:1696`) — i.e. YAML declaration order in `../agents.yaml` —
+  (`apps/cli/src/lib/hooks.ts`) — i.e. YAML declaration order in `../agents.yaml` —
   and there is no `.sort()` anywhere between `parseHookManifest` and any registrar's write.
-  The manifest currently declares `10-`, `05-`, `00-`, `08-`, `06-`, `12-` in that order.
+  The manifest declaration order is the registration order; the `NN-` prefix is cosmetic.
 - **Claude runs them concurrently anyway.** *"All matching hooks run in parallel, and
   identical handlers are deduplicated automatically"*
   ([hooks reference](https://code.claude.com/docs/en/hooks)), with a per-hook `timeout`.

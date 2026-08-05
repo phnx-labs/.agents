@@ -21,8 +21,15 @@ hooks:
       - gemini
     events:
       - SessionStart
-    script: 05-session-start-autosync.sh
+    script: session-starts/05-session-start-autosync.sh
     timeout: 5
+
+  # SessionStart: fast-forward the cwd git repo when the tree is clean.
+  # Never force, never rebase over local commits, never autostash.
+  git-pull-forward:
+    events: [SessionStart]
+    script: session-starts/09-git-pull-forward.sh
+    timeout: 20
   verify-work-complete:
     agents:
       - claude
@@ -37,7 +44,7 @@ hooks:
       - gemini
     events:
       - SessionStart
-    script: 08-inject-repo-inflight.sh
+    script: session-starts/08-inject-repo-inflight.sh
     timeout: 10
     # NOT cached, deliberately. The hook excludes the CALLING session from the live-session
     # list (`self_sid`, 08-inject-repo-inflight.sh:72), so its correct output differs per
@@ -72,7 +79,7 @@ hooks:
       - gemini
     events:
       - SessionStart
-    script: 07-inject-device-topology.sh
+    script: session-starts/07-inject-device-topology.sh
     timeout: 5
     # Measured 2255ms — probes every fleet device for load/memory. Safe to cache: the
     # output has no session or cwd dependency, so a shared entry is the correct answer for
@@ -98,7 +105,7 @@ hooks:
       - antigravity
     events:
       - SessionStart
-    script: 04-session-identity.sh
+    script: session-starts/04-session-identity.sh
     timeout: 5
   mailbox-inject:
     agents:
@@ -164,7 +171,7 @@ hooks:
   linear-tasks:
     events:
       - SessionStart
-    script: 03-linear-inject-tasks-context.sh
+    script: session-starts/03-linear-inject-tasks-context.sh
     timeout: 15
   # Restored: dropped by 8b006a6 ("remove legacy agents hook config", Jun 24 2026),
   # which removed rm-guard and large-file-add-guard together. rm-guard was later

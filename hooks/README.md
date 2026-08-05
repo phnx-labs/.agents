@@ -16,15 +16,18 @@ until a human touches the sensor.
 
 ## What runs, and when
 
-**At session start** — these build the context an agent wakes up with.
+**At session start** — these live under [`session-starts/`](./session-starts/) and
+build the context an agent wakes up with. agents-cli discovers one-level group
+dirs (`hooks/<group>/<script>`); install names stay the file basename.
 
 | Hook | What it does |
 |---|---|
-| [`04-session-identity.sh`](./04-session-identity.sh) | The single "who am I" hook — session id, transcript path, runtime |
-| [`03-linear-inject-tasks-context.sh`](./03-linear-inject-tasks-context.sh) | Injects a Linear brief and the active-sprint board. Reads credentials from `~/.linear-cli/config.json` (env vars win); skips silently when absent |
-| [`07-inject-device-topology.sh`](./07-inject-device-topology.sh) | Injects the host and fleet topology, with live load and memory per machine |
-| [`08-inject-repo-inflight.sh`](./08-inject-repo-inflight.sh) | Injects the repo's in-flight state — open PRs and the other agents actively working on this project (activity-ranked, capped), resolving worktrees to their main repo |
-| [`05-session-start-autosync.sh`](./05-session-start-autosync.sh) | Brings the machine current — config repos, secrets, sessions |
+| [`session-starts/04-session-identity.sh`](./session-starts/04-session-identity.sh) | The single "who am I" hook — session id, transcript path, runtime |
+| [`session-starts/03-linear-inject-tasks-context.sh`](./session-starts/03-linear-inject-tasks-context.sh) | Injects a Linear brief and the active-sprint board. Reads credentials from `~/.linear-cli/config.json` (env vars win); skips silently when absent |
+| [`session-starts/07-inject-device-topology.sh`](./session-starts/07-inject-device-topology.sh) | Injects the host and fleet topology, with live load and memory per machine |
+| [`session-starts/08-inject-repo-inflight.sh`](./session-starts/08-inject-repo-inflight.sh) | Injects the repo's in-flight state — open PRs and the other agents actively working on this project (activity-ranked, capped), resolving worktrees to their main repo |
+| [`session-starts/05-session-start-autosync.sh`](./session-starts/05-session-start-autosync.sh) | Brings the machine current — config repos, secrets, sessions |
+| [`session-starts/09-git-pull-forward.sh`](./session-starts/09-git-pull-forward.sh) | Fast-forwards the session cwd git repo when the tree is clean (ff-only; never force/rebase/autostash) |
 
 **Before a tool call** — these block, nudge, or enrich.
 
