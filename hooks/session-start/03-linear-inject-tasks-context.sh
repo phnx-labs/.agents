@@ -120,12 +120,18 @@ result=$(curl -s --connect-timeout 3 --max-time 8 -X POST https://api.linear.app
 # request asks only for delegate names, so it is small and fast (~0.5s against
 # the 8s budget). Strictly additive: any failure leaves LANES empty and the
 # python block falls back to counting the page, saying so.
+# Budget: this hook is registered with `timeout: 15` in agents.yaml, and the
+# brief above already claims 8 of those seconds. The sweep therefore gets 3
+# pages at 2s each — 14s worst case, inside the timeout. That bound is the whole
+# point: the sweep runs BEFORE anything prints, so a sweep that overruns is not
+# a degraded brief, it is a killed hook and no brief at all. A slow or oversized
+# workspace simply falls back to counting the cycle page, which says so.
 LANES=""
 lanes_cursor="null"
-for _ in 1 2 3 4; do
+for _ in 1 2 3; do
   lq='{ team(id: "'"$LINEAR_TEAM_ID"'") { activeCycle { issues(first: 250, after: '"$lanes_cursor"', filter: { state: { type: { nin: ["completed", "canceled"] } } }) { nodes { delegate { name } } pageInfo { hasNextPage endCursor } } } } }'
   lbody=$(python3 -c 'import json,sys; print(json.dumps({"query": sys.argv[1]}))' "$lq" 2>/dev/null) || break
-  lpage=$(curl -s --connect-timeout 3 --max-time 5 -X POST https://api.linear.app/graphql \
+  lpage=$(curl -s --connect-timeout 2 --max-time 2 -X POST https://api.linear.app/graphql \
     -H "Content-Type: application/json" -H "Authorization: $LINEAR_API_KEY" \
     -d "$lbody" 2>/dev/null) || break
   read -r lnames lnext < <(printf '%s' "$lpage" | python3 -c "

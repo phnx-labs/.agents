@@ -188,7 +188,7 @@ check_contains "fixture apiKey reached Authorization"      "$(cat "$CURL_ARGS" 2
 check_absent   "completed project filtered out"            "$out" "### Old Stuff"
 
 # --- 2. env vars win over config.json -----------------------------------------
-rm -f ""
+rm -f "$CURL_ARGS"
 out=$(LINEAR_CLI_CONFIG="$SANDBOX/config.json" LINEAR_API_KEY="lin_api_env_key" LINEAR_TEAM_ID="team-env" \
   bash "$HOOK" 2>/dev/null)
 check_contains "env creds: projects render"                "$out" "## Projects ("
@@ -210,6 +210,7 @@ out=$(LINEAR_CLI_CONFIG="$SANDBOX/bad.json" env -u LINEAR_API_KEY -u LINEAR_TEAM
 check_contains "malformed config: skip line"               "$out" "Linear context skipped"
 
 # --- 5. Your Tasks routes by native delegate, per AGENT_SELF -------------------
+rm -f "$CURL_ARGS"
 out=$(LINEAR_CLI_CONFIG="$SANDBOX/config.json" env -u LINEAR_API_KEY -u LINEAR_TEAM_ID AGENT_SELF=claude \
   bash "$HOOK" 2>/dev/null)
 check_contains "claude lane: Your Tasks lists RUSH-10"     "$out" "RUSH-10"
@@ -267,6 +268,7 @@ check_contains "empty queue: both lanes still counted"     "$out" "Other agent l
 export CURL_PAYLOAD="$CLAUDE_PAYLOAD"
 
 # --- 5c. a hostile AGENT_SELF reaches neither the query nor the context -------
+rm -f "$CURL_ARGS"
 # Linear would filter myOpenIssues server-side for this identity, so use the
 # empty-queue fixture: the header then echoes the name, which is the point here.
 export CURL_PAYLOAD="$SANDBOX/payload-empty-mine.json"
@@ -309,6 +311,7 @@ check_contains "overflow: uncapped issue still in brief"   "$out" "RUSH-9011"
 export CURL_PAYLOAD="$CLAUDE_PAYLOAD"
 
 # --- 5e. a truncated cycle page must not print exact-looking lane counts ------
+rm -f "$CURL_ARGS"
 export CURL_PAYLOAD="$SANDBOX/payload-truncated-cycle.json"
 python3 - "$CLAUDE_PAYLOAD" "$CURL_PAYLOAD" <<'PY'
 import json, sys
@@ -387,6 +390,26 @@ out=$(LINEAR_CLI_CONFIG="$SANDBOX/config.json" env -u LINEAR_API_KEY -u LINEAR_T
 check_contains "empty team: brief header"                  "$out" "## Team & Agents"
 check_contains "empty team: no sprint"                     "$out" "No active sprint in Linear."
 check_contains "empty team: no projects message"           "$out" "No projects on this Linear team."
+
+# --- 6b. worst-case latency fits the registered hook timeout -------------------
+# The lane sweep runs BEFORE anything prints, so a sweep that overruns is not a
+# degraded brief — it is a killed hook and no brief at all. agents.yaml registers
+# this hook with `timeout: 15`, so the sum of every --max-time must stay under it.
+# Match only real flags with a number — a prose mention of --max-time in a
+# comment must not be read as a zero-second budget.
+brief_t=$(grep -o -- '--max-time [0-9][0-9]*' "$HOOK" | head -1 | awk '{print $2}')
+sweep_t=$(grep -o -- '--max-time [0-9][0-9]*' "$HOOK" | tail -1 | awk '{print $2}')
+pages=$(grep -c 'for _ in 1 2 3; do' "$HOOK")
+declared=$(awk '/^  linear-tasks:/{f=1} f&&/timeout:/{print $2; exit}' "$HERE/../../agents.yaml" 2>/dev/null)
+declared="${declared:-15}"
+# One brief request plus three sweep pages, each at its own --max-time.
+worst=$(( brief_t + 3 * sweep_t ))
+if [ -n "$brief_t" ] && [ "$brief_t" -gt 0 ] && [ "$worst" -le "$declared" ]; then
+  echo "ok   - worst-case ${worst}s fits the registered ${declared}s timeout"
+else
+  echo "FAIL - worst case ${worst}s exceeds the registered ${declared}s hook timeout"; fail=1
+fi
+[ "$pages" = "1" ] && echo "ok   - sweep page budget is bounded" || { echo "FAIL - sweep page loop changed; re-check the latency budget"; fail=1; }
 
 # --- 7. the agents CLI was never invoked (no secrets broker path) --------------
 if [ -f "$AGENTS_CALLS" ]; then
