@@ -518,14 +518,66 @@ unprompted."
 
 ### 6.4 Verify
 
-After the script completes:
-```bash
-# Verify on npm
-npm view "$PKG_NAME@$VERSION" version
+**"Published" is not "shipped." "Installed" is not "active."** A publish command exiting
+0 means the upload was accepted, not that the registry serves it; `--install-extension`
+exiting 0 means bytes are on disk, not that a running app loaded them. Close each gap
+with a query, not an assumption — detect the artifact and hold it to the matching bar:
 
-# Verify tag exists
+| Artifact | Live check (users can get it) | Active check (it runs the new code) |
+|---|---|---|
+| npm CLI / lib | `npm view <pkg> version` == target | `npx <pkg>@latest --version` in a clean dir (`mktemp -d`) prints target — the publisher's own machine has a cached build, so test from where users start |
+| cargo crate | `cargo search <crate>` / index API shows target | `cargo install <crate> --version <t> --force && <bin> --version` |
+| VS Code extension | **both** registries report the new version (below) | running editor reloaded → `exthost.log` shows a fresh activation; the real surface renders |
+| web app / API | deploy reports success | `curl` the prod health/version endpoint returns 200 with the new build (F3 — a deploy command finishing is not proof) |
+
+```bash
+# npm — registry, then a clean-room install
+npm view "$PKG_NAME@$VERSION" version
+( cd "$(mktemp -d)" && npx -y "$PKG_NAME@latest" --version )
+
+# git tag
 git tag -l "v$VERSION"
+
+# web app / API — the deploy command finishing is not proof
+curl -sS https://<prod-host>/health
 ```
+
+**VS Code extension, the detailed path** (most gap-prone artifact). Confirm live on
+**both** registries — publish exit 0 is not propagation, and Marketplace can lag a minute
+or two:
+
+```bash
+curl -s "https://open-vsx.org/api/<publisher>/<name>" | jq -r '.version'
+curl -s -X POST "https://marketplace.visualstudio.com/_apis/public/gallery/extensionquery" \
+  -H "Content-Type: application/json" -H "Accept: application/json;api-version=3.0-preview.1" \
+  -d '{"filters":[{"criteria":[{"filterType":7,"value":"<publisher>.<name>"}]}],"flags":914}' \
+  | jq -r '.results[0].extensions[0].versions[0].version'
+```
+
+Install ≠ active — `<cli> --install-extension <vsix> --force` writes the new version to
+`~/.vscode/extensions`, but a running editor loaded its extension host once at window
+open and keeps the old code until the window reloads. After install: reload each running
+window (command palette → "Developer: Reload Window"; drive via the `computer` skill's
+"Electron editors" section), and give a zero-window editor a fresh one (`code -n
+<folder>`). Then verify activation from the log, not the GUI:
+
+```bash
+BASE="$HOME/Library/Application Support/Code/logs"
+LOGDIR="$(ls -dt "$BASE"/*/ | head -1)"
+for EH in "$LOGDIR"window*/exthost/exthost.log; do
+  grep "_doActivateExtension <publisher>.<name>" "$EH" | tail -1   # fresh timestamp = live
+  grep "\[error\]" "$EH" | grep -i "<name>" | tail -3              # post-activation errors
+done
+```
+
+A fresh `_doActivateExtension` timestamp with no trailing `[error]` = that window is live
+on the new code. Verify the real surface with `agents computer get-text --bundle <id>` —
+it reads the webview's accessibility tree even without Screen Recording permission —
+and grep for the strings your change should render.
+
+Every verify claim needs a quotable source: registry version, `exthost.log` line,
+`--version` output, health-endpoint body. "It's live" without quoted output is exactly the
+unverified-claim failure this phase exists to prevent.
 
 ### 6.5 Report success
 
