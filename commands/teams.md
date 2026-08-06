@@ -48,6 +48,7 @@ agents teams add <team-name> <agent> "prompt" --name <role> --worktree <role> --
 - File paths with line numbers
 - Code patterns inline (don't just reference)
 - Success criteria
+- Keep-the-owner-informed line (verbatim): `Post to the feed at IMPORTANT milestones only — one line at start, at PR-opened, and at merge/blocked (agents feed post). On final delivery, mark it --level important so it reaches the owner (agents notify). Do NOT narrate every step.`
 - End with: `Return file:line quotes for every claim.`
 
 ## Dependencies (if needed)
@@ -62,6 +63,14 @@ agents teams add <team> codex "Build UI" --name frontend --after backend
 ```bash
 agents teams start <team-name> --watch
 ```
+
+**Keep the owner informed, not spammed — orchestrator posts at boundaries only:**
+
+- On `teams start`, record one feed line: `agents feed post --title "Team spawned" "spawned team <name> — <N> teammates on <tickets>"`.
+- On team completion, record one line naming the composed outcome.
+- When the whole team's composed work is **delivered** (the cross-track flow runs end-to-end), or a teammate is **blocked**, deliver to the owner — `agents feed post --title "..." "..." --level important` (an `agents notify` for genuine deliveries; `--blocked` for a real blocker).
+
+One post per boundary, never per tool call. This is the record-vs-deliver split from [`feed-status-posts.md`](../rules/subrules/feed-status-posts.md): plain posts stay in the stream, `--level important` / `agents notify` reaches the phone.
 
 ## Monitor
 
