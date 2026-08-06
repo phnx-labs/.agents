@@ -4,6 +4,10 @@
 
 ### Added
 
+- **Keep browser action loops warm with `agents browser stream`.** Agents can send
+  newline-delimited JSON requests through one long-lived CLI process instead of
+  launching Node once per screenshot, ref lookup, click, or type action.
+
 - **New `self` plugin — `/self:close`, the agent self-exit primitive.** An agent
   had no first-class way to end its own session: `/done` inlined a `kill -TERM
   $PPID` blob that the auto-mode permission classifier blocked in headless runs,
