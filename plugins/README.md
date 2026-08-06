@@ -19,6 +19,7 @@ anywhere with no setup.
 | [`share`](./share/README.md) | 2 | Publish agent-generated HTML to a link on your own Cloudflare R2 — `/share:public` (auto OG cover), `/share:private` (unlisted, expiring) |
 | [`design`](./design/README.md) | 1 | One keyless, offline-first front door for design — routes an intent to a mode and renders self-contained HTML/SVG |
 | [`self`](./self/README.md) | 1 | Agent self-operations — `/self:close` cleanly self-terminates the session (guarded SIGTERM to the harness); the exit primitive `/done` builds on |
+| [`sessions`](./sessions/README.md) | 3 | Session lifecycle + analytics — `/sessions:continue` finishes prior work here, `/sessions:insights` orchestrates insights/trends/perf/stats, `/sessions:restore` re-opens crash windows; top-level `/continue` `/insights` `/restore` `/recover` are thin aliases |
 
 <p align="center">
   <img src="../.assets/share.png" alt="/share:public — one command turns any agent-generated HTML into a shareable link with an auto OG cover" width="82%">

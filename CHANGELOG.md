@@ -4,6 +4,22 @@
 
 ### Added
 
+- **New `sessions` plugin — `/sessions:continue`, `/sessions:insights`,
+  `/sessions:restore`.** Consolidates session lifecycle and analytics that used
+  to live as fat top-level commands. **Skill-first:** full procedures live in
+  `plugins/sessions/skills/{continue,insights,restore}/SKILL.md`; plugin commands
+  and top-level aliases only say `Invoke the \`sessions:…\` skill` so harnesses
+  that prefer skills still get the procedure. `sessions:continue` finishes prior
+  work **in this window** (reattach only on a genuine live signal; group-capable;
+  recover mode covers multi-session crash triage — prefer finish over resurrect).
+  `sessions:insights` is the conductor over `agents insights`, `agents trends`,
+  `agents perf`, and `agents sessions stats` — one evidence-backed action list;
+  no separate trends/perf plugin commands. `sessions:restore` re-opens crash/
+  reboot casualties as terminal windows. Top-level `/continue`, `/insights`,
+  `/restore` are thin aliases; `/recover` invokes `sessions:continue` in recover
+  mode. Source: `plugins/sessions/`, `commands/{continue,insights,restore,recover}.md`,
+  `.claude-plugin/marketplace.json`, `plugins/README.md`, `commands/README.md`,
+  `skills/sessions/SKILL.md`.
 - **Keep browser action loops warm with `agents browser stream`.** Agents can send
   newline-delimited JSON requests through one long-lived CLI process instead of
   launching Node once per screenshot, ref lookup, click, or type action.
@@ -26,18 +42,11 @@
 
 ### Changed
 
-- **`/continue` now defaults to resuming in place, not reattaching.** The command
-  led with "Step 0: reattach if the session is still live" and, on a successful
-  `agents sessions focus --attach-only`, handed off to the resumed pane. But the
-  common `/continue` case is picking up a session that was *interrupted* —
-  rate-limited, crashed, hit a context/usage limit, or headless — which is not a
-  live pane to return to, and reflexively probing it with `focus` (then handing
-  off) abandons a user who ran `/continue` in *this* window expecting the work
-  continued here. Reattach is now scoped to a genuine live-interactive signal
-  (the user says it's open, or a visible tmux/terminal pane); with no signal the
-  agent reads the transcript and continues in place. Added a matching anti-pattern
-  and reframed the bare-`/continue` default away from the focus picker. Source:
-  `commands/continue.md`.
+- **`/continue` procedure (now `sessions:continue`) defaults to resuming in place,
+  not reattaching.** The common case is an interrupted / rate-limited / headless
+  session, not a live pane. Reattach only on a genuine live-interactive signal;
+  otherwise load the transcript and continue here. Carried into the plugin skill
+  when the fat command moved. Source: `plugins/sessions/skills/continue/SKILL.md`.
 
 ## [0.2.0] - 2026-08-06
 

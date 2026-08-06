@@ -1,0 +1,9 @@
+{
+  "name": "sessions",
+  "version": "0.1.0",
+  "description": "sessions — lifecycle and analytics for agent conversation transcripts. `/sessions:continue` (and top-level `/continue` / `/recover`) loads prior work and finishes it in this session — reattach only when genuinely live; group- and crash-recover capable. `/sessions:insights` (and `/insights`) is the conductor over `agents insights`, `agents trends`, `agents perf`, and `agents sessions stats` — one evidence-backed action list, no separate trends/perf plugin commands. `/sessions:restore` (and `/restore`) re-opens crashed sessions as terminal windows. Instructions live in skills; commands only invoke those skills (harness-friendly: many agents prefer skills over slash commands).",
+  "author": {
+    "name": "Muqsit Nawaz",
+    "email": "contact@trp.so"
+  }
+}

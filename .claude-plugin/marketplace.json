@@ -20,7 +20,7 @@
     {
       "name": "work",
       "source": "./plugins/work",
-      "description": "work — get a project's work done across the fleet, any kind, not just code. `/work:dispatch` takes ONE unit of work (a ticket, a described task, or 'the next thing on <project>'), finds/pulls the ticket while deduping against in-flight PRs and live sessions, classifies it as coding vs non-coding, files it clean if missing, then self-refers to the plugin that owns the execution — the `code` plugin for engineering, or `design`/`share` plus the `browser` skill and `secrets` for non-coding work (outreach, research, a design asset, a real web/portal task). Single-target dispatch, not a board sweep — deciding the whole board (keep/cancel/reprioritize) and surfacing calls that need the human is `/triage`'s job. The kind-agnostic superset of `/dispatch`.",
+      "description": "work \u2014 get a project's work done across the fleet, any kind, not just code. `/work:dispatch` takes ONE unit of work (a ticket, a described task, or 'the next thing on <project>'), finds/pulls the ticket while deduping against in-flight PRs and live sessions, classifies it as coding vs non-coding, files it clean if missing, then self-refers to the plugin that owns the execution \u2014 the `code` plugin for engineering, or `design`/`share` plus the `browser` skill and `secrets` for non-coding work (outreach, research, a design asset, a real web/portal task). Single-target dispatch, not a board sweep \u2014 deciding the whole board (keep/cancel/reprioritize) and surfacing calls that need the human is `/triage`'s job. The kind-agnostic superset of `/dispatch`.",
       "version": "0.1.0",
       "author": {
         "name": "Muqsit Nawaz",
@@ -80,7 +80,17 @@
     {
       "name": "self",
       "source": "./plugins/self",
-      "description": "self — operations an agent performs on its OWN session. `/self:close` cleanly self-terminates the current session by SIGTERM-ing the harness (the Bash tool shell's own parent, $PPID), after a read-only `ps` guard that refuses infra parents (shell/tmux/sshd) so it never tears down the wrong process. The low-level exit primitive `/done` builds on (recap, then close) — `/finish`, by contrast, drives work to delivered and never exits; the exact `kill -TERM $PPID` form is allowlisted by the `self` permission group so it runs headlessly without an auto-mode prompt.",
+      "description": "self \u2014 operations an agent performs on its OWN session. `/self:close` cleanly self-terminates the current session by SIGTERM-ing the harness (the Bash tool shell's own parent, $PPID), after a read-only `ps` guard that refuses infra parents (shell/tmux/sshd) so it never tears down the wrong process. The low-level exit primitive `/done` builds on (recap, then close) \u2014 `/finish`, by contrast, drives work to delivered and never exits; the exact `kill -TERM $PPID` form is allowlisted by the `self` permission group so it runs headlessly without an auto-mode prompt.",
+      "version": "0.1.0",
+      "author": {
+        "name": "Muqsit Nawaz",
+        "email": "contact@trp.so"
+      }
+    },
+    {
+      "name": "sessions",
+      "source": "./plugins/sessions",
+      "description": "sessions \u2014 lifecycle and analytics for agent conversation transcripts. `/sessions:continue` (and top-level `/continue` / `/recover`) loads prior work and finishes it in this session \u2014 reattach only when genuinely live; group- and crash-recover capable. `/sessions:insights` (and `/insights`) is the conductor over `agents insights`, `agents trends`, `agents perf`, and `agents sessions stats` \u2014 one evidence-backed action list, no separate trends/perf plugin commands. `/sessions:restore` (and `/restore`) re-opens crashed sessions as terminal windows. Instructions live in skills; commands only invoke those skills (harness-friendly: many agents prefer skills over slash commands).",
       "version": "0.1.0",
       "author": {
         "name": "Muqsit Nawaz",

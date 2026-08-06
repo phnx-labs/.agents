@@ -16,8 +16,9 @@ but invisible, or advertised but missing:
 3. [`.claude-plugin/marketplace.json`](../.claude-plugin/marketplace.json) — the repo-level
    registry, with `name`, `source: ./plugins/<name>`, and a `description`.
 
-All nine plugins currently agree across the three. Keep it that way: verify with
-`claude plugin validate . --strict` after touching either manifest.
+All plugins currently agree across the three (count them when you add one). Keep it
+that way: verify with `claude plugin validate . --strict` after touching either
+manifest.
 
 Then add a row to the table in [`README.md`](./README.md) and a `CHANGELOG.md` entry.
 

@@ -38,12 +38,17 @@ working until it has. They are easy to confuse.
 | Command | What it does |
 |---|---|
 | [`/recap`](./recap.md) | Recap the current session, or transfer concise context from a prior session selected by ID, prefix, or keywords |
-| [`/continue`](./continue.md) | Resume one task — reattach if it is live, otherwise load its local or explicitly located remote transcript |
+| [`/continue`](./continue.md) | Alias of `/sessions:continue` — resume prior work **in this session** (reattach only if genuinely live); group-capable |
+| [`/insights`](./insights.md) | Alias of `/sessions:insights` — orchestrate `agents insights` + trends + perf + sessions stats into evidence-backed actions |
 | [`/fork`](./fork.md) | Branch this conversation into a new, independent session and open it where you work — the "git branch" of sessions, original untouched |
-| [`/recover`](./recover.md) | Recover *many* crashed sessions — finish the agent-doable work headlessly, hand back the rest as one action |
-| [`/restore`](./restore.md) | Re-open sessions killed by a crash or reboot as Ghostty windows, resuming each |
+| [`/recover`](./recover.md) | Mode of `/sessions:continue` — recover *many* crashed sessions by finishing agent-doable work headlessly |
+| [`/restore`](./restore.md) | Alias of `/sessions:restore` — re-open sessions killed by a crash or reboot as terminal windows |
 | [`/hibernate`](./hibernate.md) | Sleep this same session until a future time, then wake it with full context to check a long wait |
 | [`/reflect`](./reflect.md) | Recall every correction and constraint from the active conversation before revising work |
+
+The procedures for `/continue`, `/insights`, `/restore`, and `/recover` live in the
+[`sessions` plugin](../plugins/sessions/README.md) skills. Top-level files only invoke
+those skills (same pattern as `/commit` → `/code:commit`).
 
 ## Coordinate
 

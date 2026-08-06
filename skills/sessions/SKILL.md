@@ -28,7 +28,10 @@ agents sessions --project agents-cli --all
 
 ## Resume & Fork (session lifecycle)
 
-`agents sessions resume` and `agents sessions fork` are the canonical lifecycle path — the slash commands `/continue`, `/recover`, and `/fork` drive them.
+`agents sessions resume` and `agents sessions fork` are the canonical lifecycle path —
+the `sessions` plugin skills drive them: `/continue` and `/recover` → `sessions:continue`,
+`/restore` → `sessions:restore`, `/fork` stays a top-level command. Prefer those skills
+over hand-rolling resume flags.
 
 ```bash
 # Resume — reopen the SAME conversation by canonical id (from any device)
