@@ -1,5 +1,5 @@
 ---
-description: Resume a previous task — reattach if it's still live, otherwise load context and continue
+description: Resume a previous task — load its context and continue here; reattach only if it's genuinely live and interactive
 ---
 
 Resume previous work: $ARGUMENTS
@@ -17,14 +17,16 @@ The source machine is a read locator only. It does not become this session's ID,
 host, or execution target. If no source machine was supplied, use the normal
 fleet-aware behavior below.
 
-## Step 0: Reattach if the session is still live
+## Step 0: Default to resuming in place — reattach only on a genuine live signal
 
-The session you are resuming may already be running inside a tmux pane or terminal tab (locally or on a remote device such as `zion -> yosemite-*`). If it is, jump to the live surface instead of spawning a redundant copy that abandons the original.
+**The common case is to resume in this window, not to reattach.** Most `/continue` calls are picking up a session that was *interrupted* — rate-limited, crashed, hit a context/usage limit, or ran headless/background. That is **not** a live pane to return to. Do **not** probe it with `focus`. Skip straight to Step 1: read its transcript, verify the state, and continue the work **right here, in this window**.
+
+Attempt reattach **only** when you have positive reason to believe the session is **still running in an interactive terminal the user wants to jump back to** — e.g. the user says it's still open, or you can see it live in a tmux pane / terminal tab (locally or on a remote device such as `zion -> yosemite-*`). Reattaching then avoids spawning a redundant copy that abandons the original. With no such signal, do not guess — go to Step 1. (Do not assume the user is sitting at the original session's terminal; if they ran `/continue` here, they want the work continued here.)
 
 1. **Resolve the session id (if one was given).**
    - If the user passed an id (UUID or short prefix), use it directly.
    - If they passed a topic/name/keyword, run `agents sessions "<query>"` to read the index and extract the id. When a source machine was supplied, add `--host <machine>` to that lookup. If the query returns multiple candidates, pick the most recent matching one or ask once.
-   - If they passed nothing, skip to the attach picker in step 2.
+   - If they passed nothing and you have a live-session signal, use the attach picker in step 2; with no signal, go to Step 1 — a bare `/continue` defaults to loading the most recent prior session and resuming here, not opening a focus picker.
 
 2. **Try to attach.**
    - If you have an id: `agents sessions focus <id> --attach-only`. When the
@@ -46,7 +48,7 @@ The session you are resuming may already be running inside a tmux pane or termin
 
 ## Step 1: Load the prior session
 
-Use this only when Step 0 could not attach (session is not live in a reachable terminal).
+This is the default path — take it whenever you did not reattach in Step 0 (the common case: an interrupted, rate-limited, headless, or otherwise non-interactive session).
 
 Pick the loader based on what the user passed.
 
@@ -94,6 +96,7 @@ here without re-deriving project context you just established.
 - Do not ask "what were you working on?" — load the transcript first
 - Do not dump raw transcript output at the user — synthesize it
 - Do not start coding before verifying the prior work is still intact
+- Do not `focus`/attach a session that was rate-limited, crashed, or hit a limit — it is dead or stalled, not a live pane; read its transcript and continue in this window
 - Do not spawn a new resumed copy when the session is still live in tmux/Ghostty — reattach instead
 - Do not drop a supplied `--device` / `--host` locator and then report that its remote transcript is missing
 - Use the `agents sessions` CLI to load context — don't hand-traverse `~/.agents/versions/.../projects/`

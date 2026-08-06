@@ -20,6 +20,21 @@
   `permissions/default.yaml` (rebuilt), `commands/done.md`,
   `.claude-plugin/marketplace.json`, `plugins/README.md`.
 
+### Changed
+
+- **`/continue` now defaults to resuming in place, not reattaching.** The command
+  led with "Step 0: reattach if the session is still live" and, on a successful
+  `agents sessions focus --attach-only`, handed off to the resumed pane. But the
+  common `/continue` case is picking up a session that was *interrupted* —
+  rate-limited, crashed, hit a context/usage limit, or headless — which is not a
+  live pane to return to, and reflexively probing it with `focus` (then handing
+  off) abandons a user who ran `/continue` in *this* window expecting the work
+  continued here. Reattach is now scoped to a genuine live-interactive signal
+  (the user says it's open, or a visible tmux/terminal pane); with no signal the
+  agent reads the transcript and continues in place. Added a matching anti-pattern
+  and reframed the bare-`/continue` default away from the focus picker. Source:
+  `commands/continue.md`.
+
 ## [0.2.0] - 2026-08-06
 
 ### Highlights
