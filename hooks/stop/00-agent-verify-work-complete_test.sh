@@ -244,14 +244,19 @@ grep -q 'agents feed post.*--level important' "$SANDBOX/stderr" && echo "ok   - 
 grep -q "You claimed this work is done" "$SANDBOX/stderr" && echo "ok   - done-claim gate cites the original request" || { echo "FAIL - no done-claim gate message"; fail=1; }
 
 # 8a. Completion nudge: the done-claim gate must instruct the agent to file any
-#     genuine follow-up ideas as tickets instead of dangling them ('say the word'),
-#     and to self-exit (the /done SIGTERM recipe) once genuinely finished — but
-#     only for a headless/dispatched run, never unconditionally for an interactive
+#     genuine follow-up ideas as tickets (with real context) instead of dangling
+#     them ('say the word'), clean up worktrees/branches, and recap via /done
+#     (which itself recaps THEN self-exits) once genuinely finished — but only
+#     for a headless/dispatched run, never unconditionally for an interactive
 #     session someone might be watching.
 grep -qi "FILE them as tickets" "$SANDBOX/stderr" && echo "ok   - gate instructs filing follow-up tickets" || { echo "FAIL - gate does not mention filing follow-up tickets"; fail=1; }
+grep -qi "with real context" "$SANDBOX/stderr" && echo "ok   - gate requires follow-up tickets to carry real context" || { echo "FAIL - gate does not require ticket context"; fail=1; }
 grep -qi "say the word" "$SANDBOX/stderr" && echo "ok   - gate names the dangling-idea anti-pattern" || { echo "FAIL - gate does not name the dangling-idea anti-pattern"; fail=1; }
-grep -qi "run /done's Step 2 self-exit recipe" "$SANDBOX/stderr" && echo "ok   - gate instructs self-exit via /done's guarded recipe" || { echo "FAIL - gate does not instruct self-exit via /done"; fail=1; }
-grep -qi "hand-roll a bare SIGTERM" "$SANDBOX/stderr" && echo "ok   - gate warns against bypassing /done's parent-process guard" || { echo "FAIL - gate does not warn against a bare SIGTERM"; fail=1; }
+grep -qi "worktrees and branches this session no longer needs" "$SANDBOX/stderr" && echo "ok   - gate instructs worktree/branch cleanup" || { echo "FAIL - gate does not instruct worktree cleanup"; fail=1; }
+grep -qi "run /done as your very last action" "$SANDBOX/stderr" && echo "ok   - gate instructs running /done as the close-out step" || { echo "FAIL - gate does not instruct running /done"; fail=1; }
+grep -qi "do not skip straight to Step 2" "$SANDBOX/stderr" && echo "ok   - gate requires the recap (Step 1) before self-exit (Step 2)" || { echo "FAIL - gate does not require recap-before-exit ordering"; fail=1; }
+grep -qi "bare SIGTERM" "$SANDBOX/stderr" && echo "ok   - gate warns against bypassing /done's parent-process guard" || { echo "FAIL - gate does not warn against a bare SIGTERM"; fail=1; }
+grep -qi "run /recap instead" "$SANDBOX/stderr" && echo "ok   - gate offers /recap (no self-exit) for uncertain/interactive sessions" || { echo "FAIL - gate does not offer a no-self-exit recap path"; fail=1; }
 grep -qi "session someone is driving" "$SANDBOX/stderr" && echo "ok   - gate carves out interactive sessions from self-exit" || { echo "FAIL - gate does not guard against killing an interactive session"; fail=1; }
 
 # 8b. Regression: first_user_msg is extracted via `python3 -c "..."` inside $(...).

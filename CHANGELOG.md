@@ -37,6 +37,19 @@
   `hooks/stop/00-agent-verify-work-complete.sh`, `_test.sh` (5 new assertions,
   98/98 passing).
 
+- **The done-claim gate now requires an actual recap before self-exiting, not
+  just a SIGTERM.** Follow-up to the entry above: the close-out sequence's
+  self-exit step said "run /done's Step 2 self-exit recipe," which named only
+  the exit half and could read as license to skip `/done`'s own Step 1 (the
+  handoff recap, built via `/recap`'s discipline) — a self-exit with no recap
+  first is not a clean handoff. Now says to run `/done` as a whole (Step 1
+  recaps, Step 2 self-exits) for a headless/dispatched run, or `/recap` alone
+  (no self-exit) when the session looks interactive. Also added: worktree/branch
+  cleanup and closing any tickets the session actually finished as part of the
+  same close-out step, and follow-up tickets must carry real context, not a
+  one-line stub. Source: `hooks/stop/00-agent-verify-work-complete.sh`,
+  `_test.sh` (4 more assertions, 102/102 passing).
+
 - **New `/profile` command.** Profiles a sluggish machine, attributes the load to agents-cli surfaces (daemon, menu-bar helper, `doctor`/`sessions` pollers), reads the logs to root-cause it, and files a GitHub issue on the public agents-cli repo with the evidence — codifying the load-300 crash-loop diagnosis (an un-notarized menu-bar helper crash-looping and spawning an orphaned `doctor --json` pile-up).
 
 ### Changed
