@@ -15,7 +15,6 @@ anywhere with no setup.
 | [`work`](./work/README.md) | 1 | Get a project's work done across the fleet, **any** kind — `/work:dispatch` routes ONE unit of work (coding *or* non-coding) to the plugin that owns it, using browser + secrets for real non-coding tasks |
 | [`swarm`](./swarm/README.md) | 6 | Fan a task across parallel agents, then synthesize — `/swarm:run`, `/swarm:plan`, `/swarm:spec`, `/swarm:debug`, `/swarm:test`, `/swarm:qa` |
 | [`fleet`](./fleet/README.md) | 3 | Fleet-wide ops — `/fleet:sync` brings every device to latest, `/fleet:onboard` brings a bare box to parity, `/fleet:mint-auth` self-mints setup tokens |
-| [`social`](./social/README.md) | 3 | Turn a content archive into strategy — `/social:audit`, `/social:align`, `/social:schedule` |
 | [`git`](./git/README.md) | 2 | Pure git plumbing — `/git:prune` removes merged branches and worktrees with data-loss guards, `/git:tag-release` cuts and pushes a release tag |
 | [`share`](./share/README.md) | 2 | Publish agent-generated HTML to a link on your own Cloudflare R2 — `/share:public` (auto OG cover), `/share:private` (unlisted, expiring) |
 | [`design`](./design/README.md) | 1 | One keyless, offline-first front door for design — routes an intent to a mode and renders self-contained HTML/SVG |

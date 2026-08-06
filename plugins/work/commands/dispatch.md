@@ -35,8 +35,6 @@ Hand the work to the plugin/skill built for it, on a machine that makes sense (a
 | One coding ticket | `/dispatch`, or the `run` skill (`agents run`) |
 | Coding, parallel / independently verified | the `teams` skill (`agents teams`) |
 | A queue of coding tickets | `/code:loop` |
-| Content / blog / long-form | `social:schedule` (drafts + coverage-dedupes, keyless) |
-| Social posting / creator outreach | `social` + the `browser` skill + `secrets` |
 | Design / images / assets | `design:design` (keyless, offline-first) |
 | Publish an artifact / plan / report | `share:public` / `share:private` |
 | Research / data pull | the `browser` skill + research skills, `secrets` for authed sources |

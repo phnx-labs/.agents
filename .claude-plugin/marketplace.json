@@ -20,7 +20,7 @@
     {
       "name": "work",
       "source": "./plugins/work",
-      "description": "work — get a project's work done across the fleet, any kind, not just code. `/work:dispatch` takes ONE unit of work (a ticket, a described task, or 'the next thing on <project>'), finds/pulls the ticket while deduping against in-flight PRs and live sessions, classifies it as coding vs non-coding, files it clean if missing, then self-refers to the plugin that owns the execution — the `code` plugin for engineering, or `social`/`design`/`share` plus the `browser` skill and `secrets` for non-coding work (outreach, research, a design asset, a real web/portal task). Single-target dispatch, not a board sweep — deciding the whole board (keep/cancel/reprioritize) and surfacing calls that need the human is `/triage`'s job. The kind-agnostic superset of `/dispatch`.",
+      "description": "work — get a project's work done across the fleet, any kind, not just code. `/work:dispatch` takes ONE unit of work (a ticket, a described task, or 'the next thing on <project>'), finds/pulls the ticket while deduping against in-flight PRs and live sessions, classifies it as coding vs non-coding, files it clean if missing, then self-refers to the plugin that owns the execution — the `code` plugin for engineering, or `design`/`share` plus the `browser` skill and `secrets` for non-coding work (outreach, research, a design asset, a real web/portal task). Single-target dispatch, not a board sweep — deciding the whole board (keep/cancel/reprioritize) and surfacing calls that need the human is `/triage`'s job. The kind-agnostic superset of `/dispatch`.",
       "version": "0.1.0",
       "author": {
         "name": "Muqsit Nawaz",
@@ -61,16 +61,6 @@
       "name": "share",
       "source": "./plugins/share",
       "description": "share \u2014 publish an HTML artifact (a plan, viz, or report) to a shareable link on your own Cloudflare R2 (zero egress, ~$0) via `agents share`. `/share:public` posts a public link with an auto-generated OG cover (a screenshot of the page's hero) so it unfurls into a preview card in Slack/iMessage/Twitter/Discord; `/share:private` posts an unlisted, auto-expiring link with no preview card (unguessable but still public-read \u2014 not authenticated). Requires a one-time `agents share setup` (provisions an R2 bucket + Worker) or `agents share join`.",
-      "version": "0.1.0",
-      "author": {
-        "name": "Muqsit Nawaz",
-        "email": "contact@trp.so"
-      }
-    },
-    {
-      "name": "social",
-      "source": "./plugins/social",
-      "description": "social \u2014 turn a content agent's post archive into strategy. social:audit (parse+dedup+cluster+12x3 taxonomy), social:align (audience/ICP fit: buyer vs amplifier, gaps + re-weighting), social:schedule (coverage-deduped engagement-rubric backlog scheduled to X/LinkedIn via getlate). Built from a real ~4,600-draft audit.",
       "version": "0.1.0",
       "author": {
         "name": "Muqsit Nawaz",
