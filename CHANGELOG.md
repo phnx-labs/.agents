@@ -299,7 +299,6 @@ These remain after this tag; tracked for 0.2.1+ / agents-cli companions:
 
 - **OpenClaw's capability table claims hook support it never receives.** `apps/cli/src/lib/agents.ts:374` declares `hooks: true`, but no `registerHooksForOpenClaw` exists and `registerHooksToSettings` has no `openclaw` branch, so it falls through to `return { registered: [], errors: [] }` (`hooks.ts:1449`). agents-cli's own review conventions name this failure mode: *"A map asserting a capability the code doesn't implement is a lying table."* The fix belongs in agents-cli — either flip the flag or write the registrar — and is tracked separately.
 
-## [Unreleased]
 
 ### Fixed
 
