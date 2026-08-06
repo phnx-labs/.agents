@@ -18,9 +18,9 @@
 #
 # Config: ~/.agents/escalate.json  (see --check for what is / isn't wired)
 #   {
-#     "host":     "mac-mini",                 // where openclaw + the call cmd live ("local" = this box)
-#     "telegram": { "account": "default", "target": "6078999250" },
-#     "call":     { "cmd": "~/.agents/skills/muqsit-cli/call.sh" }
+#     "host":     "local",                    // where openclaw + the call cmd live ("local" = this box)
+#     "telegram": { "account": "default", "target": "<your-telegram-chat-id>" },
+#     "call":     { "cmd": "~/.agents/skills/<your-call-cmd>/call.sh" }
 #   }
 #
 # Usage:

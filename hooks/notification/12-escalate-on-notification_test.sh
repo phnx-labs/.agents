@@ -35,7 +35,7 @@ channels:
   - id: telegram
     transport: openclaw
     host: local
-    target: "6078999250"
+    target: "1234567890"
 policy: { normal: [telegram] }
 default_severity: normal
 ---
@@ -49,7 +49,7 @@ channels:
   - id: telegram
     transport: openclaw
     host: local
-    target: "6078999250"
+    target: "1234567890"
 policy:
   normal: [telegram]
 default_severity: normal
