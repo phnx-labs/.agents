@@ -1,7 +1,7 @@
 ---
 name: review
 description: "Review PRs and repo health with one skill, three modes. Default: recap the session's goal, discover every PR it opened, and review/merge each in dependency order. Given PR number(s): a deep sub-agent review (not the author) with file:line grounding, an architecture rubric (reuse, cross-cutting-at-source, no duplicate surfaces, doc-asserted invariants), and a security pass on risk-touching diffs. Given `repo` / a path / `--since <date>`: a read-only whole-repo architecture-and-quality diagnostic (four orthogonal categories, HTML report, no merge verdict). Triggers on: 'review the PR', 'code review', 'review #N', 'before I merge', 'gate this PR', 'security review', 'what's wrong with this branch', 'health check', 'parallel implementations', 'audit drift'."
-argument-hint: "[empty=session PRs | #PR [#PR...] | repo | <path> | --since <date> | --branch] [--single|--team] [--security] [dry-run|no-merge]"
+argument-hint: "[empty=session PRs | #PR [#PR...] | repo | <path> | --commits N | --since <date> | --branch] [--single|--team] [--security] [dry-run|no-merge]"
 allowed-tools: Bash(gh *), Bash(git *), Bash(rg *), Bash(fd *), Bash(ls *), Bash(wc *), Bash(jq *), Bash(agents *), Bash(go vet*), Bash(tsc*), Bash(staticcheck*), Bash(gocyclo*), Bash(biome*), Bash(shellcheck*), Bash(mcporter*), Bash(printenv*), Bash(sqlite3*), Bash(bun*), Bash(./*/scripts/sandbox.sh*), Bash(open*), Bash(xdg-open*), Bash(mkdir*), Bash(rush *), Read(*), Write(*), Edit(*), Agent(*)
 user-invocable: true
 ---
@@ -38,7 +38,7 @@ biased about.
 |---|---|---|
 | empty, or `dry-run` / `no-merge` alone | **Session PRs** (default) | Recap this session's goal, discover every PR it opened, review each, merge/request-changes/close in dependency order |
 | one or more `#123` / `123` | **PR review** | Deep sub-agent review of exactly those PRs, cold |
-| `repo`, a path (`src/`, `apps/api`), `--since "<date>"`, or `--branch` | **Whole-repo scan** | Read-only architecture + code-health + context + patterns diagnostic, HTML report, no merge verdict |
+| `repo`, a path (`src/`, `apps/api`), `--commits N`, `--since "<date>"`, or `--branch` | **Whole-repo scan** | Read-only architecture + code-health + context + patterns diagnostic, HTML report, no merge verdict |
 
 `--single` / `--team` force the dispatch shape in PR review mode. `--security` forces the
 deep security pass even when the diff doesn't obviously touch a risk surface. `dry-run` /
