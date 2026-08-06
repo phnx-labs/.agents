@@ -19,6 +19,17 @@ session commands are never blocked.
 If you catch yourself about to edit a file in a checkout that's on `main`, stop
 and make a worktree first (recipe below).
 
+**Diagnose on the latest code, not your working-tree HEAD.** Before you read a
+codebase to call something a bug, claim a regression, or open a "fix" PR,
+`git fetch origin` and check how far behind you are
+(`git rev-list --count HEAD..origin/<default>`). Your local checkout goes stale
+the moment another agent pushes — on this fleet, constantly — and a fix built on
+stale code is itself the regression (a real miss: a merged PR "restored" a routine
+a newer commit had deliberately superseded, because the diagnosis ran against a
+tree ~90 min / 39 commits behind). This is the same fetch-first discipline the
+worktree recipe enforces for *writing*, applied to *reading*. See
+`research-discipline` (current-code anchoring).
+
 ## Allowed vs off-limits git ops
 
 Allowed: `status`, `diff`, `log`, `show`, `remote`, `ls-files`, `cat-file`,
