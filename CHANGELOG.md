@@ -41,20 +41,24 @@
 
 ### Changed
 
-- **`agents teams` guidance closes four gaps mined from real orchestrator failures.**
-  (1) `teams add --remote-cwd` is a hard `die()`, not a silent no-op — never
-  documented, so agents kept retrying it blind. (2) Local teammate worktrees fork
-  off local `HEAD` with no fetch, while `--device`-pinned remote worktrees fetch
-  and fork off `origin/<default>` — undocumented divergence that once shipped a
-  5-teammate team 182 commits behind `origin/main`. (3) Balanced account rotation
-  is already the default for a bare teammate, and pinning `@version`/`--profile`
-  opts out — neither fact was written down anywhere. (4) Teammates run headless,
-  so `edit` mode can stall on an approval prompt nobody answers; `auto` is
-  usually the right unattended default. All four grounded against
-  `teams.ts:1311`, `worktree.ts:102`, `remoteWorktree.ts:112-116`, and
-  `rotate.ts:60,178-179` in `agents-cli`. Source: `rules/subrules/{parallel-teams,
-  fleet-delegation,remote-fleet-dispatch}.md`, `rules/AGENTS.md`,
-  `skills/teams/SKILL.md`, `plugins/swarm/skills/orchestrate/SKILL.md`.
+- **`agents teams` guidance closes three gaps mined from real orchestrator
+  failures (a fourth candidate gap was already fixed upstream, see below).**
+  (1) `teams add --remote-cwd` hard-errors, not a silent no-op — never
+  documented, so agents kept retrying it blind (`teams.ts:1217`,
+  `teams.ts:1529-1530`). (2) Balanced account rotation is already the default
+  for a bare teammate, and pinning `@version`/`--profile` opts out — neither
+  fact was written down anywhere (`rotate.ts:120-135`, `rotate.ts:275-276`).
+  (3) Teammates run headless, so `edit` mode can stall on an approval prompt
+  nobody answers; `auto` is usually the right unattended default
+  (`teams.ts:1501`). Also clarified (no behavior change, just wording): local
+  and `--device`-pinned remote worktrees both fetch `origin` and branch off
+  `origin/<default>` — a genuine divergence existed here as recently as
+  `agents-cli@234fa139` (2026-08-04), but it was already fixed before this
+  doc PR was written, so the guidance now states the current (safe) behavior
+  instead of warning about a bug that no longer exists. Source:
+  `rules/subrules/{parallel-teams,fleet-delegation,remote-fleet-dispatch}.md`,
+  `rules/AGENTS.md`, `skills/teams/SKILL.md`,
+  `plugins/swarm/skills/orchestrate/SKILL.md`.
 
 - **Feed delivery now has one policy path.** The legacy `feed-forward` PostToolUse hook is removed because it forwarded every plain milestone outside `feed.broadcast`, bypassing `minLevel: important` and duplicating owner delivery.
 

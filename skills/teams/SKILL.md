@@ -99,7 +99,7 @@ agents teams add feat claude "..." --name w2 --device yosemite-s0    # or pin
   into `~/.agents/repos/<team>`). Per-teammate worktrees work over SSH too.
 - `status` / `logs` show each teammate's host. **POSIX hosts only** in v1 (Windows
   hosts are rejected with a clear message).
-- **`--remote-cwd` does not exist on `teams add` — it hard-errors, it is not a silent no-op.** `--remote-cwd` is an `agents run` flag; passing it to `teams add` fails loud with a `die()` and a message pointing at `--worktree`/`--cwd` instead. A teammate's working directory is set by `--worktree <role>` (isolated) or `--cwd <dir>` (shared checkout) — never `--remote-cwd`.
+- **`--remote-cwd` does not exist on `teams add` — it hard-errors, it is not a silent no-op.** `--remote-cwd` is an `agents run` flag; passing it to `teams add` fails loud with a hard error and a message pointing at `--worktree`/`--cwd` instead. A teammate's working directory is set by `--worktree <role>` (isolated) or `--cwd <dir>` (shared checkout) — never `--remote-cwd`.
 
 ## Modes
 
@@ -140,7 +140,7 @@ agents teams start my-feature --watch
 - `--use-worktree <path>` on `create` makes **all** teammates share one existing checkout — the opposite of isolation; use only when every teammate must build against one tree.
 - **Skip worktrees for `--mode plan`** teams — read-only, no contention.
 - Worktrees are cleaned up on `stop`/`disband` when clean, and kept if they have uncommitted changes.
-- **Local worktrees fork off local `HEAD` with no fetch; `--device`-pinned worktrees fetch and fork off `origin/<default>`.** A stale local checkout silently produces stale teammate branches (a real run shipped 5 worktrees 182 commits behind `origin/main`). Fetch/update your local branch before spawning a local-worktree team — see `parallel-teams` for the full detail.
+- Both local and `--device`-pinned remote worktrees fetch `origin` and branch off `origin/<default>` — a stale local checkout can't fork a teammate off old code.
 
 ## Monitoring
 
