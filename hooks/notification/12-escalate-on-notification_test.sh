@@ -9,7 +9,8 @@
 HERE="$(cd "$(dirname "$0")" && pwd)"
 HOOK="$HERE/12-escalate-on-notification.sh"
 # owner.py lives with the skill; the stub skill dir needs it for the opt-in read.
-REAL_OWNERPY="$(cd "$HERE/../skills/escalate" && pwd)/owner.py"
+# The test sits in hooks/notification/, so the repo-root skills/ dir is two levels up.
+REAL_OWNERPY="$(cd "$HERE/../../skills/escalate" && pwd)/owner.py"
 
 SANDBOX="$(mktemp -d)"; trap 'rm -rf "$SANDBOX"' EXIT
 fail=0
