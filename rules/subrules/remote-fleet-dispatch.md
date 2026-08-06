@@ -83,16 +83,34 @@ the remote box — the right primitive when you want to start work and do someth
 an agent's tool call).
 
 Because nobody is tailing it, the on-disk dispatch record at
-`~/.agents/.cache/hosts/<id>.json` **stays `"status": "running"` forever**, even after
-the agent has exited. Verified: two finished runs, dead pids, an idle box, both records
-still `running`. `agents hosts ps` reconciles the real outcome on demand and reports them
-`completed`.
+`~/.agents/.cache/hosts/<id>.json` **stays `"status": "running"` after the agent has
+exited**, until something reconciles it. `agents hosts ps` does that reconciliation — it
+reads the run's **remote `.exit` file** and writes the real outcome back. Verified on
+zion: two finished runs read `running` in the raw JSON, and after `agents hosts ps` both
+read `completed`.
 
-- Poll `agents hosts ps --json` (match on the `name` you passed to `--name`), never the
-  raw cache file. A guard built on that file deadlocks permanently on its first dispatch.
-- Harvest the output with `agents hosts logs <id>` once status leaves `running`.
-- Bound it: treat a task still `running` far past its expected runtime as stuck, and
-  `agents hosts stop <id>` rather than letting it block the next dispatch forever.
+**But reconciliation only works if the remote `.exit` was written.** A run whose process
+was killed, or whose box rebooted, never writes one — and then *no command rescues it*.
+Verified on yosemite-s1: four records (`273148b7`, `4663ce92`, `a281c096`, `8450cd2c`)
+still report `running` with PIDs confirmed dead by `ssh <host> 'ps -p <pid>'`, and
+`273148b7` has no `.exit` on either side. `agents hosts ps` leaves all four `running`.
+
+So:
+
+- Poll `agents hosts ps --json` (match the `name` you passed to `--name`), never the raw
+  cache file — the file is stale until `ps` reconciles it.
+- Harvest with `agents hosts logs <id>` once status leaves `running`.
+- **Always bound the wait — `ps` is not a liveness check.** Pick a concrete ceiling from
+  the job's own expected runtime (2x it, or a stated cap) and treat anything past it as
+  dead, not slow: `agents hosts stop <id>`, then proceed. Without a ceiling, one
+  abnormally-killed run leaves a permanent `running` record that blocks every future
+  dispatch guarded on it. If you need certainty rather than a timeout, probe the pid
+  directly (`ssh <host> 'ps -p <pid>'`).
+
+**Dispatch records are local to the box that dispatched.** `~/.agents/.cache/hosts/`
+holds only the runs *this* machine launched, so a record for a run started from another
+box is not missing — it lives in that box's cache. Check there before concluding a
+dispatch never happened.
 
 ## Monitor at the service level — never tail full logs
 
