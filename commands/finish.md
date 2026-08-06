@@ -79,19 +79,25 @@ self-evident small renames.
 
 **Commit & PR.** Check `git status`; inspect every changed file in the diff. Commit completed work
 if the project workflow expects agent commits; never commit incomplete or broken work. If on a
-feature branch and the delivery path is a PR, push and open/update it, then attach the session
-transcript as a **secret** gist for an audit trail (never `--public` unless the repo is public AND
-you've reviewed the transcript):
+feature branch and the delivery path is a PR, push and open/update it. For a **private** repo
+only, attach a **redacted secret** gist as an audit trail — never a public gist, never raw
+unredacted markdown, and never on a public repo (link `<host>:<path>` instead):
 
 ```bash
 BASE=$(git symbolic-ref --short refs/remotes/origin/HEAD | sed 's#^origin/##')
 git rev-parse --abbrev-ref HEAD          # confirm not on $BASE
 git push -u origin HEAD
 gh pr create --title "..." --body "..."
-agents sessions --last 50 --markdown > /tmp/session-export.md
-GIST_URL=$(gh gist create /tmp/session-export.md --desc "Session transcript for PR" | tail -1)
+
+# Private repo only. Prefer the redacting renderer when available; fall back to
+# --markdown only if render is missing, then still use --secret.
+SID=$(agents sessions --last 1 --json 2>/dev/null | head -c 200)  # or the session you own
+agents sessions render "$SID" -o /tmp/session-export.md 2>/dev/null \
+  || agents sessions --markdown "$SID" > /tmp/session-export.md
+GIST_URL=$(gh gist create --secret /tmp/session-export.md --desc "Session transcript (redacted) for PR" | tail -1)
 gh pr comment --body "## Session Context
 [Session transcript]($GIST_URL)"
+# Public repo: omit the gist entirely; comment with host:path only.
 ```
 
 **Release (if applicable).** If the work touches a publishable package, first check

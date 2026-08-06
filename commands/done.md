@@ -46,28 +46,21 @@ Apply the `/recap` discipline:
 Emit the recap as your assistant message **now** — it must be printed BEFORE the exit, because once
 the harness dies nothing else you say will reach the user. The recap is the last thing they'll see.
 
-## Step 2: Self-exit
+## Step 2: Self-exit — apply `/self:close`
 
-After the recap is written, terminate the session as your final action. The Bash tool shell's parent
-(`$PPID`) is the agent harness; sending it `SIGTERM` is the clean shutdown path — the harness flushes
-the transcript, saves session state, and runs post-session hooks on its way out (unlike `SIGKILL`).
+After the recap is written, terminate the session as your final action by applying the
+**`/self:close`** procedure. That is the canonical exit primitive; its authoritative definition
+lives at [`plugins/self/commands/close.md`](../plugins/self/commands/close.md) — do **not**
+re-implement the guard or the signal here (change the exit behavior *there*, not in this file).
 
-Run this as the LAST tool call of the turn (do not write any text after it):
+In brief, `/self:close` runs as the LAST two tool calls of the turn (no text after the second):
 
-```bash
-HP=$PPID
-HC=$(ps -o comm= -p "$HP" 2>/dev/null | tr -d ' ')
-echo "self-exit: harness PID=$HP comm=$HC at $(date '+%H:%M:%S')"
-case "$HC" in
-  sshd|tmux*|init|systemd|login|bash|-bash|zsh|-zsh)
-    echo "refusing self-exit: parent ($HC) is not an agent harness — aborting so we don't kill infra" ;;
-  *)
-    kill -TERM "$HP"
-    echo "SIGTERM sent to $HP — if you can still read this, the harness ignored it" ;;
-esac
-```
+1. **Guard (read-only):** `ps -o comm= -p $PPID` — if the parent is a bare shell or infra process
+   (`sshd`, `tmux`, `init`, `systemd`, `login`, `bash`/`zsh`/`sh`/`fish`), STOP and report that the
+   self-exit was skipped; a real harness (`claude`, `codex`, `node`, `bun`, `droid`, …) is anything
+   else.
+2. **Signal:** only if the guard passed, run **exactly** `kill -TERM $PPID` (this exact form is
+   allowlisted by the `self` permission group, so it runs without a prompt in auto mode).
 
-The guard rejects obvious infrastructure parents (a bare shell, tmux, sshd, init/systemd) so `/done`
-never tears down the wrong process; a real harness (`claude`, `codex`, `gemini`, `node`, etc.) is
-anything else and gets the signal. If the guard refuses, report that the self-exit was skipped and
-why — do not escalate to `SIGKILL` or walk further up the tree.
+Emit nothing after the signal. If the harness ignores it, report that and stop — never escalate to
+`SIGKILL` or walk further up the tree.

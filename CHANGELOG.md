@@ -2,6 +2,90 @@
 
 ## [Unreleased]
 
+### Added
+
+- **New `self` plugin — `/self:close`, the agent self-exit primitive.** An agent
+  had no first-class way to end its own session: `/done` inlined a `kill -TERM
+  $PPID` blob that the auto-mode permission classifier blocked in headless runs,
+  so a dispatched session could not cleanly self-terminate. `/self:close` is the
+  low-level primitive — a read-only `ps -o comm= -p $PPID` guard (refuses
+  shell/tmux/sshd parents) then **exactly** `kill -TERM $PPID`. That exact form
+  is allowlisted by the new `permissions/groups/12-self.yaml`
+  (`Bash(kill -TERM $PPID)`, scoped to the direct parent + `TERM` only, never a
+  general `kill`), so the self-exit runs without a prompt in auto mode. `/done`'s
+  Step 2 **forwards to `/self:close`** rather than duplicating the guard+signal —
+  one home for the exit logic, the same alias pattern as `/commit` → `/code:commit`
+  (`/finish` deliberately does not self-exit — it drives work to delivered and
+  stays). Source: `plugins/self/`, `permissions/groups/12-self.yaml`,
+  `permissions/default.yaml` (rebuilt), `commands/done.md`,
+  `.claude-plugin/marketplace.json`, `plugins/README.md`.
+
+## [0.2.0] - 2026-08-06
+
+### Highlights
+
+Behavioral cut of the 2026-08-03 → 2026-08-06 wave. Fleet boxes land this by
+`agents repo pull system` (or `check-updates` / SessionStart autosync) and
+`agents sync` — there is no separate npm package for this repo. Tag `v0.2.0`
+names the train; `main` remains what most hosts pull day-to-day.
+
+- **Multi-harness system hooks** (claude / codex / kimi / grok / cursor / droid /
+  antigravity): snake_case + camelCase stdin; shell/read tool names ported.
+- **Stop / done contract:** no PR-link handoffs; waiting sessions stop looping;
+  done-claim files follow-ups, recaps, and self-exits headless runs.
+- **SessionStart denser:** Linear projects + milestones, project-aware in-flight,
+  device topology cache, git pull-forward on clean trees.
+- **Teams / feed:** completion + cross-track contracts; feed record vs owner
+  deliver (`agents notify`); balanced rotation + `--remote-cwd` documented.
+- **New commands:** `/triage`, `/dispatch`, `/work:dispatch`, `/fork`, `/profile`,
+  historical `/recap`; `/debug` full loop; `reflect` restored.
+- **Artifacts:** Markdown → `artifacts-cli` HTML; date-based paths; plan HTML
+  requires a drawn SVG figure.
+- **Four hooks re-registered** after months of silent unregistration (rm-guard,
+  large-file-add-guard, linear inject, prompt expanders).
+
+### Security & defaults (this cut)
+
+- **`expand-bang-commands` defaults to `enabled: false`.** UserPromptSubmit
+  `` `! cmd` `` expansion runs a shell; paste of untrusted text is local RCE.
+  Re-enable in the user layer with a full entry + `override: true` (see
+  `agents.yaml` comment and README §Hooks).
+- **`/finish` transcript attach** uses `gh gist create --secret` and prefers
+  `agents sessions render` (redacted). Public repos omit the gist.
+- **Personal contact surfaces scrubbed** from escalate / hibernate examples and
+  tests (placeholders instead of a live chat id / `muqsit@mac-mini`).
+
+### Removed
+
+- **Relocated the `social` plugin out of this brand-agnostic mirror.** `social`
+  (audit / align / schedule) hard-codes one user's growth infra — `rush http
+  POST /api/v1/social/post`, the `getlate` pipeline, the OpenClaw draft corpus,
+  and the `sergey`/`marc` workspaces — so it fails the `.system` bar (generic +
+  brand-agnostic + safe to public-mirror). It now lives in the user layer next
+  to `create` (marketplace `agents-cli`). Dropped its entry from
+  `.claude-plugin/marketplace.json`, the `plugins/README.md` catalog row, the
+  two `social`/`social:schedule` routes in `plugins/work/commands/dispatch.md`,
+  and the `social` mention in the `work` plugin description. Paired add:
+  muqsitnawaz/.agents#227.
+
+### Known risks (follow-ups — not fixed in 0.2.0)
+
+These remain after this tag; tracked for 0.2.1+ / agents-cli companions:
+
+1. **Indirect prompt injection** — Linear titles/descriptions and open PR titles
+   land in SessionStart context without trust fences (mailbox inject is the
+   pattern to copy).
+2. **`session_id` as path component** in attention-sentinel / vacation-recap /
+   escalate-fired can traverse if a harness ever supplies a hostile id.
+3. **`escalate.sh` watcher** still interpolates `$MSG` into a `bash -c` string
+   (initial send is base64-safe).
+4. **Permission allows** `Bash(agents:*)` / `Bash(cat:*)` bypass Read denies on
+   credential files — cooperative agent speed-bump only.
+5. **No first-class `agents hooks enable|disable` CLI yet** — user-layer
+   `enabled: false` works today; a dedicated command is planned.
+6. **`check-updates` routine** unpinned `npm i -g @latest` + ff system `main`
+   is a supply-chain surface when enabled.
+
 ### Changed
 
 - **`hooks/session-start/03-linear-inject-tasks-context.sh` routes "Your Tasks"
@@ -293,7 +377,6 @@
 
 - **OpenClaw's capability table claims hook support it never receives.** `apps/cli/src/lib/agents.ts:374` declares `hooks: true`, but no `registerHooksForOpenClaw` exists and `registerHooksToSettings` has no `openclaw` branch, so it falls through to `return { registered: [], errors: [] }` (`hooks.ts:1449`). agents-cli's own review conventions name this failure mode: *"A map asserting a capability the code doesn't implement is a lying table."* The fix belongs in agents-cli — either flip the flag or write the registrar — and is tracked separately.
 
-## [Unreleased]
 
 ### Fixed
 

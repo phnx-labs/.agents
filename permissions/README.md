@@ -30,6 +30,7 @@ Files concatenate in alphabetical order, so the number prefix controls order.
 | [`06-docker.yaml`](./groups/06-docker.yaml) · [`07-k8s.yaml`](./groups/07-k8s.yaml) · [`08-cloud.yaml`](./groups/08-cloud.yaml) | Containers, clusters, cloud CLIs |
 | [`09-git.yaml`](./groups/09-git.yaml) | Git plumbing |
 | [`10-security.yaml`](./groups/10-security.yaml) · [`11-ci.yaml`](./groups/11-ci.yaml) | Security tooling, CI |
+| [`12-self.yaml`](./groups/12-self.yaml) | Agent self-operations — the one exact `kill -TERM $PPID` the `self` plugin (`/self:close`) uses to SIGTERM its own harness |
 | [`15-misc-bash.yaml`](./groups/15-misc-bash.yaml) | Everything else shell |
 | [`20-webfetch-dev.yaml`](./groups/20-webfetch-dev.yaml) · [`21-webfetch-cloud.yaml`](./groups/21-webfetch-cloud.yaml) · [`22-webfetch-social.yaml`](./groups/22-webfetch-social.yaml) · [`25-webfetch-misc.yaml`](./groups/25-webfetch-misc.yaml) | WebFetch domain allowlists |
 | [`30-paths.yaml`](./groups/30-paths.yaml) | Blanket allows plus Write and Edit path rules |

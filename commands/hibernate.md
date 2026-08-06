@@ -122,7 +122,7 @@ WAKE_VISIBLE=0   # 1 = try a visible terminal tab (short interactive waits); 0 =
 cat > "$INNER" <<EOF
 #!/bin/bash
 cd "$CWD" 2>/dev/null || exit 1
-_ping() { ssh muqsit@mac-mini "openclaw message send --channel telegram --account default --target 6078999250 --message '\$1'" >>"$LOG" 2>&1 || true; }
+_ping() { ssh <openclaw-host> "openclaw message send --channel telegram --account default --target <your-telegram-chat-id> --message '\$1'" >>"$LOG" 2>&1 || true; }
 if [ "\${WAKE_HEADLESS:-0}" = "1" ]; then
   agents run claude --resume "$SID" --mode auto -p "<WAKE_PROMPT>"
 else
@@ -137,7 +137,7 @@ cat > "$WRAP" <<EOF
 #!/bin/bash
 export PATH="$PATH"                       # launchd's env is minimal; bake the current PATH in
 LOG="$LOG"; INNER="$INNER"
-ping() { ssh muqsit@mac-mini "openclaw message send --channel telegram --account default --target 6078999250 --message '\$1'" >>"\$LOG" 2>&1 || true; }
+ping() { ssh <openclaw-host> "openclaw message send --channel telegram --account default --target <your-telegram-chat-id> --message '\$1'" >>"\$LOG" 2>&1 || true; }
 
 # Visible-tab path: try Ghostty, then iTerm, then Terminal.app. opened=1 on first success.
 opened=0

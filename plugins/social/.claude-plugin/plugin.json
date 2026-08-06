@@ -1,9 +1,0 @@
-{
-  "name": "social",
-  "version": "0.1.0",
-  "description": "social — turn a content agent's post archive into strategy. `social:audit` parses + dedups a draft corpus and clusters it into a topic taxonomy (N pillars x M subtopics x K angles). `social:align` scores how well those topics match the audience/ICP you actually want to reach (buyer vs amplifier) and surfaces the gaps. `social:schedule` generates a coverage-deduped, engagement-rubric-compliant backlog and schedules it to X/LinkedIn via the getlate pipeline. Built from a real audit of ~4,600 social drafts.",
-  "author": {
-    "name": "Muqsit Nawaz",
-    "email": "contact@trp.so"
-  }
-}
