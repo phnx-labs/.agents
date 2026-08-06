@@ -2,6 +2,21 @@
 
 ## [Unreleased]
 
+### Changed
+
+- **`/finish` no longer offers to publish in a repo that has a release train.**
+  Its "Release (if applicable)" step detected a publishable package and asked
+  whether to release it, which contradicts `release-to-fleet`: a repo with a
+  scheduled or lease-held releaser is done at *merged + a changelog fragment*,
+  and a feature agent must not run the release script, tag, or publish. Leaving
+  it meant every `/finish` on `agents-cli` would offer to publish, reintroducing
+  through this entry point exactly the contention that jammed that pipeline on
+  2026-08-02 (four release attempts, zero published versions, two sessions
+  racing the same release into a `merged tree != built tree` refusal). The step
+  now checks for a train first — including a release script that claims a lease,
+  which is already serialized — and defers to `release-to-fleet` as the
+  authority. Repos without a train are unchanged.
+
 ### Added
 
 - **The done-claim Stop gate now closes the loop instead of leaving a dangling

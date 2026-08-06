@@ -94,16 +94,27 @@ gh pr comment --body "## Session Context
 [Session transcript]($GIST_URL)"
 ```
 
-**Release (if applicable).** If the work touches a publishable package, ship it:
+**Release (if applicable).** If the work touches a publishable package, first check
+**who is allowed to release it** — `release-to-fleet` is the authority and takes precedence over
+this step:
 
 ```bash
+agents routines list | grep -i release            # a scheduled train?
+ls .github/workflows/ | grep -iE 'release|publish'
+grep -rl 'release-lease' scripts/ 2>/dev/null     # a lease = already serialized
 [ -f package.json ] && echo npm; [ -f Cargo.toml ] && echo crate
 [ -f pyproject.toml ] && echo pypi; [ -f scripts/release.sh ] && echo release-script
 ```
 
-Build, run the full test suite, then `AskUserQuestion` to confirm ("Release v{version} to {registry}?"
-— Yes / No / Skip). On confirm, run the release and verify it landed in the registry, not just that
-the script exited 0.
+**Repo with a release train** (a scheduled releaser, or a release script that claims a lease — see
+`release-to-fleet` → *Known trains*): you are done at **merged + a changelog fragment**. Do not run
+the release script, do not tag, do not publish, and do not ask whether to — name the train and when
+it next runs, then move on. Two agents entering one release pipeline is what jammed `agents-cli` on
+2026-08-02: four release attempts, zero published versions.
+
+**Repo without one:** build, run the full test suite, then `AskUserQuestion` to confirm
+("Release v{version} to {registry}?" — Yes / No / Skip). On confirm, run the release and verify it
+landed in the registry, not just that the script exited 0.
 
 **Tracker.** Update the issue tracker only with proof: commit, PR, deploy URL, test output, or
 health-check response. For work that is proven-remaining (a deferred slice with a complete shippable
