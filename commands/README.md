@@ -29,7 +29,8 @@ Multi-agent plan/spec/debug live under `/swarm …` and `/swarm:plan` / `/swarm:
 | Command | What it does |
 |---|---|
 | [`/commit`](./commit.md) | Split the working tree into the maximum number of small logical commits, then push. Alias of `/code:commit` |
-| [`/review`](./review.md) | Review every PR the session opened, then merge or request changes per verdict. Alias of `/code:review` |
+| [`/review`](./review.md) | Review every PR the session opened, review PR number(s) cold, or scan a whole repo for architecture/quality drift. Alias of `/code:review` |
+| [`/release`](./release.md) | Discover the repo's real release process and publish it end to end — tests, changelog, publish/tag, verify live |
 | [`/finish`](./finish.md) | Drive the current task to done end-to-end instead of stopping at a recap, blocker, or partial handoff |
 | [`/done`](./done.md) | Recap the session, then cleanly self-exit (SIGTERM the harness) |
 | [`/prune`](./prune.md) | Delete merged branches and worktrees locally and on origin — conservative, never removes recoverable work |
