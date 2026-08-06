@@ -12,6 +12,7 @@ Get a project's work done across the fleet — **any** kind of work, not just co
 
 - **`/triage`** is the *decision* layer — keep/cancel/reprioritize the whole board, surfacing calls that need the human. `work` does **not** triage or sweep in bulk; it dispatches one clear, decided item. If an item needs a human decision, `/work:dispatch` surfaces it for `/triage`, it does not build it.
 - **`/dispatch`** (top-level) is the older single-task, engineering-leaning command; `/work:dispatch` generalizes it into a plugin command that is explicitly kind-agnostic.
+- **`/next`** shares this command's target-resolution logic (find the next item, dedupe against in-flight work) but a different execution model: `/next` keeps working on the pick *in the current session*, `/work:dispatch` hands it to a fresh executor (a dispatched agent, a different machine, or a non-coding plugin). Pick one per target — don't run both.
 
 ## Conventions
 

@@ -1,5 +1,5 @@
 ---
-description: Confirm the current task is actually done, then surface (and if clear, claim) the next related task from the project's tracker. Tracker-agnostic — composes with /tickets, never hardcodes Linear.
+description: Confirm the current task is actually done, then surface (and if clear, claim) the next related task and keep working in this session. Reads whatever board state is already in context, never hardcodes Linear; hands non-coding or hand-off-elsewhere work to /work:dispatch instead of dispatching it inline.
 ---
 
 You just finished something, or are about to move on. Context: $ARGUMENTS
@@ -7,14 +7,20 @@ You just finished something, or are about to move on. Context: $ARGUMENTS
 `/next` is the continuity command an agent runs at the boundary between two tasks:
 verify what you just did is really done, recall what project you're in, then find
 what to work on next — related work first, everything else after — using whichever
-tracker this project actually has. It **composes with `/tickets`** (tracker
-detection, claim/close primitives) rather than reimplementing a Linear-specific
-flow — a prior version of this command hardcoded Linear and was removed for it;
-don't reintroduce that.
+tracker this project actually has. It never hardcodes Linear — a prior version of
+this command did exactly that and was removed for it; don't reintroduce that.
 
 **Chains from `/continue`.** If you just ran `/continue` and its Step 3 confirmed
 the resumed task is done, don't re-derive project context here — you already have
 it. Skip straight to Step 3 below.
+
+**Continue-here vs. hand-off-elsewhere.** `/next` is for continuing THIS session on
+the next task yourself. If the next unit of work should go to a different
+executor instead — a fresh dispatched agent, a different machine, or non-coding
+work (content, design, a browser task) — that's `/work:dispatch`, not `/next`.
+The two share the same resolution logic (find the target, dedupe against
+in-flight work); `/next` picks up where that resolution lands and keeps working
+in-session, `/work:dispatch` hands it off. Don't run both on the same target.
 
 ## Step 1: Confirm the current task is actually done
 
@@ -46,11 +52,19 @@ what you just finished, not just anything open.
 
 ## Step 3: Pull the board — tracker-agnostic
 
-Invoke `/tickets` Step 1 (tracker detection: skill → CLI → repo signal → ask) to
-find whatever this project actually uses. Do not assume Linear, GitHub, or Jira —
-detect, every time.
+**Check what's already in your context first.** Most tracker integrations
+auto-inject board state at session start (this repo's Linear hook is one — team
+tasks, project milestones, the active cycle, all delivered before you type
+anything). Read that before running any discovery command; it's usually already
+answered.
 
-Once you have the tracker, prefer in this order:
+Only when nothing's injected, or the project uses a tracker this session hasn't
+surfaced yet, fall back to `/tickets` Step 1 (tracker detection: skill → CLI →
+repo signal → ask). Do not assume Linear, GitHub, or Jira — detect, every time.
+`/tickets` is the right primitive for **actions** (claim, close, comment) even
+when discovery came from injected context, not from `/tickets` itself.
+
+Once you have the board, prefer in this order:
 
 1. **Related to what you just shipped** — same component/surface, a follow-up
    noted on the ticket you just closed, a sibling in the same epic/cluster.
@@ -123,8 +137,12 @@ worth doing about it, without doing the deep analysis in the main thread.
 
 ## Anti-patterns
 
-- **Hardcoding a tracker.** Always route through `/tickets` detection — this is
-  the exact reason the original `/next` was removed.
+- **Hardcoding a tracker.** Check injected context first, fall back to `/tickets`
+  detection, never assume Linear specifically — this is the exact reason the
+  original `/next` was removed.
+- **Reimplementing `/work:dispatch`'s resolution logic.** If the pick belongs to a
+  different executor (non-coding, or should run on another machine/agent), hand it
+  to `/work:dispatch` instead of dispatching it inline from here.
 - **Skipping Step 4.** Claiming a ticket without checking for an open PR or a live
   session on it is how duplicate work happens — a session in this very repo did
   this today and had to close a duplicate PR after discovering a sibling had
