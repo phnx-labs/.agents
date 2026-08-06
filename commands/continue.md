@@ -36,7 +36,9 @@ The session you are resuming may already be running inside a tmux pane or termin
    - **Exit code 0:** you are now attached to the live session. Tell the user which session you reattached to, then **cleanly hand off** — do not continue chatting in this harness. The user is interacting with the resumed session.
    - **Exit code non-zero:** the session is not attachable (dead, headless, plain terminal, ambiguous id, no tmux/Ghostty rail, or no TTY). Proceed to the transcript-recovery flow below.
 
-4. **Resolve ambiguity.** If focus prints `"<id>" is ambiguous (N live matches)`, run `agents sessions --active` or `agents sessions focus` (no id) to pick the right one, or use more characters of the id and retry.
+4. **Resolve ambiguity.** If focus reports multiple canonical sessions, run
+   `agents sessions` to inspect them or pass more of the UUID/tmux alias. Never
+   choose an ambiguous alias suffix automatically.
 
 ## Step 1: Load the prior session
 
