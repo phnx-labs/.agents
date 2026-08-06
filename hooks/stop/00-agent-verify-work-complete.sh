@@ -835,10 +835,11 @@ Before you can stop, you MUST:
       for owner delivery.
    c. This session is now genuinely finished. If this is a headless, dispatched,
       or background run — not a live terminal a person might be actively
-      watching right now — self-exit the way /done does: send SIGTERM to your
-      harness parent process as your very last action, so the session actually
-      ends instead of sitting idle. If you are unsure, or this looks like an
-      interactive session someone is driving, skip the self-exit and just stop.
+      watching right now — run /done's Step 2 self-exit recipe as your very
+      last action (it guards against killing a non-harness parent — do not
+      hand-roll a bare SIGTERM), so the session actually ends instead of
+      sitting idle. If you are unsure, or this looks like an interactive
+      session someone is driving, skip the self-exit and just stop.
 
 Only stop when every goal has tangible, verified results, any real follow-ups are
 filed (not dangled), and — if applicable — the session has cleanly exited itself.

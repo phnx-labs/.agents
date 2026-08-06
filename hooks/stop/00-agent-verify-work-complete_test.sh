@@ -250,9 +250,9 @@ grep -q "You claimed this work is done" "$SANDBOX/stderr" && echo "ok   - done-c
 #     session someone might be watching.
 grep -qi "FILE them as tickets" "$SANDBOX/stderr" && echo "ok   - gate instructs filing follow-up tickets" || { echo "FAIL - gate does not mention filing follow-up tickets"; fail=1; }
 grep -qi "say the word" "$SANDBOX/stderr" && echo "ok   - gate names the dangling-idea anti-pattern" || { echo "FAIL - gate does not name the dangling-idea anti-pattern"; fail=1; }
-grep -qi "self-exit the way /done does" "$SANDBOX/stderr" && echo "ok   - gate instructs self-exit via /done" || { echo "FAIL - gate does not instruct self-exit"; fail=1; }
-grep -qi "SIGTERM" "$SANDBOX/stderr" && echo "ok   - gate names the SIGTERM mechanism" || { echo "FAIL - gate does not name SIGTERM"; fail=1; }
-grep -qi "interactive session someone is driving" "$SANDBOX/stderr" && echo "ok   - gate carves out interactive sessions from self-exit" || { echo "FAIL - gate does not guard against killing an interactive session"; fail=1; }
+grep -qi "run /done's Step 2 self-exit recipe" "$SANDBOX/stderr" && echo "ok   - gate instructs self-exit via /done's guarded recipe" || { echo "FAIL - gate does not instruct self-exit via /done"; fail=1; }
+grep -qi "hand-roll a bare SIGTERM" "$SANDBOX/stderr" && echo "ok   - gate warns against bypassing /done's parent-process guard" || { echo "FAIL - gate does not warn against a bare SIGTERM"; fail=1; }
+grep -qi "session someone is driving" "$SANDBOX/stderr" && echo "ok   - gate carves out interactive sessions from self-exit" || { echo "FAIL - gate does not guard against killing an interactive session"; fail=1; }
 
 # 8b. Regression: first_user_msg is extracted via `python3 -c "..."` inside $(...).
 #     A backtick in that python string is re-parsed by bash as a nested command
