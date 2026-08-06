@@ -4,8 +4,9 @@
 
 ### Added
 
-- **Codex run guidance now matches the safe permission-profile defaults.** Omitted
-  Codex mode is writable with network and on-request approvals; explicit plan stays
+- **Codex run guidance now matches the safe permission-profile defaults.** When no
+  configured run default exists, omitted Codex mode is writable with network and
+  on-request approvals; explicit plan stays
   filesystem-read-only with network; only explicit skip removes approvals and the
   sandbox. The permissions maintenance guide now distinguishes launch profiles from
   the coarser canonical permission-resource translation.
