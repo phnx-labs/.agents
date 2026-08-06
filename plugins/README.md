@@ -12,6 +12,7 @@ anywhere with no setup.
 | Plugin | Commands | What it's for |
 |---|---|---|
 | [`code`](./code/README.md) | 7 | The coding loop — `/code:loop`, `/code:verify`, `/code:review`, `/code:ship`, `/code:quality`, `/code:learn`, `/code:commit` |
+| [`work`](./work/README.md) | 1 | Get a project's work done across the fleet, **any** kind — `/work:dispatch` routes ONE unit of work (coding *or* non-coding) to the plugin that owns it, using browser + secrets for real non-coding tasks |
 | [`swarm`](./swarm/README.md) | 6 | Fan a task across parallel agents, then synthesize — `/swarm:run`, `/swarm:plan`, `/swarm:spec`, `/swarm:debug`, `/swarm:test`, `/swarm:qa` |
 | [`fleet`](./fleet/README.md) | 3 | Fleet-wide ops — `/fleet:sync` brings every device to latest, `/fleet:onboard` brings a bare box to parity, `/fleet:mint-auth` self-mints setup tokens |
 | [`social`](./social/README.md) | 3 | Turn a content archive into strategy — `/social:audit`, `/social:align`, `/social:schedule` |

@@ -1,16 +1,20 @@
 #!/bin/bash
-# SessionStart hook: inject a short Linear brief + the active-sprint task board.
+# SessionStart hook: inject Linear context at start —
+#   team/agents · every project (milestones + top open tickets) · active cycle.
 #
-# Credentials come from the Linear CLI's own config at ~/.linear-cli/config.json
-# (0600, written by `linear setup`): apiKey + teamId. LINEAR_API_KEY /
-# LINEAR_TEAM_ID in the env still win. A SessionStart hook must never pop
-# Touch ID or hang a session, so this hook never calls `agents secrets` — when
-# neither source has credentials it prints a one-line skip and exits 0. Same
-# code path on macOS, Linux, and Windows.
+# Credentials: ONLY the Linear CLI's plaintext config at
+#   ~/.linear-cli/config.json  (apiKey + teamId, 0600, written by `linear setup`)
+# or LINEAR_API_KEY + LINEAR_TEAM_ID already in the env.
 #
-# The brief (humans, assignable agents, and — when the cwd maps to a Linear
-# project like `agents-cli` -> "Agents CLI" — that project's progress, milestones
-# and top issues) is printed first, then the active-sprint board.
+# NEVER uses `agents secrets`, the keychain, Touch ID, or any secrets bundle —
+# a SessionStart hook must not pop biometry or hang (macOS/Linux/Windows). The
+# LINEAR_CLI_CONFIG env var overrides the config path for tests.
+#
+# Layout of the injection (token-budgeted brief, not a full board dump):
+#   1. Team & Agents
+#   2. Projects — every non-canceled/completed project, cwd-matched first,
+#      each with milestones + top open tickets (priority-sorted)
+#   3. Active cycle — Your Tasks first, then open work grouped by project
 
 # Which agent/harness is running this hook (for the "Your Tasks" bucket). The
 # script's own path names the agent on every launch path; AGENT_SELF overrides.
@@ -24,11 +28,8 @@ export AGENT_SELF="${AGENT_SELF:-claude}"
 git_root=$(git rev-parse --show-toplevel 2>/dev/null)
 export CWD_PROJECT_HINTS="$(basename "$git_root" 2>/dev/null),$(basename "$PWD" 2>/dev/null)"
 
-# Resolve credentials: env first, then the Linear CLI's plaintext config
-# (~/.linear-cli/config.json, 0600 — written by `linear setup`). No secrets
-# broker, no keychain, so this hook can never pop Touch ID or hang. The config
-# path is overridable via LINEAR_CLI_CONFIG for tests. Each var is filled only
-# when the env doesn't already carry it.
+# Resolve credentials: env first, then ~/.linear-cli/config.json. No secrets
+# broker, no keychain — so this can never pop Touch ID or hang.
 if [ -z "$LINEAR_API_KEY" ] || [ -z "$LINEAR_TEAM_ID" ]; then
   cfg="${LINEAR_CLI_CONFIG:-$HOME/.linear-cli/config.json}"
   if [ -f "$cfg" ]; then
@@ -51,17 +52,17 @@ if not os.environ.get("LINEAR_TEAM_ID") and c.get("teamId"):
 fi
 export LINEAR_API_KEY LINEAR_TEAM_ID
 
-# One round trip: workspace users (humans + agent apps), every team project (name
-# + progress + milestones + top open issues, for the cwd match), and the active
-# sprint board. Build the JSON body in Python to sidestep GraphQL-in-bash quoting.
+# One round trip: users, every team project (milestones + top open issues),
+# and the active-cycle board with project on each issue. Build the JSON body
+# in Python to sidestep GraphQL-in-bash quoting.
 QUERY='{
   users(first: 250) { nodes { displayName name email active app guest } }
   team(id: "'"$LINEAR_TEAM_ID"'") {
     projects(first: 50) {
       nodes {
         name state progress
-        projectMilestones(first: 20) { nodes { name targetDate progress } }
-        issues(first: 6, filter: { state: { type: { nin: ["completed", "canceled"] } } }) {
+        projectMilestones(first: 20) { nodes { name targetDate progress sortOrder } }
+        issues(first: 8, filter: { state: { type: { nin: ["completed", "canceled"] } } }) {
           nodes { identifier title priority state { name type } assignee { displayName } }
         }
       }
@@ -69,7 +70,13 @@ QUERY='{
     activeCycle {
       name startsAt endsAt
       issues(filter: { state: { type: { nin: ["completed", "canceled"] } } }) {
-        nodes { identifier title description state { name type } priority assignee { name } labels { nodes { name } } updatedAt }
+        nodes {
+          identifier title description state { name type } priority
+          assignee { name }
+          labels { nodes { name } }
+          project { name }
+          updatedAt
+        }
       }
     }
   }
@@ -92,11 +99,67 @@ HINTS = [h for h in os.environ.get('CWD_PROJECT_HINTS', '').split(',') if h.stri
 def norm(s):
     return re.sub(r'[^a-z0-9]', '', (s or '').lower())
 
+PRIORITY = {0: 'None', 1: 'Urgent', 2: 'High', 3: 'Medium', 4: 'Low'}
+
+def pri_rank(n):
+    p = n.get('priority', 4)
+    return p if p is not None else 4
+
+def pct_str(prog):
+    # Linear project progress is 0..1; some milestone fields arrive already as percent.
+    if not isinstance(prog, (int, float)):
+        return None
+    if prog > 1.0:
+        return f'{round(prog)}%'
+    return f'{round(prog * 100)}%'
+
+def capped(rendered, cap):
+    if len(rendered) <= cap:
+        return ', '.join(rendered)
+    return ', '.join(rendered[:cap]) + f', +{len(rendered) - cap} more'
+
+def fmt_issue_line(n, with_desc=False, with_project=False):
+    ident = n.get('identifier') or '?'
+    title = n.get('title') or ''
+    state = (n.get('state') or {}).get('name', '')
+    pri = PRIORITY.get(n.get('priority', 0), 'None')
+    labels = n.get('_other_labels') or []
+    assignee = n.get('assignee') or {}
+    who = assignee.get('displayName') or assignee.get('name') or ''
+    parts = [f'**{ident}**', f'({pri}, {state})']
+    if with_project:
+        pname = (n.get('project') or {}).get('name')
+        if pname:
+            parts.append(f'{{{pname}}}')
+    if labels:
+        parts.append('[' + ', '.join(labels) + ']')
+    if who:
+        parts.append(f'@{who}')
+    parts.append(f': {title}')
+    line = '- ' + ' '.join(parts)
+    if with_desc:
+        desc = n.get('description') or ''
+        if desc:
+            short = desc[:160].replace(chr(10), ' ')
+            if len(desc) > 160:
+                short += '...'
+            line += f'\n  > {short}'
+    return line
+
 try:
     data = json.load(sys.stdin)
+    # GraphQL error / empty payload
+    if not data.get('data'):
+        err = data.get('errors')
+        if err:
+            print(f'Linear query failed: {err[0].get(\"message\", err)}')
+        else:
+            print('Linear query failed: empty response')
+        sys.exit(0)
+
     team = data.get('data', {}).get('team') or {}
 
-    # -- Brief: humans + agent members ------------------------------------
+    # -- Team & Agents ----------------------------------------------------
     users = (data.get('data', {}).get('users') or {}).get('nodes', [])
     humans, agents = [], []
     for u in users:
@@ -105,20 +168,11 @@ try:
         email = u.get('email') or ''
         name = u.get('displayName') or u.get('name') or 'unknown'
         if u.get('app'):
-            # Skip Linear's own built-in integration user; keep assignable agents.
             if email.endswith('@linear.linear.app') or name == 'linear':
                 continue
             agents.append(name)
         elif not u.get('guest'):
             humans.append((name, email))
-
-    # This is a *brief*, not a directory dump -- a big workspace must not blow up
-    # the injection. Fetch up to the API max (first: 250) so counts are accurate,
-    # then cap what we render and summarize the rest as '+N more'.
-    def capped(rendered, cap):
-        if len(rendered) <= cap:
-            return ', '.join(rendered)
-        return ', '.join(rendered[:cap]) + f', +{len(rendered) - cap} more'
 
     if humans or agents:
         print('## Team & Agents')
@@ -130,58 +184,80 @@ try:
             print(f'**Agent members ({len(names)}, assignable):** {capped(names, 20)}')
         print()
 
-    # -- Brief: cwd -> project focus --------------------------------------
-    priority_map = {0: 'None', 1: 'Urgent', 2: 'High', 3: 'Medium', 4: 'Low'}
+    # -- Projects (all) + milestones + top open tickets -------------------
     projects = (team.get('projects') or {}).get('nodes', [])
+    # Drop finished projects; keep backlog/started/planned.
+    live_projects = [
+        p for p in projects
+        if (p.get('state') or '').lower() not in ('completed', 'canceled', 'cancelled')
+    ]
     hint_norms = [norm(h) for h in HINTS if norm(h)]
 
-    matched = None
-    # Exact normalized match wins; else a containment match (>=4 chars, avoids
-    # matching a 2-letter cwd against every project).
-    for p in projects:
-        if norm(p.get('name')) in hint_norms:
-            matched = p
-            break
-    if not matched:
-        for p in projects:
-            pn = norm(p.get('name'))
-            for hn in hint_norms:
-                if len(hn) >= 4 and (hn in pn or pn in hn):
-                    matched = p
-                    break
-            if matched:
-                break
+    def is_cwd_match(p):
+        pn = norm(p.get('name'))
+        if pn in hint_norms:
+            return True
+        for hn in hint_norms:
+            if len(hn) >= 4 and (hn in pn or pn in hn):
+                return True
+        return False
 
-    if matched:
-        prog = matched.get('progress')
-        pct = f' -- {round(prog * 100)}% complete' if isinstance(prog, (int, float)) else ''
-        print(f'### Focus: {matched[\"name\"]} (matched cwd){pct}')
-        ms = (matched.get('projectMilestones') or {}).get('nodes', [])
-        if ms:
-            parts = []
-            for m in ms:
-                mp = m.get('progress')
-                mpct = f' {round(mp * 100)}%' if isinstance(mp, (int, float)) else ''
-                td = f' by {m[\"targetDate\"]}' if m.get('targetDate') else ''
-                parts.append(f'{m[\"name\"]}{td}{mpct}')
-            print(f'**Milestones:** {\"; \".join(parts)}')
-        issues = (matched.get('issues') or {}).get('nodes', [])
-        if issues:
-            issues.sort(key=lambda n: n.get('priority', 4) or 4)
-            print('**Top open issues:**')
-            for n in issues:
-                pri = priority_map.get(n.get('priority', 0), 'None')
-                st = (n.get('state') or {}).get('name', '')
-                a = (n.get('assignee') or {}).get('displayName')
-                who = f' @{a}' if a else ''
-                print(f'- **{n[\"identifier\"]}** ({pri}, {st}){who}: {n[\"title\"]}')
+    # cwd-matched project first, then the rest alphabetically.
+    focus = [p for p in live_projects if is_cwd_match(p)]
+    rest = sorted(
+        [p for p in live_projects if not is_cwd_match(p)],
+        key=lambda p: (p.get('name') or '').lower(),
+    )
+    ordered = focus + rest
+
+    if ordered:
+        print(f'## Projects ({len(ordered)})')
+        print('_Each project: milestones, then top open tickets by priority. Full board: linear tasks --project <name> --by-milestone._')
         print()
+        for p in ordered:
+            name = p.get('name') or 'unnamed'
+            pct = pct_str(p.get('progress')) or '?'
+            state = p.get('state') or ''
+            star = ' ★ cwd' if is_cwd_match(p) else ''
+            print(f'### {name}{star} — {pct} · {state}')
+
+            ms = (p.get('projectMilestones') or {}).get('nodes', [])
+            if ms:
+                # sortOrder ascending when present; else targetDate then name
+                def ms_key(m):
+                    so = m.get('sortOrder')
+                    if isinstance(so, (int, float)):
+                        return (0, so)
+                    td = m.get('targetDate') or '9999'
+                    return (1, td, m.get('name') or '')
+                ms_sorted = sorted(ms, key=ms_key)
+                print('**Milestones:**')
+                for m in ms_sorted:
+                    mpct = pct_str(m.get('progress'))
+                    mpct_s = f' · {mpct}' if mpct else ''
+                    td = f' by {m[\"targetDate\"]}' if m.get('targetDate') else ''
+                    print(f'- {m.get(\"name\", \"?\")}{td}{mpct_s}')
+            else:
+                print('**Milestones:** _(none)_')
+
+            issues = (p.get('issues') or {}).get('nodes', [])
+            if issues:
+                issues = sorted(issues, key=pri_rank)
+                print(f'**Top open ({len(issues)}):**')
+                for n in issues:
+                    print(fmt_issue_line(n, with_desc=False))
+            else:
+                print('**Top open:** _(none)_')
+            print()
     elif projects:
-        names = ', '.join(p['name'] for p in projects)
-        print(f'_No cwd->project match (team projects: {names})._')
+        names = ', '.join(p.get('name', '?') for p in projects)
+        print(f'_No live projects to show (team projects: {names})._')
+        print()
+    else:
+        print('_No projects on this Linear team._')
         print()
 
-    # -- Active-sprint board ----------------------------------------------
+    # -- Active-sprint board (Your Tasks, then by project) ----------------
     cycle = team.get('activeCycle')
     if not cycle:
         print('No active sprint in Linear.')
@@ -194,91 +270,81 @@ try:
         print(f'No open tasks in {cycle_name}.')
         sys.exit(0)
 
-    # Group by agent label
+    # Annotate agent labels + other labels
     groups = {}
-    unassigned = []
     for n in nodes:
-        labels = [l['name'] for l in n.get('labels', {}).get('nodes', [])]
+        labels = [l['name'] for l in (n.get('labels') or {}).get('nodes', [])]
         agent_labels = [l for l in labels if l.startswith('agent:')]
-        other_labels = [l for l in labels if not l.startswith('agent:')]
-        n['_other_labels'] = other_labels
-
+        n['_other_labels'] = [l for l in labels if not l.startswith('agent:')]
+        n['_agent_labels'] = agent_labels
         if agent_labels:
             for al in agent_labels:
                 groups.setdefault(al, []).append(n)
-        else:
-            unassigned.append(n)
 
-    # Sort each group by priority
     for g in groups.values():
-        g.sort(key=lambda n: n.get('priority', 4))
-    unassigned.sort(key=lambda n: n.get('priority', 4))
+        g.sort(key=pri_rank)
 
     total = len(nodes)
-    print(f'## {cycle_name} -- {total} open tasks')
+    print(f'## {cycle_name} — {total} open tasks')
     print()
 
-    def fmt_issue(n):
-        ident = n['identifier']
-        title = n['title']
-        state = n['state']['name']
-        pri = priority_map.get(n.get('priority', 0), 'None')
-        labels = ', '.join(n['_other_labels']) if n.get('_other_labels') else ''
-        assignee = n.get('assignee', {})
-        assignee_name = assignee.get('name', '') if assignee else ''
-        desc = n.get('description', '')
-
-        parts = [f'**{ident}**']
-        parts.append(f'({pri}, {state})')
-        if labels:
-            parts.append(f'[{labels}]')
-        if assignee_name:
-            parts.append(f'@{assignee_name}')
-        parts.append(f': {title}')
-
-        line = '- ' + ' '.join(parts)
-        if desc:
-            short = desc[:200].replace(chr(10), ' ')
-            if len(desc) > 200:
-                short += '...'
-            line += f'\n  > {short}'
-        return line
-
-    # The running agent's own tasks first (bucket chosen by the harness)
+    # Your Tasks first (agent:<SELF>)
     mine = groups.pop(f'agent:{SELF}', [])
     if mine:
-        print(f'### Your Tasks (agent:{SELF}) -- {len(mine)}')
+        print(f'### Your Tasks (agent:{SELF}) — {len(mine)}')
         for n in mine:
-            print(fmt_issue(n))
+            print(fmt_issue_line(n, with_desc=True, with_project=True))
         print()
     else:
-        print(f'### Your Tasks (agent:{SELF}) -- none assigned')
+        print(f'### Your Tasks (agent:{SELF}) — none assigned')
         print()
 
-    # Other agents
-    if groups:
-        print('### Team Tasks')
-        for label in sorted(groups.keys()):
-            agent_name = label.replace('agent:', '')
-            issues = groups[label]
-            in_progress = sum(1 for n in issues if n['state'].get('type') == 'started')
-            print(f'**{agent_name}** -- {len(issues)} tasks ({in_progress} in progress)')
-            for n in issues:
-                print(fmt_issue(n))
+    # Remaining cycle issues grouped by project (not by agent) — titles only
+    # so the project spine above stays the source of truth for open work.
+    by_project = {}
+    for n in nodes:
+        # Skip issues already listed under Your Tasks to cut noise
+        if f'agent:{SELF}' in (n.get('_agent_labels') or []):
+            continue
+        pname = (n.get('project') or {}).get('name') or 'No project'
+        by_project.setdefault(pname, []).append(n)
+
+    if by_project:
+        print('### Cycle by project')
+        # Focus project first if present, then alpha
+        def proj_sort_key(name):
+            for p in focus:
+                if (p.get('name') or '') == name:
+                    return (0, name.lower())
+            return (1, name.lower())
+        for pname in sorted(by_project.keys(), key=proj_sort_key):
+            issues = sorted(by_project[pname], key=pri_rank)
+            # Cap per project in the cycle section to protect context
+            CAP = 12
+            shown = issues[:CAP]
+            more = len(issues) - len(shown)
+            print(f'**{pname}** — {len(issues)} open')
+            for n in shown:
+                print(fmt_issue_line(n, with_desc=False))
+            if more > 0:
+                print(f'- _+{more} more in cycle (see project section / linear tasks --project {pname})_')
             print()
 
-    # Unassigned
-    if unassigned:
-        print(f'### Unassigned -- {len(unassigned)}')
-        for n in unassigned:
-            print(fmt_issue(n))
+    # Other-agent counts only (not full dump — agents already have project view)
+    other_agent_counts = []
+    for label in sorted(groups.keys()):
+        if label == f'agent:{SELF}':
+            continue
+        other_agent_counts.append(f'{label.replace(\"agent:\", \"\")}={len(groups[label])}')
+    if other_agent_counts:
+        print(f'### Other agent lanes: {\", \".join(other_agent_counts)}')
         print()
 
     print('---')
     if mine:
-        print('Pick your highest-priority task. For team tasks, check agent status if anything looks stale.')
+        print('Pick your highest-priority task. Projects above carry milestones + open work; cycle section is this sprint only.')
     else:
-        print('No tasks for you. Review team status -- check on stale or blocked work.')
+        print('No tasks labeled for you. Use the Projects section (milestones + top open) to pick work, or claim from the cycle-by-project list.')
 
 except Exception as e:
     print(f'Linear query failed: {e}')

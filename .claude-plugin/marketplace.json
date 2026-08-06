@@ -18,6 +18,16 @@
       }
     },
     {
+      "name": "work",
+      "source": "./plugins/work",
+      "description": "work — get a project's work done across the fleet, any kind, not just code. `/work:dispatch` takes ONE unit of work (a ticket, a described task, or 'the next thing on <project>'), finds/pulls the ticket while deduping against in-flight PRs and live sessions, classifies it as coding vs non-coding, files it clean if missing, then self-refers to the plugin that owns the execution — the `code` plugin for engineering, or `social`/`design`/`share` plus the `browser` skill and `secrets` for non-coding work (outreach, research, a design asset, a real web/portal task). Single-target dispatch, not a board sweep — deciding the whole board (keep/cancel/reprioritize) and surfacing calls that need the human is `/triage`'s job. The kind-agnostic superset of `/dispatch`.",
+      "version": "0.1.0",
+      "author": {
+        "name": "Muqsit Nawaz",
+        "email": "contact@trp.so"
+      }
+    },
+    {
       "name": "design",
       "source": "./plugins/design",
       "description": "design \u2014 a keyless, offline-first design front door. `/design` routes a design intent to a mode and renders it as self-contained HTML/SVG (no CDN, no paid keys): UI screens and flows (interface), clickable prototypes (prototype), design systems and tokens (system), architecture/flow/ER diagrams (diagram, via plan-render's diagram-conventions), infographics and data-stories (dataviz), slide decks (deck), and critique of an existing screen (critique). Vector assets (OG cards, SVG logos, icon sets, posters) render offline too; true raster (photo, illustration, painterly cover) is an optional layer that degrades to a spec plus an editable placeholder plus enable-steps rather than hard-failing. Every mode loads design-core first: visual hierarchy, WCAG AA contrast, colorblind-safe palettes, brand-probe, precise non-marketing copy, and render/screenshot/critique verification. Brand plugins layer on top by calling /design; brand is optional, never required.",
