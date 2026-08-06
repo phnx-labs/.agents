@@ -69,6 +69,129 @@ agents view      # what's installed across every agent and version
 agents doctor    # every warning at a glance: repo-behind, sign-in, sync status, orphans
 ```
 
+## What should I run?
+
+Slash commands and plugins are how you steer an agent. Skills hold the long procedures;
+many commands only say "invoke this skill." Use this map when you are not sure which verb
+to type.
+
+### By goal
+
+| I want to… | Run | Plugin / notes |
+|---|---|---|
+| **Drain everything overnight** (any project, code *or* browser/outreach) without waiting on me | `/drain` or `/work:loop` | [`work`](plugins/work/README.md) — spreads load across accounts/hosts; opens PRs for you to review later; **no** merge-review gate |
+| Finish a **queue of engineering tickets** (merge-oriented) | `/code:loop` | [`code`](plugins/code/README.md) — worktrees, CI, review/merge |
+| **One** clear task (any kind) to an agent | `/work:dispatch` or `/dispatch` | `work` for kind-agnostic; top-level `/dispatch` leans engineering |
+| Decide keep/cancel/priority on the **whole board** | `/triage` | Not a builder — decision layer only |
+| Pick the **next** ticket in this session | `/next` | Stays in the current session |
+| Fan work across **parallel agents** | `/swarm` (or `/swarm plan` / `spec` / `debug`) | [`swarm`](plugins/swarm/README.md) |
+| Plan a feature with mock-ups + blind check | `/swarm plan …` or `/plan` | Swarm plan is multi-agent; `/plan` is single-agent grounded design |
+| Durable **source-of-truth spec** of a capability | `/swarm spec …` | So others do not invent wrong behavior |
+| Debug a non-obvious bug | `/debug` → `swarm:debug` | Blind multi-provider root cause |
+| Resume prior work in **this** window | `/continue` | [`sessions`](plugins/sessions/README.md) |
+| Re-open crash sessions as **windows** | `/restore` | Not the same as `/continue` |
+| Finish many interrupted sessions **headlessly** | `/recover` | Mode of sessions continue |
+| How we have been working (analytics) | `/insights` | insights + trends + perf + stats |
+| Publish a package / CLI / extension | `/release` | Discovers the repo's real release process |
+| Review PRs this session (or a whole repo scan) | `/review` | `code:review` — three modes |
+| Learn a codebase into project `AGENTS.md` | `/code:learn` | Durable nav notes for future agents |
+| Design / mockup offline | `/design` | [`design`](plugins/design/README.md) |
+| Share an HTML plan/report | `/share:public` or `/share:private` | [`share`](plugins/share/README.md) |
+| Fleet: pull every device to latest | `/fleet:sync` | [`fleet`](plugins/fleet/README.md) |
+| Drive a **website** | skill `browser` (`agents browser`) | Not a slash command — load the skill |
+| Drive a **native Mac app** | skill `computer` | Same |
+| Credentials | skill `secrets` | `agents secrets` |
+
+### By situation (quick FAQ)
+
+| Situation | Do this |
+|---|---|
+| "Keep moving — finish the queue while I sleep" | `/drain` on a **worker** host (not your interactive laptop). Prefer `agents run claude "/drain" --mode auto --device yosemite-s0` (or your worker). |
+| "Only ship code PRs to merge" | `/code:loop` with a ticket filter — merge-oriented engineering loop. |
+| "One ticket, not sure if code or web" | `/work:dispatch RUSH-1234` — classifies and routes. |
+| "Board is a mess of maybe-later items" | `/triage` first, then `/drain` or `/code:loop` on what remains. |
+| "Agents keep hitting rate limits / logouts" | Use `/drain` / `/work:loop` (forced load-spread) or `/swarm` with mixed harnesses and `--strategy balanced` — never one long single-account session. |
+| "Machine crashed; windows are gone" | `/restore` for Ghostty/terminal relaunch; `/recover` to finish work headlessly. |
+| "Pick up where that session left off" | `/continue <id-or-topic>`. |
+| "Is this bug real / where is the root cause?" | `/debug`. |
+| "What should I type for a random ask?" | Prefer a **verb that matches the outcome** (table above). If nothing fits, plain chat is fine — then fold a repeated pattern into a skill later with `/code:learn` or the top-level `learn` skill. |
+
+### Plugins at a glance
+
+| Plugin | Reach for it when… | Not when… |
+|---|---|---|
+| **[`work`](plugins/work/README.md)** | Multi-project, multi-kind, unattended drain; one mixed task | Pure engineering merge queue only → use `code` |
+| **[`code`](plugins/code/README.md)** | Engineering loop, PR review, commit split, project AGENTS.md learn | Browser outreach / overnight mixed board → use `work` |
+| **[`swarm`](plugins/swarm/README.md)** | You need parallel independent tracks or blind verification | Single small edit |
+| **[`sessions`](plugins/sessions/README.md)** | Resume, restore windows, session analytics | Starting brand-new work |
+| **[`fleet`](plugins/fleet/README.md)** | Many machines must stay in sync / onboard a box | Single-machine day-to-day |
+| **[`share`](plugins/share/README.md)** / **[`design`](plugins/design/README.md)** | Publish HTML or render design offline | Shipping app code |
+
+Catalog detail: [`plugins/README.md`](plugins/README.md) · full command list: [`commands/README.md`](commands/README.md).
+
+## Automate your work
+
+The system layer is built so agents can **run without you in the loop**. Patterns that work:
+
+### 1. Overnight drain (recommended default)
+
+Drain clear, unblocked work across projects — code PRs left for your review in the morning;
+browser/portal/outreach finished when the agent can complete them alone.
+
+```bash
+# One-shot now on a worker (example)
+agents run claude "/drain overnight" \
+  --mode auto \
+  --strategy balanced \
+  --device yosemite-s0 \
+  --timeout 4h
+```
+
+Or type **`/drain`** / **`/work:loop`** inside an agent session on a worker host.
+
+That skill **spreads load** (teams + balanced accounts + re-home on logout/rate-limit). Do
+not point the whole night at a single Claude account on one machine.
+
+### 2. Engineering-only queue to merge
+
+```text
+/code:loop --label=…     # or a ticket id, or empty to resume
+```
+
+Use when "done" means **merged**, not merely "PR open."
+
+### 3. Schedule it (cron)
+
+[`routines`](skills/routines/SKILL.md) + the **continuous ticket drain** recipe in that
+skill: one drain routine per worker, unattended `work:loop` or `code:loop`, overlap lock,
+park blockers and continue. Register with `agents routines add ./drain-worker.yml`.
+
+```bash
+agents routines list
+agents routines run drain-s0    # foreground test
+```
+
+### 4. One task at a time
+
+```text
+/work:dispatch RUSH-1234
+/dispatch fix the menubar reclaim bug
+```
+
+### 5. After a crash
+
+```text
+/restore          # put windows back
+/recover          # finish interrupted work headlessly
+/continue <id>    # resume one thread here
+```
+
+### Skill-first note
+
+Many harnesses load **skills** better than long slash-command bodies. Plugin commands are
+thin wrappers (`Invoke the \`work:loop\` skill`). Prefer skills when automating headless
+runs if a harness ignores command text.
+
 ## What's inside
 
 Each directory has a `README.md` for humans (a catalog of everything in it) and an
@@ -76,9 +199,9 @@ Each directory has a `README.md` for humans (a catalog of everything in it) and 
 
 | Directory | What it holds |
 |---|---|
-| [`commands/`](commands/README.md) | Slash commands — `/plan`, `/debug`, `/finish`, and `/recap` for current or historical session context |
+| [`commands/`](commands/README.md) | Slash commands — `/drain`, `/code:loop`, `/swarm`, `/continue`, `/release`, … (see guide above) |
 | [`skills/`](skills/README.md) | Skills — multi-file capabilities like `browser`, `teams`, `sessions`, `mq` |
-| [`plugins/`](plugins/README.md) | Plugins — bundles of related skills and commands (`code`, `swarm`, `fleet`, `share`) |
+| [`plugins/`](plugins/README.md) | Plugins — `work` (drain any kind), `code`, `swarm`, `sessions`, `fleet`, `share`, `design`, … |
 | [`hooks/`](hooks/README.md) | Lifecycle scripts — session-start context injection, prompt expansion, Stop-gates, guards |
 | [`rules/`](rules/README.md) | The ruleset every agent gets as its memory file, composed from `subrules/` |
 | [`permissions/`](permissions/README.md) | Canonical YAML permission rules, translated per agent |

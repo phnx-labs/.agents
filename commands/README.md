@@ -7,9 +7,14 @@ Slash commands are prompt templates. Type `/debug the auth flow` and
 One `.md` file here becomes one `/<name>` command. Layered with `~/.agents/commands/`: a
 same-named file in your user repo wins, everything else unions in.
 
+**Not sure which command?** Start from the root guide:
+[**What should I run?**](../README.md#what-should-i-run) and
+[**Automate your work**](../README.md#automate-your-work) in the repo README.
+
 **Command or skill?** A command is a one-shot prompt expansion — it fires once and is done.
 A [skill](../skills/README.md) is a persistent capability that stays loaded, often with its
-own scripts and reference files. Use a command for a methodology applied once.
+own scripts and reference files. Use a command for a methodology applied once. Plugin
+commands are often thin wrappers that only invoke a skill (harness-friendly).
 
 ## Plan and build
 
