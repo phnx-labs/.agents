@@ -107,6 +107,9 @@ def fold(path):
 
 
 def summarize(items):
+    # Drop content-less entries the same way the CLI's extractTodoProgress does
+    # (`if (!content) continue`), so a malformed item never inflates the counts.
+    items = [it for it in (items or []) if _content(it)]
     if not items:
         return {"total": 0, "remaining": 0, "next": "", "in_progress": ""}
     total = len(items)
