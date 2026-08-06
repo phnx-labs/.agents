@@ -1,5 +1,5 @@
 ---
-description: Reflect on a coding-workflow session and improve the code plugin — route each durable lesson to the right code:* skill, rule, or memory, without overfitting or breaking contracts.
+description: Learn the codebase a coding session worked in and write durable navigation notes into the project's AGENTS.md; secondarily, route a genuine coding-workflow lesson to the right code:* skill.
 ---
 
 Invoke the `code:learn` skill. Arguments: $ARGUMENTS
