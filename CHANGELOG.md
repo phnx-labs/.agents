@@ -4,6 +4,19 @@
 
 ### Added
 
+- **`/learn` is now outcome-anchored — reflection weighs the user's goals and
+  delivery, not just tool friction (RUSH-2291).** A new **Phase 0 — Anchor to the
+  user's goals and delivery** runs before recall: it loads two lenses — the Linear
+  ladder (projects → milestones → cycles → tasks, and which milestones are
+  *slipping*, read from the injected SessionStart context or `linear tasks
+  --by-milestone`) and the delivery signal (`agents output`: PRs merged, commits,
+  cost-per-PR, output-per-$). Phase 3 then **ranks the gate-surviving lessons by
+  outcome leverage** — a lesson that unblocks a slipping milestone or lifts the weak
+  delivery metric comes first and earns the most care; a general lesson tied to no
+  active goal is low-leverage. Leverage decides ordering and effort only; it never
+  lets a lesson skip the four gates. The north star shifts from "grow the skill
+  library" to "remove whatever is between the user and their next met milestone."
+
 - **`verify-work-complete` Stop hook is now task-aware — keep moving instead of
   stopping with unfinished checklist items (RUSH-2113).** Prior PRs #158/#161
   stopped the gate from *looping*; this adds the keep-**moving** half the ticket
