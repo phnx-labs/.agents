@@ -63,7 +63,8 @@ After doing the action, report:
 
 - Don't assume Linear. The system repo doesn't ship a Linear skill — that's intentional. Detect first.
 - Don't silent-install a tracker CLI. When detection says "Linear" but `linear` isn't on PATH, *suggest* `agents cli install linear-cli` and wait for confirmation — installs touch network and `$PATH`. Wrong-tracker false positives (e.g. repo on GitHub but team uses Jira) are real.
-- Don't bypass the skill. If a `linear` (or `github`, etc.) skill is loaded, its SKILL.md is the source of truth — its commands are usually richer than what you'd reinvent (proof attachments, agent-lane labels, etc.).
+- Don't bypass the skill. If a `linear` (or `github`, etc.) skill is loaded, its SKILL.md is the source of truth — its commands are usually richer than what you'd reinvent (proof attachments, delegation, etc.).
+- Don't invent an ownership label. On Linear an issue is owned by its **delegate**, not by a label: `linear update <ID> --delegate <name>` claims it, `linear tasks --agent <name>` is that agent's queue, and an issue with no delegate is unowned. `agent:<name>` labels were retired in linear-cli 0.16.0 and confer nothing.
 - Don't close issues without proof. Engineering: PR URL or commit URL or screenshot of tests passing. Growth/content: published URL or metric.
 - Don't create duplicates. Quick search before creating a new issue.
 - Don't leak the session transcript. A transcript can help a reviewer, but it carries secrets/tokens/paths — keep it **confidential**: attach it only as a **secret gist link** on a private tracker, never inline, never onto a public issue. See the `truly-agentic-git-workflow` rule.

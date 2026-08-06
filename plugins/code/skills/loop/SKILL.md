@@ -48,7 +48,8 @@ The notify command, when there is one, is a shell one-liner given verbatim in th
 
 - A single-item blocker (design choice, missing credential, BLOCKED review verdict): move the ticket to your tracker's parked state (Blocked if the workspace has one, else Backlog) with a comment stating exactly what is needed and why you could not decide it yourself, run the notify command, and continue with the next item.
 - A queue-wide halt signal: run the notify command, then exit with the summary. Never idle waiting for a human.
-- Label queues: fetch with your tracker CLI filtered to the label plus the Todo state — and verify the label filter actually applies; some tracker CLIs silently drop a label filter when an assignee/agent filter is also present.
+- Label queues: fetch with your tracker CLI filtered to the label plus the Todo state — and verify the label filter actually applies; some tracker CLIs silently drop a label filter when an assignee/agent filter is also present. (`linear` composes the two as of 0.16.0.)
+- Agent queues: an issue is owned by whoever it is **delegated** to, never by a label. `linear tasks --agent <name>` is the queue; `linear update <ID> --delegate <name>` claims it. An unknown agent name exits non-zero rather than returning an empty queue, so an unattended drain cannot read a typo as "nothing to do".
 
 ## How parallelism works
 

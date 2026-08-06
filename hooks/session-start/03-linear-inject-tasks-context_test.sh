@@ -6,7 +6,9 @@
 #     (LINEAR_CLI_CONFIG fixture); env vars still win
 #   - the hook NEVER invokes the `agents` CLI (no secrets / Touch ID path)
 #   - injection lists projects with milestones + top open tickets
-#   - active cycle is grouped by project; Your Tasks still agent-routed
+#   - active cycle is grouped by project
+#   - Your Tasks is routed by Linear's native delegate, per AGENT_SELF, and a
+#     leftover agent:* label confers no ownership
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
 HOOK="$HERE/03-linear-inject-tasks-context.sh"
@@ -85,6 +87,22 @@ cat > "$CURL_PAYLOAD" <<'JSON'
           }
         ]
       },
+      "myOpenIssues": {
+        "nodes": [
+          {
+            "identifier": "RUSH-10",
+            "title": "Claude is the delegate",
+            "description": "Delegated to Claude natively.",
+            "priority": 1,
+            "state": {"name": "Todo", "type": "unstarted"},
+            "assignee": {"name": "Muqsit"},
+            "delegate": {"name": "Claude"},
+            "labels": {"nodes": [{"name": "engineering"}]},
+            "project": {"name": "Agents CLI"}
+          }
+        ],
+        "pageInfo": {"hasNextPage": false}
+      },
       "activeCycle": {
         "name": "Cycle 23",
         "startsAt": "2026-08-04T00:00:00.000Z",
@@ -93,32 +111,35 @@ cat > "$CURL_PAYLOAD" <<'JSON'
           "nodes": [
             {
               "identifier": "RUSH-10",
-              "title": "Claude owns this",
-              "description": "A task for the claude agent lane.",
+              "title": "Claude is the delegate",
+              "description": "Delegated to Claude natively.",
               "priority": 1,
               "state": {"name": "Todo", "type": "unstarted"},
               "assignee": {"name": "Muqsit"},
-              "labels": {"nodes": [{"name": "agent:claude"}, {"name": "engineering"}]},
+              "delegate": {"name": "Claude"},
+              "labels": {"nodes": [{"name": "engineering"}]},
               "project": {"name": "Agents CLI"}
             },
             {
               "identifier": "RUSH-11",
-              "title": "Codex owns this",
-              "description": "A task for codex.",
+              "title": "Codex is the delegate",
+              "description": "Delegated to Codex natively.",
               "priority": 2,
               "state": {"name": "Doing", "type": "started"},
               "assignee": {"name": "Muqsit"},
-              "labels": {"nodes": [{"name": "agent:codex"}]},
+              "delegate": {"name": "Codex"},
+              "labels": {"nodes": []},
               "project": {"name": "Agents CLI"}
             },
             {
               "identifier": "RUSH-12",
-              "title": "Unowned rush app item",
-              "description": "No agent label.",
+              "title": "Stale label, no delegate",
+              "description": "Carries agent:claude but nobody is delegated.",
               "priority": 3,
               "state": {"name": "Todo", "type": "unstarted"},
               "assignee": {"name": "Muqsit"},
-              "labels": {"nodes": []},
+              "delegate": null,
+              "labels": {"nodes": [{"name": "agent:claude"}]},
               "project": {"name": "Rush App"}
             }
           ]
@@ -187,18 +208,62 @@ out=$(LINEAR_CLI_CONFIG="$SANDBOX/bad.json" env -u LINEAR_API_KEY -u LINEAR_TEAM
 [ "$rc" = "0" ] && echo "ok   - malformed config exit 0" || { echo "FAIL - malformed config rc=$rc"; fail=1; }
 check_contains "malformed config: skip line"               "$out" "Linear context skipped"
 
-# --- 5. Your Tasks routes by AGENT_SELF (claude default) ----------------------
+# --- 5. Your Tasks routes by native delegate, per AGENT_SELF -------------------
 out=$(LINEAR_CLI_CONFIG="$SANDBOX/config.json" env -u LINEAR_API_KEY -u LINEAR_TEAM_ID AGENT_SELF=claude \
   bash "$HOOK" 2>/dev/null)
 check_contains "claude lane: Your Tasks lists RUSH-10"     "$out" "RUSH-10"
-check_contains "claude lane: header agent:claude"          "$out" "Your Tasks (agent:claude)"
-# codex-owned should appear under cycle-by-project, not Your Tasks block as only item
+check_contains "claude lane: header names the delegate"    "$out" "Your Tasks (delegated to Claude)"
+check_absent   "no agent:* label header survives"          "$out" "Your Tasks (agent:"
+# The other agent's delegated work stays visible in the cycle section.
 check_contains "claude lane: codex issue still in cycle"   "$out" "RUSH-11"
+check_contains "claude lane: other lanes counted by name"  "$out" "Other agent lanes: Codex=1"
+# RUSH-12 carries agent:claude but has no delegate — it must NOT be owned, and
+# the leftover label is shown as an ordinary label.
+check_contains "stale agent:* label is inert, shown plain" "$out" "[agent:claude]"
 
+# The delegate name resolves case-insensitively against the harness name, and
+# the query asks Linear for that agent's queue directly.
+check_contains "delegate filter is sent to Linear"         "$(cat "$CURL_ARGS" 2>/dev/null)" 'eqIgnoreCase: \"claude\"'
+
+# Codex identity: Linear filters myOpenIssues server-side, so the fixture swaps
+# to what Codex's own query would return. Claude's work moves to the lane count.
+CLAUDE_PAYLOAD="$CURL_PAYLOAD"
+export CURL_PAYLOAD="$SANDBOX/payload-codex.json"
+python3 - "$CLAUDE_PAYLOAD" "$CURL_PAYLOAD" <<'PY'
+import json, sys
+d = json.load(open(sys.argv[1]))
+cycle = d["data"]["team"]["activeCycle"]["issues"]["nodes"]
+mine = [n for n in cycle if (n.get("delegate") or {}).get("name") == "Codex"]
+d["data"]["team"]["myOpenIssues"] = {"nodes": mine, "pageInfo": {"hasNextPage": False}}
+json.dump(d, open(sys.argv[2], "w"))
+PY
 out=$(LINEAR_CLI_CONFIG="$SANDBOX/config.json" env -u LINEAR_API_KEY -u LINEAR_TEAM_ID AGENT_SELF=codex \
   bash "$HOOK" 2>/dev/null)
+check_contains "codex lane: header names the delegate"     "$out" "Your Tasks (delegated to Codex)"
 check_contains "codex lane: Your Tasks lists RUSH-11"      "$out" "RUSH-11"
-check_contains "codex lane: header agent:codex"            "$out" "Your Tasks (agent:codex)"
+check_contains "codex lane: claude counted as other"       "$out" "Claude=1"
+check_contains "codex identity reaches the query"          "$(cat "$CURL_ARGS" 2>/dev/null)" 'eqIgnoreCase: \"codex\"'
+export CURL_PAYLOAD="$CLAUDE_PAYLOAD"
+
+# --- 5c. no delegated work: the bucket says so instead of guessing ------------
+export CURL_PAYLOAD="$SANDBOX/payload-empty-mine.json"
+python3 - "$CLAUDE_PAYLOAD" "$CURL_PAYLOAD" <<'PY'
+import json, sys
+d = json.load(open(sys.argv[1]))
+d["data"]["team"]["myOpenIssues"] = {"nodes": [], "pageInfo": {"hasNextPage": False}}
+json.dump(d, open(sys.argv[2], "w"))
+PY
+out=$(LINEAR_CLI_CONFIG="$SANDBOX/config.json" env -u LINEAR_API_KEY -u LINEAR_TEAM_ID AGENT_SELF=grok \
+  bash "$HOOK" 2>/dev/null)
+check_contains "empty queue: says none assigned"           "$out" "Your Tasks (delegated to grok) — none assigned"
+check_contains "empty queue: both lanes still counted"     "$out" "Other agent lanes: Claude=1, Codex=1"
+export CURL_PAYLOAD="$CLAUDE_PAYLOAD"
+
+# --- 5b. a hostile AGENT_SELF cannot break out of the GraphQL string ----------
+out=$(LINEAR_CLI_CONFIG="$SANDBOX/config.json" env -u LINEAR_API_KEY -u LINEAR_TEAM_ID \
+  AGENT_SELF='claude" } } evil: issues(first: 1) { nodes { id ' bash "$HOOK" 2>/dev/null)
+check_absent   "injection stripped from the query"         "$(cat "$CURL_ARGS" 2>/dev/null)" "evil:"
+check_contains "sanitized name still queries"              "$(cat "$CURL_ARGS" 2>/dev/null)" "eqIgnoreCase"
 
 # --- 6. empty-team payload still clean ----------------------------------------
 cat > "$CURL_PAYLOAD" <<'JSON'

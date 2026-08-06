@@ -21,6 +21,11 @@
 self_path=$(realpath "${BASH_SOURCE[0]}" 2>/dev/null || printf '%s' "${BASH_SOURCE[0]}")
 AGENT_SELF="${AGENT_SELF:-$(printf '%s' "$self_path" | sed -n 's#.*/versions/\([^/]*\)/.*#\1#p')}"
 export AGENT_SELF="${AGENT_SELF:-claude}"
+# The name is interpolated into a GraphQL string literal below. It comes from a
+# path segment or the environment, so strip anything that isn't a plain agent
+# name before it gets near the query.
+AGENT_SELF_SAFE=$(printf '%s' "$AGENT_SELF" | tr -cd 'A-Za-z0-9_-')
+AGENT_SELF_SAFE="${AGENT_SELF_SAFE:-claude}"
 
 # Candidate names to match the cwd against a Linear project. Git repo name first
 # (stable across subdirs), then the raw cwd basename. Python normalizes both
@@ -67,12 +72,28 @@ QUERY='{
         }
       }
     }
+    myOpenIssues: issues(first: 100, filter: {
+      state: { type: { nin: ["completed", "canceled"] } }
+      cycle: { isActive: { eq: true } }
+      delegate: { name: { eqIgnoreCase: "'"$AGENT_SELF_SAFE"'" } }
+    }) {
+      nodes {
+        identifier title description state { name type } priority
+        assignee { name }
+        delegate { name }
+        labels { nodes { name } }
+        project { name }
+        updatedAt
+      }
+      pageInfo { hasNextPage }
+    }
     activeCycle {
       name startsAt endsAt
       issues(filter: { state: { type: { nin: ["completed", "canceled"] } } }) {
         nodes {
           identifier title description state { name type } priority
           assignee { name }
+          delegate { name }
           labels { nodes { name } }
           project { name }
           updatedAt
@@ -102,8 +123,12 @@ def norm(s):
 PRIORITY = {0: 'None', 1: 'Urgent', 2: 'High', 3: 'Medium', 4: 'Low'}
 
 def pri_rank(n):
-    p = n.get('priority', 4)
-    return p if p is not None else 4
+    # Linear priority: 1=Urgent .. 4=Low, and 0 means 'no priority set'. Sorting
+    # on the raw value put unprioritized issues ABOVE Urgent ones; Your Tasks is
+    # capped, so that hid real work. 0 and null both rank last, matching
+    # linear-cli's issue_sort_key.
+    p = n.get('priority')
+    return p if p else 4
 
 def pct_str(prog):
     # Linear project progress is 0..1; some milestone fields arrive already as percent.
@@ -270,33 +295,57 @@ try:
         print(f'No open tasks in {cycle_name}.')
         sys.exit(0)
 
-    # Annotate agent labels + other labels
+    # Group by Linear's native delegate — the only thing that owns an issue.
+    # SELF is a harness name ('claude'); Linear returns the roster spelling
+    # ('Claude'), so the match is case-insensitive. Labels confer no ownership,
+    # so every label an issue carries is shown as-is.
     groups = {}
     for n in nodes:
-        labels = [l['name'] for l in (n.get('labels') or {}).get('nodes', [])]
-        agent_labels = [l for l in labels if l.startswith('agent:')]
-        n['_other_labels'] = [l for l in labels if not l.startswith('agent:')]
-        n['_agent_labels'] = agent_labels
-        if agent_labels:
-            for al in agent_labels:
-                groups.setdefault(al, []).append(n)
+        n['_other_labels'] = [l['name'] for l in (n.get('labels') or {}).get('nodes', [])]
+        dg = (n.get('delegate') or {}).get('name')
+        n['_delegate'] = dg
+        if dg:
+            groups.setdefault(dg, []).append(n)
 
     for g in groups.values():
         g.sort(key=pri_rank)
+
+    def is_mine(n):
+        dg = n.get('_delegate')
+        return bool(dg) and dg.lower() == SELF.lower()
 
     total = len(nodes)
     print(f'## {cycle_name} — {total} open tasks')
     print()
 
-    # Your Tasks first (agent:<SELF>)
-    mine = groups.pop(f'agent:{SELF}', [])
+    # Your Tasks comes from its own delegate-filtered query, not from the cycle
+    # page above: Linear caps that page, so picking your queue out of it showed
+    # whichever of your issues happened to land in the first page. Pop your own
+    # bucket out of the groups map regardless, so the lane counts below stay
+    # everyone else.
+    mine_key = next((k for k in groups if k.lower() == SELF.lower()), None)
+    if mine_key:
+        groups.pop(mine_key)
+    my_conn = team.get('myOpenIssues') or {}
+    mine = sorted(my_conn.get('nodes', []), key=pri_rank)
+    for n in mine:
+        n['_other_labels'] = [l['name'] for l in (n.get('labels') or {}).get('nodes', [])]
+    truncated = (my_conn.get('pageInfo') or {}).get('hasNextPage')
+
+    MY_CAP = 10
     if mine:
-        print(f'### Your Tasks (agent:{SELF}) — {len(mine)}')
-        for n in mine:
+        owner = (mine[0].get('delegate') or {}).get('name') or SELF
+        total = f'{len(mine)}+' if truncated else str(len(mine))
+        print(f'### Your Tasks (delegated to {owner}) — {total}')
+        for n in mine[:MY_CAP]:
             print(fmt_issue_line(n, with_desc=True, with_project=True))
+        if len(mine) > MY_CAP or truncated:
+            more = len(mine) - MY_CAP
+            suffix = f'{more}+' if truncated else str(more)
+            print(f'- _+{suffix} more delegated to you (see: linear tasks --agent {SELF})_')
         print()
     else:
-        print(f'### Your Tasks (agent:{SELF}) — none assigned')
+        print(f'### Your Tasks (delegated to {SELF}) — none assigned')
         print()
 
     # Remaining cycle issues grouped by project (not by agent) — titles only
@@ -304,7 +353,7 @@ try:
     by_project = {}
     for n in nodes:
         # Skip issues already listed under Your Tasks to cut noise
-        if f'agent:{SELF}' in (n.get('_agent_labels') or []):
+        if is_mine(n):
             continue
         pname = (n.get('project') or {}).get('name') or 'No project'
         by_project.setdefault(pname, []).append(n)
@@ -330,12 +379,10 @@ try:
                 print(f'- _+{more} more in cycle (see project section / linear tasks --project {pname})_')
             print()
 
-    # Other-agent counts only (not full dump — agents already have project view)
-    other_agent_counts = []
-    for label in sorted(groups.keys()):
-        if label == f'agent:{SELF}':
-            continue
-        other_agent_counts.append(f'{label.replace(\"agent:\", \"\")}={len(groups[label])}')
+    # Other-agent counts only (not full dump — agents already have project view).
+    # Your own bucket was popped out of the groups map above, so what is left is
+    # everyone else's delegated work.
+    other_agent_counts = [f'{name}={len(groups[name])}' for name in sorted(groups.keys())]
     if other_agent_counts:
         print(f'### Other agent lanes: {\", \".join(other_agent_counts)}')
         print()

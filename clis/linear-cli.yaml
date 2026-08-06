@@ -15,4 +15,8 @@ post_install: |
     linear setup --api-key "$LINEAR_API_KEY" --agent claude
   Then probe your queue:
     linear tasks
+  Ownership is Linear's native delegate, not a label: `linear tasks --agent claude`
+  lists what is delegated to Claude, `linear update <ID> --delegate claude` claims
+  an issue, and an issue with no delegate is unowned. If you are coming from
+  pre-0.16 `agent:<name>` labels, run `linear migrate-agent-labels` once.
   Resolution order for the key: config file -> LINEAR_API_KEY env -> macOS Keychain (`linear-api-key`).
