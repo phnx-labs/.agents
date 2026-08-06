@@ -37,6 +37,19 @@ names the train; `main` remains what most hosts pull day-to-day.
 - **Personal contact surfaces scrubbed** from escalate / hibernate examples and
   tests (placeholders instead of a live chat id / `muqsit@mac-mini`).
 
+### Removed
+
+- **Relocated the `social` plugin out of this brand-agnostic mirror.** `social`
+  (audit / align / schedule) hard-codes one user's growth infra — `rush http
+  POST /api/v1/social/post`, the `getlate` pipeline, the OpenClaw draft corpus,
+  and the `sergey`/`marc` workspaces — so it fails the `.system` bar (generic +
+  brand-agnostic + safe to public-mirror). It now lives in the user layer next
+  to `create` (marketplace `agents-cli`). Dropped its entry from
+  `.claude-plugin/marketplace.json`, the `plugins/README.md` catalog row, the
+  two `social`/`social:schedule` routes in `plugins/work/commands/dispatch.md`,
+  and the `social` mention in the `work` plugin description. Paired add:
+  muqsitnawaz/.agents#227.
+
 ### Known risks (follow-ups — not fixed in 0.2.0)
 
 These remain after this tag; tracked for 0.2.1+ / agents-cli companions:
