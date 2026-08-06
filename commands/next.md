@@ -120,7 +120,7 @@ say so and let `/triage` cancel it; don't let it rot in a graveyard status.
 
 Once Step 1 confirms the task is done, and only when what you just shipped is
 substantial enough to be worth a second look (skip this for a one-line fix):
-spin up **one** subagent — not a `/quality`-style sweep — to scan for:
+spin up **one** subagent — not a `/code:review repo`-style sweep — to scan for:
 
 - **Related tracker items** beyond what Step 3 already surfaced — the same
   epic/cluster, a follow-up someone noted on the ticket you just closed.
@@ -157,6 +157,6 @@ worth doing about it, without doing the deep analysis in the main thread.
 - **Stalling when nothing's explicitly assigned to you.** Unclaimed, clearly
   scoped work is fair game — pick it up.
 - **Turning Step 6 into a full quality sweep.** One bounded subagent, a short
-  offer list — not a `/quality`-style audit every time you finish a task.
+  offer list — not a `/code:review repo`-style audit every time you finish a task.
 - **Treating `/next` as a full recap.** It's a lightweight boundary check, not a
   handoff summary — use `/recap` when you need the fuller version.

@@ -170,7 +170,7 @@ The default advice is "prefer `browser`'s `electron-use.md` (CDP)." But you ofte
   grep "_doActivateExtension <publisher>.<name>" "$EH" | tail -1   # fresh timestamp = live
   grep "\[error\]" "$EH" | grep -i "<name>" | tail -3              # post-activation errors
   ```
-  A `_doActivateExtension` timestamp newer than your reload = that window runs the new code. (For the full publish→activate→verify flow, see `code:ship`.)
+  A `_doActivateExtension` timestamp newer than your reload = that window runs the new code. (For the full publish→activate→verify flow, see the `release` skill.)
 
 ## Safety Rails
 
