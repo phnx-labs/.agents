@@ -150,13 +150,14 @@ Write each candidate lesson as one line. Then put every candidate through four g
 3. **Root cause.** Is this the actual cause, or a surface symptom? Encode the cause.
 4. **Durability.** Will it still be true in six months, or is it pinned to a version/repo state that will change? Volatile facts go to dated memory, not a skill.
 
-Then **rank the survivors by outcome leverage** (the Phase 0 lens). Among lessons that
-clear all four gates, the ones that unblock or accelerate a **slipping milestone**, or
-that lift the weak delivery metric (throughput / cost-per-PR / merge rate), come first
-and are worth the most care. An equally-general lesson on a surface tied to no active
-goal is real but low-leverage — encode it briefly, or drop it in favor of the one that
-moves a milestone. Leverage decides ordering and effort; it never lets a lesson skip the
-four gates.
+Then, **in reflection mode, rank the survivors by outcome leverage** (the Phase 0 lens;
+target-audit mode has no Phase 0 and ranks by the report's own severity instead). Among
+lessons that clear all four gates, the ones that unblock or accelerate a **slipping
+milestone**, or that lift the weak delivery metric (throughput / cost-per-PR / merge
+rate), come first and earn the most care and prominence. An equally-general lesson on a
+surface tied to no active goal is real but lower-leverage — still encode it, just later
+and more briefly. Leverage sets ordering and effort only: a lesson that cleared the four
+gates is never dropped for low leverage, and leverage never lets a lesson skip the gates.
 
 **Show your rejects.** List the candidates you dropped and which gate they failed. A learn pass that encodes every candidate isn't thorough — it's overfitting. The rejects are proof the filter ran.
 
