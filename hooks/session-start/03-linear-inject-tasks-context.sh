@@ -21,11 +21,13 @@
 self_path=$(realpath "${BASH_SOURCE[0]}" 2>/dev/null || printf '%s' "${BASH_SOURCE[0]}")
 AGENT_SELF="${AGENT_SELF:-$(printf '%s' "$self_path" | sed -n 's#.*/versions/\([^/]*\)/.*#\1#p')}"
 export AGENT_SELF="${AGENT_SELF:-claude}"
-# The name is interpolated into a GraphQL string literal below. It comes from a
-# path segment or the environment, so strip anything that isn't a plain agent
-# name before it gets near the query.
+# The name is interpolated into a GraphQL string literal below AND printed into
+# every session's injected context. It comes from a path segment or the
+# environment, so strip anything that isn't a plain agent name — otherwise a
+# hostile value injects either query syntax or arbitrary text (newlines included)
+# into the prompt. Everything downstream reads the sanitized value.
 AGENT_SELF_SAFE=$(printf '%s' "$AGENT_SELF" | tr -cd 'A-Za-z0-9_-')
-AGENT_SELF_SAFE="${AGENT_SELF_SAFE:-claude}"
+export AGENT_SELF_SAFE="${AGENT_SELF_SAFE:-claude}"
 
 # Candidate names to match the cwd against a Linear project. Git repo name first
 # (stable across subdirs), then the raw cwd basename. Python normalizes both
@@ -89,7 +91,8 @@ QUERY='{
     }
     activeCycle {
       name startsAt endsAt
-      issues(filter: { state: { type: { nin: ["completed", "canceled"] } } }) {
+      issues(first: 250, filter: { state: { type: { nin: ["completed", "canceled"] } } }) {
+        pageInfo { hasNextPage }
         nodes {
           identifier title description state { name type } priority
           assignee { name }
@@ -114,7 +117,9 @@ result=$(curl -s --connect-timeout 3 --max-time 8 -X POST https://api.linear.app
 echo "$result" | python3 -c "
 import json, sys, os, re
 
-SELF = os.environ.get('AGENT_SELF', 'claude')
+# Sanitized upstream: this is printed into the injected context, so it must not
+# be able to carry newlines or markup.
+SELF = os.environ.get('AGENT_SELF_SAFE') or 'claude'
 HINTS = [h for h in os.environ.get('CWD_PROJECT_HINTS', '').split(',') if h.strip()]
 
 def norm(s):
@@ -288,7 +293,9 @@ try:
         print('No active sprint in Linear.')
         sys.exit(0)
 
-    nodes = cycle.get('issues', {}).get('nodes', [])
+    cycle_issues = cycle.get('issues') or {}
+    nodes = cycle_issues.get('nodes', [])
+    cycle_truncated = (cycle_issues.get('pageInfo') or {}).get('hasNextPage')
     cycle_name = cycle.get('name') or 'Current Sprint'
 
     if not nodes:
@@ -314,34 +321,36 @@ try:
         dg = n.get('_delegate')
         return bool(dg) and dg.lower() == SELF.lower()
 
-    total = len(nodes)
-    print(f'## {cycle_name} — {total} open tasks')
+    # Pop EVERY case-variant of your own name, not just the first: is_mine below
+    # matches them all, so a straggler variant would show up as a foreign lane.
+    for k in [k for k in groups if k.lower() == SELF.lower()]:
+        groups.pop(k)
+
+    cycle_count = f'{len(nodes)}+' if cycle_truncated else str(len(nodes))
+    print(f'## {cycle_name} — {cycle_count} open tasks')
     print()
 
     # Your Tasks comes from its own delegate-filtered query, not from the cycle
     # page above: Linear caps that page, so picking your queue out of it showed
-    # whichever of your issues happened to land in the first page. Pop your own
-    # bucket out of the groups map regardless, so the lane counts below stay
-    # everyone else.
-    mine_key = next((k for k in groups if k.lower() == SELF.lower()), None)
-    if mine_key:
-        groups.pop(mine_key)
+    # whichever of your issues happened to land in the first page.
     my_conn = team.get('myOpenIssues') or {}
     mine = sorted(my_conn.get('nodes', []), key=pri_rank)
     for n in mine:
         n['_other_labels'] = [l['name'] for l in (n.get('labels') or {}).get('nodes', [])]
-    truncated = (my_conn.get('pageInfo') or {}).get('hasNextPage')
+    my_truncated = (my_conn.get('pageInfo') or {}).get('hasNextPage')
 
     MY_CAP = 10
+    printed_ids = set()
     if mine:
         owner = (mine[0].get('delegate') or {}).get('name') or SELF
-        total = f'{len(mine)}+' if truncated else str(len(mine))
+        total = f'{len(mine)}+' if my_truncated else str(len(mine))
         print(f'### Your Tasks (delegated to {owner}) — {total}')
         for n in mine[:MY_CAP]:
+            printed_ids.add(n.get('identifier'))
             print(fmt_issue_line(n, with_desc=True, with_project=True))
-        if len(mine) > MY_CAP or truncated:
+        if len(mine) > MY_CAP or my_truncated:
             more = len(mine) - MY_CAP
-            suffix = f'{more}+' if truncated else str(more)
+            suffix = f'{more}+' if my_truncated else str(more)
             print(f'- _+{suffix} more delegated to you (see: linear tasks --agent {SELF})_')
         print()
     else:
@@ -352,8 +361,11 @@ try:
     # so the project spine above stays the source of truth for open work.
     by_project = {}
     for n in nodes:
-        # Skip issues already listed under Your Tasks to cut noise
-        if is_mine(n):
+        # Skip only what Your Tasks actually PRINTED. Skipping everything
+        # delegated to you would drop your own issues out of the brief entirely
+        # whenever they fell past the cap above — the two lists come from
+        # different queries, so their overlap is not guaranteed.
+        if n.get('identifier') in printed_ids:
             continue
         pname = (n.get('project') or {}).get('name') or 'No project'
         by_project.setdefault(pname, []).append(n)
@@ -381,17 +393,19 @@ try:
 
     # Other-agent counts only (not full dump — agents already have project view).
     # Your own bucket was popped out of the groups map above, so what is left is
-    # everyone else's delegated work.
+    # everyone else's delegated work. These counts are over the cycle page: say
+    # so when it was truncated rather than print a number that reads exact.
     other_agent_counts = [f'{name}={len(groups[name])}' for name in sorted(groups.keys())]
     if other_agent_counts:
-        print(f'### Other agent lanes: {\", \".join(other_agent_counts)}')
+        note = ' (of the first {} cycle issues)'.format(len(nodes)) if cycle_truncated else ''
+        print(f'### Other agent lanes{note}: {\", \".join(other_agent_counts)}')
         print()
 
     print('---')
     if mine:
         print('Pick your highest-priority task. Projects above carry milestones + open work; cycle section is this sprint only.')
     else:
-        print('No tasks labeled for you. Use the Projects section (milestones + top open) to pick work, or claim from the cycle-by-project list.')
+        print('Nothing is delegated to you. Use the Projects section (milestones + top open) to pick work, or claim from the cycle-by-project list.')
 
 except Exception as e:
     print(f'Linear query failed: {e}')

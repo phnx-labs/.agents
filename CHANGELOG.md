@@ -17,8 +17,19 @@
   of your issues happened to land in the first page — on this workspace it showed
   3 of 100+. The hook now asks Linear for `delegate = <harness>` directly (an
   aliased field on the same single round trip, so no extra request), prints the
-  top 10 by priority, and says how many more there are. `AGENT_SELF` is
-  sanitized to `[A-Za-z0-9_-]` before it reaches that GraphQL string literal.
+  top 10 by priority, and says how many more there are. The Cycle-by-project
+  section skips only what Your Tasks actually printed, not everything delegated
+  to you: the two lists come from different queries, so skipping by delegate
+  dropped your own over-the-cap issues out of the brief entirely.
+- **The active-cycle query asks for 250 issues and admits when that was not
+  enough.** It carried no `first:`, so Linear served its default 50 — of 334
+  open issues here. That made the "Other agent lanes" counts both wrong and
+  unstable between runs (Antigravity's 25 and Grok's 7 simply never appeared).
+  The counts are now qualified with the page size when the cycle is truncated.
+- **`AGENT_SELF` is sanitized to `[A-Za-z0-9_-]` everywhere it is used**, not
+  only in the GraphQL string literal. It is also printed into the injected
+  context of every session, where an unsanitized value could inject arbitrary
+  text and newlines into the prompt.
 - **No-priority issues sort last in the injected brief, not first.** `pri_rank`
   returned Linear's raw `priority`, where `0` means "no priority set" — so
   unprioritized issues sorted above Urgent ones. Harmless when every issue was

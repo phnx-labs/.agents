@@ -245,7 +245,7 @@ check_contains "codex lane: claude counted as other"       "$out" "Claude=1"
 check_contains "codex identity reaches the query"          "$(cat "$CURL_ARGS" 2>/dev/null)" 'eqIgnoreCase: \"codex\"'
 export CURL_PAYLOAD="$CLAUDE_PAYLOAD"
 
-# --- 5c. no delegated work: the bucket says so instead of guessing ------------
+# --- 5b. no delegated work: the bucket says so instead of guessing ------------
 export CURL_PAYLOAD="$SANDBOX/payload-empty-mine.json"
 python3 - "$CLAUDE_PAYLOAD" "$CURL_PAYLOAD" <<'PY'
 import json, sys
@@ -259,11 +259,113 @@ check_contains "empty queue: says none assigned"           "$out" "Your Tasks (d
 check_contains "empty queue: both lanes still counted"     "$out" "Other agent lanes: Claude=1, Codex=1"
 export CURL_PAYLOAD="$CLAUDE_PAYLOAD"
 
-# --- 5b. a hostile AGENT_SELF cannot break out of the GraphQL string ----------
+# --- 5c. a hostile AGENT_SELF reaches neither the query nor the context -------
+# Linear would filter myOpenIssues server-side for this identity, so use the
+# empty-queue fixture: the header then echoes the name, which is the point here.
+export CURL_PAYLOAD="$SANDBOX/payload-empty-mine.json"
 out=$(LINEAR_CLI_CONFIG="$SANDBOX/config.json" env -u LINEAR_API_KEY -u LINEAR_TEAM_ID \
-  AGENT_SELF='claude" } } evil: issues(first: 1) { nodes { id ' bash "$HOOK" 2>/dev/null)
+  AGENT_SELF='grok" } } evil: issues(first: 1) { nodes { id ' bash "$HOOK" 2>/dev/null)
 check_absent   "injection stripped from the query"         "$(cat "$CURL_ARGS" 2>/dev/null)" "evil:"
 check_contains "sanitized name still queries"              "$(cat "$CURL_ARGS" 2>/dev/null)" "eqIgnoreCase"
+# The name is also printed into the injected context — it must not carry markup.
+check_absent   "injection stripped from the brief"         "$out" "evil:"
+check_contains "brief prints the sanitized name"           "$out" "delegated to grokevilissuesfirst1nodesid"
+export CURL_PAYLOAD="$CLAUDE_PAYLOAD"
+
+# --- 5d. a capped Your Tasks must not drop the rest out of the brief ----------
+# Your Tasks (capped at 10) and the cycle page are different queries. Skipping
+# "everything delegated to me" from Cycle-by-project would drop delegated issues
+# that fell past the cap out of the injection entirely.
+export CURL_PAYLOAD="$SANDBOX/payload-overflow.json"
+python3 - "$CLAUDE_PAYLOAD" "$CURL_PAYLOAD" <<'PY'
+import json, sys
+d = json.load(open(sys.argv[1]))
+mine = []
+for i in range(12):                      # 12 > MY_CAP (10)
+    mine.append({
+        "identifier": f"RUSH-90{i:02d}", "title": f"mine {i}",
+        "description": "", "priority": 1,
+        "state": {"name": "Todo", "type": "unstarted"},
+        "assignee": {"name": "Muqsit"}, "delegate": {"name": "Claude"},
+        "labels": {"nodes": []}, "project": {"name": "Agents CLI"},
+    })
+d["data"]["team"]["myOpenIssues"] = {"nodes": mine, "pageInfo": {"hasNextPage": True}}
+# The 12th one is also on the cycle page; it must survive into Cycle-by-project.
+d["data"]["team"]["activeCycle"]["issues"]["nodes"].append(mine[11])
+json.dump(d, open(sys.argv[2], "w"))
+PY
+out=$(LINEAR_CLI_CONFIG="$SANDBOX/config.json" env -u LINEAR_API_KEY -u LINEAR_TEAM_ID AGENT_SELF=claude \
+  bash "$HOOK" 2>/dev/null)
+check_contains "overflow: count marked as truncated"       "$out" "Your Tasks (delegated to Claude) — 12+"
+check_contains "overflow: names the remainder"             "$out" "more delegated to you (see: linear tasks --agent claude)"
+check_contains "overflow: uncapped issue still in brief"   "$out" "RUSH-9011"
+export CURL_PAYLOAD="$CLAUDE_PAYLOAD"
+
+# --- 5e. a truncated cycle page must not print exact-looking lane counts ------
+export CURL_PAYLOAD="$SANDBOX/payload-truncated-cycle.json"
+python3 - "$CLAUDE_PAYLOAD" "$CURL_PAYLOAD" <<'PY'
+import json, sys
+d = json.load(open(sys.argv[1]))
+d["data"]["team"]["activeCycle"]["issues"]["pageInfo"] = {"hasNextPage": True}
+json.dump(d, open(sys.argv[2], "w"))
+PY
+out=$(LINEAR_CLI_CONFIG="$SANDBOX/config.json" env -u LINEAR_API_KEY -u LINEAR_TEAM_ID AGENT_SELF=claude \
+  bash "$HOOK" 2>/dev/null)
+check_contains "truncated cycle: count marked"             "$out" "open tasks"
+check_contains "truncated cycle: lanes qualified"          "$out" "Other agent lanes (of the first"
+check_contains "cycle query asks for more than one page"   "$(cat "$CURL_ARGS" 2>/dev/null)" "first: 250"
+export CURL_PAYLOAD="$CLAUDE_PAYLOAD"
+
+# --- 5f. priority 0 means 'no priority', and must sort BELOW Urgent -----------
+export CURL_PAYLOAD="$SANDBOX/payload-pri0.json"
+python3 - "$CLAUDE_PAYLOAD" "$CURL_PAYLOAD" <<'PY'
+import json, sys
+d = json.load(open(sys.argv[1]))
+base = {"description": "", "state": {"name": "Todo", "type": "unstarted"},
+        "assignee": {"name": "Muqsit"}, "delegate": {"name": "Claude"},
+        "labels": {"nodes": []}, "project": {"name": "Agents CLI"}}
+d["data"]["team"]["myOpenIssues"] = {"nodes": [
+    dict(base, identifier="RUSH-8000", title="no priority", priority=0),
+    dict(base, identifier="RUSH-8001", title="urgent", priority=1),
+], "pageInfo": {"hasNextPage": False}}
+json.dump(d, open(sys.argv[2], "w"))
+PY
+out=$(LINEAR_CLI_CONFIG="$SANDBOX/config.json" env -u LINEAR_API_KEY -u LINEAR_TEAM_ID AGENT_SELF=claude \
+  bash "$HOOK" 2>/dev/null)
+urgent_at=$(printf '%s' "$out" | grep -n "RUSH-8001" | head -1 | cut -d: -f1)
+none_at=$(printf '%s' "$out" | grep -n "RUSH-8000" | head -1 | cut -d: -f1)
+if [ -n "$urgent_at" ] && [ -n "$none_at" ] && [ "$urgent_at" -lt "$none_at" ]; then
+  echo "ok   - priority 0 sorts below Urgent"
+else
+  echo "FAIL - priority 0 sorted above Urgent (urgent line $urgent_at, none line $none_at)"; fail=1
+fi
+export CURL_PAYLOAD="$CLAUDE_PAYLOAD"
+
+# --- 5g. a payload with no myOpenIssues at all still renders, exit 0 ----------
+export CURL_PAYLOAD="$SANDBOX/payload-no-mine.json"
+python3 - "$CLAUDE_PAYLOAD" "$CURL_PAYLOAD" <<'PY'
+import json, sys
+d = json.load(open(sys.argv[1]))
+d["data"]["team"].pop("myOpenIssues", None)
+json.dump(d, open(sys.argv[2], "w"))
+PY
+out=$(LINEAR_CLI_CONFIG="$SANDBOX/config.json" env -u LINEAR_API_KEY -u LINEAR_TEAM_ID AGENT_SELF=claude \
+  bash "$HOOK" 2>/dev/null); rc=$?
+[ "$rc" = "0" ] && echo "ok   - missing myOpenIssues exit 0" || { echo "FAIL - missing myOpenIssues rc=$rc"; fail=1; }
+check_contains "missing myOpenIssues: says none assigned"  "$out" "none assigned"
+check_absent   "no 'labeled for you' copy survives"        "$out" "labeled for you"
+export CURL_PAYLOAD="$CLAUDE_PAYLOAD"
+
+# --- 5h. GraphQL errors degrade to one line, exit 0 ---------------------------
+export CURL_PAYLOAD="$SANDBOX/payload-errors.json"
+cat > "$CURL_PAYLOAD" <<'JSON'
+{"data": null, "errors": [{"message": "Field 'delegate' doesn't exist on type 'IssueFilter'"}]}
+JSON
+out=$(LINEAR_CLI_CONFIG="$SANDBOX/config.json" env -u LINEAR_API_KEY -u LINEAR_TEAM_ID \
+  bash "$HOOK" 2>/dev/null); rc=$?
+[ "$rc" = "0" ] && echo "ok   - GraphQL error exit 0" || { echo "FAIL - GraphQL error rc=$rc"; fail=1; }
+check_contains "GraphQL error: one-line message"           "$out" "Linear query failed"
+export CURL_PAYLOAD="$CLAUDE_PAYLOAD"
 
 # --- 6. empty-team payload still clean ----------------------------------------
 cat > "$CURL_PAYLOAD" <<'JSON'
