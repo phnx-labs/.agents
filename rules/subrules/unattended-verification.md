@@ -53,12 +53,20 @@ and `uname -a` needs no *write* sandbox, so both pass on a box where `git fetch`
 credential, fire a real authenticated request and check for 401. If it must deliver a
 message, check the send result — a `--dry-run` only proves the address resolved.
 
-## Read status through the command surface, never an internal file
+## Read status through the command surface — and still bound the wait
 
 Cache and state files under `~/.agents/.cache/` are written by whichever process last
 touched them, so they go stale without any error. Ask the CLI (`agents hosts ps`,
 `agents sessions`, `gh pr view`), which reconciles on demand. A guard or loop built on a
-raw cache file inherits its staleness and can wedge permanently.
+raw cache file inherits that staleness and can wedge permanently.
+
+**Reconciliation is not a liveness check, so a status query alone is never enough.** It
+works by reading an artifact the finished process left behind, and a process that was
+killed — or whose box rebooted — leaves nothing to read. That record then reports
+`running` forever, and no amount of re-querying changes it (see `remote-fleet-dispatch`
+for the measured case). Every wait therefore carries a concrete ceiling derived from the
+job's expected runtime, after which the thing is treated as dead rather than slow. When
+you need certainty instead of a timeout, probe the process directly.
 
 ## Cross-run state: namespace it, and never read it without a completion marker
 
@@ -76,7 +84,9 @@ diagnosis.
 
 An hourly job is 24 runs/day against quotas shared by the whole fleet on one token.
 Linear (2500 req/hr) was exhausted in practice, taking down ticket reads for every
-agent — see `gh-api-rate-limits` for the GitHub equivalent.
+agent. GitHub meters two separate budgets per token (REST requests/hr and GraphQL
+points/hr) and they drain independently, so a full REST budget says nothing about
+GraphQL; check both with `gh api rate_limit` before a looping pass.
 
 - Fetch a list **once** per run and work from that response; never re-query per item.
 - Write only when something actually changed (keep a verified/seen record).
