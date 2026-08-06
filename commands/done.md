@@ -48,26 +48,29 @@ the harness dies nothing else you say will reach the user. The recap is the last
 
 ## Step 2: Self-exit
 
-After the recap is written, terminate the session as your final action. The Bash tool shell's parent
-(`$PPID`) is the agent harness; sending it `SIGTERM` is the clean shutdown path — the harness flushes
-the transcript, saves session state, and runs post-session hooks on its way out (unlike `SIGKILL`).
+After the recap is written, terminate the session as your final action — this is the `/self:close`
+primitive (see the `self` plugin). The Bash tool shell's parent (`$PPID`) is the agent harness;
+sending it `SIGTERM` is the clean shutdown path — the harness flushes the transcript, saves session
+state, and runs post-session hooks on its way out (unlike `SIGKILL`). Run these as the LAST two tool
+calls of the turn (no text after the second).
 
-Run this as the LAST tool call of the turn (do not write any text after it):
+**Step 2a — guard (read-only).** Confirm the parent is a harness, not infrastructure:
 
 ```bash
-HP=$PPID
-HC=$(ps -o comm= -p "$HP" 2>/dev/null | tr -d ' ')
-echo "self-exit: harness PID=$HP comm=$HC at $(date '+%H:%M:%S')"
-case "$HC" in
-  sshd|tmux*|init|systemd|login|bash|-bash|zsh|-zsh)
-    echo "refusing self-exit: parent ($HC) is not an agent harness — aborting so we don't kill infra" ;;
-  *)
-    kill -TERM "$HP"
-    echo "SIGTERM sent to $HP — if you can still read this, the harness ignored it" ;;
-esac
+ps -o comm= -p $PPID
 ```
 
-The guard rejects obvious infrastructure parents (a bare shell, tmux, sshd, init/systemd) so `/done`
-never tears down the wrong process; a real harness (`claude`, `codex`, `gemini`, `node`, etc.) is
-anything else and gets the signal. If the guard refuses, report that the self-exit was skipped and
-why — do not escalate to `SIGKILL` or walk further up the tree.
+If it prints a bare shell or infra process — `sshd`, `tmux`/`tmux: server`, `init`, `systemd`,
+`login`, `bash`, `-bash`, `zsh`, `-zsh`, `sh`, `-sh`, `fish` — **stop**: report that self-exit was
+skipped because the parent (`<comm>`) is not a harness, and signal nothing. A real harness
+(`claude`, `codex`, `gemini`, `node`, `bun`, `droid`, `grok`, …) is anything else.
+
+**Step 2b — signal the harness.** Only if the guard passed, run **exactly** this (this exact form is
+allowlisted by the `self` permission group, so it runs without a prompt in auto mode):
+
+```bash
+kill -TERM $PPID
+```
+
+Do not write any text after Step 2b. If you can still read after it, the harness ignored the signal —
+report that and stop; do NOT escalate to `SIGKILL` or walk further up the tree.

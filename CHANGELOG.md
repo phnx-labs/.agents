@@ -4,6 +4,20 @@
 
 ### Added
 
+- **New `self` plugin — `/self:close`, the agent self-exit primitive.** An agent
+  had no first-class way to end its own session: `/done` inlined a `kill -TERM
+  $PPID` blob that the auto-mode permission classifier blocked in headless runs,
+  so a dispatched session could not cleanly self-terminate. `/self:close` is the
+  low-level primitive — a read-only `ps -o comm= -p $PPID` guard (refuses
+  shell/tmux/sshd parents) then **exactly** `kill -TERM $PPID`. That exact form
+  is allowlisted by the new `permissions/groups/12-self.yaml`
+  (`Bash(kill -TERM $PPID)`, scoped to the direct parent + `TERM` only, never a
+  general `kill`), so the self-exit runs without a prompt in auto mode. `/done`'s
+  and `/finish`'s exit step now use the same guarded two-call form and share the
+  allow rule. Source: `plugins/self/`, `permissions/groups/12-self.yaml`,
+  `permissions/default.yaml` (rebuilt), `commands/done.md`,
+  `.claude-plugin/marketplace.json`, `plugins/README.md`.
+
 - **Restored the built-in `watchdog` routine.** `routines/watchdog.yml` (the
   two-minute `agents watchdog --nudge` tick) was removed in #189 as collateral
   in an inventory-cleanup sweep, ~2h after it was deliberately shipped in #180
