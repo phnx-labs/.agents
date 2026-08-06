@@ -2,6 +2,19 @@
 
 ## [Unreleased]
 
+### Removed
+
+- **Relocated the `social` plugin out of this brand-agnostic mirror.** `social`
+  (audit / align / schedule) hard-codes one user's growth infra — `rush http
+  POST /api/v1/social/post`, the `getlate` pipeline, the OpenClaw draft corpus,
+  and the `sergey`/`marc` workspaces — so it fails the `.system` bar (generic +
+  brand-agnostic + safe to public-mirror). It now lives in the user layer next
+  to `create` (marketplace `agents-cli`). Dropped its entry from
+  `.claude-plugin/marketplace.json`, the `plugins/README.md` catalog row, the
+  two `social`/`social:schedule` routes in `plugins/work/commands/dispatch.md`,
+  and the `social` mention in the `work` plugin description. Paired add:
+  muqsitnawaz/.agents#227.
+
 ### Changed
 
 - **Skills and commands re-synced with today's team/feed/session rule changes.**
