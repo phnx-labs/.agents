@@ -13,7 +13,8 @@
   is allowlisted by the new `permissions/groups/12-self.yaml`
   (`Bash(kill -TERM $PPID)`, scoped to the direct parent + `TERM` only, never a
   general `kill`), so the self-exit runs without a prompt in auto mode. `/done`'s
-  exit step now uses the same guarded two-call form and shares the allow rule
+  Step 2 **forwards to `/self:close`** rather than duplicating the guard+signal —
+  one home for the exit logic, the same alias pattern as `/commit` → `/code:commit`
   (`/finish` deliberately does not self-exit — it drives work to delivered and
   stays). Source: `plugins/self/`, `permissions/groups/12-self.yaml`,
   `permissions/default.yaml` (rebuilt), `commands/done.md`,
