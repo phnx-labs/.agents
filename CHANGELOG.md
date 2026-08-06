@@ -2,6 +2,19 @@
 
 ## [Unreleased]
 
+### Added
+
+- **Current-code anchoring — diagnose against live code, not a stale checkout.**
+  New hard rule across three surfaces: a `foundations` F3 bullet, a
+  `research-discipline` bullet (the git analog of current-date anchoring), and an
+  intro note in `truly-agentic-git-workflow`. Before diagnosing a codebase,
+  claiming a bug/regression, or opening a "fix" PR, `git fetch origin` and check
+  `git rev-list --count HEAD..origin/<default>` — a local checkout goes stale the
+  moment another agent pushes, and a fix built on stale code is itself the
+  regression. Source: `rules/subrules/foundations.md`,
+  `rules/subrules/research-discipline.md`,
+  `rules/subrules/truly-agentic-git-workflow/rule.md`.
+
 ### Changed
 
 - **`swarm` plugin simplified to 0.5.0 — four modes + top-level `/swarm`.** Dropped
