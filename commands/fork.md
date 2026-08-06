@@ -30,9 +30,11 @@ Open the new session in a real terminal tab, in the program the user actually wo
   `agents run <agent> --resume <new-id> --terminal`
   `--terminal` (no value) detects the user's terminal from `agents sessions --active` and opens a tab there.
 
-- **Remote — the user connected from another box** (`$SSH_CONNECTION` is set, e.g. the agent runs on `yosemite-s1` but the user is on `zion`): `--terminal` is local-only and refuses `--host`, so open on the user's machine with the resume surface instead:
-  `agents sessions resume <new-id> --host <user-machine> --ghostty` (swap the backend flag — `--iterm` / `--tmux` / `--vscodium` — to match where they work).
-  Resolve `<user-machine>` from the client side of `$SSH_CONNECTION` against `agents devices`. Because the fork's transcript lives on THIS box, a resume that runs elsewhere needs the source locator — pass `--device <this-machine>` if the resume can't find it.
+- **Remote — the user connected from another box** (`$SSH_CONNECTION` is set): run
+  `agents sessions resume <new-id> --host <source-machine>` from the terminal where
+  the user is working. Here `--host` scopes identity lookup to the machine that owns
+  the fork; the CLI attaches a live pane or routes native resume there. Do not choose
+  the harness, version, or tmux target in this command.
 
 For the non-forkable branch, use the same open commands but with no `--resume`; type `/continue <original-id>` into the new session once it is ready.
 
@@ -44,5 +46,5 @@ Tell the user which session you forked and where it opened (`Forked <src> -> <ne
 
 - Don't re-run or re-summarize the conversation to "seed" the fork — `agents sessions fork` copies the transcript natively; that's the whole point.
 - Don't open the fork on the agent's own box when the user is connected from elsewhere — resolve `$SSH_CONNECTION` and open on THEIR machine.
-- Don't pass `--host` to `agents run --terminal` (it's rejected by design); use `agents sessions resume --host` for the remote case.
+- Don't pass `--host` to `agents run --terminal`; use the canonical `agents sessions resume <id> --host <source-machine>` lifecycle path.
 - Don't silently succeed on a non-forkable harness — say a native copy isn't supported and take the `/continue` branch explicitly.
