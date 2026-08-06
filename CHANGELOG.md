@@ -4,6 +4,28 @@
 
 ### Changed
 
+- **`code` plugin simplified to 0.9.0 — `code:loop`, `code:review` (three modes),
+  `code:learn`, `code:commit`.** Dropped `code:verify` (folded into `code:loop` as an
+  inline verification step — identify changed surfaces, run each one's canonical test,
+  quote real output; never needed a dedicated skill call) and `code:ship` (replaced by
+  the new top-level **`/release`** command — publishing a distributable is a general
+  release-flow concern, not a code-plugin one; `skills/release/SKILL.md` gained a
+  per-artifact live/active verify table folded in from the old `code:ship`, including the
+  full VS Code extension dual-registry + `exthost.log` activation check). `code:quality`
+  is gone as a separate command — it's now `code:review`'s third mode
+  (`repo`/a path/`--since <date>`): the same architecture-and-quality rubric a PR review
+  applies to a diff, run over a whole scope instead, still read-only with an HTML report
+  and never a merge verdict. `code:review`'s PR rubric gained an explicit architecture
+  check (reuse of primitives, cross-cutting logic at the source, no duplicate surfaces,
+  load-bearing seams, doc-asserted invariants vs code) and the fat session-recap body
+  that used to live in `plugins/code/commands/review.md` moved into the skill (now a
+  thin `Invoke the code:review skill`) as its default "Session PRs" mode.
+  **`code:learn` reframed**: its primary output is now durable navigation notes written
+  into the *project's* own `AGENTS.md` (structure, entry points, invariants, gotchas) —
+  folding a coding-*workflow* lesson back into this plugin is secondary and still gated
+  by the top-level `learn` engine. Source: `plugins/code/`, `commands/{release,review}.md`,
+  `commands/README.md`, `skills/release/SKILL.md`, `skills/computer/SKILL.md`,
+  `plugins/swarm/README.md`, `plugins/README.md`, `.claude-plugin/marketplace.json`.
 - **`swarm` plugin simplified to 0.5.0 — four modes + top-level `/swarm`.** Dropped
   unused `/swarm:test` and `/swarm:qa` (commands + skills). Kept `/swarm:run`,
   `/swarm:plan`, `/swarm:spec`, `/swarm:debug` on the shared `swarm:orchestrate`
