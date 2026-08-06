@@ -62,15 +62,18 @@ those skills (same pattern as `/commit` → `/code:commit`).
 | [`/tickets`](./tickets.md) | Work with the project's issue tracker — auto-detects Linear, GitHub Issues, or Jira |
 | [`/triage`](./triage.md) | Sweep the whole board — ground in real product goals, then force every item to keep-and-schedule-this-cycle or cancel. Never Backlog |
 | [`/dispatch`](./dispatch.md) | Take one task from idea to a working agent — understand the repo, spec fast, debug-skill for bugs, quick plan, file the ticket, dispatch |
+| [`/drain`](./drain.md) | Alias of `/work:loop` — unattended multi-project work drain (any kind; spread load; no review gate; browser/computer ok) |
 | [`/next`](./next.md) | Confirm the current task is actually done, then surface (and if clear, claim) the next related task — checks for in-flight PRs/sessions first so it never duplicates work |
 | [`/teams`](./teams.md) | Spawn parallel agents to work on a task together |
 
 `/tickets` is the general-purpose primitive (list, claim, comment, close). `/triage` is a
 board-wide sweep that forces every open item to a real decision. `/dispatch` is the
-single-task path from idea to a running agent. `/next` is the boundary command — run it
-right after finishing something to move to the next thing without re-deriving the tracker
-or duplicating a sibling agent's in-flight work. Easy to confuse: `/triage` never touches
-code; `/dispatch` always ends with an agent building something; `/next` picks among
+single-task path from idea to a running agent. `/drain` / `/work:loop` is the unattended
+**queue** drain across projects and kinds (not engineering-only). `/next` is the boundary
+command — run it right after finishing something to move to the next thing without
+re-deriving the tracker or duplicating a sibling agent's in-flight work. Easy to confuse:
+`/triage` never touches code; `/dispatch` always ends with an agent building something;
+`/drain` keeps going unattended until the clear queue is empty; `/next` picks among
 *existing* tickets rather than creating one.
 
 ## Observe

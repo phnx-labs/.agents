@@ -34,7 +34,8 @@ Hand the work to the plugin/skill built for it, on a machine that makes sense (a
 |---|---|
 | One coding ticket | `/dispatch`, or the `run` skill (`agents run`) |
 | Coding, parallel / independently verified | the `teams` skill (`agents teams`) |
-| A queue of coding tickets | `/code:loop` |
+| A queue of coding tickets only | `/code:loop` (engineering merge-oriented) |
+| A queue of any kind / overnight drain | `/work:loop` (or `/drain`) — unattended, multi-project, no review gate |
 | Design / images / assets | `design:design` (keyless, offline-first) |
 | Publish an artifact / plan / report | `share:public` / `share:private` |
 | Research / data pull | the `browser` skill + research skills, `secrets` for authed sources |

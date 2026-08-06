@@ -1,22 +1,52 @@
 # work plugin
 
-Get a project's work done across the fleet — **any** kind of work, not just code. The `code` plugin owns the engineering loop; `work` is the layer above it that routes a unit of work to whichever plugin owns it, and can do **non-coding** work (content, outreach, research, design, a real browser task) because the fleet holds browser + secrets.
+Get work done across the fleet — **any** kind, not just code. The `code` plugin owns
+engineering-only patterns (`code:loop`); `work` is the layer above that routes and
+drains **multi-project, multi-kind** work (browser, outreach, design, portals) because
+the fleet holds browser + computer + secrets.
 
 ## Commands
 
 | Command | Use when |
 | --- | --- |
-| `/work:dispatch` | You have ONE unit of work — a ticket, a described task, or "the next thing on `<project>`" — to get done by the right agent on the right machine. Finds/pulls the ticket (deduping against in-flight work), classifies it as coding vs non-coding, files it clean if needed, then self-refers to the plugin that owns the execution (`code` for engineering; `design`/`share`/`browser` for non-coding) and drives it to done. Single-target; **not** a board sweep. |
+| `/work:loop` | **Unattended drain** of many items across projects. Spreads load (`agents teams` + balanced accounts + worker hosts). Uses browser/computer when the task needs it. **No review/merge gate** — finish agent-doable work, open PRs for the human to review later. Top-level alias: `/drain`. |
+| `/work:dispatch` | **ONE** unit of work — ticket, described task, or "next on `<project>`". Classify coding vs non-coding, file clean if needed, route to the right executor, drive to done. Single-target; not a board sweep. |
 
-## How it relates to the neighbours
+## Skills
 
-- **`/triage`** is the *decision* layer — keep/cancel/reprioritize the whole board, surfacing calls that need the human. `work` does **not** triage or sweep in bulk; it dispatches one clear, decided item. If an item needs a human decision, `/work:dispatch` surfaces it for `/triage`, it does not build it.
-- **`/dispatch`** (top-level) is the older single-task, engineering-leaning command; `/work:dispatch` generalizes it into a plugin command that is explicitly kind-agnostic.
-- **`/next`** shares this command's target-resolution logic (find the next item, dedupe against in-flight work) but a different execution model: `/next` keeps working on the pick *in the current session*, `/work:dispatch` hands it to a fresh executor (a dispatched agent, a different machine, or a non-coding plugin). Pick one per target — don't run both.
+| Skill | Role |
+| --- | --- |
+| `work:loop` | Orchestrator for overnight / multi-item drain. Compose engineering patterns from `code:loop` without its merge-review completion. |
+| (dispatch is command-first today) | One-item path in `commands/dispatch.md`. |
+
+## How the pieces fit
+
+```
+/triage          → decide keep/cancel/priority (human-shaped)
+/work:loop       → drain everything clear, unattended, spread load
+/work:dispatch   → one item, any kind
+/code:loop       → engineering-only queue (worktrees, merge-oriented)
+```
+
+- **`/triage`** — board decisions. `work:loop` skips items that need cancel/taste.
+- **`/code:loop`** — engineering drain with merge-oriented "done". `work:loop` may
+  reuse its worktree/claim patterns but **stops at PR open** by default (human reviews
+  later). Do not run `code:review` merge from `work:loop`.
+- **`/drain`** — short alias of `/work:loop`.
+
+## Load-spreading (why this exists)
+
+Real overnight failures: Claude logouts on m-boxes, bwrap failures, everything re-homed
+onto two hosts. `work:loop` treats that as expected: always fan out with balanced
+rotation, mixed harnesses, worker-only spawn, and re-home on auth/limit death.
 
 ## Conventions
 
-- **Non-coding is first-class.** A blog post, a creator email, a funnel pull, an OG image, a portal task — all are work items an agent can *do* here via the `design`/`share` plugins + the `browser` skill + `secrets`.
-- **Clean at filing.** `/work:dispatch` files nothing messy or duplicate — a specific title, scoped body, right label/priority, deduped against existing tickets and in-flight PRs/sessions.
-- **Route to the fleet, keep the interactive box light.** Prefer an idle box (`--device auto` / the `fleet` plugin) for the execution; reserve the interactive machine for the user.
-- **In flight ≠ done.** Every dispatch is watched to its real finish (merged PR / published post / completed task) and the ticket closed with proof, or handed off by naming the owner.
+- **Non-coding is first-class.** Browser + computer + secrets are how outreach, portals,
+  and orders get done — not "file a ticket for later."
+- **Unattended by default.** No `AskUserQuestion`; park real blockers and continue.
+- **In flight ≠ done.** PR open or real-world proof; ticket updated.
+
+---
+
+Changing something here? Read [`../AGENTS.md`](../AGENTS.md).
