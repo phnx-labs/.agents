@@ -2,6 +2,20 @@
 
 ## [Unreleased]
 
+### Changed
+
+- **`swarm` plugin simplified to 0.5.0 — four modes + top-level `/swarm`.** Dropped
+  unused `/swarm:test` and `/swarm:qa` (commands + skills). Kept `/swarm:run`,
+  `/swarm:plan`, `/swarm:spec`, `/swarm:debug` on the shared `swarm:orchestrate`
+  engine. Added top-level **`/swarm`** router: leading `plan`/`spec`/`debug`/`run`
+  selects the skill; bare `/swarm <task>` → `swarm:run`. **`swarm:plan`** now
+  requires mock-ups (user flow + ASCII screens/states + before/after) for any
+  UI/multi-step surface. **`swarm:spec`** reframed as the durable contract *so
+  other agents and humans do not invent wrong behavior*, with the same mock-up
+  bar for UI/flow surfaces. Marketplace + plugin.json + README catalogs updated.
+  Source: `plugins/swarm/`, `commands/swarm.md`, `commands/README.md`,
+  `.claude-plugin/marketplace.json`.
+
 ### Added
 
 - **New `sessions` plugin — `/sessions:continue`, `/sessions:insights`,

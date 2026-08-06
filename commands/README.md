@@ -16,9 +16,13 @@ own scripts and reference files. Use a command for a methodology applied once.
 | Command | What it does |
 |---|---|
 | [`/plan`](./plan.md) | Plan with grounded design — research, read code, create artifacts, optionally get early review |
-| [`/debug`](./debug.md) | Trace the data path, hypothesize a root cause, then have independent agents confirm it before any fix |
+| [`/swarm`](./swarm.md) | Front door to the `swarm` plugin — fan work across parallel agents (`run` by default; or `plan` / `spec` / `debug`) |
+| [`/debug`](./debug.md) | Trace the data path, hypothesize a root cause, then have independent agents confirm it before any fix (routes to `swarm:debug`) |
 | [`/clean`](./clean.md) | Identify and clean up technical debt, outdated code, and duplicates |
 | [`/test`](./test.md) | Test critical paths — parallel validation for complex scopes |
+
+Multi-agent plan/spec/debug live under `/swarm …` and `/swarm:plan` / `/swarm:spec` /
+`/swarm:debug` (see [`plugins/swarm`](../plugins/swarm/README.md)).
 
 ## Ship and review
 

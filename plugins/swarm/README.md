@@ -1,30 +1,61 @@
 # swarm plugin
 
-Fan a task out across a team of parallel coding agents, then synthesize. The swarm runs on the **`agents teams` CLI** — the modern replacement for the deprecated Swarmify MCP (`@swarmify/agents-cli`, `mcp__Swarm__spawn`). Each command is a different *mode* of the same engine, and each invokes its **same-named skill**. `/swarm:run` is the generic mode; the rest are specializations of it.
+Fan a task out across a team of parallel coding agents, then synthesize. Runs on the
+**`agents teams` CLI** (the Swarmify MCP is gone).
 
-## Commands
+**Skill-first.** Commands only say `Invoke the \`swarm:…\` skill`. The shared engine is
+the internal **`swarm:orchestrate`** skill (no command of its own).
+
+## Front door
+
+| Surface | Use when |
+| --- | --- |
+| **`/swarm`** (top-level) | Default entry — routes to `run` / `plan` / `spec` / `debug` from a leading mode word, else generic `run` |
+| `/swarm:run` | Explicit generic fan-out (same as bare `/swarm <task>`) |
+
+## Specialized modes (kept)
 
 | Command | Use when |
 | --- | --- |
-| `/swarm:run` | The **generic** fan-out — any multi-agent task that doesn't fit a specialized mode. Decomposes an arbitrary goal into ≥2 independent tracks, spawns a mixed team, monitors to completion, and synthesizes. The front door to the shared engine; reach for a specialized command below when the task matches one. |
-| `/swarm:plan` | Before building anything non-trivial. Reads the code, **researches the state of the world via web search**, drafts an **OpenSpec-grade change proposal** (`proposal.md` / `tasks.md` / delta spec), then has independent agents plan the same feature *blind* and reconciles where they diverge. |
-| `/swarm:spec` | You need the durable **source-of-truth spec** of a capability — *what it guarantees*, not how to change it. Reverse-engineers requirements + Given/When/Then scenarios (OpenSpec `specs/` shape) from the **real code**, then has independent agents spec the same capability *blind* and **drift-checks every requirement against actual behavior**. The `is` to `/swarm:plan`'s `delta`. |
-| `/swarm:debug` | A non-obvious bug where a wrong diagnosis is expensive. Traces the full data path (file:line at every hop), forms a root-cause hypothesis, then has verifiers on **different model providers**, blind to the hypothesis and **scaled to the bug** (1 for trivial, 3+ for gnarly), confirm it before any fix. |
-| `/swarm:test` | A change wide enough that one agent can't hold every critical path. Splits the scope into areas, covers each in parallel, then synthesizes the cross-cutting tests that only appear across areas. |
-| `/swarm:qa` | Behavioral QA of a *running* app. A smart orchestrator maps the QA surface, **provisions app instances on multiple ports**, and fans QA agents across them in **waves/innings** via `agents browser`, then ranks a ship/no-ship verdict with repro + evidence. |
+| `/swarm:plan` | Before building anything non-trivial. Research, **mock-ups**, OpenSpec-grade change proposal, blind independent planners, reconcile. |
+| `/swarm:spec` | Durable **source-of-truth** contract of a capability (SHALL + Given/When/Then) so other agents and humans do not invent wrong behavior — reverse-engineered from real code, drift-checked, with **mock-ups** for any UI/flow surface. |
+| `/swarm:debug` | Non-obvious bug; wrong diagnosis is expensive. Trace the data path, blind multi-provider root-cause confirm, then close the loop. |
 
-The shared engine — provider discovery (`agents teams doctor` / `agents view --json`), judgment-based swarm sizing, boundary contracts, blinded verification, monitoring, synthesis — lives in the internal **`swarm:orchestrate`** skill (no command of its own), which every command reads first.
+## plan vs spec (similar, not the same)
+
+| | `/swarm:plan` | `/swarm:spec` |
+|---|---|---|
+| Question | What **delta** should we build next? | What does this capability **already guarantee**? |
+| Shape | Change proposal + tasks + delta | Purpose + Requirements (RFC 2119) + scenarios |
+| Time | Forward-looking | Present contract (the *is*) |
+| Audience | Builders draining the change | Anyone who must not break or re-invent the capability |
+| Mock-ups | **Required** for any UI / multi-step flow in the proposal | **Required** for any UI / multi-step flow in the contract |
+
+Both produce a reviewable HTML artifact (via `plan-render`). Both use the swarm to try to
+break the draft (blind independent plans / specs).
+
+## Removed
+
+`/swarm:test` and `/swarm:qa` are gone from this plugin (unused). For ordinary test writing
+use top-level `/test` or `code:verify`; for browser walks use the `browser` skill / a
+generic `/swarm:run` brief.
 
 ## Principles
 
-- **`agents teams`, not Swarm MCP.** Run `agents teams --help` / `agents teams doctor` if unfamiliar. Disband teams when done.
-- **Discover, then mix.** Probe which providers are installed and signed in (`agents teams doctor`, `agents view --json`), then mix across the available ones — diversity across claude/codex/antigravity is the point, never three of one model "verifying" each other.
-- **Size by judgment, not a table.** A capable orchestrator scales agent and verifier count to task complexity — wide for gnarly work, one for narrow.
-- **Blinded verification.** When the swarm's job is to *check* a conclusion, withhold your hypothesis. Convergence, not confirmation.
-- **`--mode plan` for read-only** (research, audit, verify, QA-observe); `--mode edit` only when a track changes code or writes bug reports.
-- **Web-search first** for any state-of-the-world fact; fold citations into the brief.
-- **Evidence or it didn't happen.** Every brief ends with `Return file:line quotes for every claim. Do NOT paraphrase. If you can't quote it, don't claim it.`
+- **`agents teams`, not Swarm MCP.** `agents teams --help` / `agents teams doctor`.
+- **Discover, then mix.** Signed-in providers only; diversity beats three of one model.
+- **Size by judgment.** Wide for gnarly work, one (or none) for narrow.
+- **Blinded verification** when the job is to *check* a conclusion.
+- **`--mode plan`** for read-only tracks; **`--mode edit`** only when a track changes code.
+- **Web-search first** for state-of-the-world facts.
+- **Evidence or it didn't happen.** Every brief ends with file:line quotes.
 
 ## History
 
-These shipped originally as `/swarm`, `/splan`, `/stest`, `/sdebug`, `/sclean`, `/srecap`, `/sconfirm` on the Swarmify MCP. When that MCP was deprecated the commands were folded into the base single-agent commands. This plugin brings the genuinely-multi-agent variants back as first-class `/swarm:*` commands on `agents teams` — the generic `/swarm:run` plus the specialized modes that earn their keep (plan, spec, debug, test, qa) with two upgrades: OpenSpec-grade planning and specification (`/swarm:plan` for the change delta, `/swarm:spec` for the source-of-truth requirements) and a hard web-search mandate.
+Originally `/swarm`, `/splan`, `/stest`, `/sdebug`, … on Swarmify MCP. Rebuilt on
+`agents teams` as `/swarm:*`. 0.5.0 simplifies to run + plan + spec + debug and a
+top-level `/swarm` router; test/qa modes dropped.
+
+---
+
+Changing something here? Read [`../AGENTS.md`](../AGENTS.md).
