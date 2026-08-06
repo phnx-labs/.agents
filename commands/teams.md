@@ -48,7 +48,7 @@ agents teams add <team-name> <agent> "prompt" --name <role> --worktree <role> --
 - File paths with line numbers
 - Code patterns inline (don't just reference)
 - Success criteria
-- Keep-the-owner-informed line (verbatim): `Post to the feed at IMPORTANT milestones only — one line at start, at PR-opened, and at merge/blocked (agents feed post). On final delivery, mark it --level important so it reaches the owner (agents notify). Do NOT narrate every step.`
+- Keep-the-owner-informed line (verbatim): `Post to the feed at IMPORTANT milestones only, never per step. Use a plain agents feed post at start and at PR-opened (record-only). On final delivery — PR merged, or the composed work runs end-to-end — add --level important so it reaches the owner (agents notify). If you hit a real blocker, use agents feed post --blocked instead (never combined with --level). Do NOT narrate every step.`
 - End with: `Return file:line quotes for every claim.`
 
 ## Dependencies (if needed)
@@ -68,9 +68,10 @@ agents teams start <team-name> --watch
 
 - On `teams start`, record one feed line: `agents feed post --title "Team spawned" "spawned team <name> — <N> teammates on <tickets>"`.
 - On team completion, record one line naming the composed outcome.
-- When the whole team's composed work is **delivered** (the cross-track flow runs end-to-end), or a teammate is **blocked**, deliver to the owner — `agents feed post --title "..." "..." --level important` (an `agents notify` for genuine deliveries; `--blocked` for a real blocker).
+- When the composed work is **delivered** (the cross-track flow runs end-to-end), deliver to the owner: `agents feed post --title "..." "..." --level important` (or `agents notify`).
+- When a teammate is **blocked** and needs the owner, file it fail-loud: `agents feed post --title "..." "..." --blocked` — never combined with `--level`.
 
-One post per boundary, never per tool call. This is the record-vs-deliver split from [`feed-status-posts.md`](../rules/subrules/feed-status-posts.md): plain posts stay in the stream, `--level important` / `agents notify` reaches the phone.
+One post per boundary, never per tool call. This is the record-vs-deliver split from [`feed-status-posts.md`](../rules/subrules/feed-status-posts.md): plain posts stay in the stream, `--level important` / `agents notify` reaches the phone, and `--blocked` opens a needs-you record.
 
 ## Monitor
 
