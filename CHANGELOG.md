@@ -4,6 +4,12 @@
 
 ### Added
 
+- **Codex run guidance now matches the safe permission-profile defaults.** Omitted
+  Codex mode is writable with network and on-request approvals; explicit plan stays
+  filesystem-read-only with network; only explicit skip removes approvals and the
+  sandbox. The permissions maintenance guide now distinguishes launch profiles from
+  the coarser canonical permission-resource translation.
+
 - **The done-claim Stop gate now closes the loop instead of leaving a dangling
   optional idea.** `00-agent-verify-work-complete.sh`'s final self-audit gate
   (fires when the agent claims a delivery is done) gained a third close-out step

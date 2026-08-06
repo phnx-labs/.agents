@@ -44,9 +44,12 @@ Deny rules use the same syntax under a `deny:` key. **Deny beats allow**, always
 | `"WebFetch(domain:x.com)"` | same | n/a | `network_access: true` |
 | `deny: "Bash(sudo:*)"` | same | `{ "sudo *": "deny" }` | forbidden prefix rule in `.codex/rules/agents-deny.rules` |
 
-Codex has only coarse-grained modes (`approval_policy`, `sandbox_mode`) for allows; denies
-become forbidden prefix rules. A rule that depends on Claude's fine-grained syntax silently
-widens on Codex — check the translation before relying on a narrow allow.
+Codex permission resources still translate allows coarsely, while denies become
+forbidden prefix rules. Native launches use agents-cli's named `agents-plan` and
+`agents-edit` permission profiles: both enable network and request approvals on demand;
+plan extends Codex's read-only profile, while edit extends the workspace profile and adds
+`~/.agents` plus regenerable build caches. A rule that depends on Claude's fine-grained
+syntax can still widen on Codex — check the translation before relying on a narrow allow.
 
 ## Group numbering
 
