@@ -132,7 +132,7 @@ const searchFiles = (() => {
   return base.filter((p) => {
     if (p.endsWith(".md")) return false;
     if (p.includes(".agents/artifacts/")) return false;
-    if (p.includes(".agents/plugins/code/skills/quality/")) return false;
+    if (p.includes(".agents/plugins/code/skills/review/")) return false;
     // Skip generated / archival corpora that legitimately mention historical tokens.
     if (p.includes("/e2e/") && p.endsWith(".jsonl")) return false;
     if (p.includes("docs/archive/")) return false;

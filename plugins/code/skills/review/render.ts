@@ -48,7 +48,7 @@ const meta: Meta = existsSync(metaPath)
   : {
       scope_mode: "unknown",
       scope_label: "unknown",
-      rerun_command: "/quality",
+      rerun_command: "/code:review repo",
       run_ts: new Date().toISOString(),
       surfaces: [],
       skipped_tools: [],
@@ -88,7 +88,7 @@ const html = `<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<title>/quality report — ${escape(meta.scope_label)}</title>
+<title>/code:review report — ${escape(meta.scope_label)}</title>
 <style>
   :root {
     --bg: #0f1115;
@@ -239,7 +239,7 @@ const html = `<!doctype html>
 <body>
 <header>
   <div class="scope">
-    <span class="label">/quality</span>
+    <span class="label">/code:review</span>
     <span>scope: <span class="mono">${escape(meta.scope_label)}</span></span>
     <span>run: <span class="mono">${escape(meta.run_ts)}</span></span>
   </div>
@@ -454,7 +454,7 @@ const html = `<!doctype html>
 
   document.getElementById("batchbtn").addEventListener("click", (e) => {
     const picks = findings.filter((f) => selected.has(fingerprint(f)));
-    const brief = "/code:loop \\"Address the following " + picks.length + " findings from /quality:\\n"
+    const brief = "/code:loop \\"Address the following " + picks.length + " findings from /code:review repo:\\n"
       + picks.map((f, i) => (i+1) + ". " + f.rule + " at " + f.file + ":" + f.line_start
                             + (f.anchor_file ? " (pattern: " + f.anchor_file + ":" + (f.anchor_line||"") + ")" : "")
                             + (f.fix_one_line ? " — " + f.fix_one_line : "")).join("\\n")
