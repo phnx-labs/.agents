@@ -4,6 +4,8 @@
 
 ### Changed
 
+- **`session-start/03-linear-inject-tasks-context` injects every project with milestones + top open tickets, not only the cwd-matched focus + agent-sorted cycle dump.** SessionStart now prints: (1) Team & Agents, (2) **Projects** — all non-completed/canceled projects (cwd match marked ★, each with milestones and priority-sorted top open issues), (3) active cycle with Your Tasks first, then remaining open work **grouped by project** (capped), plus other-agent lane counts. Credentials stay on `~/.linear-cli/config.json` / env only — still never `agents secrets`, keychain, or Touch ID. Tests cover multi-project + milestone rendering, completed-project filter, agent lane routing, and the no-agents-CLI invariant. Source: `hooks/session-start/03-linear-inject-tasks-context.sh`, `_test.sh`; `hooks/README.md`.
+
 - **`/finish` no longer offers to publish in a repo that has a release train.**
   Its "Release (if applicable)" step detected a publishable package and asked
   whether to release it, which contradicts `release-to-fleet`: a repo with a
