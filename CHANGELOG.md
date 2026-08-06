@@ -88,6 +88,57 @@ These remain after this tag; tracked for 0.2.1+ / agents-cli companions:
 
 ### Changed
 
+- **`hooks/session-start/03-linear-inject-tasks-context.sh` routes "Your Tasks"
+  by Linear's native `delegate`, not by an `agent:<name>` label.** The hook never
+  fetched `delegate` at all, so an issue delegated to Claude through Linear's own
+  delegation UI landed in generic team output while a stale `agent:claude` label
+  on an unowned issue read as yours. It now selects `delegate { name }` and
+  matches it against the running harness case-insensitively (Linear returns the
+  roster spelling, `Claude`; the harness is `claude`). A leftover `agent:*` label
+  is shown as an ordinary label and confers nothing.
+- **"Your Tasks" comes from its own delegate-filtered query instead of the
+  active-cycle page.** Linear caps that page, so the personal queue was whichever
+  of your issues happened to land in the first page — on this workspace it showed
+  3 of 100+. The hook now asks Linear for `delegate = <harness>` directly (an
+  aliased field on the same single round trip, so no extra request), prints the
+  top 10 by priority, and says how many more there are. The Cycle-by-project
+  section skips only what Your Tasks actually printed, not everything delegated
+  to you: the two lists come from different queries, so skipping by delegate
+  dropped your own over-the-cap issues out of the brief entirely.
+- **"Other agent lanes" counts the whole cycle instead of one page.** The
+  active-cycle query carried no `first:`, so Linear served its default 50 — of
+  334 open issues here — making the counts both wrong and unstable between runs.
+  Raising it to `first: 250` was not enough (Linear caps a page there), so the
+  lanes now come from a second, delegate-name-only sweep that pages to the end:
+  measured Antigravity=34, Codex=7, Droid=2, Grok=11, Kimi=7, OpenClaw=4 against
+  the page-derived Antigravity=25, Codex=2, Droid=1, Grok=7, Kimi=4 and no
+  OpenClaw lane at all. The sweep is strictly additive — it asks for nothing but
+  delegate names, and if any page fails the hook falls back to counting the
+  cycle page and says so with an "of the first N" qualifier. Typical run
+  measured at 1.9s. The sweep is bounded to 3 pages at 1s, so the worst case is
+  8 + 3 = 11s against the `timeout: 15` this hook is registered with. The 4s of
+  headroom is not slack: the timeout covers wall-clock, and this script spawns up
+  to nine python3 interpreters — ~0.85s idle, ~1.2s under contention, which is
+  exactly when SessionStart runs. A budget that merely fit inside 15s on paper
+  measured a harness kill and **zero bytes of brief**, because the sweep runs
+  before anything prints. Live sweep pages measure 0.23-0.26s, so 1s is still
+  ~4x headroom, and 3 pages cover 750 issues against 327 open in this cycle.
+- **`AGENT_SELF` is sanitized to `[A-Za-z0-9_-]` everywhere it is used**, not
+  only in the GraphQL string literal. It is also printed into the injected
+  context of every session, where an unsanitized value could inject arbitrary
+  text and newlines into the prompt.
+- **No-priority issues sort last in the injected brief, not first.** `pri_rank`
+  returned Linear's raw `priority`, where `0` means "no priority set" — so
+  unprioritized issues sorted above Urgent ones. Harmless when every issue was
+  listed; actively hiding work now that "Your Tasks" is capped at 10. Matches
+  `linear-cli`'s `issue_sort_key`.
+- **`skills/routines/SKILL.md`, `plugins/code/skills/loop/SKILL.md`,
+  `commands/tickets.md`, `clis/linear-cli.yaml`** — the ticket-drain design used
+  `agent:<worker>` labels for *machine* routing and `agent:hold` as an opt-out,
+  which read as agent ownership and collided with delegation. Machine routing is
+  now `host:<worker>` and the opt-out is `hold`; agent ownership is the delegate,
+  everywhere.
+
 - **Skills and commands re-synced with today's team/feed/session rule changes.**
   The rule edits (`parallel-teams`, `feed-status-posts`, `fleet-delegation`,
   `remote-fleet-dispatch`) had moved ahead of their long-form playbooks, so the

@@ -172,8 +172,8 @@ Routines run with the permissions you grant them. Agents only see directories an
 
 Two routines turn an issue-tracker queue into a self-draining pipeline: a **triage** routine on one machine routes tickets to workers by label, and a **drain** routine on each worker lands them end-to-end (worktree → PR → CI → review → merge → close). Tested design points:
 
-- **Partition by label, not by project.** One drain routine per worker machine, keyed to a label like `agent:<worker>`. Tickets from any project share the queue; the ticket's project or `repo:*` label decides which checkout the loop works in.
-- **One triage writer.** A single routine assigns `agent:<worker>` labels — one writer means no cross-machine claim race. Give triage no routing discretion: an opt-out label (e.g. `agent:hold`) is human-only, because a ticket triage diverts pings nobody, while a ticket the drain parks notifies the user.
+- **Machine routing is a label; agent ownership is not.** One drain routine per worker machine, keyed to a `host:<worker>` label. Tickets from any project share the queue; the ticket's project or `repo:*` label decides which checkout the loop works in. Do **not** reach for an `agent:<name>` label to say who owns a ticket — that is Linear's native `delegate` field (`linear update <ID> --delegate <name>`, queried with `linear tasks --agent <name>`), and a label that looks like ownership but isn't is what the two models fighting cost last time.
+- **One triage writer.** A single routine assigns `host:<worker>` labels — one writer means no cross-machine claim race. Give triage no routing discretion: an opt-out label (e.g. `hold`) is human-only, because a ticket triage diverts pings nobody, while a ticket the drain parks notifies the user.
 - **Gate with a pilot label first.** Route only tickets carrying an opt-in label until you trust the loop; widen by removing the gate.
 - **`mode: skip`, `sandbox: false`.** Headless drains need full permissions, and (today) `sandbox: false` so the spawned agent sees real credentials — see "Headless claude auth" in the routines design doc. Auth headlessly via a secrets bundle named `claude` holding `CLAUDE_CODE_OAUTH_TOKEN`; the daemon injects it into scheduled runs. Manual `agents routines run` does not inject it — wrap with `agents secrets exec claude -- agents routines run <name>`.
 - **Overlap lock with staleness.** Cron has no per-job overlap guard yet, so the drain prompt takes a lock dir (`mkdir /tmp/drain-<worker>.lock`) first, exits if it exists and is younger than the routine timeout, steals it if older (a leaked lock from a dead run must not deadlock the queue), and removes it on every exit path.
@@ -195,7 +195,7 @@ prompt: |
   younger than 2 hours, exit immediately; if older, steal it. Remove it on
   every exit path.
   Queue: invoke the code:loop skill in unattended mode. Fetch tickets from
-  your tracker filtered to label agent:<worker> and status Todo.
+  your tracker filtered to label host:<worker> and status Todo.
   Notify command (verbatim, substitute ticket ID and blocker):
   <your messaging-CLI one-liner>
   Blocked ticket: park it with a comment, run the notify command, continue.

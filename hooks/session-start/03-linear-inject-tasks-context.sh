@@ -21,6 +21,13 @@
 self_path=$(realpath "${BASH_SOURCE[0]}" 2>/dev/null || printf '%s' "${BASH_SOURCE[0]}")
 AGENT_SELF="${AGENT_SELF:-$(printf '%s' "$self_path" | sed -n 's#.*/versions/\([^/]*\)/.*#\1#p')}"
 export AGENT_SELF="${AGENT_SELF:-claude}"
+# The name is interpolated into a GraphQL string literal below AND printed into
+# every session's injected context. It comes from a path segment or the
+# environment, so strip anything that isn't a plain agent name — otherwise a
+# hostile value injects either query syntax or arbitrary text (newlines included)
+# into the prompt. Everything downstream reads the sanitized value.
+AGENT_SELF_SAFE=$(printf '%s' "$AGENT_SELF" | tr -cd 'A-Za-z0-9_-')
+export AGENT_SELF_SAFE="${AGENT_SELF_SAFE:-claude}"
 
 # Candidate names to match the cwd against a Linear project. Git repo name first
 # (stable across subdirs), then the raw cwd basename. Python normalizes both
@@ -67,12 +74,29 @@ QUERY='{
         }
       }
     }
+    myOpenIssues: issues(first: 100, filter: {
+      state: { type: { nin: ["completed", "canceled"] } }
+      cycle: { isActive: { eq: true } }
+      delegate: { name: { eqIgnoreCase: "'"$AGENT_SELF_SAFE"'" } }
+    }) {
+      nodes {
+        identifier title description state { name type } priority
+        assignee { name }
+        delegate { name }
+        labels { nodes { name } }
+        project { name }
+        updatedAt
+      }
+      pageInfo { hasNextPage }
+    }
     activeCycle {
       name startsAt endsAt
-      issues(filter: { state: { type: { nin: ["completed", "canceled"] } } }) {
+      issues(first: 250, filter: { state: { type: { nin: ["completed", "canceled"] } } }) {
+        pageInfo { hasNextPage }
         nodes {
           identifier title description state { name type } priority
           assignee { name }
+          delegate { name }
           labels { nodes { name } }
           project { name }
           updatedAt
@@ -90,10 +114,57 @@ result=$(curl -s --connect-timeout 3 --max-time 8 -X POST https://api.linear.app
   -H "Authorization: $LINEAR_API_KEY" \
   -d "$BODY" 2>/dev/null)
 
+# The "other agent lanes" counts need the WHOLE active cycle, and Linear caps a
+# page at 250 — this workspace already has more open than that, so counting from
+# the page above understated every lane and dropped some entirely. This second
+# request asks only for delegate names, so it is small and fast (~0.5s against
+# the 8s budget). Strictly additive: any failure leaves LANES empty and the
+# python block falls back to counting the page, saying so.
+# Budget: this hook is registered with `timeout: 15` in agents.yaml, and the
+# brief above already claims 8 of those seconds. The sweep gets 3 pages at 1s —
+# 11s of network worst case, leaving ~4s for the script's own work.
+#
+# That headroom is not slack. The timeout covers wall-clock, not just curl, and
+# this script spawns up to nine python3 interpreters: ~0.85s on an idle box and
+# ~1.2s under contention, which is exactly when SessionStart runs. A budget that
+# merely fits inside 15s on paper gets killed in practice.
+#
+# And a kill is not a degraded brief — the sweep runs BEFORE anything prints, so
+# overrunning delivers zero bytes. A slow or oversized workspace instead falls
+# back to counting the cycle page, which says so. Live sweep pages measure
+# 0.23-0.26s, so 1s is still ~4x headroom.
+LANES=""
+lanes_cursor="null"
+for _ in 1 2 3; do
+  lq='{ team(id: "'"$LINEAR_TEAM_ID"'") { activeCycle { issues(first: 250, after: '"$lanes_cursor"', filter: { state: { type: { nin: ["completed", "canceled"] } } }) { nodes { delegate { name } } pageInfo { hasNextPage endCursor } } } } }'
+  lbody=$(python3 -c 'import json,sys; print(json.dumps({"query": sys.argv[1]}))' "$lq" 2>/dev/null) || break
+  lpage=$(curl -s --connect-timeout 1 --max-time 1 -X POST https://api.linear.app/graphql \
+    -H "Content-Type: application/json" -H "Authorization: $LINEAR_API_KEY" \
+    -d "$lbody" 2>/dev/null) || break
+  read -r lnames lnext < <(printf '%s' "$lpage" | python3 -c "
+import json, sys
+try:
+    conn = json.load(sys.stdin)['data']['team']['activeCycle']['issues']
+except Exception:
+    print('! !'); raise SystemExit
+names = [((n.get('delegate') or {}).get('name') or '') for n in conn.get('nodes', [])]
+info = conn.get('pageInfo') or {}
+cur = info.get('endCursor') if info.get('hasNextPage') else ''
+print('|'.join(x for x in names if x) or '-', cur or '-')
+" 2>/dev/null) || break
+  [ "$lnames" = "!" ] && { LANES=""; break; }
+  [ "$lnames" != "-" ] && LANES="$LANES|$lnames"
+  [ "$lnext" = "-" ] && { LANES="${LANES}|COMPLETE"; break; }
+  lanes_cursor="\"$lnext\""
+done
+export LANES
+
 echo "$result" | python3 -c "
 import json, sys, os, re
 
-SELF = os.environ.get('AGENT_SELF', 'claude')
+# Sanitized upstream: this is printed into the injected context, so it must not
+# be able to carry newlines or markup.
+SELF = os.environ.get('AGENT_SELF_SAFE') or 'claude'
 HINTS = [h for h in os.environ.get('CWD_PROJECT_HINTS', '').split(',') if h.strip()]
 
 def norm(s):
@@ -102,8 +173,12 @@ def norm(s):
 PRIORITY = {0: 'None', 1: 'Urgent', 2: 'High', 3: 'Medium', 4: 'Low'}
 
 def pri_rank(n):
-    p = n.get('priority', 4)
-    return p if p is not None else 4
+    # Linear priority: 1=Urgent .. 4=Low, and 0 means 'no priority set'. Sorting
+    # on the raw value put unprioritized issues ABOVE Urgent ones; Your Tasks is
+    # capped, so that hid real work. 0 and null both rank last, matching
+    # linear-cli's issue_sort_key.
+    p = n.get('priority')
+    return p if p else 4
 
 def pct_str(prog):
     # Linear project progress is 0..1; some milestone fields arrive already as percent.
@@ -263,48 +338,75 @@ try:
         print('No active sprint in Linear.')
         sys.exit(0)
 
-    nodes = cycle.get('issues', {}).get('nodes', [])
+    cycle_issues = cycle.get('issues') or {}
+    nodes = cycle_issues.get('nodes', [])
+    cycle_truncated = (cycle_issues.get('pageInfo') or {}).get('hasNextPage')
     cycle_name = cycle.get('name') or 'Current Sprint'
 
     if not nodes:
         print(f'No open tasks in {cycle_name}.')
         sys.exit(0)
 
-    # Annotate agent labels + other labels
+    # Group by Linear's native delegate — the only thing that owns an issue.
+    # SELF is a harness name ('claude'); Linear returns the roster spelling
+    # ('Claude'), so the match is case-insensitive. Labels confer no ownership,
+    # so every label an issue carries is shown as-is.
     groups = {}
     for n in nodes:
-        labels = [l['name'] for l in (n.get('labels') or {}).get('nodes', [])]
-        agent_labels = [l for l in labels if l.startswith('agent:')]
-        n['_other_labels'] = [l for l in labels if not l.startswith('agent:')]
-        n['_agent_labels'] = agent_labels
-        if agent_labels:
-            for al in agent_labels:
-                groups.setdefault(al, []).append(n)
+        n['_other_labels'] = [l['name'] for l in (n.get('labels') or {}).get('nodes', [])]
+        dg = (n.get('delegate') or {}).get('name')
+        if dg:
+            groups.setdefault(dg, []).append(n)
 
     for g in groups.values():
         g.sort(key=pri_rank)
 
-    total = len(nodes)
-    print(f'## {cycle_name} — {total} open tasks')
+    # Drop EVERY case-variant of your own name, not just the first. This map is
+    # only ever read as everyone else's lanes, so a straggler variant would show
+    # up there as a foreign agent.
+    for k in [k for k in groups if k.lower() == SELF.lower()]:
+        groups.pop(k)
+
+    cycle_count = f'{len(nodes)}+' if cycle_truncated else str(len(nodes))
+    print(f'## {cycle_name} — {cycle_count} open tasks')
     print()
 
-    # Your Tasks first (agent:<SELF>)
-    mine = groups.pop(f'agent:{SELF}', [])
+    # Your Tasks comes from its own delegate-filtered query, not from the cycle
+    # page above: Linear caps that page, so picking your queue out of it showed
+    # whichever of your issues happened to land in the first page.
+    my_conn = team.get('myOpenIssues') or {}
+    mine = sorted(my_conn.get('nodes', []), key=pri_rank)
+    for n in mine:
+        n['_other_labels'] = [l['name'] for l in (n.get('labels') or {}).get('nodes', [])]
+    my_truncated = (my_conn.get('pageInfo') or {}).get('hasNextPage')
+
+    MY_CAP = 10
+    printed_ids = set()
     if mine:
-        print(f'### Your Tasks (agent:{SELF}) — {len(mine)}')
-        for n in mine:
+        owner = (mine[0].get('delegate') or {}).get('name') or SELF
+        total = f'{len(mine)}+' if my_truncated else str(len(mine))
+        print(f'### Your Tasks (delegated to {owner}) — {total}')
+        for n in mine[:MY_CAP]:
+            printed_ids.add(n.get('identifier'))
             print(fmt_issue_line(n, with_desc=True, with_project=True))
+        if len(mine) > MY_CAP or my_truncated:
+            more = len(mine) - MY_CAP
+            suffix = f'{more}+' if my_truncated else str(more)
+            print(f'- _+{suffix} more delegated to you (see: linear tasks --agent {SELF})_')
         print()
     else:
-        print(f'### Your Tasks (agent:{SELF}) — none assigned')
+        print(f'### Your Tasks (delegated to {SELF}) — none assigned')
         print()
 
     # Remaining cycle issues grouped by project (not by agent) — titles only
     # so the project spine above stays the source of truth for open work.
     by_project = {}
     for n in nodes:
-        # Skip issues already listed under Your Tasks to cut noise
-        if f'agent:{SELF}' in (n.get('_agent_labels') or []):
+        # Skip only what Your Tasks actually PRINTED. Skipping everything
+        # delegated to you would drop your own issues out of the brief entirely
+        # whenever they fell past the cap above — the two lists come from
+        # different queries, so their overlap is not guaranteed.
+        if n.get('identifier') in printed_ids:
             continue
         pname = (n.get('project') or {}).get('name') or 'No project'
         by_project.setdefault(pname, []).append(n)
@@ -330,21 +432,34 @@ try:
                 print(f'- _+{more} more in cycle (see project section / linear tasks --project {pname})_')
             print()
 
-    # Other-agent counts only (not full dump — agents already have project view)
-    other_agent_counts = []
-    for label in sorted(groups.keys()):
-        if label == f'agent:{SELF}':
-            continue
-        other_agent_counts.append(f'{label.replace(\"agent:\", \"\")}={len(groups[label])}')
+    # Other-agent counts only (not full dump — agents already have project view).
+    # Your own bucket was popped out of the groups map above, so what is left is
+    # everyone else's delegated work. These counts are over the cycle page: say
+    # so when it was truncated rather than print a number that reads exact.
+    # Prefer the exact counts from the delegate-only sweep. It is marked COMPLETE
+    # only when every page came back, so a partial sweep falls back rather than
+    # printing a number that looks exact.
+    lanes_raw = [x for x in os.environ.get('LANES', '').split('|') if x]
+    note = ''
+    if lanes_raw and lanes_raw[-1] == 'COMPLETE':
+        tally = {}
+        for name in lanes_raw[:-1]:
+            if name.lower() != SELF.lower():
+                tally[name] = tally.get(name, 0) + 1
+    else:
+        tally = {name: len(v) for name, v in groups.items()}
+        if cycle_truncated:
+            note = f' (of the first {len(nodes)} cycle issues)'
+    other_agent_counts = [f'{name}={tally[name]}' for name in sorted(tally)]
     if other_agent_counts:
-        print(f'### Other agent lanes: {\", \".join(other_agent_counts)}')
+        print(f'### Other agent lanes{note}: {\", \".join(other_agent_counts)}')
         print()
 
     print('---')
     if mine:
         print('Pick your highest-priority task. Projects above carry milestones + open work; cycle section is this sprint only.')
     else:
-        print('No tasks labeled for you. Use the Projects section (milestones + top open) to pick work, or claim from the cycle-by-project list.')
+        print('Nothing is delegated to you. Use the Projects section (milestones + top open) to pick work, or claim from the cycle-by-project list.')
 
 except Exception as e:
     print(f'Linear query failed: {e}')
