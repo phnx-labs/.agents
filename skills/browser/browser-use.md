@@ -20,6 +20,30 @@ agents browser screenshot
 agents browser done
 ```
 
+## How do I keep a browser action loop warm?
+
+For repeated observe-and-act work, launch `agents browser stream` once and keep its
+standard input open. Send one JSON request per line; it returns one JSON response per
+line, in order. The process and its connection to the existing browser daemon stay open
+between requests.
+
+```text
+{"action":"screenshot","path":"/tmp/current.png"}
+{"action":"refs"}
+{"action":"click","ref":42}
+{"action":"type","ref":15,"text":"hello"}
+```
+
+Set the task once when launching the process:
+
+```bash
+agents browser stream --task "$AGENTS_BROWSER_TASK"
+```
+
+Use the ordinary commands for a single action or when the calling tool cannot keep a
+subprocess open. A successful `start` request changes the stream's default task, so one
+stream can also own the full task lifecycle.
+
 ## Profiles
 
 Profiles define browser type and connection endpoint. Create once, reuse across tasks.
