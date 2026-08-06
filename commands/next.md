@@ -12,6 +12,10 @@ detection, claim/close primitives) rather than reimplementing a Linear-specific
 flow — a prior version of this command hardcoded Linear and was removed for it;
 don't reintroduce that.
 
+**Chains from `/continue`.** If you just ran `/continue` and its Step 3 confirmed
+the resumed task is done, don't re-derive project context here — you already have
+it. Skip straight to Step 3 below.
+
 ## Step 1: Confirm the current task is actually done
 
 Before moving on, make it true — this mirrors `/done`'s Step 0, scoped to just the
@@ -54,6 +58,11 @@ Once you have the tracker, prefer in this order:
 3. Nothing clear? Surface the top few candidates and stop — don't guess at intent
    (see Step 5).
 
+**No ticket assigned to you specifically is not a reason to stop.** Look at
+whatever's unclaimed and clearly scoped — you don't need an explicit assignment to
+pick up clean, ready work. Stalling with "what should I work on?" when the board
+has obvious unclaimed work is the failure this command exists to prevent.
+
 ## Step 4: Rule out duplicate work — check what's already in flight
 
 This is the step that actually justifies `/next` existing instead of you just
@@ -72,6 +81,11 @@ something a sibling agent already shipped.
 If you find a match, **do not claim that ticket.** Skip to the next candidate, or
 go review the in-flight PR instead.
 
+**Scope this to the 1-3 candidates you're actually choosing between** — this is
+not a license to audit the whole backlog. A prior session turned this exact check
+into a 230-turn, 14-hour full-board triage by not bounding it; that's `/triage`'s
+job, not this step's. Check the candidate, decide, move.
+
 ## Step 5: Pick up (or surface, don't guess)
 
 - **Clear winner:** claim it via `/tickets` ("pick up X" — moves to In Progress,
@@ -82,6 +96,31 @@ go review the in-flight PR instead.
   one line each on why, and use `AskUserQuestion` — don't silently pick one.
   Cancel/reprioritize decisions belong to `/triage`, not to `/next` guessing.
 
+**Never park an unclear item in Backlog as an implicit non-decision.** This is the
+single most-corrected behavior around task selection: either something is clear
+enough to pick up now, or it's not and belongs in the `AskUserQuestion` surface (or
+`/triage`'s keep/cancel call) — never a quiet deferral. If it's not worth doing,
+say so and let `/triage` cancel it; don't let it rot in a graveyard status.
+
+## Step 6 (optional): Surface related work and improvement opportunities
+
+Once Step 1 confirms the task is done, and only when what you just shipped is
+substantial enough to be worth a second look (skip this for a one-line fix):
+spin up **one** subagent — not a `/quality`-style sweep — to scan for:
+
+- **Related tracker items** beyond what Step 3 already surfaced — the same
+  epic/cluster, a follow-up someone noted on the ticket you just closed.
+- **Bounded, concrete opportunities** in what you just shipped — a missing test on
+  the critical path you touched, a doc that's now stale, a simplification you
+  noticed mid-task but didn't stop to make.
+
+The subagent does the digging so your own context stays clean; it reports back a
+short list, not a report. Present findings as **options** — a few bullets, or
+`AskUserQuestion` if there's a real choice to make — never auto-execute beyond a
+genuine one-line fix, and never let this balloon into a full audit. This is the
+"blend recap with suggestions" pattern: recall what happened, then offer what's
+worth doing about it, without doing the deep analysis in the main thread.
+
 ## Anti-patterns
 
 - **Hardcoding a tracker.** Always route through `/tickets` detection — this is
@@ -90,7 +129,16 @@ go review the in-flight PR instead.
   session on it is how duplicate work happens — a session in this very repo did
   this today and had to close a duplicate PR after discovering a sibling had
   already shipped the fix.
+- **Turning Step 4 into a full-board audit.** Bound it to the candidates in front
+  of you; a whole-backlog sweep is `/triage`'s job, not a side effect of picking
+  one ticket.
 - **Guessing at an ambiguous pick.** Several plausible next tasks or a
   scope/priority call → surface it, don't auto-decide.
+- **Deferring to Backlog instead of deciding.** Not a real choice — either it's
+  clear enough to pick up, or it's a `/triage` cancel/surface call.
+- **Stalling when nothing's explicitly assigned to you.** Unclaimed, clearly
+  scoped work is fair game — pick it up.
+- **Turning Step 6 into a full quality sweep.** One bounded subagent, a short
+  offer list — not a `/quality`-style audit every time you finish a task.
 - **Treating `/next` as a full recap.** It's a lightweight boundary check, not a
   handoff summary — use `/recap` when you need the fuller version.

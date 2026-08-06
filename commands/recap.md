@@ -69,6 +69,11 @@ Format: "[Hypothesis]: [Evidence 1], [Evidence 2], ..."
 ### Recommended Next Steps
 Concrete actions to take next. Prioritize by impact.
 
+**One obvious next task on the tracker, no ambiguity?** That's not a bullet to
+list — invoke `/next` (it checks for in-flight duplicates before claiming, so it's
+safer than grabbing the top ticket yourself) and keep going instead of ending the
+turn on a recommendation the user has to act on.
+
 **HARD RULE 1 — Check before you list.** Do not list anything you could verify or execute yourself right now. Before writing a bullet, ask:
 
 - "Can I check this myself?" → check it, fold the answer into the recap, don't list it.

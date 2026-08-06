@@ -85,6 +85,10 @@ Use `AskUserQuestion` only if the next step is genuinely ambiguous. If the path 
 
 Pick up exactly where things left off. Don't redo completed work. Follow ACT -> VERIFY -> SHOW -> CONTINUE.
 
+If Step 3 found the resumed work is already done and there's nothing left to
+resume, don't idle — run `/next` to find the next related task. It picks up from
+here without re-deriving project context you just established.
+
 ## Anti-patterns
 
 - Do not ask "what were you working on?" — load the transcript first

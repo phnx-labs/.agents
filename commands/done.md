@@ -11,7 +11,10 @@ It is the agent-side equivalent of the user typing `/exit` — but with a handof
 > and you just want a clean handoff before the session ends. If the work is **not** actually finished
 > — you're stalled at a blocker, a partial handoff, or untested code — use **`/finish`**, which drives
 > the task to delivered (verify E2E, docs, commit, PR, optional release, close tickets) and does NOT
-> exit. For draining a *queue* of tickets all the way to merged, that's `/code:loop`.
+> exit. For draining a *queue* of tickets all the way to merged, that's `/code:loop`. And if you're at
+> a **task** boundary rather than a **session** boundary — this task is done but there's obviously more
+> to do — that's `/next`, not `/done`: it finds what's next and keeps the session going instead of
+> ending it.
 
 There is no `/exit` tool exposed to you — the only self-exit available is signalling the harness
 process directly. That is deliberate and is the last step below.
