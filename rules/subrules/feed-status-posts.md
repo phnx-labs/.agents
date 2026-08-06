@@ -21,6 +21,24 @@ and makes it eligible for owner delivery. Use it sparingly for completed work or
 another successful boundary the owner needs to see while away. Do not use it for
 routine edits, test runs, or synchronous work the user is watching.
 
+## Teams
+
+Teams are the easiest way to flood the phone, so the boundaries are strict. Only
+two milestones matter for owner delivery:
+
+1. **Team spawned** — one plain post on `agents teams start` ("spawned team
+   `<name>` — N teammates on `<tickets>`"). Record-only; do not `--level important`.
+2. **A teammate/agent finished & delivered** — its PR merged, or the composed
+   cross-track work runs end-to-end. This is genuinely phone-worthy: mark it
+   `--level important` (or `agents notify` the owner). A **blocked** teammate is the
+   other delivery-worthy event — use `--blocked`.
+
+Everything between those — each edit, each test run, each PR opened — is
+record-vs-deliver: a plain `agents feed post` at most, never a phone notification.
+Both the `/teams` playbook and [`parallel-teams.md`](parallel-teams.md) instruct
+every teammate brief to follow this split, so N teammates don't become N×steps of
+phone spam.
+
 Session, agent, host, runtime, and process identity resolve automatically from
 the launch and activity indexes. Do not stop or ask the user because
 `AGENT_SESSION_ID` is empty. If automatic resolution still fails, retry with the

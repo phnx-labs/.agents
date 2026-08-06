@@ -33,7 +33,15 @@ agents teams add my-feature codex  "Owns: src/ui/*. Not: src/auth/*. ..." --name
 agents teams start my-feature --watch
 ```
 
-Every brief includes Mission, Full scope, Owns, Must NOT touch, concrete code pattern, success criteria, and ends with the evidence line from `research-discipline`. The `/teams` command is the long-form playbook.
+Every brief includes Mission, Full scope, Owns, Must NOT touch, concrete code pattern, success criteria, the feed/notify line (below), and ends with the evidence line from `research-discipline`. The `/teams` command is the long-form playbook.
+
+## Keep the owner informed, not spammed (every brief)
+
+The feed/notify instruction is part of the mandatory brief contract, next to Owns / Must NOT touch / the completion contract. Every teammate brief must carry it verbatim:
+
+> Post to the feed at IMPORTANT milestones only — one line at start, at PR-opened, and at merge/blocked (`agents feed post`). On final delivery, mark it `--level important` so it reaches the owner (`agents notify`). Do NOT narrate every step.
+
+The orchestrator itself posts one feed line on `teams start` and on team completion, and delivers to the owner (`agents feed post --level important` / `agents notify`) only when the composed work is delivered or a teammate is blocked. This is the record-vs-deliver split — see [`feed-status-posts.md`](feed-status-posts.md): plain posts stay in the activity stream, `--level important` reaches the phone. A milestone is a boundary, never a keystroke.
 
 ## Completion contract (every edit-mode brief)
 
