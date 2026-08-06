@@ -1,11 +1,32 @@
 # Plugins
 
 A plugin bundles related commands and skills into one installable unit with its own
-namespace. `/code:loop`, `/swarm:run`, and `/fleet:sync` all come from plugins.
+namespace. `/work:loop`, `/code:loop`, `/swarm`, and `/fleet:sync` all come from plugins.
 
 The system layer ships the lightweight, no-paid-key plugins. Heavier or key-gated ones live
 in the opt-in `.agents-extras` bundle instead, so the default install stays fast and works
 anywhere with no setup.
+
+**Human map of "what should I run?":** the root [`README.md`](../README.md) § *What should
+I run?* and § *Automate your work*. This page is the plugin catalog.
+
+## When to use which plugin
+
+| Situation | Plugin | Command |
+|---|---|---|
+| Overnight / unattended drain of **any** clear work (all projects) | **work** | `/work:loop` or `/drain` |
+| One mixed task (code *or* browser/outreach) | **work** | `/work:dispatch` |
+| Engineering queue to **merge** | **code** | `/code:loop` |
+| PR review or whole-repo architecture scan | **code** | `/code:review` (alias `/review`) |
+| Parallel agents / blind plan / spec / debug | **swarm** | `/swarm`, `/swarm:plan`, … |
+| Resume / restore sessions / session analytics | **sessions** | `/continue`, `/restore`, `/insights` |
+| Multi-machine sync / onboard | **fleet** | `/fleet:sync`, `/fleet:onboard` |
+| Publish HTML artifact | **share** | `/share:public`, `/share:private` |
+| Offline design render | **design** | `/design` |
+| Agent self-exit | **self** | `/self:close` (via `/done`) |
+
+`work` is kind-agnostic and unattended-first. `code` is engineering-first and merge-oriented.
+Do not stretch `code:loop` into browser outreach — use `work:loop`.
 
 ## What ships here
 

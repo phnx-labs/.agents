@@ -4,6 +4,13 @@
 
 ### Added
 
+- **Root README guide: what to run, which plugin, how to automate.** Ships a
+  goal→command table, situation FAQ (overnight drain, rate-limits, crash restore),
+  plugin pick matrix, and automation recipes (`/drain`, `/code:loop`, routines,
+  one-shot dispatch). `plugins/README.md` and `commands/README.md` point at it.
+  Audience: end users and agents that need a front door without reading every skill.
+  Source: `README.md`, `plugins/README.md`, `commands/README.md`.
+
 - **`work:loop` + top-level `/drain` — general-purpose unattended work drain.** The
   overnight failure mode (Claude logouts, rate-limits, bwrap, everything collapsing onto
   two hosts) needed a verb that is not engineering-only. `work:loop` drains clear work
