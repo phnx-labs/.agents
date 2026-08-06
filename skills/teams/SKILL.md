@@ -142,6 +142,26 @@ agents teams start my-feature --watch
 - Worktrees are cleaned up on `stop`/`disband` when clean, and kept if they have uncommitted changes.
 - Both local and `--device`-pinned remote worktrees fetch `origin` and branch off `origin/<default>` — a stale local checkout can't fork a teammate off old code.
 
+## The teammate brief contract (every edit-mode brief)
+
+Every edit-mode brief carries the fixed parts — Mission, Full scope, **Owns**, **Must NOT touch**, a concrete code pattern, success criteria — ends with the evidence line (`Return file:line quotes for every claim`), and includes these two lines **verbatim**:
+
+**Feed/notify** — keep the owner informed, not spammed:
+
+> Post to the feed at IMPORTANT milestones only, never per step. Use a plain `agents feed post` at start and at PR-opened (record-only). On final delivery — PR merged, or the composed work runs end-to-end — add `--level important` so it reaches the owner (`agents notify`). If you hit a real blocker, use `agents feed post --blocked` instead (never combined with `--level`). Do NOT narrate every step.
+
+**Completion contract:**
+
+> Your task is complete only when your PR is merged, or you have handed it off by naming who/what now owns it. If you are waiting on CI or review, keep waiting with a background watch — do not stop.
+
+A teammate is done only when its PR is **merged or handed to a named owner** — "PR open, CI green, waiting for review" is the top way team output gets stranded (a real 11-teammate run once ended with every PR unmerged). The `verify-work-complete` Stop hook backstops this, but the brief line is what makes teammates drive to merge.
+
+## Orchestrator: post at boundaries, verify the seam
+
+You (the orchestrator) post one plain `agents feed post` on `teams start` and on team completion, and reach the owner only at delivery (`agents feed post --level important` / `agents notify`) or when a teammate is blocked (`--blocked`) — never `--level` together with `--blocked`.
+
+**"All tracks merged" is not done.** Each teammate's tests and reviewer only saw its own diff; the **seam between tracks** — where track A calls what track B built — is the one thing nobody verified, and exactly where the composed feature breaks (a real case: a track shelled out to `agents mission-control digest` while the other track shipped a bin named `mission-control-digest` — every PR green, the feature dead). Before calling the swarm done: trigger the **composed cross-track flow end-to-end** against where it actually runs (installed binary / running daemon / deployed service, not just `origin/main`) and **quote its real output**. A green table is a report of merges, not proof of a working feature. If a seam genuinely can't be exercised, name it **unverified** — never fold it into "done end-to-end".
+
 ## Monitoring
 
 ```bash
@@ -171,6 +191,7 @@ Routing: a **running** teammate is steered via its mailbox (delivered at its nex
 
 ## Best Practices
 
+- **Let account rotation default** — a bare `agents teams add <team> claude "…"` (no `@version`, no `--profile`) inherits the `balanced` strategy: weighted-random across healthy accounts by remaining headroom, skipping rate-limited ones. Pin `claude@<version>` or `--profile` only when a teammate needs a specific version/identity — pinning opts that teammate out of rotation.
 - **Mix agents** if available — different agents have different blind spots
 - **Use `--mode plan`** for read-only work (audits, research)
 - **Give full context** — each teammate needs the big picture plus their specific task

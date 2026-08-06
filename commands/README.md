@@ -39,6 +39,7 @@ working until it has. They are easy to confuse.
 |---|---|
 | [`/recap`](./recap.md) | Recap the current session, or transfer concise context from a prior session selected by ID, prefix, or keywords |
 | [`/continue`](./continue.md) | Resume one task — reattach if it is live, otherwise load its local or explicitly located remote transcript |
+| [`/fork`](./fork.md) | Branch this conversation into a new, independent session and open it where you work — the "git branch" of sessions, original untouched |
 | [`/recover`](./recover.md) | Recover *many* crashed sessions — finish the agent-doable work headlessly, hand back the rest as one action |
 | [`/restore`](./restore.md) | Re-open sessions killed by a crash or reboot as Ghostty windows, resuming each |
 | [`/hibernate`](./hibernate.md) | Sleep this same session until a future time, then wake it with full context to check a long wait |

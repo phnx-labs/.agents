@@ -16,6 +16,15 @@ It is the agent-side equivalent of the user typing `/exit` — but with a handof
 There is no `/exit` tool exposed to you — the only self-exit available is signalling the harness
 process directly. That is deliberate and is the last step below.
 
+## Step 0: Confirm the work is actually wrapped
+
+`/done` assumes the work is delivered — before you recap and leave, make that true (this is also what the `verify-work-complete` Stop gate requires before a self-exit):
+
+- **File follow-ups.** Out-of-scope ideas or issues you noticed → file them as tracked tickets now, with real context — not a one-line stub. Don't dangle them ("say the word"); do it, file it, or drop it.
+- **Clean loose ends.** Commit and push any stray uncommitted work, remove worktrees and branches this session no longer needs, and confirm every ticket this session finished is closed with proof.
+
+If any goal is untested or unfinished, this is a `/finish`, not a `/done` — go deliver it first.
+
 ## Step 1: Build the recap
 
 Summarize the current state of work for handoff. Facts before hypotheses; ground every claim.
