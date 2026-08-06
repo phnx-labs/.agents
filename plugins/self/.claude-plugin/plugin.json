@@ -1,0 +1,9 @@
+{
+  "name": "self",
+  "version": "0.1.0",
+  "description": "self — operations an agent performs on its OWN session. `/self:close` cleanly self-terminates the current session by SIGTERM-ing the harness, with an infra-parent guard so it never tears down a shell, tmux, or sshd. The low-level primitive `/done` builds on (recap, then close); `/finish`, by contrast, drives work to delivered and never exits. Enable it for an agent to let that agent end its own run headlessly.",
+  "author": {
+    "name": "Muqsit Nawaz",
+    "email": "contact@trp.so"
+  }
+}
