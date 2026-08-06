@@ -404,10 +404,15 @@ declared=$(awk '/^  linear-tasks:/{f=1} f&&/timeout:/{print $2; exit}' "$HERE/..
 declared="${declared:-15}"
 # One brief request plus three sweep pages, each at its own --max-time.
 worst=$(( brief_t + 3 * sweep_t ))
-if [ -n "$brief_t" ] && [ "$brief_t" -gt 0 ] && [ "$worst" -le "$declared" ]; then
-  echo "ok   - worst-case ${worst}s fits the registered ${declared}s timeout"
+# The timeout covers wall-clock, not just curl. This script spawns up to nine
+# python3 interpreters — ~0.85s idle, ~1.2s under contention, and SessionStart
+# runs precisely when a box is contended. A budget that merely fits on paper
+# gets killed, so reserve headroom rather than comparing bare.
+RUNTIME_MARGIN=3
+if [ -n "$brief_t" ] && [ "$brief_t" -gt 0 ] && [ $(( worst + RUNTIME_MARGIN )) -le "$declared" ]; then
+  echo "ok   - worst-case ${worst}s + ${RUNTIME_MARGIN}s runtime fits the registered ${declared}s timeout"
 else
-  echo "FAIL - worst case ${worst}s exceeds the registered ${declared}s hook timeout"; fail=1
+  echo "FAIL - worst case ${worst}s + ${RUNTIME_MARGIN}s runtime margin exceeds the registered ${declared}s hook timeout"; fail=1
 fi
 [ "$pages" = "1" ] && echo "ok   - sweep page budget is bounded" || { echo "FAIL - sweep page loop changed; re-check the latency budget"; fail=1; }
 

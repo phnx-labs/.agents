@@ -115,10 +115,14 @@ These remain after this tag; tracked for 0.2.1+ / agents-cli companions:
   OpenClaw lane at all. The sweep is strictly additive — it asks for nothing but
   delegate names, and if any page fails the hook falls back to counting the
   cycle page and says so with an "of the first N" qualifier. Typical run
-  measured at 1.9s. The sweep is bounded to 3 pages at 2s so the worst case is
-  8 + 6 = 14s, inside the `timeout: 15` this hook is registered with: the sweep
-  runs before anything prints, so a sweep that overran would not degrade the
-  brief, it would lose it entirely to a harness kill.
+  measured at 1.9s. The sweep is bounded to 3 pages at 1s, so the worst case is
+  8 + 3 = 11s against the `timeout: 15` this hook is registered with. The 4s of
+  headroom is not slack: the timeout covers wall-clock, and this script spawns up
+  to nine python3 interpreters — ~0.85s idle, ~1.2s under contention, which is
+  exactly when SessionStart runs. A budget that merely fit inside 15s on paper
+  measured a harness kill and **zero bytes of brief**, because the sweep runs
+  before anything prints. Live sweep pages measure 0.23-0.26s, so 1s is still
+  ~4x headroom, and 3 pages cover 750 issues against 327 open in this cycle.
 - **`AGENT_SELF` is sanitized to `[A-Za-z0-9_-]` everywhere it is used**, not
   only in the GraphQL string literal. It is also printed into the injected
   context of every session, where an unsanitized value could inject arbitrary

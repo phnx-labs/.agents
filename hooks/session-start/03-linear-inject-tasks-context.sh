@@ -121,17 +121,24 @@ result=$(curl -s --connect-timeout 3 --max-time 8 -X POST https://api.linear.app
 # the 8s budget). Strictly additive: any failure leaves LANES empty and the
 # python block falls back to counting the page, saying so.
 # Budget: this hook is registered with `timeout: 15` in agents.yaml, and the
-# brief above already claims 8 of those seconds. The sweep therefore gets 3
-# pages at 2s each — 14s worst case, inside the timeout. That bound is the whole
-# point: the sweep runs BEFORE anything prints, so a sweep that overruns is not
-# a degraded brief, it is a killed hook and no brief at all. A slow or oversized
-# workspace simply falls back to counting the cycle page, which says so.
+# brief above already claims 8 of those seconds. The sweep gets 3 pages at 1s —
+# 11s of network worst case, leaving ~4s for the script's own work.
+#
+# That headroom is not slack. The timeout covers wall-clock, not just curl, and
+# this script spawns up to nine python3 interpreters: ~0.85s on an idle box and
+# ~1.2s under contention, which is exactly when SessionStart runs. A budget that
+# merely fits inside 15s on paper gets killed in practice.
+#
+# And a kill is not a degraded brief — the sweep runs BEFORE anything prints, so
+# overrunning delivers zero bytes. A slow or oversized workspace instead falls
+# back to counting the cycle page, which says so. Live sweep pages measure
+# 0.23-0.26s, so 1s is still ~4x headroom.
 LANES=""
 lanes_cursor="null"
 for _ in 1 2 3; do
   lq='{ team(id: "'"$LINEAR_TEAM_ID"'") { activeCycle { issues(first: 250, after: '"$lanes_cursor"', filter: { state: { type: { nin: ["completed", "canceled"] } } }) { nodes { delegate { name } } pageInfo { hasNextPage endCursor } } } } }'
   lbody=$(python3 -c 'import json,sys; print(json.dumps({"query": sys.argv[1]}))' "$lq" 2>/dev/null) || break
-  lpage=$(curl -s --connect-timeout 2 --max-time 2 -X POST https://api.linear.app/graphql \
+  lpage=$(curl -s --connect-timeout 1 --max-time 1 -X POST https://api.linear.app/graphql \
     -H "Content-Type: application/json" -H "Authorization: $LINEAR_API_KEY" \
     -d "$lbody" 2>/dev/null) || break
   read -r lnames lnext < <(printf '%s' "$lpage" | python3 -c "
