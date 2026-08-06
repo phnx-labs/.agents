@@ -1,7 +1,7 @@
 {
   "name": "code",
-  "version": "0.8.0",
-  "description": "code — coding-workflow plugin. Sub-skills for the manager/router engineering loop: `code:loop` drains a queue end-to-end (single ticket or many) with mindset-grounded autonomy, `code:review` runs a sub-agent pre-merge review with file:line grounding and a security pass on risk-touching diffs, `code:verify` runs the end-to-end gate, `code:ship` is the post-merge gate for distributables (publish, confirm live, activate, verify), `code:quality` runs a read-only health diagnostic and opens an HTML report, `code:learn` reflects on a session and folds durable lessons back into the plugin. `/commit` splits the working tree into the maximum number of small logical commits.",
+  "version": "0.9.0",
+  "description": "code — coding-workflow plugin. Sub-skills for the manager/router engineering loop: `code:loop` drains a queue end-to-end (single ticket or many) with mindset-grounded autonomy and inline verification, `code:review` is one skill with three modes — session PRs by default, a deep cold review given PR number(s) (file:line grounding, architecture rubric, security pass), or a read-only whole-repo architecture-and-quality scan given `repo`/a path/`--since` — `code:learn` learns a codebase and writes durable navigation notes into the project's own AGENTS.md, folding a genuine coding-workflow lesson back into the plugin only secondarily. `/commit` splits the working tree into the maximum number of small logical commits. Publishing a distributable lives at the top-level `/release` command, not in this plugin.",
   "author": {
     "name": "Muqsit Nawaz",
     "email": "contact@trp.so"

@@ -1,17 +1,34 @@
 # code plugin
 
-Coding-workflow plugin. Sub-skills for the manager/router engineering loop: drain queues, verify end-to-end, review and merge, ship distributables to users, and learn from the session.
+Coding-workflow plugin. Sub-skills for the manager/router engineering loop: drain queues,
+review PRs (or a whole repo) and merge, and learn a codebase well enough to leave it
+better documented than you found it.
 
 ## Skills
 
 | Skill | Use when |
 | --- | --- |
-| `code:loop` | A queue of work — one ticket, many tickets, a label, a markdown checklist, repo TODOs, or a single branch/PR to land — needs taking end-to-end: plan, code, test, review, rebase, fix CI, merge (and ship, for distributables). The top-level engineering loop; composes the skills below and the `agents` CLI primitives instead of reimplementing them. |
-| `code:verify` | An agent claims work is done, or a branch / PR is ready. Identifies changed surfaces, runs the canonical `sandbox.sh test` for each, hits health endpoints on deploys, screenshots UI if rush/app touched. Returns PASS / FAIL with quoted evidence — the closing gate for F3. |
-| `code:review` | CI is green on an open PR. A sub-agent (not the author) reviews the diff with file:line grounding and anti-overengineering guardrails, runs a security pass on risk-touching diffs, and posts a verdict — merge / request-changes / close-as-duplicate. |
-| `code:ship` | A change is merged but the artifact is a **distributable** (VS Code extension, npm/cargo CLI, web app) — merge alone reaches nobody. Publishes, confirms the version is live on the public channel's API, activates it where it runs, verifies the real surface. "Published" ≠ "shipped"; "installed" ≠ "active". |
-| `code:quality` | A read-only diagnostic across four orthogonal categories: **architecture & design** (inline auth where middleware exists, etc.), **code health** (`go vet`, `tsc`, `staticcheck`, `biome` — only if on PATH), **context quality** (docs vs code drift, doc-asserted invariants, identifier cross-reference), and **patterns** (parallel implementations by behavioral signature). Scope-flexible (`HEAD~1` default; `--commits N`, `--since`, `#PR`, path overrides). Emits an HTML report opened in the browser with per-finding clipboard actions (copy as `/code:loop` task, copy Linear ticket cmd, copy `file:line`). Never modifies code. |
-| `code:learn` | A substantial session just finished and taught you something. Reflects on what was used and routes only the durable, generalizing lessons to the right `code:*` skill / rule / memory — the code-plugin layer on the top-level `learn` engine. Built to not overfit or break the composing skills' contracts. |
+| `code:loop` | A queue of work — one ticket, many tickets, a label, a markdown checklist, repo TODOs, or a single branch/PR to land — needs taking end-to-end: plan, code, test, review, rebase, fix CI, merge (and route to `/release`, for distributables). The top-level engineering loop; composes the skills below, the `agents` CLI primitives, and top-level `/release` instead of reimplementing them. |
+| `code:review` | Three modes on one skill. Default (no args): recap the session's goal, discover every PR it opened, review each with a sub-agent and act on the verdicts (merge / request-changes / close). Given PR number(s): a deep cold review of just those, with file:line grounding, an architecture rubric (reuse of primitives, cross-cutting at the source, no duplicate surfaces, doc-asserted invariants), and a security pass on risk-touching diffs. Given `repo` / a path / `--since`: a read-only whole-repo architecture-and-quality diagnostic — HTML report, ranked findings, never a merge verdict. |
+| `code:learn` | A coding session just finished, or you need to learn a codebase cold. Learns the structure, entry points, architecture, and non-obvious invariants, then writes what a future agent would otherwise re-derive into the project's own `AGENTS.md` — the primary durable output. Secondarily routes a genuinely durable coding-*workflow* lesson (about the loop itself, not the project) to the right `code:*` skill. |
+| `code:commit` | Split changes into the maximum number of small logical commits (one concept per commit) and push in the background. |
+
+## Where verify/ship/quality went
+
+Earlier versions of this plugin had separate `code:verify`, `code:ship`, and `code:quality`
+skills. They're gone, not renamed:
+
+- **`code:verify`** — folded back into `code:loop` as an inline step. Verification is
+  identifying the changed surfaces yourself and running each one's canonical test with
+  quoted output — it never needed a dedicated skill call.
+- **`code:ship`** — replaced by the top-level **`/release`** command (the `release` skill).
+  Publishing a distributable isn't a code-plugin concern; it's the general release flow
+  every repo needs, coding-workflow or not.
+- **`code:quality`** — became `code:review`'s third mode (`repo` / a path / `--since`).
+  The rubric was always the same one a PR review applies to a diff — reuse, cross-cutting
+  at the source, no duplicate surfaces, doc-asserted invariants — just run over a whole
+  scope instead of one PR's changes. The HTML report and its helper scripts moved to
+  `code:review`'s skill directory.
 
 ## Primitives the loop uses directly
 
@@ -29,15 +46,20 @@ Coding-workflow plugin. Sub-skills for the manager/router engineering loop: drai
 
 1. New task arrives → pick the primitive directly (`agents run`, `agents teams`, `cloud:run`) and set up the worktree.
 2. Agent runs.
-3. Agent claims done → `/verify <branch or PR>` runs the canonical tests and quotes evidence.
+3. Agent claims done → identify the changed surfaces and run each one's canonical test inline, quoting real output (F3's closing gate — see `code:loop`).
 4. PASS → `/review` the PR, then merge. FAIL → file the failing line back to the agent.
-5. Merged a **distributable** (extension / CLI / web app)? → `/ship` publishes, confirms it's live for users, activates and verifies it. Merge is the middle, not the end.
+5. Merged a **distributable** (extension / CLI / web app)? → top-level `/release` publishes it, confirms it's live for users, activates and verifies it. Merge is the middle, not the end.
 
-`/code:loop` drives steps 1-5 over a whole queue; the skills above are what it composes. `/quality` runs outside this loop — invoke it any time as a read-only health snapshot (after landing a multi-commit branch, before opening a PR, on a fresh checkout, or as a recurring sanity check). `/code:learn` runs *after* a session — fold what it taught you back into these skills.
+`/code:loop` drives steps 1-5 over a whole queue; the skills above are what it composes.
+`/code:review repo` (or a path, or `--since <date>`) runs outside this loop — invoke it any
+time as a read-only health snapshot (after landing a multi-commit branch, before opening a
+PR, on a fresh checkout, or as a recurring sanity check). `/code:learn` runs *after* a
+session — its primary output is the project's own `AGENTS.md`, updated so the next agent
+doesn't re-derive what this one just learned.
 
 ## Conventions
 
 - All sub-skills assume `agents-cli` is installed and on PATH.
 - Sub-skills default to the `Plan` sub-agent type with `model: "sonnet"`; reserve `model: "opus"` only for genuinely load-bearing reasoning. Mix `claude`/`codex` for implementation tracks.
-- Every sub-skill ends with a real verification step — no "code written = done." See `code:verify` for the canonical gate.
+- Every sub-skill ends with a real verification step — no "code written = done."
 - Worktrees live in `<repo>/.agents/worktrees/<slug>/` (F5: protect what you can't undo).
