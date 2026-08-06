@@ -37,8 +37,8 @@ break the draft (blind independent plans / specs).
 ## Removed
 
 `/swarm:test` and `/swarm:qa` are gone from this plugin (unused). For ordinary test writing
-use top-level `/test` or `code:verify`; for browser walks use the `browser` skill / a
-generic `/swarm:run` brief.
+use top-level `/test`; for browser walks use the `browser` skill / a generic `/swarm:run`
+brief.
 
 ## Principles
 
