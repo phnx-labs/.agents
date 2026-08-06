@@ -13,8 +13,9 @@
   is allowlisted by the new `permissions/groups/12-self.yaml`
   (`Bash(kill -TERM $PPID)`, scoped to the direct parent + `TERM` only, never a
   general `kill`), so the self-exit runs without a prompt in auto mode. `/done`'s
-  and `/finish`'s exit step now use the same guarded two-call form and share the
-  allow rule. Source: `plugins/self/`, `permissions/groups/12-self.yaml`,
+  exit step now uses the same guarded two-call form and shares the allow rule
+  (`/finish` deliberately does not self-exit — it drives work to delivered and
+  stays). Source: `plugins/self/`, `permissions/groups/12-self.yaml`,
   `permissions/default.yaml` (rebuilt), `commands/done.md`,
   `.claude-plugin/marketplace.json`, `plugins/README.md`.
 

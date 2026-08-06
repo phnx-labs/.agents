@@ -19,7 +19,7 @@ anywhere with no setup.
 | [`git`](./git/README.md) | 2 | Pure git plumbing — `/git:prune` removes merged branches and worktrees with data-loss guards, `/git:tag-release` cuts and pushes a release tag |
 | [`share`](./share/README.md) | 2 | Publish agent-generated HTML to a link on your own Cloudflare R2 — `/share:public` (auto OG cover), `/share:private` (unlisted, expiring) |
 | [`design`](./design/README.md) | 1 | One keyless, offline-first front door for design — routes an intent to a mode and renders self-contained HTML/SVG |
-| [`self`](./self/README.md) | 1 | Agent self-operations — `/self:close` cleanly self-terminates the session (guarded SIGTERM to the harness); the exit primitive `/done` and `/finish` build on |
+| [`self`](./self/README.md) | 1 | Agent self-operations — `/self:close` cleanly self-terminates the session (guarded SIGTERM to the harness); the exit primitive `/done` builds on |
 
 <p align="center">
   <img src="../.assets/share.png" alt="/share:public — one command turns any agent-generated HTML into a shareable link with an auto OG cover" width="82%">

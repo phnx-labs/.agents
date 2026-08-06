@@ -90,7 +90,7 @@
     {
       "name": "self",
       "source": "./plugins/self",
-      "description": "self — operations an agent performs on its OWN session. `/self:close` cleanly self-terminates the current session by SIGTERM-ing the harness (the Bash tool shell's own parent, $PPID), after a read-only `ps` guard that refuses infra parents (shell/tmux/sshd) so it never tears down the wrong process. The low-level exit primitive that `/done` (recap, then close) and `/finish` build on; the exact `kill -TERM $PPID` form is allowlisted by the `self` permission group so it runs headlessly without an auto-mode prompt.",
+      "description": "self — operations an agent performs on its OWN session. `/self:close` cleanly self-terminates the current session by SIGTERM-ing the harness (the Bash tool shell's own parent, $PPID), after a read-only `ps` guard that refuses infra parents (shell/tmux/sshd) so it never tears down the wrong process. The low-level exit primitive `/done` builds on (recap, then close) — `/finish`, by contrast, drives work to delivered and never exits; the exact `kill -TERM $PPID` form is allowlisted by the `self` permission group so it runs headlessly without an auto-mode prompt.",
       "version": "0.1.0",
       "author": {
         "name": "Muqsit Nawaz",

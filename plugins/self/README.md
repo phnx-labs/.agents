@@ -26,7 +26,7 @@ Build on it, don't reach past it:
 
 ## How it runs headlessly
 
-`/self:close` (and `/done`/`/finish`'s exit step) run two calls: a read-only
+`/self:close` (and `/done`'s exit step) run two calls: a read-only
 `ps -o comm= -p $PPID` guard that refuses infra parents, then **exactly** `kill -TERM $PPID`.
 That exact form is allowlisted by the `self` permission group
 ([`permissions/groups/12-self.yaml`](../../permissions/groups/12-self.yaml)), so in auto/headless
