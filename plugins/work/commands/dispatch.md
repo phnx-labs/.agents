@@ -1,10 +1,10 @@
 ---
-description: Dispatch ONE unit of work — coding or not — to the right executor across the fleet. Finds/pulls the ticket, routes engineering work to the code plugin and non-coding work (content, outreach, research, design, a real browser task) to the plugin that owns it, then drives it to done. The general-purpose superset of /code:dispatch, which is engineering-only.
+description: Dispatch ONE unit of work — coding or not — to the right executor across the fleet. Finds/pulls the ticket, routes engineering work to the code plugin and non-coding work (content, outreach, research, design, a real browser task) to the plugin that owns it, then drives it to done. The general-purpose superset of /dispatch, which is scoped to one project and leans engineering.
 ---
 
 You're being asked to dispatch work: $ARGUMENTS
 
-`/work:dispatch` takes ONE unit of work — a ticket id, a described task, or "the next thing to do on <project>" — and gets it done by the right agent on the right machine. Unlike `/code:dispatch`, it is **not engineering-only**: a work item can be code (a fix, a feature, a release) OR non-coding (a blog post, creator outreach, a research pull, a design asset, a form/portal task). Because the fleet holds **browser + secrets**, an agent can actually *do* the non-coding work, not just file it.
+`/work:dispatch` takes ONE unit of work — a ticket id, a described task, or "the next thing to do on <project>" — and gets it done by the right agent on the right machine. Unlike `/dispatch`, it is **not engineering-only**: a work item can be code (a fix, a feature, a release) OR non-coding (a blog post, creator outreach, a research pull, a design asset, a form/portal task). Because the fleet holds **browser + secrets**, an agent can actually *do* the non-coding work, not just file it.
 
 This is a **single-target dispatch**, not a board sweep. There is **no survey, no bulk pass** — deciding the whole board (keep/cancel/reprioritize) is `/triage`'s job, and cancel/priority calls that need the human are surfaced there, never auto-dispatched here.
 
@@ -32,12 +32,13 @@ Hand the work to the plugin/skill built for it, on a machine that makes sense (a
 
 | Work kind | Executor (self-refer) |
 |---|---|
-| One coding ticket | `/code:dispatch`, or the `run` skill (`agents run`) |
+| One coding ticket | `/dispatch`, or the `run` skill (`agents run`) |
 | Coding, parallel / independently verified | the `teams` skill (`agents teams`) |
 | A queue of coding tickets | `/code:loop` |
-| Content / blog / long-form | the `social` / `create` plugins (`rblog`, `writer`) |
+| Content / blog / long-form | `social:schedule` (drafts + coverage-dedupes, keyless) |
 | Social posting / creator outreach | `social` + the `browser` skill + `secrets` |
-| Design / images / assets | the `design` / `create` plugins (`image`, `design`) |
+| Design / images / assets | `design:design` (keyless, offline-first) |
+| Publish an artifact / plan / report | `share:public` / `share:private` |
 | Research / data pull | the `browser` skill + research skills, `secrets` for authed sources |
 | A real web task (form, portal, dashboard) | the `browser` skill + `secrets` |
 
