@@ -1,7 +1,7 @@
 {
   "name": "work",
-  "version": "0.1.0",
-  "description": "work — get a project's work done across the fleet, any kind, not just code. `/work:dispatch` takes ONE unit of work (a ticket, a described task, or 'the next thing on <project>'), finds/pulls the ticket while deduping against in-flight PRs and live sessions, classifies it as coding vs non-coding, files it clean if missing, then self-refers to the plugin that owns the execution — the `code` plugin for engineering, or `design`/`share` plus the `browser` skill and `secrets` for non-coding work (outreach, research, a design asset, a real web/portal task). Single-target dispatch, not a board sweep — deciding the whole board (keep/cancel/reprioritize) and surfacing calls that need the human is `/triage`'s job. The kind-agnostic superset of `/dispatch`.",
+  "version": "0.2.0",
+  "description": "work — general-purpose work across the fleet, not just code. `/work:loop` (alias `/drain`) is the unattended multi-project drain: spreads load with agents teams + balanced accounts, uses browser/computer/secrets for non-coding, opens PRs without a review/merge gate so the human reviews later. `/work:dispatch` is ONE unit of work (coding or not) routed to the right executor. Kind-agnostic layer above `code:loop`.",
   "author": {
     "name": "Muqsit Nawaz",
     "email": "contact@trp.so"

@@ -4,6 +4,18 @@
 
 ### Added
 
+- **`work:loop` + top-level `/drain` — general-purpose unattended work drain.** The
+  overnight failure mode (Claude logouts, rate-limits, bwrap, everything collapsing onto
+  two hosts) needed a verb that is not engineering-only. `work:loop` drains clear work
+  across projects and kinds (code, browser/portal, outreach, design), always spreads load
+  (`agents teams` + balanced accounts + worker hosts + re-home on auth death), and may use
+  browser / computer / secrets / prior sessions / code reads for context. **No review/merge
+  gate** — engineering stops at PR open for the human to review later; non-coding finishes
+  the real outcome when the agent can. Composes patterns from `code:loop` without its
+  merge-oriented "done." Top-level `/drain` is a thin alias. Source: `plugins/work/skills/loop/`,
+  `plugins/work/commands/loop.md`, `commands/drain.md`, `plugins/work/README.md`,
+  marketplace + plugin.json 0.2.0.
+
 - **`/learn` is now outcome-anchored — reflection weighs the user's goals and
   delivery, not just tool friction (RUSH-2291).** A new **Phase 0 — Anchor to the
   user's goals and delivery** runs before recall: it loads two lenses — the Linear
