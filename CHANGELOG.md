@@ -4,6 +4,28 @@
 
 ### Changed
 
+- **Skills and commands re-synced with today's team/feed/session rule changes.**
+  The rule edits (`parallel-teams`, `feed-status-posts`, `fleet-delegation`,
+  `remote-fleet-dispatch`) had moved ahead of their long-form playbooks, so the
+  policy lived only in the rules an agent skims, not in the skills it opens
+  mid-task. `skills/teams` gained the feed/notify brief line, the teammate
+  completion contract, the orchestrator cross-track (seam) contract, and the
+  balanced-rotation default; `plugins/swarm` orchestrate got the verbatim
+  feed/notify + completion lines in its brief template and orchestrator posting
+  in the monitor loop; `commands/teams` gained the completion-contract line;
+  `skills/run` now documents `--remote-cwd` as an `agents run`-only flag that
+  hard-errors on `teams add`, with the resolve-on-the-remote path gotcha.
+  `skills/sessions` gained a Resume & Fork lifecycle section (`agents sessions
+  fork`/`resume`, resume on the owning device); `commands/README` indexes
+  `/fork`; `skills/release` Phase 1 now refuses to double-release into a
+  serialized train/lease before it publishes, matching `/finish`. `/done` gained
+  a Step 0 close-out (file follow-ups, clean loose ends) matching what the
+  `verify-work-complete` Stop gate already requires; `03-vacation-recap` stopped
+  pointing at a `session-handoff-summary` rule that does not exist in the system
+  layer (now the back-from-vacation summary under F4 in `foundations`); and the
+  stale `post-tool-use/` hook-directory references were removed from
+  `hooks/README.md` and `hooks/AGENTS.md` (no PostToolUse hook ships today).
+
 - **`/finish` no longer offers to publish in a repo that has a release train.**
   Its "Release (if applicable)" step detected a publishable package and asked
   whether to release it, which contradicts `release-to-fleet`: a repo with a

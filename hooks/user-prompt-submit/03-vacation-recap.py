@@ -113,8 +113,8 @@ def main():
         "addressing the new prompt below, give a quick back-from-vacation recap in "
         "plain, simple language: (1) what the problem/task was, (2) what was actually "
         "accomplished, (3) what you're suggesting as the next step or what should keep "
-        "going. A few lines, not a report — see the `session-handoff-summary` rule for "
-        "the fuller shape if useful. Then address the new prompt."
+        "going. A few lines, not a report — see the back-from-vacation summary under "
+        "F4 in `foundations` for the fuller shape if useful. Then address the new prompt."
     )
 
     event = data.get("hook_event_name") or data.get("hookEventName") or "UserPromptSubmit"

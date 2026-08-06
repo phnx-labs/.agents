@@ -40,7 +40,6 @@ Scripts live under a **one-level event directory** (kebab-case of the harness ev
 hooks/
   session-start/          SessionStart
   pre-tool-use/           PreToolUse
-  post-tool-use/          PostToolUse
   user-prompt-submit/     UserPromptSubmit
   stop/                   Stop
   notification/           Notification (+ multi-event hooks that start there)
@@ -102,11 +101,6 @@ register time). See [§Subrule hooks](#subrule-hooks-rules-not-this-tree).
 |---|---|
 | [`06-attention-sentinel.sh`](./notification/06-attention-sentinel.sh) | Per-session attention state (also fires on Stop + UserPromptSubmit) |
 | [`12-escalate-on-notification.sh`](./notification/12-escalate-on-notification.sh) | Escalation ladder when the agent needs the user |
-
-### `post-tool-use/` — PostToolUse
-
-| Hook | What it does |
-|---|---|
 
 ## Subrule hooks (rules, not this tree)
 
