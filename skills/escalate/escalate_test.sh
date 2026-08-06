@@ -39,7 +39,7 @@ channels:
     transport: openclaw
     host: local
     account: default
-    target: "6078999250"
+    target: "1234567890"
     watch: true
 policy:
   normal: [telegram]
@@ -49,7 +49,7 @@ Test owner.
 MD
 export OWNER_PROFILE="$SANDBOX/msg-only.md"
 out="$(bash "$SH" --check 2>&1)"
-contains "message rung READY" "$out" "message (telegram via openclaw@local -> 6078999250): READY"
+contains "message rung READY" "$out" "message (telegram via openclaw@local -> 1234567890): READY"
 contains "call rung NOT READY (no call.cmd)" "$out" "call: NOT READY"
 contains "ceiling is message-only, no phone rung" "$out" "no phone rung"
 
@@ -78,7 +78,7 @@ channels:
     transport: openclaw
     host: local
     account: default
-    target: "6078999250"
+    target: "1234567890"
     watch: true
   - id: call
     transport: twilio

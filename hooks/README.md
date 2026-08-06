@@ -142,8 +142,44 @@ hooks:
 - `events` — lifecycle events to register on.
 - `timeout` — seconds.
 - `matches` — optional predicates.
-- `enabled` — set `false` in the user layer to disable a system-shipped hook.
+- `enabled` — set `false` to disable a hook (system defaults may ship some off;
+  the user layer can disable any system-shipped hook, or re-enable an opt-in one
+  with a full entry + `override: true`).
 - `agents` — **deprecated**; ignored.
+
+## Enabling and disabling hooks
+
+Hooks change **runtime** behavior (unlike commands/skills/plugins, which are
+tools agents open on demand). Users should be able to turn them off easily.
+
+**Disable a system hook** — same name in the user layer:
+
+```yaml
+# ~/.agents/agents.yaml
+hooks:
+  linear-tasks:
+    enabled: false
+  verify-work-complete:
+    enabled: false
+```
+
+Then `agents sync` so version homes pick up the change.
+
+**Re-enable an opt-in hook** (e.g. `expand-bang-commands`, default off in 0.2.0):
+
+```yaml
+# ~/.agents/agents.yaml
+hooks:
+  expand-bang-commands:
+    override: true
+    events: [UserPromptSubmit]
+    script: user-prompt-submit/02-expand-prompt-bang-commands.py
+    timeout: 10
+```
+
+A first-class `agents hooks enable|disable` CLI is planned; until then the YAML
+overlay is the supported path. Data-loss guards (`git-guard`, `rm-guard`,
+`large-file-add-guard`) should stay on unless you know why you're disabling them.
 
 ## Layering
 

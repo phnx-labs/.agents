@@ -2,6 +2,59 @@
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-08-06
+
+### Highlights
+
+Behavioral cut of the 2026-08-03 → 2026-08-06 wave. Fleet boxes land this by
+`agents repo pull system` (or `check-updates` / SessionStart autosync) and
+`agents sync` — there is no separate npm package for this repo. Tag `v0.2.0`
+names the train; `main` remains what most hosts pull day-to-day.
+
+- **Multi-harness system hooks** (claude / codex / kimi / grok / cursor / droid /
+  antigravity): snake_case + camelCase stdin; shell/read tool names ported.
+- **Stop / done contract:** no PR-link handoffs; waiting sessions stop looping;
+  done-claim files follow-ups, recaps, and self-exits headless runs.
+- **SessionStart denser:** Linear projects + milestones, project-aware in-flight,
+  device topology cache, git pull-forward on clean trees.
+- **Teams / feed:** completion + cross-track contracts; feed record vs owner
+  deliver (`agents notify`); balanced rotation + `--remote-cwd` documented.
+- **New commands:** `/triage`, `/dispatch`, `/work:dispatch`, `/fork`, `/profile`,
+  historical `/recap`; `/debug` full loop; `reflect` restored.
+- **Artifacts:** Markdown → `artifacts-cli` HTML; date-based paths; plan HTML
+  requires a drawn SVG figure.
+- **Four hooks re-registered** after months of silent unregistration (rm-guard,
+  large-file-add-guard, linear inject, prompt expanders).
+
+### Security & defaults (this cut)
+
+- **`expand-bang-commands` defaults to `enabled: false`.** UserPromptSubmit
+  `` `! cmd` `` expansion runs a shell; paste of untrusted text is local RCE.
+  Re-enable in the user layer with a full entry + `override: true` (see
+  `agents.yaml` comment and README §Hooks).
+- **`/finish` transcript attach** uses `gh gist create --secret` and prefers
+  `agents sessions render` (redacted). Public repos omit the gist.
+- **Personal contact surfaces scrubbed** from escalate / hibernate examples and
+  tests (placeholders instead of a live chat id / `muqsit@mac-mini`).
+
+### Known risks (follow-ups — not fixed in 0.2.0)
+
+These remain after this tag; tracked for 0.2.1+ / agents-cli companions:
+
+1. **Indirect prompt injection** — Linear titles/descriptions and open PR titles
+   land in SessionStart context without trust fences (mailbox inject is the
+   pattern to copy).
+2. **`session_id` as path component** in attention-sentinel / vacation-recap /
+   escalate-fired can traverse if a harness ever supplies a hostile id.
+3. **`escalate.sh` watcher** still interpolates `$MSG` into a `bash -c` string
+   (initial send is base64-safe).
+4. **Permission allows** `Bash(agents:*)` / `Bash(cat:*)` bypass Read denies on
+   credential files — cooperative agent speed-bump only.
+5. **No first-class `agents hooks enable|disable` CLI yet** — user-layer
+   `enabled: false` works today; a dedicated command is planned.
+6. **`check-updates` routine** unpinned `npm i -g @latest` + ff system `main`
+   is a supply-chain surface when enabled.
+
 ### Changed
 
 - **Skills and commands re-synced with today's team/feed/session rule changes.**
