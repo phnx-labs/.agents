@@ -664,4 +664,132 @@ rc=$(FAKE_GH_STATE=OPEN run_hook "$TL1" "still waiting on CI." false)
 check "2nd open-PR fire still blocks" "$rc" "2"
 grep -qi "this gate has now fired" "$SANDBOX/stderr" && { echo "FAIL - repeat guidance fired on the 2nd block (threshold is 3rd)"; fail=1; } || echo "ok   - no repeat guidance on the 2nd fire"
 
+# --- Task-list keep-moving gate (RUSH-2113 A + B) ----------------------------
+# The session's OWN checklist is the strongest "stopped too early" signal. A stop
+# with pending / in_progress items and no named owner is premature; a genuine
+# question, plan mode, a named blocker, an explicit handoff, or a LIVE background
+# watcher that owns the remaining step are all legitimate stops.
+#
+# Fixtures build the real Claude tool_use shape for the checklist tools
+# (TaskCreate / TaskUpdate, and the snapshot TodoWrite). No PR is created, so
+# ONLY this gate can fire — its block message is tagged "STOP GATE (keep moving)".
+mk_tasks() {   # $1 selects checklist state
+  local t="$SANDBOX/tasks-$RANDOM.jsonl"
+  {
+    echo '{"type":"user","message":{"role":"user","content":"Build the widget: write the parser, then wire it up"}}'
+    echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"tc1","name":"TaskCreate","input":{"subject":"Write the parser","description":"parse the input"}}]}}'
+    echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"tc2","name":"TaskCreate","input":{"subject":"Wire it up","description":"connect to the pipeline"}}]}}'
+    case "$1" in
+      one-remaining)
+        # task 1 done, task 2 still in_progress -> one item remains.
+        echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"tu1","name":"TaskUpdate","input":{"taskId":"1","status":"completed"}}]}}'
+        echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"tu2","name":"TaskUpdate","input":{"taskId":"2","status":"in_progress"}}]}}'
+        ;;
+      all-done)
+        echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"tu1","name":"TaskUpdate","input":{"taskId":"1","status":"completed"}}]}}'
+        echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"tu2","name":"TaskUpdate","input":{"taskId":"2","status":"completed"}}]}}'
+        ;;
+      watcher-remaining)
+        # one item left AND a REAL background CI watch this session owns it.
+        echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"tu1","name":"TaskUpdate","input":{"taskId":"1","status":"completed"}}]}}'
+        echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"tw1","name":"Bash","input":{"command":"gh pr checks 42 --watch --fail-fast","run_in_background":true}}]}}'
+        echo '{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"tw1","content":[{"type":"text","text":"watching in background"}]}]}}'
+        ;;
+    esac
+    echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"progress"}]}}'
+    echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"more progress"}]}}'
+  } > "$t"
+  echo "$t"
+}
+
+# E1. Pending checklist + a plain declarative stop -> keep-moving block.
+TK=$(mk_tasks one-remaining)
+rc=$(run_hook "$TK" "The parser is written and pushed to the branch." false)
+check "pending checklist + declarative stop blocks" "$rc" "2"
+grep -qi "STOP GATE (keep moving)" "$SANDBOX/stderr" && echo "ok   - keep-moving gate identifies itself" || { echo "FAIL - keep-moving gate not the one that fired"; fail=1; }
+grep -qi "Wire it up" "$SANDBOX/stderr" && echo "ok   - keep-moving gate names the next item" || { echo "FAIL - keep-moving gate omits the next item"; fail=1; }
+
+# E2. Every item completed -> no keep-moving block (neutral wrap-up allows stop).
+TKD=$(mk_tasks all-done)
+rc=$(run_hook "$TKD" "The parser is written and the wiring is in place." false)
+check "all checklist items complete allows stop" "$rc" "0"
+
+# E3. Pending checklist but the final message is a genuine question -> allow.
+rc=$(run_hook "$TK" "The parser is written. Which layout should the wiring use, tabs or spaces?" false)
+check "pending checklist + clarifying question allows stop" "$rc" "0"
+
+# E4. Pending checklist + an explicit named handoff -> allow.
+rc=$(run_hook "$TK" "Parser written; the ui session takes over from here and owns the task." false)
+check "pending checklist + explicit handoff allows stop" "$rc" "0"
+
+# E5. Pending checklist + a genuine external blocker (biometric) -> allow.
+rc=$(run_hook "$TK" "Parser written. Wiring is blocked on your Touch ID to sign the artifact." false)
+check "pending checklist + named external blocker allows stop" "$rc" "0"
+
+# E6. Pending checklist + a REAL background watcher + watcher phrasing -> allow.
+TKW=$(mk_tasks watcher-remaining)
+rc=$(run_hook "$TKW" "A background watcher owns the merge and will merge on green." false)
+check "pending checklist + live watcher owns it allows stop" "$rc" "0"
+
+# E7. Watcher PHRASING but no real background watcher this session -> still block
+# (evidence-gated, so the gate can't be talked out of firing).
+rc=$(run_hook "$TK" "Parser written; a watcher will merge on green." false)
+check "watcher phrasing without a real watcher still blocks" "$rc" "2"
+
+# E8. No checklist at all -> the gate never fires.
+TNONE=$(mk_transcript plain)
+rc=$(run_hook "$TNONE" "The parser is written and pushed to the branch." false)
+check "no checklist allows stop (gate never fires)" "$rc" "0"
+
+# E9. stop_hook_active short-circuits the whole hook (fires at most once).
+rc=$(run_hook "$TK" "The parser is written and pushed to the branch." true)
+check "keep-moving gate respects stop_hook_active" "$rc" "0"
+
+# E10. De-escalation: a 3rd keep-moving fire on the same session still blocks but
+# adds the context-led strategy guidance.
+mk_tasks_looped() {   # $1 = number of prior keep-moving fires
+  local t="$SANDBOX/tasks-loop-$RANDOM.jsonl" i
+  {
+    echo '{"type":"user","message":{"role":"user","content":"Build the widget: write the parser, then wire it up"}}'
+    echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"tc1","name":"TaskCreate","input":{"subject":"Write the parser","description":"d"}}]}}'
+    echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"tc2","name":"TaskCreate","input":{"subject":"Wire it up","description":"d"}}]}}'
+    echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"tu1","name":"TaskUpdate","input":{"taskId":"1","status":"in_progress"}}]}}'
+    i=0
+    while [ "$i" -lt "$1" ]; do
+      echo '{"type":"user","isMeta":true,"message":{"role":"user","content":"Stop hook feedback:\n[~/.claude/hooks/00-agent-verify-work-complete.sh]: STOP GATE (keep moving): Your task list still has 2 unfinished item(s).\n"}}'
+      echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"still working"}]}}'
+      i=$((i + 1))
+    done
+  } > "$t"
+  echo "$t"
+}
+TKL=$(mk_tasks_looped 2)
+rc=$(run_hook "$TKL" "The parser is written and pushed." false)
+check "3rd keep-moving fire still blocks" "$rc" "2"
+grep -qi "this gate has now fired 3 times" "$SANDBOX/stderr" && echo "ok   - keep-moving repeat guidance appears on the 3rd fire" || { echo "FAIL - no repeat guidance on the 3rd keep-moving fire"; fail=1; }
+
+# --- todo-progress.py folding (unit) -----------------------------------------
+# The helper folds snapshot checklist tools + Claude TaskCreate/TaskUpdate the
+# same way the CLI's extractTodoProgressFromEvents does.
+TODO="$HERE/todo-progress.py"
+
+# TaskCreate x2 + one set in_progress -> remaining 1, next is the pending one.
+rc_json=$(python3 "$TODO" "$TK")
+echo "$rc_json" | grep -q '"remaining": 1' && echo "ok   - todo-progress folds TaskCreate/TaskUpdate remaining" || { echo "FAIL - todo-progress wrong remaining ($rc_json)"; fail=1; }
+echo "$rc_json" | grep -q '"next": "Wire it up"' && echo "ok   - todo-progress reports the next item" || { echo "FAIL - todo-progress wrong next ($rc_json)"; fail=1; }
+
+# All completed -> remaining 0.
+rc_json=$(python3 "$TODO" "$TKD")
+echo "$rc_json" | grep -q '"remaining": 0' && echo "ok   - todo-progress reports zero remaining when all done" || { echo "FAIL - todo-progress nonzero when all done ($rc_json)"; fail=1; }
+
+# A snapshot TodoWrite (Claude) is folded too.
+TSNAP="$SANDBOX/snap-$RANDOM.jsonl"
+echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"tw","name":"TodoWrite","input":{"todos":[{"content":"alpha","status":"completed"},{"content":"beta","status":"in_progress"},{"content":"gamma","status":"pending"}]}}]}}' > "$TSNAP"
+rc_json=$(python3 "$TODO" "$TSNAP")
+{ echo "$rc_json" | grep -q '"total": 3' && echo "$rc_json" | grep -q '"remaining": 2'; } && echo "ok   - todo-progress folds a TodoWrite snapshot" || { echo "FAIL - todo-progress mis-folds snapshot ($rc_json)"; fail=1; }
+
+# Fail-open: a missing transcript yields a zero result, never an error.
+rc_json=$(python3 "$TODO" "/no/such/file.jsonl")
+echo "$rc_json" | grep -q '"total": 0' && echo "ok   - todo-progress fails open on a missing transcript" || { echo "FAIL - todo-progress did not fail open ($rc_json)"; fail=1; }
+
 exit $fail

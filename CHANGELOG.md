@@ -4,6 +4,29 @@
 
 ### Added
 
+- **`verify-work-complete` Stop hook is now task-aware — keep moving instead of
+  stopping with unfinished checklist items (RUSH-2113).** Prior PRs #158/#161
+  stopped the gate from *looping*; this adds the keep-**moving** half the ticket
+  asked for. A new gate folds the session's own checklist — the snapshot tools
+  (`TodoWrite`/`TodoList`/`todo_write`/`update_plan`) plus Claude's
+  `TaskCreate`/`TaskUpdate` event log, via the new standalone
+  `hooks/stop/todo-progress.py` (mirrors the CLI's `extractTodoProgressFromEvents`
+  so checklist state is read the same way everywhere) — and blocks a plain
+  declarative stop while any item is still pending/in_progress, naming the next one
+  to advance. This also answers enhancement A: recognizing a background watcher on
+  one item is no longer blanket permission to stop; the agent is redirected to the
+  next advanceable item and only stops when nothing is left. It stays a legitimate
+  stop (no block) when the final message asks the user a real question, is in plan
+  mode, names a genuine external blocker, explicitly hands the remaining work to a
+  named owner, or points at a **live** background watcher/monitor that owns the
+  remaining step (evidence-gated on a real `gh pr checks --watch` /
+  `ScheduleWakeup` / `Monitor` tool_use, never phrasing alone — the same bar the
+  open-PR gate uses). Fails open, respects `stop_hook_active` (fires at most once
+  per stop), and de-escalates with the shared repeated-gate guidance after the 3rd
+  fire. Source: `hooks/stop/00-agent-verify-work-complete.sh`,
+  `hooks/stop/todo-progress.py`, `hooks/stop/00-agent-verify-work-complete_test.sh`
+  (18 new assertions).
+
 - **Current-code anchoring — diagnose against live code, not a stale checkout.**
   New hard rule across three surfaces: a `foundations` F3 bullet, a
   `research-discipline` bullet (the git analog of current-date anchoring), and an
