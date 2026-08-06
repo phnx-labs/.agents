@@ -4,6 +4,15 @@
 
 ### Added
 
+- **`hooks/syntax_test.sh` — a parse gate for every hook script.** A hook that does not
+  parse still runs, and bash exits 2 on a syntax error, which the harness reads as
+  **block** — so a typo silently becomes a gate no session can get past (see the
+  `verify-work-complete` entry under Fixed). It runs `bash -n` on every `.sh` under
+  `/bin/bash` (3.2 on macOS) *and* the PATH bash, plus `py_compile` on every `.py`.
+  Checking 3.2 explicitly is the point: the break that motivated this parses cleanly
+  under bash 5, so a Linux-only check would have missed it. Picked up automatically by
+  `run_tests.sh`. Source: `hooks/syntax_test.sh`, `hooks/README.md`, `hooks/AGENTS.md`.
+
 - **Root README guide: what to run, which plugin, how to automate.** Ships a
   goal→command table, situation FAQ (overnight drain, rate-limits, crash restore),
   plugin pick matrix, and automation recipes (`/drain`, `/code:loop`, routines,
@@ -399,6 +408,8 @@ These remain after this tag; tracked for 0.2.1+ / agents-cli companions:
   `hooks/README.md`, `agents.yaml`.
 
 ### Fixed
+
+- **`stop/00-agent-verify-work-complete` parses again — it was blocking every session on macOS.** The RUSH-2113 keep-moving gate (`2615e49`) added a `$(python3 - <<'PY' … PY)` whose body carried a lone `'` in a regex character class (`[)\]\'\"]`). bash 3.2 — `/bin/bash` on every macOS box, and what `#!/usr/bin/env bash` resolves to there — tracks quotes inside a heredoc nested in a `$(…)`, so the whole script became unparseable. bash 5 parses it fine, which is why it passed on Linux. An unparseable hook still *runs*: bash exits 2 on a syntax error, and 2 is the harness's **block** code, so every Stop was refused with `line 547: unexpected EOF while looking for matching ')'` and no session could end. The regex now spells the two quote characters as `\x27` / `\x22`, so the heredoc body carries no quote at all; the matched character set is unchanged. This also switches the keep-moving gate on for the first time — its 8 tests had been red since it landed. Source: `hooks/stop/00-agent-verify-work-complete.sh`.
 
 - **`session-start/04-session-identity` no longer wipes Factory join keys on by-pid merge (RUSH-2192).** SessionStart rewrote `~/.agents/.cache/terminals/by-pid/<pid>.json` with the real `sessionId` but only preserved `agent` / `cwd` / `tmuxPane` / `startedAtMs` — dropping `terminalId` and `launchId` the launcher had stamped. That left `agents sessions --active` rows without `terminalId`, so Factory status-bar join by `AGENT_TERMINAL_ID` (Grok / Codex / `--device`) could not bind. Merge now keeps `terminalId`, `launchId`, `actor`, `initiatedBy`; if no prior registry file, falls back to `AGENT_TERMINAL_ID` / `AGENT_LAUNCH_ID` env. Tests cover preserve + env fallback. Source: `hooks/session-start/04-session-identity.sh`, `_test.sh`.
 

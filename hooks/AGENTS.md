@@ -88,3 +88,10 @@ parser is available.
 `registration_test.sh` walks `hooks/*/*.{sh,py}` (event groups) and the top level.
 `run_tests.sh` runs every `*_test.sh` under `hooks/` and one-level event dirs.
 Run both before a PR that touches `hooks/`, `rules/subrules/`, or `agents.yaml`.
+
+`syntax_test.sh` is the parse gate: a hook that does not parse still runs, and bash
+exits 2 on a syntax error — which is the harness's *block* code, so a typo becomes a
+gate no session can pass. It checks `.sh` under **`/bin/bash` (3.2 on macOS)** as well
+as the PATH bash, because 3.2 tracks quotes inside a heredoc nested in a `$(…)` and
+bash 5 does not: a quote in such a heredoc parses fine on Linux and breaks every Mac.
+Keep quote characters out of heredoc bodies inside `$(…)` — spell them `\x27` / `\x22`.
