@@ -32,7 +32,7 @@ Attempt reattach **only** when you have positive reason to believe the session i
    - If you have an id: `agents sessions focus <id> --attach-only`. When the
      caller supplied a source machine, append `--host <machine>` so a short id
      or tmux alias is resolved only on its owning device.
-   - If you have no id (the user typed bare `/continue`): `agents sessions focus --attach-only`. This opens the live-session picker; if the user cancels or no live session is chosen, fall through to Step 1.
+   - If you have no id but you have a live-session signal (you decided to reattach per the gate above): `agents sessions focus --attach-only`. This opens the live-session picker; if the user cancels or no live session is chosen, fall through to Step 1. A bare `/continue` with **no** live signal never reaches here — it goes straight to Step 1.
    - `--attach-only` means "join the live pane/tab or fail"; it never silently opens a new copy.
    - Without a source-machine constraint, the command performs the cross-host
      sweep automatically. Preserve an explicit `--device` / `--host` scope when
