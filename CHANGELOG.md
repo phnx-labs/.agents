@@ -19,6 +19,17 @@
 
 ### Added
 
+- **`operational` now spells out why env vars are unsafe for config and secrets,
+  not just that credentials belong in `agents secrets`.** The prior rule was a
+  single bullet scoped to credentials only. It's now backed by rationale (child
+  process inheritance, `/proc/<pid>/environ`, crash-dump/log leakage, silent
+  override by anything in the same process tree), broadened to configuration in
+  general (feature flags, endpoints, toggles belong in real config files, not env
+  var overrides that shadow them invisibly), and adds a direct rule against
+  creating unnecessary env vars — a proper config entry, CLI flag, or function
+  argument should be tried first. The existing `agents secrets` guidance for
+  credentials is unchanged.
+
 - **Codex run guidance now matches the safe permission-profile defaults.** When no
   configured run default exists, omitted Codex mode is writable with network and
   on-request approvals; explicit plan stays
