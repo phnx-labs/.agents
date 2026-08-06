@@ -825,23 +825,33 @@ Before you can stop, you MUST:
 5. Once EVERY goal is DONE and verified, close out in this order:
    a. New follow-up ideas, improvements, or issues you noticed along the way that
       are out of scope for this session: FILE them as tickets via the project's
-      tracker right now. Do not just mention an idea and wait ('say the word',
-      'let me know if you want this') — either do it, file it as tracked work, or
-      drop it. A dangling optional idea is not a finished session.
-   b. Post ONE quick status update the way you would update a human manager — the
+      tracker right now, with real context (what you found, why it's out of
+      scope, any evidence) — not a one-line stub. Do not just mention an idea
+      and wait ('say the word', 'let me know if you want this') — either do it,
+      file it as tracked work, or drop it. A dangling optional idea is not a
+      finished session.
+   b. Clean up loose ends: commit and push any stray uncommitted work, remove
+      worktrees and branches this session no longer needs, and confirm every
+      ticket this session actually finished is closed with proof (not left
+      Todo because it slipped your mind).
+   c. Post ONE quick status update the way you would update a human manager — the
       headline outcome + the one link/next-step, not a transcript:
        agents feed post --title "<short outcome>" "<what you delivered + the one next step>" --level important
       This records the completion and marks this phone-worthy successful update
       for owner delivery.
-   c. This session is now genuinely finished. If this is a headless, dispatched,
+   d. This session is now genuinely finished. If this is a headless, dispatched,
       or background run — not a live terminal a person might be actively
-      watching right now — run /done's Step 2 self-exit recipe as your very
-      last action (it guards against killing a non-harness parent — do not
-      hand-roll a bare SIGTERM), so the session actually ends instead of
-      sitting idle. If you are unsure, or this looks like an interactive
-      session someone is driving, skip the self-exit and just stop.
+      watching right now — run /done as your very last action: its own Step 1
+      builds the real handoff recap (the /recap discipline — facts, what's
+      done, tests actually run, nothing left dangling) as your final message,
+      THEN its Step 2 self-exits via the guarded SIGTERM (do not hand-roll a
+      bare SIGTERM, and do not skip straight to Step 2 — a self-exit with no
+      recap first is not a clean handoff). If you are unsure, or this looks
+      like an interactive session someone is driving, run /recap instead (same
+      handoff discipline, no self-exit) and then just stop.
 
 Only stop when every goal has tangible, verified results, any real follow-ups are
-filed (not dangled), and — if applicable — the session has cleanly exited itself.
+filed with context (not dangled or stubbed), loose ends are cleaned up, and — if
+applicable — the session has recapped and cleanly exited itself.
 GATE
 exit 2
