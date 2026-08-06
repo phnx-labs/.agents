@@ -37,21 +37,62 @@ Dispatch whichever harness (codex / grok / droid / antigravity / claude) is conf
 working on the target box, not a default clone of your own type. Spreading the load
 across harnesses is the point of the fleet.
 
-## Ping-test the harness on the box BEFORE the real dispatch
+## Probe the box with the OPERATION YOU WILL ACTUALLY PERFORM
 
-Fire a trivial headless prompt to confirm the harness is installed, logged in, and
-functional there:
+A trivial prompt confirms the harness is installed and logged in:
 
 ```bash
 agents run <h> "Reply with exactly PINGOK" --device <box> --remote-cwd <repo> --mode plan
 ```
 
-If it returns the token, it's ready. **Known trap:** codex `--mode auto` uses a
-bubblewrap sandbox that fails on namespace-restricted fleet boxes
-(`bwrap: setting up uid map: Permission denied`), so codex-auto can't run there at all
-— the ping catches it. Fall back to another harness (or a box where it works). Do **not**
-silently escalate to `--mode skip` / `--dangerously-bypass-approvals-and-sandbox` to
-dodge the sandbox — that's the same security escalation as any sandbox-off flag.
+**That is ALL it confirms. A passing ping does not mean the box can do your job.**
+Capability on these boxes is gated per operation class, so a probe that skips the
+operation under test certifies nothing:
+
+| Probe | What it actually exercises | What it says about writes |
+|---|---|---|
+| `--mode plan` ping | no sandbox at all | nothing |
+| `--mode edit` running `uname -a` | no **write** sandbox (read-only cmd) | nothing |
+| `--mode edit` running `git fetch` + `git worktree add` | the real write path | this is the answer |
+
+Measured 2026-08-06: `--mode plan` and `--mode edit`+`uname -a` both returned OK on
+yosemite-m2 and yosemite-m4; the same boxes then failed every real write with
+`bwrap: setting up uid map: Permission denied`. Five dispatches were burned "verifying"
+boxes that could not run the job. **If the work writes, probe with a write.** If it
+opens a PR, probe a commit. If it needs a credential, probe an authenticated request.
+
+**Known trap — codex cannot write anywhere on this fleet.** Its sandbox fails on Linux
+(`bwrap: setting up uid map: Permission denied`, m2 and m4 alike, with healthy
+`max_user_namespaces` — not a resource limit) and on macOS (mac-mini reaches
+`sandbox: workspace-write` and then dies on `cannot open '.git/FETCH_HEAD': Operation
+not permitted`). The dispatch still **exits 0**, so the job looks successful and
+produced nothing. For write-heavy work (worktree, edits, PR) dispatch **claude** to a
+box where it is signed in, confirmed by a real write probe. Codex remains fine for
+read-only/analysis dispatch.
+
+Do **not** silently escalate to `--mode skip` / `--dangerously-bypass-approvals-and-sandbox`
+to dodge a sandbox failure — that's the same security escalation as any sandbox-off flag.
+Move to a harness/box that genuinely works, and say in your report that the box changed
+(measurements taken before and after a box change are not comparable).
+
+## A detached (`--no-follow`) run's status is only true through `agents hosts ps`
+
+`agents run --device … --no-follow` returns immediately and leaves the agent running on
+the remote box — the right primitive when you want to start work and do something else
+(see `unattended-verification` for why hand-rolled `nohup … &` does not work from inside
+an agent's tool call).
+
+Because nobody is tailing it, the on-disk dispatch record at
+`~/.agents/.cache/hosts/<id>.json` **stays `"status": "running"` forever**, even after
+the agent has exited. Verified: two finished runs, dead pids, an idle box, both records
+still `running`. `agents hosts ps` reconciles the real outcome on demand and reports them
+`completed`.
+
+- Poll `agents hosts ps --json` (match on the `name` you passed to `--name`), never the
+  raw cache file. A guard built on that file deadlocks permanently on its first dispatch.
+- Harvest the output with `agents hosts logs <id>` once status leaves `running`.
+- Bound it: treat a task still `running` far past its expected runtime as stuck, and
+  `agents hosts stop <id>` rather than letting it block the next dispatch forever.
 
 ## Monitor at the service level — never tail full logs
 

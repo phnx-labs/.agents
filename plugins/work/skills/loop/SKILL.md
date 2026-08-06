@@ -131,6 +131,12 @@ tiny). Still unattended.
 Queue empty or only parked items → short recap: finished · PRs waiting on human · parked ·
 what re-homed because of limits/logouts.
 
+**Every row above is a postcondition you must CHECK, not infer.** A dispatched agent that
+hit a wall, explained it, and exited is an `exit 0` with zero work done — the most common
+unattended failure there is. Before marking an item done: query the PR, re-read the
+ticket, confirm the artifact exists. If you cannot observe it, the item is **unverified**,
+not done — park it with the gap named. See `unattended-verification`.
+
 ## Unattended rules
 
 - No `AskUserQuestion`. No "want me to continue?".
@@ -150,6 +156,10 @@ what re-homed because of limits/logouts.
 - Asking the user for context that sessions, comments, or code already hold
 - Flooding the interactive laptop with teammates
 - Claiming "done" without a PR link or real-world proof
+- Trusting a dispatched agent's `exit 0` instead of checking what it produced
+- Certifying a box with a read-only ping, then sending it write-heavy work
+- Re-querying the tracker per item until the shared API quota dies for everyone
+- Reading a result file from a prior run as if it belonged to this one
 
 ## Compose map
 

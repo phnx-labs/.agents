@@ -26,3 +26,4 @@ presets:
       - task-checklists
       - feed-status-posts
       - remote-fleet-dispatch
+      - unattended-verification

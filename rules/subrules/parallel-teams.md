@@ -43,6 +43,19 @@ The feed/notify instruction is part of the mandatory brief contract, next to Own
 
 The orchestrator itself posts one feed line on `teams start` and on team completion, and reaches the owner only at delivery (`agents feed post --level important` / `agents notify`) or when a teammate is blocked (`--blocked`). This is the record-vs-deliver split — see [`feed-status-posts.md`](feed-status-posts.md): plain posts stay in the activity stream, `--level important` reaches the phone, `--blocked` opens a needs-you record. A milestone is a boundary, never a keystroke.
 
+## Confirm a remote teammate's box can do the work BEFORE you spawn it
+
+A teammate pinned to another box inherits that box's capabilities, and a box that cannot
+run the work still accepts the dispatch and **exits 0**. Edit-mode teammates write —
+worktree, edits, commits, a PR — so probe the box with a real write (`git fetch` +
+`git worktree add`), not a read-only ping, and confirm the harness is signed in there.
+Codex in particular cannot write anywhere on this fleet today; send write-heavy
+teammates to a harness/box confirmed by a write probe. Full detail:
+`remote-fleet-dispatch`, `unattended-verification`.
+
+A teammate that silently produced nothing is worse than one that failed loudly: the
+orchestrator counts it as a green track and composes on top of work that does not exist.
+
 ## Completion contract (every edit-mode brief)
 
 A teammate whose work produces a PR is done when the PR is **merged or explicitly handed off to a named owner** — nothing else counts. "PR open, CI green, waiting for reviewer" is NOT completed: it's the top observed way team output gets stranded (an entire 11-teammate run once ended with every PR unmerged). Every edit-mode brief must include the line:
