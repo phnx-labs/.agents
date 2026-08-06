@@ -41,6 +41,21 @@
 
 ### Changed
 
+- **`agents teams` guidance closes four gaps mined from real orchestrator failures.**
+  (1) `teams add --remote-cwd` is a hard `die()`, not a silent no-op — never
+  documented, so agents kept retrying it blind. (2) Local teammate worktrees fork
+  off local `HEAD` with no fetch, while `--device`-pinned remote worktrees fetch
+  and fork off `origin/<default>` — undocumented divergence that once shipped a
+  5-teammate team 182 commits behind `origin/main`. (3) Balanced account rotation
+  is already the default for a bare teammate, and pinning `@version`/`--profile`
+  opts out — neither fact was written down anywhere. (4) Teammates run headless,
+  so `edit` mode can stall on an approval prompt nobody answers; `auto` is
+  usually the right unattended default. All four grounded against
+  `teams.ts:1311`, `worktree.ts:102`, `remoteWorktree.ts:112-116`, and
+  `rotate.ts:60,178-179` in `agents-cli`. Source: `rules/subrules/{parallel-teams,
+  fleet-delegation,remote-fleet-dispatch}.md`, `rules/AGENTS.md`,
+  `skills/teams/SKILL.md`, `plugins/swarm/skills/orchestrate/SKILL.md`.
+
 - **Feed delivery now has one policy path.** The legacy `feed-forward` PostToolUse hook is removed because it forwarded every plain milestone outside `feed.broadcast`, bypassing `minLevel: important` and duplicating owner delivery.
 
 - **Multi-harness hook protocol (claude / codex / kimi / grok / cursor / droid / antigravity).**
