@@ -120,7 +120,17 @@ hooks:
       - UserPromptSubmit
     script: user-prompt-submit/02-expand-prompt-user-shortcuts.sh
     timeout: 5
+  # Opt-in: expands `! cmd` / `!cmd` in the user prompt by running them in a
+  # shell (UserPromptSubmit). Default OFF — paste of untrusted text with a
+  # bang block is local RCE. Re-enable in the user layer:
+  #   hooks:
+  #     expand-bang-commands:
+  #       override: true
+  #       events: [UserPromptSubmit]
+  #       script: user-prompt-submit/02-expand-prompt-bang-commands.py
+  #       timeout: 10
   expand-bang-commands:
+    enabled: false
     events:
       - UserPromptSubmit
     script: user-prompt-submit/02-expand-prompt-bang-commands.py

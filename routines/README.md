@@ -11,7 +11,6 @@ If you want something to fire on a **change** instead of a clock, that is a
 | Routine | Schedule | What it does |
 |---|---|---|
 | [`check-updates`](./check-updates.yml) | Mondays 09:00 | Keeps the box current — upgrades `agents-cli` when npm is ahead, fast-forwards `~/.agents/.system` to `origin/main`, and notifies only if something actually changed |
-| [`watchdog`](./watchdog.yml) | Every 2 minutes | Runs one bounded `agents watchdog --nudge` tick on devices selected by `agents setup watchdog` |
 
 `check-updates` runs on **every** box independently. There is no designated primary and no
 SSH fan-out, so one laptop and a large fleet are both covered. It fails soft: a failing step
@@ -23,7 +22,6 @@ never aborts the rest.
 agents routines list
 agents routines pause check-updates      # turn it off on this machine
 agents routines run check-updates        # fire it now
-agents watchdog on                       # enable watchdog on this machine
 ```
 
 To change what a shipped routine does on your machine, put a same-named file in

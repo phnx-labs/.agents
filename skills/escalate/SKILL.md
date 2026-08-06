@@ -28,9 +28,9 @@ This skill ships with **no personal data**. Each user names their channels in
 
 ```json
 {
-  "host":     "mac-mini",
-  "telegram": { "account": "default", "target": "6078999250" },
-  "call":     { "cmd": "~/.agents/skills/muqsit-cli/call.sh" }
+  "host":     "local",
+  "telegram": { "account": "default", "target": "<your-telegram-chat-id>" },
+  "call":     { "cmd": "~/.agents/skills/<your-call-cmd>/call.sh" }
 }
 ```
 

@@ -29,8 +29,19 @@
 ## What this is
 
 A **DotAgents repo**: a directory of agent config that `agents-cli` reads. This one is the
-**system layer** — the baseline that ships with the CLI and lands at `~/.agents/.system/` on
-every machine.
+**system layer** — the baseline that lands at `~/.agents/.system/` on every machine.
+
+**Current cut: [`v0.2.0`](https://github.com/phnx-labs/.agents-system/releases/tag/v0.2.0)**
+(2026-08-06). See [`CHANGELOG.md`](./CHANGELOG.md). There is no separate npm package for this
+repo: hosts get it by **git pull of this repository** into the system layer.
+
+```bash
+agents repo pull system    # fast-forward ~/.agents/.system to origin
+agents sync                # re-materialize hooks/rules/skills into agent homes
+```
+
+`agents setup`, SessionStart autosync, and the optional `check-updates` routine also keep
+the layer current. Pin or inspect with `git -C ~/.agents/.system describe --tags`.
 
 You rarely edit it. `agents-cli` stacks four repos of the same shape and merges them, so your
 own tweaks sit above the shipped defaults:
@@ -71,10 +82,44 @@ Each directory has a `README.md` for humans (a catalog of everything in it) and 
 | [`hooks/`](hooks/README.md) | Lifecycle scripts — session-start context injection, prompt expansion, Stop-gates, guards |
 | [`rules/`](rules/README.md) | The ruleset every agent gets as its memory file, composed from `subrules/` |
 | [`permissions/`](permissions/README.md) | Canonical YAML permission rules, translated per agent |
-| [`cli/`](cli/README.md) | Manifests for host CLIs (`mq`, `jq`, `linear`) that agents-cli installs |
+| [`clis/`](clis/README.md) | Manifests for host CLIs (`mq`, `jq`, `linear`) that agents-cli installs |
 | [`routines/`](routines/README.md) | Scheduled agent runs (cron / one-shot) |
 | [`subagents/`](subagents/README.md) | Named sub-agent definitions |
 | [`webhooks/`](webhooks/README.md) | Inbound webhook handlers |
+
+## Hooks change runtime — commands do not
+
+| Surface | Runtime effect | User control |
+|---|---|---|
+| **Hooks** | Fire on SessionStart, PreToolUse, Stop, … without the agent “opening” them | Disable / re-enable per name (below) |
+| **Commands / skills / plugins** | Available as tools; agents invoke them on demand | Always present; ignore if unused |
+| **Rules** | Always-on memory / policy text | Override with a same-named user rule |
+
+**Disable a system hook** (user layer wins after `agents sync`):
+
+```yaml
+# ~/.agents/agents.yaml
+hooks:
+  linear-tasks:
+    enabled: false          # no Linear board inject at SessionStart
+  expand-bang-commands:
+    enabled: false          # already default-off in v0.2.0
+```
+
+**Re-enable opt-in hooks** (e.g. `` `! cmd` `` expansion — **shell from the prompt**; only
+turn on if you accept that risk):
+
+```yaml
+hooks:
+  expand-bang-commands:
+    override: true
+    events: [UserPromptSubmit]
+    script: user-prompt-submit/02-expand-prompt-bang-commands.py
+    timeout: 10
+```
+
+Details and the full hook catalog: [`hooks/README.md`](hooks/README.md). A first-class
+`agents hooks enable|disable` CLI is planned; YAML overlay is the supported path today.
 
 ## How a change reaches your agents
 
