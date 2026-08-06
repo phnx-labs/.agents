@@ -126,6 +126,12 @@ If A must wait on B's *output to even start*, the cut is wrong — re-slice, or 
 ## Success criteria
 [how this track knows it is done — the real flow, not "tests pass"]
 
+## Feed/notify (verbatim)
+Post to the feed at IMPORTANT milestones only, never per step. Use a plain agents feed post at start and at PR-opened (record-only). On final delivery — PR merged, or the composed work runs end-to-end — add --level important so it reaches the owner (agents notify). If you hit a real blocker, use agents feed post --blocked instead (never combined with --level). Do NOT narrate every step.
+
+## Completion contract (edit-mode, verbatim)
+Your task is complete only when your PR is merged, or you have handed it off by naming who/what now owns it. If you are waiting on CI or review, keep waiting with a background watch — do not stop.
+
 Return file:line quotes for every claim. Do NOT paraphrase. If you can't quote it, don't claim it.
 ```
 
@@ -136,6 +142,7 @@ Return file:line quotes for every claim. Do NOT paraphrase. If you can't quote i
 3. **Verify each track** the moment it lands — run its verification command. Failure goes back to the same teammate.
 4. **Don't assume failure from empty metadata.** `files_modified: []` may mean a different approach — grep for the actual change before concluding a track failed.
 5. **Synthesize, don't concatenate.** Where tracks AGREE, that's likely true. Where they DIVERGE, that's the real decision point — surface it plainly with each side cited to its teammate + file:line. For brainstorm/plan modes, fuse the strongest ideas; for edit modes, report what landed with proof.
+6. **Post at boundaries, not per step.** As orchestrator, record one plain `agents feed post` when you spawn the swarm and one when it completes. Reach the owner only at delivery — the composed cross-track flow ran end-to-end — with `agents feed post --level important` (or `agents notify`), or when a teammate is blocked and needs the owner, with `agents feed post --blocked` (never `--level` together with `--blocked`). This is the record-vs-deliver split from `feed-status-posts.md`.
 
 ## Independent verification = blinded
 
