@@ -21,6 +21,10 @@ agents run <agent> "<prompt>" --device <box> --remote-cwd <ABS repo path> --mode
 
 ## Set `--remote-cwd` to a git repo that exists ON the remote
 
+`--remote-cwd` is an `agents run` flag only — `agents teams add` **rejects it with a
+hard error**, it is not a silent no-op. A teammate's directory is set with
+`--worktree <role>` or `--cwd <dir>` instead (see the `teams` skill).
+
 Some harnesses (codex) refuse to start outside a trusted git directory (`Not inside a
 trusted directory and --skip-git-repo-check was not specified`). Point `--remote-cwd`
 at an absolute repo path present on the target box. Resolve the remote HOME first

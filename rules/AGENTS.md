@@ -134,6 +134,7 @@ whole load and token spend stays low (this is the cost policy behind F2's
 "climb the ladder, spawn subagents").
 
 - **Spread across harnesses and accounts.** Across harnesses — Kimi, Grok, DeepSeek, Codex, Antigravity via `agents run <profile>` or a mixed `agents teams` roster; and across the several accounts of one harness (e.g. the 4 Claude accounts, via balanced rotation or per-account pinning).
+- **Balanced rotation is already the default — you don't have to ask for it.** A bare teammate (`agents teams add <team> claude "…"`, no `@version` or `--profile`) inherits the `balanced` strategy: weighted-random across healthy accounts by remaining headroom, skipping rate-limited ones. Pinning a teammate to a specific `claude@<version>` or a `--profile` **opts it out** — that account is used exclusively, on purpose, so pin only when a teammate genuinely needs a specific version or a dedicated identity. Don't add your own rotation logic on top; the CLI already does it.
 - **Reserve Opus for load-bearing reasoning.** Opus is expensive and its usage limits don't refill quickly — reach for it only where a cheaper harness would genuinely lose correctness, never as the default. Correctness still wins; equal correctness delivered cheaper and spread across the fleet is the default.
 - **Always set `model` explicitly on in-session `Agent` subagents**, defaulting to `"sonnet"` (use `"opus"` only for genuinely load-bearing work). Never omit it — omission can fall through to a pinned Haiku, silently downgrading the subagent.
 - **Parallelize from message one for multi-dimensional questions.** Multiple files, cross-platform, an audit, a ship-readiness / parity check, root-cause across a stack — spawn 3–7 `Agent` subagents in parallel in your first response. About to write a third sequential `Bash` investigation call? Spawn agents instead.
@@ -477,6 +478,7 @@ For edit-mode teams, give each teammate its **own** git worktree — never let p
 
 - `agents teams create <team> --enable-worktrees` — turns on per-teammate isolation for the team.
 - `agents teams add ... --worktree <role>` — dedicated worktree at `.agents/worktrees/<role>` on branch `agents/<role>`, branched from HEAD. **The name must be unique per teammate** — two teammates cannot share one worktree name (the second `git worktree add` fails).
+- **Local and remote worktrees base off different refs — this is a real staleness trap, not a detail.** A **local** teammate's worktree forks off local `HEAD` with **no fetch first**; a `--device`-pinned **remote** teammate's worktree fetches `origin` and forks off `origin/<default>`. If your local checkout is behind, every local teammate's branch is silently based on stale code — a real run once shipped 5 worktrees all 182 commits behind `origin/main`, invalidating the whole team. Fetch and bring your local checkout's current branch up to date before spawning a local-worktree team; there is no `--base` flag to pin the fork point yet.
 - Name the worktree after the surface the teammate owns (`--worktree auth`, `--worktree ui`) so it lines up with the boundary contract.
 - Teammates that genuinely must co-edit the same files aren't independent — collapse them into **one** teammate; don't split then re-share. (A team-wide `--use-worktree <path>` makes *all* teammates share one existing checkout — that reintroduces the contention this rule avoids, so reach for it only when every teammate must build against one tree.)
 - **Skip for plan-mode** (read-only) teams — no writes, no contention, no worktree needed.
@@ -761,6 +763,10 @@ agents run <agent> "<prompt>" --device <box> --remote-cwd <ABS repo path> --mode
 - **Cloud devices** = `rush cloud` / codex-cloud pods — pre-built envs that open a PR, different commands and lifecycle. Do not conflate the two.
 
 ## Set `--remote-cwd` to a git repo that exists ON the remote
+
+`--remote-cwd` is an `agents run` flag only — `agents teams add` **rejects it with a
+hard error**, it is not a silent no-op. A teammate's directory is set with
+`--worktree <role>` or `--cwd <dir>` instead (see the `teams` skill).
 
 Some harnesses (codex) refuse to start outside a trusted git directory (`Not inside a
 trusted directory and --skip-git-repo-check was not specified`). Point `--remote-cwd`
