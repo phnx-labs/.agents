@@ -16,7 +16,7 @@ It is the opposite failure mode that makes this hard. The lazy output is to enco
 
 ## Two modes — pick by the argument
 
-- **No argument, a session id, or a free topic → reflection mode.** Reflect on the session you just finished (or the one named) and write its lessons forward. This is everything from **Phase 1** down — the default.
+- **No argument, a session id, or a free topic → reflection mode.** Reflect on the session you just finished (or the one named) and write its lessons forward. This is everything from **Phase 0** down — the default.
 - **The argument names an installed skill, plugin, command, or a workflow → target-audit mode.** The user wants to know where *that one thing* keeps going wrong across all the times they've used it, and fix it. Run **Target audit** below instead, then return to Phase 4 to apply the approved fixes.
 
 Decide which the argument is before doing anything: `agents inspect user --json` and `agents inspect system --json` list the installed skills/commands/plugins. If `$ARGUMENTS` matches one of those names (e.g. `rush:design`, `code:loop`, `/commit`), or is clearly the name of a recurring workflow the user runs, it's a **target** — go to Target audit. If it's a hex session id or a loose theme to reflect across, it's reflection mode.
@@ -93,6 +93,33 @@ Wait for the user's call. They either paste back the `/learn apply …` brief fr
 
 > The phases below are reflection mode (the default). Target-audit mode borrows Phases 3–6 to filter and ship the fixes it surfaced.
 
+## Phase 0 — Anchor to the user's goals and delivery
+
+A lesson is only worth encoding if it moves the user toward what they are actually
+trying to ship. Before you reflect on *friction*, load the two lenses that tell you
+whether a lesson has **leverage** — whether it helps the user move faster and beat
+their milestones, not just tidy a tool. Reflection with no goal in view optimizes the
+agent's comfort; reflection anchored here optimizes the user's outcome.
+
+Pull both cheaply (most is already on hand — the SessionStart Linear hook injects the
+project/milestone summary, and this session likely already ran or can run `agents
+output`):
+
+- **Goals — the Linear ladder.** The user works to **projects → milestones → cycles →
+  tasks**, and the question that matters is *how many are being met*. Read the injected
+  Linear context, or query fresh: `linear tasks --project "<name>" --by-milestone`
+  (milestone %, what's Todo/Doing/Done), the active cycle's burn-down, and which
+  milestones are **slipping** (past or near their target date with low completion).
+  Name the one or two goals currently most at risk — those are where leverage is highest.
+- **Delivery — the output signal.** `agents output --since <window>` is the shipped-work
+  rollup: PRs opened/merged, commits, token burn, cost-per-PR, output-per-$. It tells you
+  whether the bottleneck is *throughput* (little shipping), *cost* (lots of burn per
+  merged PR), or *rework* (PRs opened but not merged). A lesson that raises the weak
+  metric outranks one that doesn't move any.
+
+Hold both as the lens for the whole pass. You are not filing lessons for a library; you
+are removing whatever is between the user and their next met milestone.
+
 ## Phase 1 — Recall, grounded
 
 Reconstruct what actually happened, from evidence, not impression.
@@ -122,6 +149,14 @@ Write each candidate lesson as one line. Then put every candidate through four g
 2. **Recurrence.** Has this bitten before, or is it likely to bite again? A service that was down, a one-time flake, a typo — transient and environmental one-offs don't earn permanent edits.
 3. **Root cause.** Is this the actual cause, or a surface symptom? Encode the cause.
 4. **Durability.** Will it still be true in six months, or is it pinned to a version/repo state that will change? Volatile facts go to dated memory, not a skill.
+
+Then **rank the survivors by outcome leverage** (the Phase 0 lens). Among lessons that
+clear all four gates, the ones that unblock or accelerate a **slipping milestone**, or
+that lift the weak delivery metric (throughput / cost-per-PR / merge rate), come first
+and are worth the most care. An equally-general lesson on a surface tied to no active
+goal is real but low-leverage — encode it briefly, or drop it in favor of the one that
+moves a milestone. Leverage decides ordering and effort; it never lets a lesson skip the
+four gates.
 
 **Show your rejects.** List the candidates you dropped and which gate they failed. A learn pass that encodes every candidate isn't thorough — it's overfitting. The rejects are proof the filter ran.
 
