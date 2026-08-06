@@ -8,7 +8,7 @@ user-invocable: true
 
 # swarm:orchestrate — the fan-out engine
 
-> Distribute and execute a task across parallel agents. This is the shared engine every `/swarm:*` command builds on. `/swarm:run` is the generic mode that applies it to an arbitrary task; the specialized commands (`/swarm:plan`, `/swarm:debug`, `/swarm:test`, `/swarm:qa`) read this skill for the **mechanics**, then layer their own phases and output format on top. It has no command of its own — invoke it through `/swarm:run` or one of the specialized commands.
+> Distribute and execute a task across parallel agents. This is the shared engine every `/swarm:*` command builds on. `/swarm` and `/swarm:run` are the generic mode; the specialized modes (`/swarm:plan`, `/swarm:spec`, `/swarm:debug`) read this skill for the **mechanics**, then layer their own phases and output format on top. It has no command of its own — invoke it through those surfaces.
 
 You are the **orchestrator**. Agents execute; you architect. Bad architecture = bad execution. Your job is to decompose, set boundaries, spawn, monitor, and synthesize — never to single-thread work that could run in parallel.
 
@@ -61,7 +61,7 @@ When you do spawn `Agent` subagents, set `model` explicitly — `"sonnet"` for b
 
 ## Web-search first — your weights are stale
 
-Before architecting anything that touches the state of the world — a library's current API, a framework capability, a pricing tier, a SOTA approach, a model id — **WebSearch with the current year in the query**, then `WebFetch` the authoritative source. Do not distribute a plan built on remembered facts. Fold the citations into the brief you hand each teammate so they don't re-derive (or contradict) them. This matters most for `/swarm:plan` and `/swarm:qa`, but applies anywhere a track depends on an external truth.
+Before architecting anything that touches the state of the world — a library's current API, a framework capability, a pricing tier, a SOTA approach, a model id — **WebSearch with the current year in the query**, then `WebFetch` the authoritative source. Do not distribute a plan built on remembered facts. Fold the citations into the brief you hand each teammate so they don't re-derive (or contradict) them. This matters most for `/swarm:plan` and `/swarm:spec`, but applies anywhere a track depends on an external truth.
 
 ## Pre-spawn integration discovery (surgical, not exhaustive)
 

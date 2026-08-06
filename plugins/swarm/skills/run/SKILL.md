@@ -1,6 +1,6 @@
 ---
 name: run
-description: "Run any task across a swarm — the generic fan-out mode. Decompose an arbitrary goal into independent tracks, spawn a mixed team of parallel agents (claude/codex/antigravity), monitor to completion, and synthesize. The catch-all `/swarm:*` command for work that doesn't fit the specialized modes (plan/debug/test/qa). Use when a task is wide enough that one agent would serialize 4+ independent pieces of work. Triggers on: 'swarm run', 'fan this out', 'distribute this across agents', 'run this as a swarm', 'parallelize this task'."
+description: "Run any task across a swarm — the generic fan-out mode (also the default for top-level /swarm). Decompose an arbitrary goal into independent tracks, spawn a mixed team via agents teams, monitor, synthesize. Prefer specialized modes when they fit: plan, spec, debug. Triggers on: 'swarm', 'swarm run', '/swarm', 'fan this out', 'distribute this across agents', 'parallelize this task'."
 argument-hint: "[task, goal, or scope to distribute across the swarm]"
 allowed-tools: Bash(agents teams*), Bash(agents run*), Bash(agents sessions*), Bash(agents view*), Bash(git status*), Bash(git log*), Bash(git diff*), Bash(git show*), Bash(rg*), Bash(fd*), Bash(ls*), Read(*), Grep(*), Glob(*), WebSearch(*), WebFetch(*)
 user-invocable: true
@@ -8,16 +8,15 @@ user-invocable: true
 
 # swarm:run — fan an arbitrary task out, then synthesize
 
-> Read `swarm:orchestrate` first for all fan-out mechanics (provider discovery, distribution plan, boundary contracts, the teammate-brief template, monitoring, synthesis). This skill is the **generic mode**: it applies that engine to any task, without the specialized framing that `/swarm:plan`, `/swarm:debug`, `/swarm:test`, and `/swarm:qa` add on top.
+> Read `swarm:orchestrate` first for all fan-out mechanics (provider discovery, distribution plan, boundary contracts, the teammate-brief template, monitoring, synthesis). This skill is the **generic mode**: it applies that engine to any task, without the specialized framing that `/swarm:plan`, `/swarm:spec`, and `/swarm:debug` add on top. Top-level `/swarm <task>` (no mode word) lands here.
 
 You are running as a swarm: **$ARGUMENTS**
 
-This is the default when the work is genuinely multi-agent but doesn't match a specialized mode. If the task IS one of those, prefer the specialized command — it has the right phases and output baked in:
+This is the default when the work is genuinely multi-agent but doesn't match a specialized mode. If the task IS one of those, prefer the specialized skill — it has the right phases and output baked in:
 
-- Building something non-trivial → **`/swarm:plan`** (research + OpenSpec-grade proposal + blind independent planning).
-- Proving a non-obvious root cause → **`/swarm:debug`** (trace the path, confirm blind on different providers).
-- Widening test coverage → **`/swarm:test`** (split into areas, cover each, synthesize cross-cutting tests).
-- Behavioral QA of a running app → **`/swarm:qa`** (multi-port instances, waves of browser agents, ship verdict).
+- Building something non-trivial → **`swarm:plan`** (research + **mock-ups** + OpenSpec-grade proposal + blind independent planning).
+- Durable contract so others don't invent wrong behavior → **`swarm:spec`** (SoT requirements + scenarios + **mock-ups** + drift check).
+- Proving a non-obvious root cause → **`swarm:debug`** (trace the path, confirm blind on different providers).
 
 If it doesn't fit those, run it here.
 

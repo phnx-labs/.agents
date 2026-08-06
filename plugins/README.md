@@ -13,7 +13,7 @@ anywhere with no setup.
 |---|---|---|
 | [`code`](./code/README.md) | 7 | The coding loop — `/code:loop`, `/code:verify`, `/code:review`, `/code:ship`, `/code:quality`, `/code:learn`, `/code:commit` |
 | [`work`](./work/README.md) | 1 | Get a project's work done across the fleet, **any** kind — `/work:dispatch` routes ONE unit of work (coding *or* non-coding) to the plugin that owns it, using browser + secrets for real non-coding tasks |
-| [`swarm`](./swarm/README.md) | 6 | Fan a task across parallel agents, then synthesize — `/swarm:run`, `/swarm:plan`, `/swarm:spec`, `/swarm:debug`, `/swarm:test`, `/swarm:qa` |
+| [`swarm`](./swarm/README.md) | 4 | Fan a task across parallel agents — top-level `/swarm` + `/swarm:run`, `/swarm:plan`, `/swarm:spec`, `/swarm:debug` (test/qa removed; plan/spec require mock-ups) |
 | [`fleet`](./fleet/README.md) | 3 | Fleet-wide ops — `/fleet:sync` brings every device to latest, `/fleet:onboard` brings a bare box to parity, `/fleet:mint-auth` self-mints setup tokens |
 | [`git`](./git/README.md) | 2 | Pure git plumbing — `/git:prune` removes merged branches and worktrees with data-loss guards, `/git:tag-release` cuts and pushes a release tag |
 | [`share`](./share/README.md) | 2 | Publish agent-generated HTML to a link on your own Cloudflare R2 — `/share:public` (auto OG cover), `/share:private` (unlisted, expiring) |

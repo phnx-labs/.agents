@@ -1,18 +1,20 @@
 ---
 name: plan
-description: "Plan a feature with swarm verification — research hard, draft an OpenSpec-grade change proposal, then have independent agents plan the same thing blind and reconcile. Use before building anything non-trivial when you want the plan stress-tested, not just written. Triggers on: 'swarm plan', 'plan with verification', 'spec this out', 'change proposal', 'plan and check the approach'."
+description: "Plan a feature with swarm verification — research hard, produce mock-ups for any UI/flow, draft an OpenSpec-grade change proposal, then have independent agents plan the same thing blind and reconcile. Use before building anything non-trivial. Triggers on: 'swarm plan', '/swarm plan', 'plan with verification', 'change proposal', 'plan and check the approach'."
 argument-hint: "[feature or change to plan]"
 allowed-tools: Bash(agents teams*), Bash(agents run*), Bash(rg*), Bash(fd*), Bash(ls*), Bash(git log*), Bash(git diff*), Read(*), Grep(*), Glob(*), Write(*), WebSearch(*), WebFetch(*)
 user-invocable: true
 ---
 
-# swarm:plan — plan, then have the swarm try to break the plan
+# swarm:plan — plan, mock up, then have the swarm try to break the plan
 
-> Read the `swarm:orchestrate` skill first for the fan-out mechanics (team creation, briefs, blinded verification, monitoring). This skill is the **plan mode** layered on top: research deeply, produce an OpenSpec-grade change proposal, and validate it against independent agents who plan the same feature blind.
+> Read the `swarm:orchestrate` skill first for the fan-out mechanics (team creation, briefs, blinded verification, monitoring). This skill is the **plan mode** layered on top: research deeply, **draw what the user will see**, produce an OpenSpec-grade change proposal, and validate it against independent agents who plan the same feature blind.
 
 You are planning: **$ARGUMENTS**
 
-The deliverable is not a paragraph of intentions — it is a **change proposal at the level of [OpenSpec](https://openspec.dev/)**: a precise statement of the delta, the tasks to get there, and the spec it leaves behind. Then you de-risk it by having the swarm independently arrive at their own plans and reconciling.
+The deliverable is not a paragraph of intentions — it is a **change proposal at the level of [OpenSpec](https://openspec.dev/)** plus **concrete mock-ups** for any surface a human will look at: a precise statement of the delta, the tasks to get there, the visual/UX shape, and the spec it leaves behind. Then de-risk it by having the swarm independently arrive at their own plans and reconciling.
+
+**plan vs spec:** this skill is the *delta* (what we will build). `/swarm:spec` is the durable *is* (what the capability already guarantees) for other agents/humans so they do not invent wrong behavior.
 
 ## 1. Understand (read, don't guess)
 
@@ -31,15 +33,36 @@ For every piece of new code you're about to propose, ask:
 
 **Prefer extending existing code over writing new. Prefer one change in one place over many changes in many.**
 
-## 4. Draft the OpenSpec-grade proposal
+## 4. Mock-ups first (load-bearing — not optional for UI/flow work)
+
+**Lead with what the user will see.** A plan without mock-ups for a visual or multi-step
+flow is unfinished — the swarm and the builder will invent different UIs.
+
+For any change that touches a screen, CLI interactive flow, dashboard, dialog, empty
+state, error state, or multi-step user journey:
+
+1. **User flow** — numbered steps from intent → done (happy path + the 1–2 failure paths
+   that matter).
+2. **ASCII mock-ups** of **every** distinct screen/state (not just the hero). Label
+   primary actions, empty states, and error copy. Prefer the target product's real
+   labels over placeholder lorem.
+3. **Before / after** when replacing an existing surface — stills side by side, not a
+   prose diff of "we'll improve the layout".
+4. Put the mock-ups **in the proposal and in the HTML review artifact** (inline SVG or
+   fenced ASCII that survives render). Do not leave them only in chat.
+
+If the change is pure library/backend with **no** user-visible surface, say so explicitly
+under Design (`no UI surface`) and skip mock-ups — do not invent a fake screen.
+
+## 5. Draft the OpenSpec-grade proposal
 
 Structure the plan as a change proposal, not prose. (You don't need the `openspec/` tooling installed — you're borrowing its rigor and shape.)
 
-- **`proposal.md`** — Why (the problem / user value), What changes (the delta in plain terms), and Impact (what this touches, what it foreclosing). One source of truth for the change.
+- **`proposal.md`** — Why (the problem / user value), What changes (the delta in plain terms), Impact (what this touches), and **Mock-ups / flows** (section 4) when applicable.
 - **`tasks.md`** — the ordered, checkable task list to execute the change. Each task names the file(s) it edits. This is exactly what a swarm or a `/code:loop` would drain.
 - **Delta spec** — the behavior the system will have *after* this change: the new contract, endpoints, types, or UX, written as the source-of-truth spec a future change would diff against.
 
-## 5. Verify — the swarm plans it blind
+## 6. Verify — the swarm plans it blind
 
 Fan out via `agents teams` (mechanics in `swarm:orchestrate`). Check who's signed in (`agents teams doctor` / `agents view --json`), then spawn 1–2 verifiers on **different** providers than yourself (codex, antigravity, …) — count by judgment, more for a wide or high-stakes plan. **`--mode plan`** (read-only).
 
@@ -67,11 +90,13 @@ External facts that shaped the plan, each with a source URL (and year). State-of
 ### Verification
 The independent plans the swarm produced. Where they agreed (high confidence), where they diverged (the real decisions), and why you chose the final approach. Cite each finding to its teammate.
 
-### Design
-Only if there are visual or architectural changes. ASCII diagrams.
+### Design & mock-ups
+Required whenever there is a user-visible surface (section 4): user flow + ASCII
+mock-ups of every state + before/after when replacing UI. Architectural diagrams when
+the shape of the system changes. If no UI: one line `no UI surface`.
 
 ### Proposal (`proposal.md`)
-Why / What changes / Impact.
+Why / What changes / Impact / mock-ups.
 
 ### Tasks (`tasks.md`)
 Ordered, checkable, each naming its file(s). Drainable by `/code:loop` or fanned out via `agents teams`.
