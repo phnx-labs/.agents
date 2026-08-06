@@ -152,7 +152,7 @@ JSON
 
 cat > "$SANDBOX/bin/curl" <<'STUB'
 #!/usr/bin/env bash
-printf '%s\n' "$*" > "$CURL_ARGS"
+printf '%s\n' "$*" >> "$CURL_ARGS"
 cat "$CURL_PAYLOAD"
 STUB
 chmod +x "$SANDBOX/bin/agents" "$SANDBOX/bin/curl"
@@ -188,6 +188,7 @@ check_contains "fixture apiKey reached Authorization"      "$(cat "$CURL_ARGS" 2
 check_absent   "completed project filtered out"            "$out" "### Old Stuff"
 
 # --- 2. env vars win over config.json -----------------------------------------
+rm -f ""
 out=$(LINEAR_CLI_CONFIG="$SANDBOX/config.json" LINEAR_API_KEY="lin_api_env_key" LINEAR_TEAM_ID="team-env" \
   bash "$HOOK" 2>/dev/null)
 check_contains "env creds: projects render"                "$out" "## Projects ("
@@ -216,10 +217,16 @@ check_contains "claude lane: header names the delegate"    "$out" "Your Tasks (d
 check_absent   "no agent:* label header survives"          "$out" "Your Tasks (agent:"
 # The other agent's delegated work stays visible in the cycle section.
 check_contains "claude lane: codex issue still in cycle"   "$out" "RUSH-11"
+# When the delegate-only sweep completes, the counts are exact and carry no
+# "of the first N" qualifier — that qualifier only appears on the fallback.
 check_contains "claude lane: other lanes counted by name"  "$out" "Other agent lanes: Codex=1"
+check_absent   "complete sweep prints no sample caveat"    "$out" "Other agent lanes (of the first"
+check_contains "lane sweep asks only for delegate names"   "$(cat "$CURL_ARGS" 2>/dev/null)" "nodes { delegate { name } }"
 # RUSH-12 carries agent:claude but has no delegate — it must NOT be owned, and
 # the leftover label is shown as an ordinary label.
 check_contains "stale agent:* label is inert, shown plain" "$out" "[agent:claude]"
+# An issue Your Tasks printed must not be repeated under Cycle-by-project.
+check_absent   "printed issue not repeated in cycle"       "$(printf '%s' "$out" | sed -n '/Cycle by project/,$p')" "RUSH-10"
 
 # The delegate name resolves case-insensitively against the harness name, and
 # the query asks Linear for that agent's queue directly.
@@ -306,7 +313,11 @@ export CURL_PAYLOAD="$SANDBOX/payload-truncated-cycle.json"
 python3 - "$CLAUDE_PAYLOAD" "$CURL_PAYLOAD" <<'PY'
 import json, sys
 d = json.load(open(sys.argv[1]))
-d["data"]["team"]["activeCycle"]["issues"]["pageInfo"] = {"hasNextPage": True}
+# hasNextPage with a cursor that never advances: the lane sweep exhausts its
+# page budget without ever completing, which is the case that must fall back to
+# counting the page — and say that is what it did.
+d["data"]["team"]["activeCycle"]["issues"]["pageInfo"] = {
+    "hasNextPage": True, "endCursor": "never-advances"}
 json.dump(d, open(sys.argv[2], "w"))
 PY
 out=$(LINEAR_CLI_CONFIG="$SANDBOX/config.json" env -u LINEAR_API_KEY -u LINEAR_TEAM_ID AGENT_SELF=claude \

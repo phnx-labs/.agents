@@ -114,6 +114,38 @@ result=$(curl -s --connect-timeout 3 --max-time 8 -X POST https://api.linear.app
   -H "Authorization: $LINEAR_API_KEY" \
   -d "$BODY" 2>/dev/null)
 
+# The "other agent lanes" counts need the WHOLE active cycle, and Linear caps a
+# page at 250 — this workspace already has more open than that, so counting from
+# the page above understated every lane and dropped some entirely. This second
+# request asks only for delegate names, so it is small and fast (~0.5s against
+# the 8s budget). Strictly additive: any failure leaves LANES empty and the
+# python block falls back to counting the page, saying so.
+LANES=""
+lanes_cursor="null"
+for _ in 1 2 3 4; do
+  lq='{ team(id: "'"$LINEAR_TEAM_ID"'") { activeCycle { issues(first: 250, after: '"$lanes_cursor"', filter: { state: { type: { nin: ["completed", "canceled"] } } }) { nodes { delegate { name } } pageInfo { hasNextPage endCursor } } } } }'
+  lbody=$(python3 -c 'import json,sys; print(json.dumps({"query": sys.argv[1]}))' "$lq" 2>/dev/null) || break
+  lpage=$(curl -s --connect-timeout 3 --max-time 5 -X POST https://api.linear.app/graphql \
+    -H "Content-Type: application/json" -H "Authorization: $LINEAR_API_KEY" \
+    -d "$lbody" 2>/dev/null) || break
+  read -r lnames lnext < <(printf '%s' "$lpage" | python3 -c "
+import json, sys
+try:
+    conn = json.load(sys.stdin)['data']['team']['activeCycle']['issues']
+except Exception:
+    print('! !'); raise SystemExit
+names = [((n.get('delegate') or {}).get('name') or '') for n in conn.get('nodes', [])]
+info = conn.get('pageInfo') or {}
+cur = info.get('endCursor') if info.get('hasNextPage') else ''
+print('|'.join(x for x in names if x) or '-', cur or '-')
+" 2>/dev/null) || break
+  [ "$lnames" = "!" ] && { LANES=""; break; }
+  [ "$lnames" != "-" ] && LANES="$LANES|$lnames"
+  [ "$lnext" = "-" ] && { LANES="${LANES}|COMPLETE"; break; }
+  lanes_cursor="\"$lnext\""
+done
+export LANES
+
 echo "$result" | python3 -c "
 import json, sys, os, re
 
@@ -310,19 +342,15 @@ try:
     for n in nodes:
         n['_other_labels'] = [l['name'] for l in (n.get('labels') or {}).get('nodes', [])]
         dg = (n.get('delegate') or {}).get('name')
-        n['_delegate'] = dg
         if dg:
             groups.setdefault(dg, []).append(n)
 
     for g in groups.values():
         g.sort(key=pri_rank)
 
-    def is_mine(n):
-        dg = n.get('_delegate')
-        return bool(dg) and dg.lower() == SELF.lower()
-
-    # Pop EVERY case-variant of your own name, not just the first: is_mine below
-    # matches them all, so a straggler variant would show up as a foreign lane.
+    # Drop EVERY case-variant of your own name, not just the first. This map is
+    # only ever read as everyone else's lanes, so a straggler variant would show
+    # up there as a foreign agent.
     for k in [k for k in groups if k.lower() == SELF.lower()]:
         groups.pop(k)
 
@@ -395,9 +423,22 @@ try:
     # Your own bucket was popped out of the groups map above, so what is left is
     # everyone else's delegated work. These counts are over the cycle page: say
     # so when it was truncated rather than print a number that reads exact.
-    other_agent_counts = [f'{name}={len(groups[name])}' for name in sorted(groups.keys())]
+    # Prefer the exact counts from the delegate-only sweep. It is marked COMPLETE
+    # only when every page came back, so a partial sweep falls back rather than
+    # printing a number that looks exact.
+    lanes_raw = [x for x in os.environ.get('LANES', '').split('|') if x]
+    note = ''
+    if lanes_raw and lanes_raw[-1] == 'COMPLETE':
+        tally = {}
+        for name in lanes_raw[:-1]:
+            if name.lower() != SELF.lower():
+                tally[name] = tally.get(name, 0) + 1
+    else:
+        tally = {name: len(v) for name, v in groups.items()}
+        if cycle_truncated:
+            note = f' (of the first {len(nodes)} cycle issues)'
+    other_agent_counts = [f'{name}={tally[name]}' for name in sorted(tally)]
     if other_agent_counts:
-        note = ' (of the first {} cycle issues)'.format(len(nodes)) if cycle_truncated else ''
         print(f'### Other agent lanes{note}: {\", \".join(other_agent_counts)}')
         print()
 

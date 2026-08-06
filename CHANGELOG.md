@@ -21,11 +21,17 @@
   section skips only what Your Tasks actually printed, not everything delegated
   to you: the two lists come from different queries, so skipping by delegate
   dropped your own over-the-cap issues out of the brief entirely.
-- **The active-cycle query asks for 250 issues and admits when that was not
-  enough.** It carried no `first:`, so Linear served its default 50 — of 334
-  open issues here. That made the "Other agent lanes" counts both wrong and
-  unstable between runs (Antigravity's 25 and Grok's 7 simply never appeared).
-  The counts are now qualified with the page size when the cycle is truncated.
+- **"Other agent lanes" counts the whole cycle instead of one page.** The
+  active-cycle query carried no `first:`, so Linear served its default 50 — of
+  334 open issues here — making the counts both wrong and unstable between runs.
+  Raising it to `first: 250` was not enough (Linear caps a page there), so the
+  lanes now come from a second, delegate-name-only sweep that pages to the end:
+  measured Antigravity=34, Codex=7, Droid=2, Grok=11, Kimi=7, OpenClaw=4 against
+  the page-derived Antigravity=25, Codex=2, Droid=1, Grok=7, Kimi=4 and no
+  OpenClaw lane at all. The sweep is strictly additive — it asks for nothing but
+  delegate names, and if any page fails the hook falls back to counting the
+  cycle page and says so with an "of the first N" qualifier. Whole run measured
+  at 1.9s against the 8s-per-request budget.
 - **`AGENT_SELF` is sanitized to `[A-Za-z0-9_-]` everywhere it is used**, not
   only in the GraphQL string literal. It is also printed into the injected
   context of every session, where an unsanitized value could inject arbitrary
