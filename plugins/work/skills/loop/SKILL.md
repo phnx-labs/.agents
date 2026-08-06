@@ -2,9 +2,10 @@
 name: loop
 description: "General-purpose unattended work drain across every project and kind — code, browser, outreach, design, portal tasks. Spreads load with agents teams + balanced account rotation so one logout or rate-limit does not kill the night. No review/merge gate: finish agent-doable work, open PRs for the human to review later. Triggers on: 'work loop', '/work:loop', '/drain', 'overnight drain', 'drain the board', 'finish everything unattended', 'keep moving on all projects'."
 argument-hint: "[empty = all open clear work | project/filter | overnight]"
-allowed-tools: Bash(agents *), Bash(gh *), Bash(git *), Bash(linear *), Bash(rg *), Bash(fd *), Bash(ls *), Bash(cat *), Bash(jq *), Bash(curl *), Read(*), Write(*), Edit(*), Task(*), WebSearch(*), WebFetch(*), AskUserQuestion(*)
+allowed-tools: Bash(agents *), Bash(gh *), Bash(git *), Bash(linear *), Bash(rg *), Bash(fd *), Bash(ls *), Bash(cat *), Bash(jq *), Bash(curl *), Read(*), Write(*), Edit(*), Task(*), WebSearch(*), WebFetch(*)
 user-invocable: true
 ---
+
 
 # work:loop — get the work done, unattended
 
