@@ -65,9 +65,12 @@ otherwise the first permission option offered by the server. The same last-resor
 warning applies.
 
 Codex has no native smart-classifier mode, so `agents run codex --mode auto` resolves
-to sandboxed `edit` and can still prompt. `agents run codex --mode skip` instead
-bypasses approvals **and** removes the sandbox. Harnesses without a native bypass flag
-reject direct-exec `skip`.
+to sandboxed `edit` and can still prompt. Omitting `--mode` for Codex uses the same
+safe writable profile: workspace plus common build caches, network enabled, and
+approvals on request. Explicit `--mode plan` remains filesystem-read-only while
+retaining network access. `agents run codex --mode skip` instead bypasses approvals
+**and** removes the sandbox. Harnesses without a native bypass flag reject
+direct-exec `skip`.
 
 **`plan` is not universally read-only.** Agents without a native read-only mode
 (including Antigravity, Cursor, and Kiro) warn and degrade `plan` to their safest native
@@ -251,7 +254,7 @@ Use this as the default for "send this to the fleet" unless the task must land o
 
 | Flag | Purpose |
 |------|---------|
-| `--mode plan\|edit\|auto\|skip` | Permission level (default `plan`; `full` = alias for `skip`) |
+| `--mode plan\|edit\|auto\|skip` | Permission level (default `plan`; omitted Codex mode uses safe writable `edit`; `full` = alias for `skip`) |
 | `--effort low\|...\|max\|auto` | Reasoning effort |
 | `--model <id>` | Override model |
 | `--secrets <bundle>` | Inject keychain bundle (repeatable) |
