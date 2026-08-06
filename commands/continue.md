@@ -27,10 +27,14 @@ The session you are resuming may already be running inside a tmux pane or termin
    - If they passed nothing, skip to the attach picker in step 2.
 
 2. **Try to attach.**
-   - If you have an id: `agents sessions focus <id> --attach-only`.
+   - If you have an id: `agents sessions focus <id> --attach-only`. When the
+     caller supplied a source machine, append `--host <machine>` so a short id
+     or tmux alias is resolved only on its owning device.
    - If you have no id (the user typed bare `/continue`): `agents sessions focus --attach-only`. This opens the live-session picker; if the user cancels or no live session is chosen, fall through to Step 1.
    - `--attach-only` means "join the live pane/tab or fail"; it never silently opens a new copy.
-   - The command performs the cross-host sweep automatically, so remote sessions reached via `--device` / `--host` are handled without extra flags.
+   - Without a source-machine constraint, the command performs the cross-host
+     sweep automatically. Preserve an explicit `--device` / `--host` scope when
+     the caller supplied one.
 
 3. **Interpret the result.**
    - **Exit code 0:** you are now attached to the live session. Tell the user which session you reattached to, then **cleanly hand off** — do not continue chatting in this harness. The user is interacting with the resumed session.
