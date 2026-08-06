@@ -518,6 +518,145 @@ HBGATE
 fi
 # --- end command-handback gate ------------------------------------------------
 
+# --- task-list keep-moving gate ----------------------------------------------
+# The strongest "stopped too early" signal is the session's OWN checklist: if it
+# still holds pending / in_progress items, the agent is stopping before its work
+# is done. This gate makes the hook task-aware (RUSH-2113 A + B): recognizing a
+# background watcher is NOT blanket permission to stop — it should free the agent
+# to advance the NEXT item, and only stop when nothing else is advanceable.
+#
+# Fires when the folded checklist has >=1 remaining item AND the final message is
+# a plain declarative stop. It does NOT fire (a legitimate stop) when the message:
+#   - asks the USER for input / a decision (a real clarifying question), OR
+#   - is in plan mode (physically can't act), OR
+#   - names a genuine external blocker + who/what will finish it, OR
+#   - explicitly hands the remaining work to a named owner, OR
+#   - points at a LIVE background watcher/monitor that owns the remaining step
+#     (a real ScheduleWakeup/Monitor/`gh pr checks --watch` tool_use this session,
+#     never phrasing alone — the same evidence bar the open-PR gate uses).
+# The checklist state is folded by todo-progress.py (snapshot TodoWrite/TodoList/
+# todo_write/update_plan + Claude TaskCreate/TaskUpdate). Fail-open on any error;
+# stop_hook_active (top of file) makes it fire at most once per stop.
+todo_json=$(python3 "$HERE/todo-progress.py" "$TRANSCRIPT_PATH" 2>/dev/null || echo '{}')
+
+# Cheap bash pre-check: only pay for the escape-detection python when the folded
+# checklist actually has a remaining item. A no-checklist / all-done stop (the
+# common case) skips it entirely, so this gate adds one python call, not two.
+task_verdict="allow"
+if echo "$todo_json" | grep -q '"remaining": [1-9]'; then
+task_verdict=$(INPUT_JSON="$INPUT_JSON" TODO_JSON="$todo_json" python3 - "$TRANSCRIPT_PATH" <<'PY' 2>/dev/null
+import json, os, re, sys
+
+try:
+    todo = json.loads(os.environ.get('TODO_JSON') or '{}')
+except Exception:
+    todo = {}
+if int(todo.get('remaining', 0) or 0) < 1:
+    print('allow'); sys.exit(0)
+
+try:
+    msg = (json.loads(os.environ.get('INPUT_JSON') or '{}').get('last_assistant_message', '') or '').lower()
+except Exception:
+    print('allow'); sys.exit(0)
+
+# A real background watcher/monitor tool_use this session (evidence, not phrasing).
+WATCH = re.compile(r'gh\s+pr\s+checks\b.*--watch', re.S)
+live_watcher = False
+last_struct_tool = ''
+try:
+    with open(sys.argv[1]) as f:
+        for raw in f:
+            if 'tool_use' not in raw:
+                continue
+            try:
+                rec = json.loads(raw)
+            except Exception:
+                continue
+            m = rec.get('message') if isinstance(rec.get('message'), dict) else rec
+            content = m.get('content') if isinstance(m, dict) else None
+            if not isinstance(content, list):
+                continue
+            for b in content:
+                if not isinstance(b, dict) or b.get('type') != 'tool_use':
+                    continue
+                name = b.get('name') or ''
+                inp = b.get('input') or {}
+                last_struct_tool = name
+                if name in ('ScheduleWakeup', 'Monitor'):
+                    live_watcher = True
+                if name == 'Bash' and inp.get('run_in_background') and WATCH.search(str(inp.get('command', ''))):
+                    live_watcher = True
+except Exception:
+    pass
+
+# Escape 1 — the agent is handing control to the USER for input it needs to
+# proceed (a clarifying question / plan-mode decision), not abandoning work.
+asking = bool(
+    re.search(r'\?\s*[)\]\'\"]*\s*$', msg.strip())
+    or re.search(r'\b(let me know|which (would|do) you|do you want|would you like|your call|which of these|should i (?:proceed|go ahead|continue|do that|do it|pick|choose))\b', msg)
+    or last_struct_tool in ('ExitPlanMode', 'AskUserQuestion'))
+# Escape 2 — plan mode forbids acting (same cue the open-PR gate uses).
+plan_mode = bool(re.search(r'\bplan mode\b', msg)
+                 and re.search(r'\b(cannot|can not|forbid|forbids|blocks?|blocked|prevent|no (?:commit|push|merge))\b', msg))
+# Escape 3 — a genuine external blocker + who/what finishes it.
+blocked = re.search(r'\bblocked on\b', msg)
+nextstep = re.search(r'\b(watcher|background watch|gh pr checks --watch|will merge on green)\b|\byour (touch ?id|biometric)\b', msg)
+# Escape 4 — explicit handoff of the remaining work to a named owner.
+handoff = re.search(r'\b(handed off|hand-off|handoff|handing (this|it) off|will babysit|is babysitting|takes over from here|owns (this|the) (pr|task|work))\b', msg)
+# Escape 5 — a LIVE watcher/monitor owns the remaining step (evidence-gated).
+watcher_phrase = re.search(r'\b(watcher|poll(?:er|ing)?|background (?:watch|poll)|gh pr checks --watch|re-?invoke|re-?invokes me|will merge on green|owns the (?:next|merge))\b', msg)
+
+ok = bool(asking or plan_mode or (blocked and nextstep) or handoff or (live_watcher and watcher_phrase))
+print('allow' if ok else 'block')
+PY
+)
+  [ -z "$task_verdict" ] && task_verdict="allow"
+fi
+
+if [ "$task_verdict" = "block" ]; then
+  task_next=$(echo "$todo_json" | python3 -c "
+import json, sys
+try:
+    d = json.load(sys.stdin)
+    print(d.get('next', '') or '')
+except Exception:
+    print('')
+" 2>/dev/null || echo "")
+  task_remaining=$(echo "$todo_json" | python3 -c "
+import json, sys
+try:
+    print(int(json.load(sys.stdin).get('remaining', 0)))
+except Exception:
+    print(0)
+" 2>/dev/null || echo 0)
+  repeat_guidance "unfinished checklist items" "$(prior_fires 'STOP GATE (keep moving)')"
+  cat >&2 <<TASKGATE
+STOP GATE (keep moving): Your task list still has ${task_remaining} unfinished
+item(s). The next one to advance is:
+
+  "${task_next}"
+
+A checklist is your acceptance rubric — you are done when every item is completed,
+not before. Recognizing a background watcher on one item is not permission to stop
+the rest. Before stopping, do ONE of:
+1. Advance the next item now — do the work, then mark it completed (TaskUpdate
+   status=completed). Then move to the following item; stop only when nothing is
+   left to advance.
+2. If the item is genuinely owned by someone/something else — a live background
+   watcher, another session, or a person — name that owner explicitly in your
+   final message (that hands it off).
+3. If it is blocked on a genuine external step you cannot do (a biometric, an
+   interactive login), name the blocker ("blocked on <what>") and what will
+   finish it.
+4. If the item is no longer needed, delete it (TaskUpdate status=deleted) so the
+   list reflects reality.
+
+Do not stop with unfinished items and no owner named.
+TASKGATE
+  exit 2
+fi
+# --- end task-list keep-moving gate -------------------------------------------
+
 # Check if Claude is claiming completion
 is_claiming_done=$(echo "$INPUT_JSON" | python3 -c "
 import json, re, sys
