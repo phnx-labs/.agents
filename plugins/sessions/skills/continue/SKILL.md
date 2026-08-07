@@ -90,13 +90,13 @@ Default path whenever you did not reattach.
 
 | Input | Command |
 |------|---------|
-| Session ID (UUID or short prefix) | `agents sessions <id>` |
-| Session ID plus source machine | `agents sessions <id> --host <machine>` |
-| Only a topic / name / keyword | `agents sessions "<query>"` → pick id → `agents sessions <id>` (+ `--host` when supplied) |
+| Session ID (UUID or displayed 8-character prefix) | `agents sessions preview <id>` |
+| Session ID plus source machine | `agents sessions preview <id> --host <machine>` |
+| Only a topic / name / keyword | `agents sessions "<query>"` → pick id → `agents sessions preview <id>` (+ `--host` when supplied) |
 | Nothing | Most recent prior session from `agents sessions`; interactive picker only if you truly need one and have a TTY |
 
 Default render is a concise summary (header, original prompt, tool groupings, final
-response). Escalate to `agents sessions <id> --markdown` only when the summary leaves a
+response). Escalate to `agents sessions <id> --markdown` only when the preview leaves a
 real gap. Narrow with `--include user,assistant` or `--last 5` if needed.
 
 ### Step 2: Assess current state

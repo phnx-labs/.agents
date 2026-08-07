@@ -11,7 +11,7 @@ This is cheap: a fork is a file copy of the transcript so far, not a re-run — 
 ## Step 0: Resolve which session to fork
 
 - **Bare `/fork`** — fork THIS session. Its id is in the session-start context ("Your current session id is …"); use that. The current harness is the one you are running in.
-- **`/fork <id>`** — fork that session (UUID or short prefix). Resolve its harness from `agents sessions <id>` if you need it.
+- **`/fork <id>`** — fork that session (UUID or short prefix). Resolve its harness from `agents sessions preview <id> --json` if you need it; the lookup includes remote devices.
 
 Never guess an id — if `$ARGUMENTS` is a topic/name rather than an id, run `agents sessions "<query>"` to resolve it first, or ask once.
 
