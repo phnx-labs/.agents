@@ -28,7 +28,40 @@ The background scheduler auto-starts the first time you add a routine.
 agents routines add daily-standup \
   --schedule "0 9 * * 1-5" \
   --agent claude \
+  --project-anchor agents-cli \
+  --cwd apps/cli \
   --prompt "Draft standup from git log"
+```
+
+## Execution context and readiness
+
+Use one execution project plus an optional portable working directory:
+
+```bash
+agents routines add daily-standup \
+  --project-anchor agents-cli \
+  --cwd apps/cli \
+  --schedule "0 9 * * 1-5" \
+  --agent claude \
+  --prompt "Draft standup from git log"
+```
+
+- `--project-anchor` selects the singular execution project. The existing
+  repeatable `--project` flag is grouping metadata only.
+- A relative `--cwd` resolves against that project's configured path. If a
+  Linear-imported project has no checkout binding, or there is no project, it
+  resolves against the execution device user's home.
+- `repo` is Git/cloud/webhook identity, not a local checkout path.
+- Agent and workflow routines without a project or CWD are saved paused.
+
+Creation and edit check the target path, write access, workspace trust, harness,
+authentication, reachability, and placement. A valid definition that is not
+operationally ready is saved paused with an actionable finding:
+
+```bash
+agents routines doctor daily-standup
+agents routines doctor daily-standup --fix
+agents routines resume daily-standup  # rechecks readiness before activation
 ```
 
 Cron format is standard 5-field (minute hour day month weekday).
@@ -150,7 +183,7 @@ agents routines resume daily-standup
 Each fire is recorded as a run. Inspect them:
 
 ```bash
-agents routines runs daily-standup           # list recent runs
+agents routines runs daily-standup           # attempt history, session optional
 agents routines logs daily-standup           # latest run's stdout
 agents routines logs daily-standup --run <id>
 agents routines report daily-standup         # extract markdown the agent produced
@@ -160,7 +193,8 @@ agents routines report daily-standup --run <id>
 ## Remove, edit
 
 ```bash
-agents routines edit daily-standup           # opens the YAML in $EDITOR
+agents routines edit daily-standup           # prefilled edit flow
+agents routines edit daily-standup --yaml    # transactional raw YAML edit
 agents routines remove daily-standup
 ```
 
@@ -176,7 +210,7 @@ Two routines turn an issue-tracker queue into a self-draining pipeline: a **tria
 - **One triage writer.** A single routine assigns `host:<worker>` labels — one writer means no cross-machine claim race. Give triage no routing discretion: an opt-out label (e.g. `hold`) is human-only, because a ticket triage diverts pings nobody, while a ticket the drain parks notifies the user.
 - **Gate with a pilot label first.** Route only tickets carrying an opt-in label until you trust the loop; widen by removing the gate.
 - **`mode: skip`, `sandbox: false`.** Headless drains need full permissions, and (today) `sandbox: false` so the spawned agent sees real credentials — see "Headless claude auth" in the routines design doc. Auth headlessly via a secrets bundle named `claude` holding `CLAUDE_CODE_OAUTH_TOKEN`; the daemon injects it into scheduled runs. Manual `agents routines run` does not inject it — wrap with `agents secrets exec claude -- agents routines run <name>`.
-- **Overlap lock with staleness.** Cron has no per-job overlap guard yet, so the drain prompt takes a lock dir (`mkdir /tmp/drain-<worker>.lock`) first, exits if it exists and is younger than the routine timeout, steals it if older (a leaked lock from a dead run must not deadlock the queue), and removes it on every exit path.
+- **Native single-flight.** The scheduler claims each UTC slot once and every launch path shares the same active-run claim. A later fire while the drain is active is recorded as skipped and does not spawn another process. Do not add a prompt-level lock directory on top.
 - **Escalation.** Give the prompt a verbatim notify one-liner (any messaging CLI). Blocked tickets get parked with a comment plus that ping; the loop continues.
 
 Drain routine template (`drain-<worker>.yml`, register with `agents routines add drain-<worker>.yml`):
@@ -191,9 +225,6 @@ sandbox: false
 prompt: |
   Unattended fleet drain on <worker>. No interactive user: never call
   AskUserQuestion, never wait for input.
-  Overlap guard: mkdir /tmp/drain-<worker>.lock first; if it exists and is
-  younger than 2 hours, exit immediately; if older, steal it. Remove it on
-  every exit path.
   Queue: invoke the code:loop skill in unattended mode. Fetch tickets from
   your tracker filtered to label host:<worker> and status Todo.
   Notify command (verbatim, substitute ticket ID and blocker):
@@ -213,9 +244,10 @@ The `code:loop` skill's "Unattended mode" and "Claim before you build" sections 
 | `add ./file.yml` | Create from YAML |
 | `list` | All routines + next run |
 | `view <name>` | Show routine YAML |
-| `edit <name>` | Open routine in $EDITOR |
+| `edit <name>` / `edit <name> --yaml` | Prefilled edit / transactional raw YAML |
 | `run <name>` | Foreground run (ignores schedule) |
-| `runs <name>` | Recent run history |
+| `runs <name>` | Attempt history, including blocked/skipped runs |
+| `doctor <name> [--fix]` | Check and repair execution readiness |
 | `logs <name> [--run <id>]` | Stdout of a run |
 | `report <name> [--run <id>]` | Extract markdown output |
 | `pause <name>` / `resume <name>` | Disable / re-enable |

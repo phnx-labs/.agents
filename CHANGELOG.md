@@ -4,6 +4,8 @@
 
 ### Added
 
+- **Routine guidance now uses explicit execution projects/CWDs and the native single-flight contract (RUSH-2290).** The routines skill teaches `--project-anchor` separately from metadata-only `--project`, target-side relative CWD resolution for Linear-imported projects without checkout bindings, readiness/repair before activation, transactional YAML edits, routine-first history, and the scheduler's slot plus active-run claims. The obsolete prompt-level `/tmp` overlap lock recipe is removed.
+
 - **`hooks/syntax_test.sh` — a parse gate for every hook script.** A hook that does not
   parse still runs, and bash exits 2 on a syntax error, which the harness reads as
   **block** — so a typo silently becomes a gate no session can get past (see the
