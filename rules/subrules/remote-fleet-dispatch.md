@@ -117,7 +117,7 @@ dispatch never happened.
 Reading a dispatched agent's full output bills its OUTPUT tokens back to you as INPUT
 tokens, for no benefit. Use:
 
-- `agents sessions <id>` — the brief/preview (status, PR link, last-response line, files/tests).
+- `agents sessions preview <id>` — the fleet-resolved brief (fresh status, PR link, last response, files/tests/skills/plugins/errors).
 - `agents sessions --active` — the status column across all live agents.
 
 Pull the raw remote log (`agents hosts logs <name>`) ONLY to `grep` the single error
