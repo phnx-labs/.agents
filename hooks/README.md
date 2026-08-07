@@ -45,6 +45,7 @@ hooks/
   notification/           Notification (+ multi-event hooks that start there)
   promptcuts.yaml         data for expand-promptcuts (stays at hooks/ root)
   registration_test.sh    integrity gate (top-level)
+  syntax_test.sh          parse gate — every hook script, incl. under bash 3.2
   run_tests.sh
 ```
 
