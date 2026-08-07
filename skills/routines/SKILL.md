@@ -54,9 +54,12 @@ agents routines add daily-standup \
 - `repo` is Git/cloud/webhook identity, not a local checkout path.
 - Agent and workflow routines without a project or CWD are saved paused.
 
-Creation and edit check the target path, write access, workspace trust, harness,
-authentication, reachability, and placement. A valid definition that is not
-operationally ready is saved paused with an actionable finding:
+Creation and edit always check structural project/CWD and portability. Local
+agent routines additionally check the local path, write access, installed harness,
+authentication, and Codex trust; explicit-host routines probe those properties on
+the target. Fleet/cloud target checks are deferred to the run path, and workflows
+receive only the structural checks their path supports. A valid definition with a
+proven blocker is saved paused with an actionable finding:
 
 ```bash
 agents routines doctor daily-standup
@@ -75,12 +78,14 @@ Runs once at a specific time, then disables itself.
 agents routines add hotfix-review \
   --at "14:30" \
   --agent codex \
+  --cwd '~' \
   --prompt "Review hotfix PR #42"
 
 # Exact date + time
 agents routines add launch-check \
   --at "2026-06-01 09:00" \
   --agent claude \
+  --cwd '~' \
   --prompt "Run launch readiness audit"
 ```
 
@@ -193,8 +198,8 @@ agents routines report daily-standup --run <id>
 ## Remove, edit
 
 ```bash
-agents routines edit daily-standup           # prefilled edit flow
-agents routines edit daily-standup --yaml    # transactional raw YAML edit
+agents routines edit daily-standup           # transactional temporary-YAML editor
+agents routines edit daily-standup --yaml    # same editor; explicit compatibility flag
 agents routines remove daily-standup
 ```
 
@@ -222,6 +227,7 @@ agent: claude
 mode: skip
 timeout: 2h
 sandbox: false
+cwd: '~'
 prompt: |
   Unattended fleet drain on <worker>. No interactive user: never call
   AskUserQuestion, never wait for input.
@@ -230,7 +236,7 @@ prompt: |
   Notify command (verbatim, substitute ticket ID and blocker):
   <your messaging-CLI one-liner>
   Blocked ticket: park it with a comment, run the notify command, continue.
-  Queue empty: remove the lock, exit with a one-paragraph summary.
+  Queue empty: exit with a one-paragraph summary.
 ```
 
 The `code:loop` skill's "Unattended mode" and "Claim before you build" sections carry the rest of the contract (dedup against open PRs and active sessions, claim via Todo → In Progress, ticket ID in every PR title).
