@@ -11,10 +11,21 @@ If you want something to fire on a **change** instead of a clock, that is a
 | Routine | Schedule | What it does |
 |---|---|---|
 | [`check-updates`](./check-updates.yml) | Mondays 09:00 | Keeps the box current — upgrades `agents-cli` when npm is ahead, fast-forwards `~/.agents/.system` to `origin/main`, and notifies only if something actually changed |
+| [`watchdog`](./watchdog.yml) | every 3 min | Nudges stalled agent sessions (no-op unless `watchdog.enabled` is on) |
+| [`device-probe`](./device-probe.yml) | every 3 min | Refreshes device reachability, surfaces newly-seen tailnet nodes |
+| [`tmux-reconcile`](./tmux-reconcile.yml) | every 5 min | Retrofits the guarded tmux pane-died hook onto managed sessions |
+| [`launch-health`](./launch-health.yml) | every 6h | Probes each agent's default version actually launches; repairs a gutted install |
+| [`fleet-cache-warm`](./fleet-cache-warm.yml) | every 3 min | Publishes this host's auth-health + fleet-status rows for `agents fleet status` |
+| [`session-cache-warm`](./session-cache-warm.yml) | every 3 min | Publishes this host's local active sessions for the shared warm cache |
+| [`usage-refresh`](./usage-refresh.yml) | every 1 min | Refreshes the usage cache the `agents run` router reads, off the hot path |
+| [`auto-dispatch`](./auto-dispatch.yml) | every 3 min | Dispatches delegated Linear tickets through agents-cli's cloud-provider layer (opt-in per project; pin with `agents routines devices auto-dispatch --set <device>`) |
 
-`check-updates` runs on **every** box independently. There is no designated primary and no
-SSH fan-out, so one laptop and a large fleet are both covered. It fails soft: a failing step
-never aborts the rest.
+`check-updates` and the 8 housekeeping routines above all run on **every** box
+independently — no designated primary, no SSH fan-out (`auto-dispatch` is the
+exception: pin it to one device once your fleet has more than one box running
+the same opted-in project, or every box will dispatch the same tickets). They
+fail soft: a failing step never aborts the rest. The 8 housekeeping routines
+require an agents-cli build that ships `agents __daemon-tick` (RUSH-2353).
 
 ## Using them
 

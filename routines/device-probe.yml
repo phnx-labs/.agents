@@ -1,0 +1,14 @@
+# Built-in routine: refresh device reachability + detect new tailnet nodes (RUSH-2353).
+#
+# Migrated off a hardcoded daemon setInterval (3 min). Soft refresh only — never
+# auto-registers a newcomer, only drops a pending sentinel so the menu-bar helper
+# can surface "NEW DEVICES -> Register / Ignore". A machine without tailscale is
+# a clean no-op.
+#
+# Users override it with a same-named file in ~/.agents/routines/, or disable
+# it with `agents routines disable device-probe`.
+name: device-probe
+schedule: "*/3 * * * *"
+enabled: true
+timeout: 2m
+command: agents __daemon-tick device-probe
