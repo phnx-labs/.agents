@@ -121,6 +121,9 @@ Controls which installed version/account gets the work.
 ```bash
 agents run claude "..." --strategy balanced
 agents run claude "..." -b                  # shortcut for --strategy balanced
+
+# Pin a logical identity label instead of rotating across accounts
+agents run claude "..." --account work
 ```
 
 Strategy is ignored when `@version` is pinned, a profile is used, or `--fallback` is set.
@@ -276,3 +279,7 @@ Use this as the default for "send this to the fleet" unless the task must land o
 | `--acp` | Route via Agent Client Protocol |
 
 For everything else, run `agents run --help`.
+
+`--account <label>` selects only a locally attached, live-verified identity
+created with `agents accounts label/attach`. It never falls back to another
+account. Local labels do not apply to cloud or lease placement.
