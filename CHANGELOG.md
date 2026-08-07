@@ -4,6 +4,24 @@
 
 ### Added
 
+- **8 built-in daemon housekeeping routines (RUSH-2353).** `watchdog`,
+  `device-probe`, `tmux-reconcile`, `launch-health`, `fleet-cache-warm`,
+  `session-cache-warm`, `usage-refresh`, and `auto-dispatch` ship here as
+  `command:` routines, migrated off hardcoded `setInterval` timers that used to
+  live inside agents-cli's daemon (`runDaemon()`). Same schedules, same
+  effects — now declared, listed (`agents routines list`), run-tracked
+  (`agents routines stats`), individually pausable, and device-pinnable.
+  `auto-dispatch` is the notable one: as a hardcoded tick it could not be
+  pinned to a single device, so every daemon on a fleet independently polled
+  the same Linear queue with no coordination; pin it with
+  `agents routines devices auto-dispatch --set <device>`. Requires an
+  agents-cli build that ships `agents __daemon-tick` (companion PR in
+  `phnx-labs/agents-cli`). Source: `routines/watchdog.yml`,
+  `routines/device-probe.yml`, `routines/tmux-reconcile.yml`,
+  `routines/launch-health.yml`, `routines/fleet-cache-warm.yml`,
+  `routines/session-cache-warm.yml`, `routines/usage-refresh.yml`,
+  `routines/auto-dispatch.yml`.
+
 - **Root README guide: what to run, which plugin, how to automate.** Ships a
   goal→command table, situation FAQ (overnight drain, rate-limits, crash restore),
   plugin pick matrix, and automation recipes (`/drain`, `/code:loop`, routines,

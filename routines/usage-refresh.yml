@@ -1,0 +1,17 @@
+# Built-in routine: keep the usage cache the `agents run` router reads
+# (RUSH-2061, read-only hot path) fresh, without the hot path ever fetching
+# (RUSH-2353).
+#
+# Migrated off a hardcoded daemon setInterval (60s). This host is the sole
+# writer for its own local accounts; each account is internally scheduled at a
+# fixed 5-minute cadence and skipped under 429 backoff, so the 1-minute clock
+# here just decides how often to CHECK for due accounts, not how often each
+# one is actually fetched.
+#
+# Users override it with a same-named file in ~/.agents/routines/, or disable
+# it with `agents routines disable usage-refresh`.
+name: usage-refresh
+schedule: "* * * * *"
+enabled: true
+timeout: 1m
+command: agents __daemon-tick usage-refresh
