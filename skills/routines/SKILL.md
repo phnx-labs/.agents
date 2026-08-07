@@ -107,6 +107,7 @@ mode: edit
 effort: high
 timeout: 1h
 timezone: America/Los_Angeles
+cwd: '~'
 prompt: |
   Summarize this week's shipped PRs and open issues.
   Post the summary to #engineering.
@@ -118,6 +119,7 @@ prompt: |
 agents routines add backup-job \
   --schedule "0 2 * * *" \
   --agent claude \
+  --cwd '~' \
   --prompt "Run nightly backup verification" \
   --mode edit \
   --effort high \
@@ -139,13 +141,14 @@ agents routines add london-update \
   --schedule "0 9 * * *" \
   --timezone Europe/London \
   --agent claude \
+  --cwd '~' \
   --prompt "Post morning update to #london"
 ```
 
 ## Create paused
 
 ```bash
-agents routines add experimental --schedule "0 * * * *" --agent claude --prompt "..." --disabled
+agents routines add experimental --schedule "0 * * * *" --agent claude --cwd '~' --prompt "..." --disabled
 agents routines resume experimental
 ```
 
@@ -250,7 +253,7 @@ The `code:loop` skill's "Unattended mode" and "Claim before you build" sections 
 | `add ./file.yml` | Create from YAML |
 | `list` | All routines + next run |
 | `view <name>` | Show routine YAML |
-| `edit <name>` / `edit <name> --yaml` | Prefilled edit / transactional raw YAML |
+| `edit <name>` / `edit <name> --yaml` | Transactional temporary-YAML editor (same flow) |
 | `run <name>` | Foreground run (ignores schedule) |
 | `runs <name>` | Attempt history, including blocked/skipped runs |
 | `doctor <name> [--fix]` | Check and repair execution readiness |
