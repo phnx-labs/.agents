@@ -35,6 +35,11 @@ The key insight: sessions are your memory. Before starting a task, search for pr
 
 `agents run <agent> "prompt"` executes an agent headlessly and returns when done. You can set the reasoning effort, working directory, mode (plan/edit/full), and inject secrets or env vars. You can also resume a previous Claude session by session ID.
 
+Use `agents accounts label <label> <agent>@<version>` to name a signed-in
+identity, `agents accounts attach` to bind more installed versions, and
+`agents run <agent> --account <label>` to select it. Labels store fingerprints,
+not credentials, and explicit selection fails instead of using another account.
+
 Use this when you want to delegate a bounded task to another agent and capture its output, rather than spawning a full team.
 
 
