@@ -592,7 +592,10 @@ except Exception:
 # Escape 1 — the agent is handing control to the USER for input it needs to
 # proceed (a clarifying question / plan-mode decision), not abandoning work.
 asking = bool(
-    re.search(r'\?\s*[)\]\'\"]*\s*$', msg.strip())
+    # \x27 / \x22 are ' and " — spelled as hex so this heredoc body carries no
+    # quote character. bash 3.2 (/bin/bash on macOS) tracks quotes inside a
+    # heredoc that sits in a $(...), so a literal ' here breaks the whole script.
+    re.search(r'\?\s*[)\]\x27\x22]*\s*$', msg.strip())
     or re.search(r'\b(let me know|which (would|do) you|do you want|would you like|your call|which of these|should i (?:proceed|go ahead|continue|do that|do it|pick|choose))\b', msg)
     or last_struct_tool in ('ExitPlanMode', 'AskUserQuestion'))
 # Escape 2 — plan mode forbids acting (same cue the open-PR gate uses).
