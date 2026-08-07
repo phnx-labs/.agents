@@ -280,6 +280,7 @@ Use this as the default for "send this to the fleet" unless the task must land o
 
 For everything else, run `agents run --help`.
 
-`--account <label>` selects only a locally attached, live-verified identity
-created with `agents accounts label/attach`. It never falls back to another
-account. Local labels do not apply to cloud or lease placement.
+`--account <label>` selects a healthy installed version whose live provider
+identity matches a name created with `agents accounts name`. It never falls
+back to another account. There are no version bindings and local account names
+do not apply to cloud or lease placement.
