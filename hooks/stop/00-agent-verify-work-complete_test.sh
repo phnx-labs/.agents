@@ -538,6 +538,46 @@ rc=$(FAKE_GH_STATE=MERGED FAKE_GIT_BRANCH=release/RUSH-2468 FAKE_LINEAR_STATE=To
 check "git merge finish-line triggers delivery gate" "$rc" "2"
 grep -q "RUSH-2468" "$SANDBOX/stderr" && echo "ok   - git merge delivery gate cites ticket" || { echo "FAIL - git merge delivery gate missed ticket"; fail=1; }
 
+# D11. `linear tasks <id>` (a bare READ — checking state, triaging, incidental
+#      research) must NOT count as "this delivery references the ticket", even
+#      at a genuine merge finish-line. No PR, no branch tie, no done-claim
+#      wording (avoids the older self-audit gate) — a `git merge` sets
+#      delivery_activity and "Merged." supplies the finish-line phrase, so the
+#      delivery gate itself runs; the only thing pointing at RUSH-7777 is the
+#      read command, so it must not fire. Mirrors the existing `gh pr view`
+#      (VIEW is not WORK) distinction above. >=3 assistant turns clears the
+#      short-Q&A skip (turn_count <= 2).
+TREAD="$SANDBOX/ticket-read.jsonl"
+{
+  echo '{"type":"user","message":{"role":"user","content":"What does the browser skill do?"}}'
+  echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"Looking into it"}]}}'
+  echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_gm1","name":"Bash","input":{"command":"git merge origin/feature/no-ticket"}}]}}'
+  echo '{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_gm1","content":[{"type":"text","text":"merge made by recursive strategy"}]}]}}'
+  echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_lread1","name":"Bash","input":{"command":"linear tasks RUSH-7777"}}]}}'
+  echo '{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_lread1","content":[{"type":"text","text":"RUSH-7777  Some unrelated ticket\n  Status: Todo"}]}]}}'
+  echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"It drives real browsers over CDP."}]}}'
+} > "$TREAD"
+rc=$(FAKE_GH_STATE=MERGED FAKE_LINEAR_STATE=Todo run_hook "$TREAD" "Merged." false)
+check "bare 'linear tasks <id>' read does not fire the delivery gate" "$rc" "0"
+
+# D12. `linear update <id>` (a WRITE — a real status/comment change) still
+#      correctly flags an open ticket. Same shape as D11 but the command is an
+#      update, and the ticket is still open, so a merge finish-line stop must
+#      still block on it.
+TWRITE="$SANDBOX/ticket-write.jsonl"
+{
+  echo '{"type":"user","message":{"role":"user","content":"Note progress on RUSH-8888."}}'
+  echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"Posting a comment"}]}}'
+  echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_gm2","name":"Bash","input":{"command":"git merge origin/feature/no-ticket"}}]}}'
+  echo '{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_gm2","content":[{"type":"text","text":"merge made by recursive strategy"}]}]}}'
+  echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_lwrite1","name":"Bash","input":{"command":"linear update RUSH-8888 --comment \"partial progress\""}}]}}'
+  echo '{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_lwrite1","content":[{"type":"text","text":"Comment added to RUSH-8888."}]}]}}'
+  echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"Left a progress note."}]}}'
+} > "$TWRITE"
+rc=$(FAKE_GH_STATE=MERGED FAKE_LINEAR_STATE=Todo run_hook "$TWRITE" "Merged." false)
+check "'linear update <id>' write still flags an open ticket" "$rc" "2"
+grep -q "RUSH-8888" "$SANDBOX/stderr" && echo "ok   - delivery gate cites the written-to ticket" || { echo "FAIL - delivery gate did not cite the written-to ticket"; fail=1; }
+
 # --- command-handback gate --------------------------------------------------
 # The "No, you release it.." failure: the session wrote a runnable script to a
 # temp path AND the final message tells the user to run it. Fires only when BOTH

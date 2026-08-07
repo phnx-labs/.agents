@@ -216,9 +216,18 @@ def _all_ticket_ids(transcript_path, pr_data, branch_name, commits_text, first_u
     for s in sources:
         ids.extend(_ticket_ids(s))
 
-    # Also scan any explicit Linear commands in the transcript.
+    # Also scan explicit Linear WRITE commands in the transcript — `linear
+    # update <id>` is real engagement (a status/comment change), so it counts
+    # as "referenced by this delivery". `linear tasks <id>` is a bare READ —
+    # checking a ticket's state or triaging is incidental, not a claim of
+    # ownership over it, mirroring the same read-vs-worked distinction this
+    # file already applies to `gh pr view` above (VIEW is excluded from WORK).
+    # Without this, a session that merely looked up an unrelated ticket while
+    # researching something else gets permanently blocked from stopping for
+    # the rest of its transcript, because this scan is transcript-wide and the
+    # ticket's live state may never reach a DONE_STATE.
     for cmd in _tool_commands(transcript_path):
-        for m in re.finditer(r"\blinear\s+(?:tasks|update)\s+(RUSH-\d+)\b", cmd, flags=re.IGNORECASE):
+        for m in re.finditer(r"\blinear\s+update\s+(RUSH-\d+)\b", cmd, flags=re.IGNORECASE):
             ids.append(m.group(1).upper())
 
     seen = set()
