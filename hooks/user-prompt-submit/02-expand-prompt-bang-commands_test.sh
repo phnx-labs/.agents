@@ -40,8 +40,13 @@ else fail=$((fail+1)); echo "  FAIL commands ran too slowly (${elapsed}s; sequen
 marker=$(mktemp)
 rm -f "$marker"
 payload=$(python3 - "$marker" <<'PY'
-import json, sys
-print(json.dumps({"prompt": f"`! sleep 7; touch {sys.argv[1]}`", "cwd": "/tmp"}))
+import json, os, sys
+marker = sys.argv[1]
+if os.name == "nt":
+    command = f'powershell -NoProfile -Command "Start-Sleep 7; New-Item -ItemType File -Path {marker}"'
+else:
+    command = f"sleep 7; touch {marker}"
+print(json.dumps({"prompt": f"`! {command}`", "cwd": os.getcwd()}))
 PY
 )
 out=$(printf '%s' "$payload" | bash "$HOOK")

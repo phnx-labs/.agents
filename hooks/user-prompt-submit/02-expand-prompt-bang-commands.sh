@@ -37,6 +37,7 @@ def run_command(command, cwd):
             stderr=subprocess.PIPE,
             text=True,
             start_new_session=os.name != "nt",
+            creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if os.name == "nt" else 0,
         )
         stdout, stderr = process.communicate(timeout=COMMAND_TIMEOUT_SECONDS)
         output = stdout.strip()
@@ -46,7 +47,13 @@ def run_command(command, cwd):
     except subprocess.TimeoutExpired:
         if process is not None:
             if os.name == "nt":
-                process.kill()
+                terminated = subprocess.run(
+                    ["taskkill", "/PID", str(process.pid), "/T", "/F"],
+                    stdout=subprocess.DEVNULL,
+                    stderr=subprocess.DEVNULL,
+                )
+                if terminated.returncode != 0 and process.poll() is None:
+                    process.kill()
             else:
                 os.killpg(process.pid, signal.SIGKILL)
             process.communicate()
