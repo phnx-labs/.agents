@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # hooks/registration_test.sh — proves no hook script has silently lost its
-# registration in ../agents.yaml.
+# registration in ../agents.yaml and proves the default-on prompt expansion
+# hooks have not silently been disabled.
 #
 # Why this exists: a hook needs TWO things to fire — the script AND its `hooks:`
 # entry in ../agents.yaml. Only the script is exercised by its own `_test.sh`,
@@ -67,6 +68,30 @@ if [ -z "$REG_LIST" ]; then
 fi
 
 is_registered() { printf '%s\n' "$REG_LIST" | grep -qxF "$1"; }
+
+hook_block() {
+  awk -v hook="$1" '
+    $0 == "  " hook ":" { found=1; print; next }
+    found && $0 ~ /^  [[:alnum:]_-]+:/ { exit }
+    found { print }
+    END { if (!found) exit 1 }
+  ' "$MANIFEST"
+}
+
+assert_default_enabled() {
+  local internal_name="$1" public_name="$2" block
+  if ! block="$(hook_block "$internal_name")"; then
+    echo "FAIL - $public_name: internal hook $internal_name is missing from $MANIFEST"
+    fail=1
+    return
+  fi
+  if printf '%s\n' "$block" | grep -Eq '^[[:space:]]+enabled:[[:space:]]*false([[:space:]]|$)'; then
+    echo "FAIL - $public_name: $internal_name must be enabled by default"
+    fail=1
+    return
+  fi
+  echo "ok   - $public_name: $internal_name is enabled by default"
+}
 
 # Resolve a registered script basename or relative path to an on-disk file.
 resolve_registered_path() {
@@ -165,12 +190,18 @@ for d in "$HERE"/*/; do
   done
 done
 
+assert_default_enabled "expand-promptcuts" "promptcuts"
+assert_default_enabled "expand-bang-commands" "bangcuts"
+
 echo
 if [ "$fail" -eq 0 ]; then
-  echo "PASS - every hook script is registered, invoked by a registered script, or allowlisted"
+  echo "PASS - every hook script is reachable and both prompt expansion hooks default on"
 else
-  echo "FAILURES - unregistered hook script(s):$missing"
-  echo "A script with no agents.yaml entry never fires. Add a hooks: entry (see hooks/AGENTS.md),"
-  echo "or add it to INTENTIONALLY_UNREGISTERED in this test with a one-line reason."
+  echo "FAILURES - hook registration/default assertions failed"
+  if [ -n "$missing" ]; then
+    echo "Unregistered hook script(s):$missing"
+    echo "A script with no agents.yaml entry never fires. Add a hooks: entry (see hooks/AGENTS.md),"
+    echo "or add it to INTENTIONALLY_UNREGISTERED in this test with a one-line reason."
+  fi
 fi
 exit $fail

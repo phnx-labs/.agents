@@ -43,7 +43,7 @@ hooks/
   user-prompt-submit/     UserPromptSubmit
   stop/                   Stop
   notification/           Notification (+ multi-event hooks that start there)
-  promptcuts.yaml         data for expand-promptcuts (stays at hooks/ root)
+  promptcuts.yaml         data for promptcuts (internal hook: expand-promptcuts)
   registration_test.sh    integrity gate (top-level)
   syntax_test.sh          parse gate — every hook script, incl. under bash 3.2
   run_tests.sh
@@ -85,8 +85,8 @@ register time). See [§Subrule hooks](#subrule-hooks-rules-not-this-tree).
 
 | Hook | What it does |
 |---|---|
-| [`02-expand-prompt-user-shortcuts.sh`](./user-prompt-submit/02-expand-prompt-user-shortcuts.sh) | Expands `#shortcut` tokens from `promptcuts.yaml` |
-| [`02-expand-prompt-bang-commands.sh`](./user-prompt-submit/02-expand-prompt-bang-commands.sh) | Runs inline `` `!cmd` `` blocks concurrently and injects their output |
+| [`02-expand-prompt-user-shortcuts.sh`](./user-prompt-submit/02-expand-prompt-user-shortcuts.sh) | **promptcuts** — expands shortcut tokens from `promptcuts.yaml` |
+| [`02-expand-prompt-bang-commands.sh`](./user-prompt-submit/02-expand-prompt-bang-commands.sh) | **bangcuts** — runs inline `` `!cmd` `` blocks concurrently and injects their output |
 | [`03-vacation-recap.py`](./user-prompt-submit/03-vacation-recap.py) | On a long gap since the session's last prompt, reminds the agent to open with a back-from-vacation recap |
 
 ### `stop/` — Stop
@@ -143,17 +143,30 @@ hooks:
 - `events` — lifecycle events to register on.
 - `timeout` — seconds.
 - `matches` — optional predicates.
-- `enabled` — set `false` to disable a hook (system defaults may ship some off;
-  the user layer can disable any system-shipped hook, or re-enable an opt-in one
-  with a full entry + `override: true`).
+- `enabled` — set `false` to disable a hook in a manifest. The user layer can
+  disable any system-shipped hook.
 - `agents` — **deprecated**; ignored.
 
 ## Enabling and disabling hooks
 
 Hooks change **runtime** behavior (unlike commands/skills/plugins, which are
-tools agents open on demand). Users should be able to turn them off easily.
+tools agents open on demand). Promptcuts and bangcuts are enabled by default.
 
-**Disable a system hook** — same name in the user layer:
+Use their public feature names to change either default:
+
+```sh
+agents hooks enable promptcuts
+agents hooks disable promptcuts
+agents hooks enable bangcuts
+agents hooks disable bangcuts
+```
+
+The CLI maps `promptcuts` to the internal `expand-promptcuts` manifest key and
+`bangcuts` to `expand-bang-commands`. Those internal keys stay stable for
+existing user-layer YAML.
+
+For hooks without a public feature name, use the internal manifest key. The
+equivalent low-level user-layer YAML remains supported:
 
 ```yaml
 # ~/.agents/agents.yaml
@@ -164,23 +177,9 @@ hooks:
     enabled: false
 ```
 
-Then `agents sync` so version homes pick up the change.
-
-**Re-enable an opt-in hook** (e.g. `expand-bang-commands`, default off in 0.2.0):
-
-```yaml
-# ~/.agents/agents.yaml
-hooks:
-  expand-bang-commands:
-    override: true
-    events: [UserPromptSubmit]
-    script: user-prompt-submit/02-expand-prompt-bang-commands.sh
-    timeout: 10
-```
-
-A first-class `agents hooks enable|disable` CLI is planned; until then the YAML
-overlay is the supported path. Data-loss guards (`git-guard`, `rm-guard`,
-`large-file-add-guard`) should stay on unless you know why you're disabling them.
+Then `agents sync` so version homes pick up a manual YAML change. Data-loss
+guards (`git-guard`, `rm-guard`, `large-file-add-guard`) should stay on unless
+you know why you're disabling them.
 
 ## Layering
 
@@ -188,7 +187,7 @@ System (`~/.agents/.system/agents.yaml`), extra repos, and user (`~/.agents/agen
 merge with **user wins on key collision**. Same-named entry in the user repo replaces
 the system entry wholesale; set `override: true` to silence the shadowing warning.
 
-## Promptcuts
+## Promptcuts and bangcuts
 
 Type `#checkit`, `` `#checkit` ``, `!!checkit`, or `` `!!checkit` `` in a prompt
 and it expands into the full verification discipline. The `!!` form leaves `#`
@@ -199,6 +198,10 @@ agents-cli and the expand-promptcuts hook resolve that fixed path.
 
 - `~/.agents/.system/hooks/promptcuts.yaml` — system defaults
 - `~/.agents/hooks/promptcuts.yaml` — your shortcuts; user keys win
+
+Bangcuts execute backticked commands such as `` `! git status --short` `` in
+the local shell, concurrently when a prompt contains more than one, and inject
+their output in source order. Only use bangcuts with prompt text you trust.
 
 Run `python3 hooks/tests/benchmark_prompt_expansion.py` (or `py -3 ...` on
 Windows) to measure cold-process no-marker latency, promptcut expansion, and
