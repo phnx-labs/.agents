@@ -23,6 +23,7 @@ commands are often thin wrappers that only invoke a skill (harness-friendly).
 | [`/plan`](./plan.md) | Plan with grounded design — research, read code, create artifacts, optionally get early review |
 | [`/swarm`](./swarm.md) | Front door to the `swarm` plugin — fan work across parallel agents (`run` by default; or `plan` / `spec` / `debug`) |
 | [`/debug`](./debug.md) | Trace the data path, hypothesize a root cause, then have independent agents confirm it before any fix (routes to `swarm:debug`) |
+| [`/blame`](./blame.md) | Trace a regression — a feature that worked and silently broke — to the culprit change, the removed/skipped test that let it through, and the agent/session behind it. Read-only forensics, no fix |
 | [`/clean`](./clean.md) | Identify and clean up technical debt, outdated code, and duplicates |
 
 Multi-agent plan/spec/debug live under `/swarm …` and `/swarm:plan` / `/swarm:spec` /
@@ -76,11 +77,7 @@ re-deriving the tracker or duplicating a sibling agent's in-flight work. Easy to
 
 ## Observe
 
-| Command | What it does |
-|---|---|
-| [`/output`](./output.md) | Fleet-wide token-burn and output report across every device, rendered as an HTML dashboard and PDF |
-
-Machine profiling moved to [`/fleet:profile`](../plugins/fleet/README.md); durable watchers are the `agents monitors` CLI + the [`monitors` skill](../skills/README.md).
+The fleet token-burn / output report moved to [`/work:output`](../plugins/work/README.md); machine profiling to [`/fleet:profile`](../plugins/fleet/README.md); durable watchers are the `agents monitors` CLI + the [`monitors` skill](../skills/README.md).
 
 ## Related
 
