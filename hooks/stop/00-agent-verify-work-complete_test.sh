@@ -156,6 +156,23 @@ mk_transcript() {
         echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_sh1","name":"Bash","input":{"command":"cat > /tmp/deploy.sh <<EOF\n#!/usr/bin/env bash\nrush deploy\nEOF\nchmod +x /tmp/deploy.sh"}}]}}'
         echo '{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_sh1","content":[{"type":"text","text":"wrote /tmp/deploy.sh"}]}]}}'
         ;;
+      browser)
+        echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_b1","name":"Bash","input":{"command":"agents browser open https://example.test/app"}}]}}'
+        echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_b2","name":"Bash","input":{"command":"agents browser screenshot"}}]}}'
+        ;;
+      research)
+        echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_r1","name":"Read","input":{"file_path":"/repo/src/widget.ts"}}]}}'
+        echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_r2","name":"Grep","input":{"pattern":"Widget","path":"/repo"}}]}}'
+        ;;
+      ticket-create)
+        echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_t1","name":"Bash","input":{"command":"linear create --title widget-follow-up"}}]}}'
+        ;;
+      review-submit)
+        echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_rev1","name":"Bash","input":{"command":"gh pr review https://github.com/acme/widgets/pull/42 --approve"}}]}}'
+        ;;
+      repo-write)
+        echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_edit1","name":"Edit","input":{"file_path":"/repo/src/widget.ts","old_string":"old","new_string":"new"}}]}}'
+        ;;
     esac
     echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"step 2"}]}}'
     echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"step 3"}]}}'
@@ -227,6 +244,30 @@ check "stop_hook_active bypasses gate" "$rc" "0"
 T2=$(mk_transcript review)
 rc=$(FAKE_GH_STATE=OPEN run_hook "$T2" "Review finished, feedback posted." false)
 check "reviewing someone else's PR does not block" "$rc" "0"
+
+# 6a. Positive non-code outcomes must not be converted into code delivery merely
+# because their final message uses completion language inside a Git cwd.
+TBROWSER=$(mk_transcript browser)
+rc=$(FAKE_GH_STATE=MERGED run_hook "$TBROWSER" "Done. The external app record is present and the screenshot verifies it." false)
+check "browser-only completion does not trigger code delivery" "$rc" "0"
+
+TRESEARCH=$(mk_transcript research)
+rc=$(FAKE_GH_STATE=MERGED run_hook "$TRESEARCH" "Done. The diagnostic found the parser boundary and cited the source." false)
+check "read-only diagnostic completion does not trigger code delivery" "$rc" "0"
+
+TTICKET=$(mk_transcript ticket-create)
+rc=$(FAKE_GH_STATE=MERGED run_hook "$TTICKET" "Done. The requested implementation ticket is open with full context." false)
+check "ticket creation does not demand closing the requested ticket" "$rc" "0"
+
+TREVIEW=$(mk_transcript review-submit)
+rc=$(FAKE_GH_STATE=OPEN run_hook "$TREVIEW" "Done. I submitted the review; the author's PR remains open." false)
+check "review-only completion does not inherit merge ownership" "$rc" "0"
+
+# 6b. A tracked repository write is positive delivery evidence even without a
+# PR, so a done claim still receives the delivery/self-audit gates.
+TWRITE=$(mk_transcript repo-write)
+rc=$(FAKE_GH_STATE=MERGED run_hook "$TWRITE" "All done. The widget behavior is complete." false)
+check "repository mutation keeps delivery completion gates active" "$rc" "2"
 
 # 7. Session created pull/42 (merged) AND viewed someone else's pull/99 (open)
 #    -> allow: the viewed PR must not be attributed to this session
