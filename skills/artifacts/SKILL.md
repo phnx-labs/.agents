@@ -34,8 +34,9 @@ output format; every kind can compile to HTML and PDF.
    If `artifacts` is missing, report that concrete prerequisite. Do not replace
    it with a hand-written HTML fallback.
 
-2. Write the Markdown source directly. The only required frontmatter is `kind`
-   (plan, report, or visual) and `title`; `template` is inferred and provenance
+2. Write the Markdown source directly. Every artifact requires `kind` (plan,
+   report, or visual) and `title`; plans also require `surface` (`internal`,
+   `cli`, `web`, `native`, `api`, or `workflow`). `template` is inferred and provenance
    (project, repository, branch, harness, agent, human, host, session, date)
    auto-fills at render time from the Git checkout and agent environment.
    Declared values always win — declare `links`, `tracking`, `status`, `facts`,
@@ -66,11 +67,13 @@ output format; every kind can compile to HTML and PDF.
    [references/authoring.md](references/authoring.md)
    before adding HTML or SVG.
 
-   **Plans are figure-gated.** A prose-only plan fails with
-   `No SVG figure found` and **no HTML is written**. Make the plan pleasant:
-   add a live inline SVG visualization (architecture / before-after / flow).
-   Load **plan-render** or this skill's diagram recipe when stuck. Tables,
-   fenced commands, and an `artifact-callout` warn if missing.
+   **Plans are surface-gated.** An `internal` plan needs a live drawn SVG. Every
+   user-visible surface needs a product-faithful `.artifact-behavior` figure with
+   current and proposed states; label each state as a real `capture` or a faithful
+   `mockup`. An architecture diagram does not substitute for CLI/UI/API behavior.
+   Validation errors prevent HTML output. Load **plan-render** or this skill's
+   diagram recipe when stuck. Tables, fenced commands, and an `artifact-callout`
+   warn if missing.
 
 3. Render in one step:
 

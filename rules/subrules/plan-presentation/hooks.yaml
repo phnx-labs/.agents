@@ -2,14 +2,21 @@
 # hook manifest (collectSubruleHooks) and registers it as a PreToolUse guard. The
 # script resolves relative to this directory.
 #
-# One entry: fires on ExitPlanMode. If no fresh plan HTML was rendered this session,
-# it blocks the tool once with a reminder to render the plan (plan-render skill) and
-# open it on the user's Mac — then the agent renders and re-calls ExitPlanMode, which
-# now passes. Self-terminating; never loops.
+# Two entries share one script: PreToolUse catches native plan-exit tools early;
+# Stop catches Codex and other harnesses whose plan mode has no exit tool. If no
+# fresh valid plan HTML was rendered, it blocks once with a concrete correction.
 # Co-located with this subrule (NOT under hooks/<event>/). agents-cli
 # collectSubruleHooks rewrites script: to an absolute path under this dir.
 plan-html-reminder:
   script: plan-html-reminder.sh
   events: [PreToolUse]
   matcher: "ExitPlanMode"
+  timeout: 5
+
+# Codex plan mode is collaboration state, not an ExitPlanMode tool call. Stop is
+# the common completion seam across every hooks-capable harness; the script
+# inspects the final response/transcript and exits immediately for non-plan turns.
+plan-html-stop-reminder:
+  script: plan-html-reminder.sh
+  events: [Stop]
   timeout: 5

@@ -1,5 +1,5 @@
 #!/bin/sh
-# Tests for plan-html-reminder.sh — the ExitPlanMode plan-render gate.
+# Tests for plan-html-reminder.sh — cross-harness plan presentation gate.
 # Run: sh plan-html-reminder_test.sh   (no mocks; drives the real hook via stdin)
 set -eu
 
@@ -38,6 +38,32 @@ write_figure_html() {
 </svg></figure>
 </body></html>
 HTML
+  write_source "$1" internal
+}
+
+write_source() {
+  html=$1; surface=$2
+  source=${html%.html}.md
+  cat > "$source" <<EOF
+---
+kind: plan
+surface: $surface
+---
+
+## Purpose
+EOF
+}
+
+write_behavior_html() {
+  cat > "$1" <<'HTML'
+<!doctype html><html><body>
+<figure class="artifact-figure artifact-behavior">
+  <section data-state="current" data-evidence="capture"><pre>current output</pre></section>
+  <section data-evidence="mockup" data-state="proposed"><pre>proposed output</pre></section>
+</figure>
+</body></html>
+HTML
+  write_source "$1" cli
 }
 
 # 2. ExitPlanMode after a fresh plan HTML WITH a drawn SVG -> ALLOW (exit 0).
@@ -49,7 +75,19 @@ run 0 "ExitPlanMode, canonical plan-<slug>.html with SVG figure -> allow" "$EPM"
 rm -f "$SCAN"/*.html
 printf '%s\n' '<!doctype html><html><body><h1>Prose only</h1><p>no figure</p></body></html>' \
   > "$SCAN/plan-prose-only.html"
+write_source "$SCAN/plan-prose-only.html" internal
 run 2 "ExitPlanMode, fresh prose-only plan HTML (no svg) -> block" "$EPM"
+
+# 2c. A user-visible plan cannot borrow an unrelated architecture SVG.
+rm -f "$SCAN"/*
+write_figure_html "$SCAN/plan-cli-architecture.html"
+write_source "$SCAN/plan-cli-architecture.html" cli
+run 2 "CLI plan, architecture SVG without behavior states -> block" "$EPM"
+
+# 2d. A current capture + proposed faithful mockup satisfies the behavior gate.
+rm -f "$SCAN"/*
+write_behavior_html "$SCAN/plan-cli-behavior.html"
+run 0 "CLI plan, current/proposed capture-or-mockup evidence -> allow" "$EPM"
 
 # 3. ExitPlanMode with the scratchpad <slug>-plan.html convention (nested) -> ALLOW.
 rm -f "$SCAN"/*.html
@@ -86,6 +124,25 @@ run 0 "Grok exit_plan_mode, fresh plan html with SVG -> allow" \
 rm -f "$SCAN"/*.html 2>/dev/null || true
 run 0 "Grok camelCase run_terminal_command, no plan html -> allow (not blocked)" \
   '{"toolName":"run_terminal_command","toolInput":{"command":"npm test"}}'
+
+# --- Stop backstop: Codex plan mode has no ExitPlanMode tool ------------------
+CODEX_TX="$SCAN/codex-plan.jsonl"
+printf '%s\n' '{"type":"turn_context","payload":{"collaboration_mode":{"mode":"plan"}}}' > "$CODEX_TX"
+rm -f "$SCAN"/plan-*.html "$SCAN"/plan-*.md
+run 2 "Codex Stop in plan collaboration mode, no render -> block" \
+  '{"hook_event_name":"Stop","transcript_path":"'"$CODEX_TX"'","last_assistant_message":"<proposed_plan>plan</proposed_plan>"}'
+
+write_behavior_html "$SCAN/plan-codex.html"
+run 0 "Codex Stop in plan collaboration mode, valid behavior render -> allow" \
+  '{"hook_event_name":"Stop","transcript_path":"'"$CODEX_TX"'","last_assistant_message":"<proposed_plan>plan</proposed_plan>"}'
+
+rm -f "$SCAN"/plan-*.html "$SCAN"/plan-*.md
+printf '%s\n' '{"type":"turn_context","payload":{"collaboration_mode":{"mode":"default"}}}' > "$CODEX_TX"
+run 0 "ordinary Codex Stop, no render -> allow" \
+  '{"hook_event_name":"Stop","transcript_path":"'"$CODEX_TX"'","last_assistant_message":"A normal answer."}'
+
+run 0 "recursive Stop hook invocation -> allow" \
+  '{"hook_event_name":"Stop","stop_hook_active":true,"last_assistant_message":"<proposed_plan>plan</proposed_plan>"}'
 
 # --- Repo-root artifact path (no PLAN_HTML_SCAN_ROOT override) -----------------
 # When the env override is absent, the hook resolves the repo root and scans

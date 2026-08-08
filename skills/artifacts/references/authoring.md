@@ -137,7 +137,7 @@ For `kind: plan`, validation is not optional chrome:
 
 | Check | Level | Rule |
 | --- | --- | --- |
-| Live drawn SVG | **error** | `No SVG figure found.` Add a visualization as live inline SVG. Skills: **plan-render**, **artifacts**. |
+| Plan surface | **error** | Declare `surface: internal|cli|web|native|api|workflow`. Internal plans need a live drawn SVG; user-visible plans need a semantic current/proposed `.artifact-behavior` figure with capture-or-mockup evidence. |
 | Markdown table | warning | At least one `| … |` table (files, risks, validation) |
 | Fenced code | warning | At least one fenced code block — commands belong here, not only as inline pills |
 | `artifact-callout` | warning | One load-bearing takeaway for the reviewer |
