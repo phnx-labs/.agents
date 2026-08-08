@@ -11,7 +11,7 @@ bodies) still get the full procedure.
 
 | Skill | Use when |
 | --- | --- |
-| `sessions:continue` | Resume one (or a group of) prior session(s) **in this window** — load transcript, verify what landed, finish the work. Reattach only on a genuine live interactive signal. Also the engine behind post-crash **finish-headlessly** recovery (`/recover`). |
+| `sessions:continue` | Resume one (or a group of) prior session(s) **in this window** — load transcript, verify what landed, finish the work. Reattach only on a genuine live interactive signal. Also the engine behind post-crash **finish-headlessly** recovery (`/continue recover`). |
 | `sessions:insights` | Analyze how you and your agents work. **Conductor** over `agents insights`, `agents trends`, `agents perf`, and `agents sessions stats` — returns evidence-backed actions. No separate `/trends` or `/perf` plugin commands. |
 | `sessions:restore` | Re-open sessions killed by a crash/reboot as **terminal windows**, each resuming its real transcript. Not "finish the work here". |
 
@@ -30,7 +30,6 @@ bodies) still get the full procedure.
 | `/continue` | `sessions:continue` |
 | `/insights` | `sessions:insights` |
 | `/restore` | `sessions:restore` |
-| `/recover` | `sessions:continue` in recover mode (many interrupted sessions; prefer finish over resurrect) |
 
 The low-level browse/search skill remains the top-level [`sessions`](../../skills/sessions/SKILL.md)
 skill (`agents sessions` CLI). This plugin does not replace it — it adds lifecycle +
@@ -39,10 +38,10 @@ analytics verbs on top.
 ## How the three verbs differ
 
 ```
-continue  →  this agent finishes the work (here; group-capable)
-recover   →  continue in multi-session crash mode (still finish, not windows)
-restore   →  put the original windows back
-insights  →  orchestrate local analytics engines → actions
+continue          →  this agent finishes the work (here; group-capable)
+continue recover  →  continue in multi-session crash mode (still finish, not windows)
+restore           →  put the original windows back
+insights          →  orchestrate local analytics engines → actions
 ```
 
 ## Requirements

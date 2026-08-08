@@ -1,5 +1,5 @@
 ---
-description: Alias for /sessions:continue — resume previous work in this session; reattach only if genuinely live
+description: Alias for /sessions:continue — resume previous work in this session; also finishes crashed/interrupted sessions headlessly via `recover` mode. Reattach only if genuinely live.
 ---
 
 **`/continue` is an alias of `/sessions:continue`.** There is one continue procedure, defined
