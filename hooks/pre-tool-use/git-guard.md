@@ -165,6 +165,7 @@ agent drift*, not a malicious actor.
 | `config` with `--get*` / `--list` / `-l` / `--show-*` / `-h` | allow | Read-only |
 | `config` otherwise | DENY | Writes |
 | `push` with `--force` / `-f` | DENY | `--force-with-lease` allowed |
+| `push` with `--delete` / `-d` / a leading-colon refspec (`:branch`) | DENY | Deletes a remote branch (can drop unmerged commits). A *merged* PR branch is cleaned up by `gh pr merge --delete-branch`, which is allowed |
 | `merge --abort` | DENY | |
 | `worktree remove <path>` | conditional | Allowed iff `<path>` is clean AND has no commits ahead of upstream. `--force` always denied |
 | Other git subcommands | allow | `status`, `diff`, `log`, `add`, `commit`, `push`, `pull`, `fetch`, `worktree add`, `worktree list`, … |
@@ -240,6 +241,8 @@ test harness). Highlights:
 | 5 | `git -C /tmp status --porcelain` | allow | allow |
 | 6 | `git push --force origin main` | deny | deny |
 | 7 | `git push --force-with-lease origin main` | allow | allow |
+| 7a | `git push origin --delete foo` / `git push origin :foo` | deny | deny |
+| 7b | `git push origin HEAD:refs/heads/main` *(normal refspec)* | allow | allow |
 | 8 | `ls -la && git -C /tmp reset --hard` *(chain)* | deny | deny |
 | 9 | `FOO=bar git -C /tmp rebase origin/main` *(env prefix)* | deny | deny |
 | 10 | `git config --get user.name` | allow | allow |
