@@ -45,6 +45,22 @@ if [ -z "${TRANSCRIPT_PATH:-}" ] || [ ! -f "$TRANSCRIPT_PATH" ]; then
   exit 0
 fi
 
+# Materialize this hook's session-owned state during the Stop invocation that
+# already pays transcript-processing cost. Ordinary tool calls incur no new
+# process or SQLite latency. State errors are guidance failures, never blockers.
+state_eval=$(printf '%s' "$INPUT_JSON" | python3 "$HERE/verify-work-state.py" evaluate 2>/dev/null || echo '{}')
+eval "$(printf '%s' "$state_eval" | python3 -c '
+import json, shlex, sys
+try:
+    data = json.load(sys.stdin)
+except Exception:
+    data = {}
+print("STATE_DELIVERY_EVIDENCE=" + shlex.quote("yes" if data.get("delivery_evidence") is True else "no"))
+print("STATE_CONTEXT_KIND=" + shlex.quote(str(data.get("context_kind") or "unknown")))
+failed = bool(data.get("state_error")) or not isinstance(data.get("delivery_evidence"), bool)
+print("STATE_EVAL_FAILED=" + shlex.quote("yes" if failed else "no"))
+' 2>/dev/null || printf '%s\n' 'STATE_DELIVERY_EVIDENCE=no' 'STATE_CONTEXT_KIND=unknown' 'STATE_EVAL_FAILED=yes')"
+
 # --- repeated-gate guidance --------------------------------------------------
 # Repeating the identical block text eventually stops adding information. On a
 # 3rd+ matching fire, keep the proof standard unchanged but remind the agent to
@@ -794,13 +810,14 @@ except Exception:
 print('yes' if seen else 'no')
 " "$TRANSCRIPT_PATH" 2>/dev/null || echo "no")
 
-# Decide whether this stop is the end of a delivery.
-#   - Claiming done -> delivery gate.
-#   - Created/worked a PR, or ran gh/git delivery activity, and the final
-#     message treats merge/release as the finish line -> delivery gate (the
-#     open-PR gate already handled OPEN PRs).
+# Decide whether this stop is the end of a delivery. Completion wording and a
+# Git cwd are not evidence: the delivery chain runs only when this session
+# positively mutated a repo, authored/operated a PR, or started a deployment.
+# If state evaluation itself fails, preserve the prior done-claim enforcement;
+# state can improve precision but can never weaken an existing safety gate.
+# Created/worked PR evidence remains as an independent precision backstop.
 delivery_trigger="no"
-if [ "$is_claiming_done" = "yes" ]; then
+if [ "$is_claiming_done" = "yes" ] && { [ "${STATE_DELIVERY_EVIDENCE:-no}" = "yes" ] || [ "${STATE_EVAL_FAILED:-yes}" = "yes" ]; }; then
   delivery_trigger="yes"
 elif [ -n "$responsible_prs" ] || [ "$delivery_activity" = "yes" ]; then
   has_merge_phrase=$(echo "$INPUT_JSON" | python3 -c "
@@ -817,8 +834,8 @@ print('yes' if any(re.search(p, msg) for p in pats) else 'no')
   fi
 fi
 
-# Neither a done claim nor a PR finish line -> allow stop (answering a question, etc.)
-if [ "$delivery_trigger" != "yes" ]; then
+# Neither a done claim nor a PR finish line needs any later completion gate.
+if [ "$delivery_trigger" != "yes" ] && [ "$is_claiming_done" != "yes" ]; then
   exit 0
 fi
 
@@ -852,6 +869,8 @@ fi
 # PR title/body, and commit messages for Linear ticket ids, then checks whether
 # they are still open and whether the delivery artifacts exist. It fails open:
 # any probe error allows the stop.
+delivery_gate_msg=""
+if [ "$delivery_trigger" = "yes" ]; then
 delivery_gate_msg=$(python3 - "$INPUT_JSON" "$responsible_prs" <<'PY' | python3 "$HERE/verify-delivery-chain.py" 2>/dev/null
 import json, sys
 data = json.loads(sys.argv[1])
@@ -861,6 +880,7 @@ data["delivery_activity"] = True
 print(json.dumps(data))
 PY
 )
+fi
 
 if [ -n "$delivery_gate_msg" ]; then
   echo "$delivery_gate_msg" >&2
@@ -872,6 +892,16 @@ fi
 if [ "$is_claiming_done" != "yes" ]; then
   exit 0
 fi
+
+# A positively observed non-code outcome has its own completion evidence and
+# must not be converted into a code delivery or generic goal audit merely
+# because the final answer says "done". Unknown/no-action claims still reach the
+# audit below, preserving the guard against an agent that did nothing and quit.
+case "${STATE_CONTEXT_KIND:-unknown}" in
+  browser-external|ticket-creation|review-only|research-diagnostic)
+    exit 0
+    ;;
+esac
 
 # Extract the first few GENUINE user messages from the transcript. "Genuine"
 # excludes harness noise that also carries role=user: `!`-prefix shell runs and
