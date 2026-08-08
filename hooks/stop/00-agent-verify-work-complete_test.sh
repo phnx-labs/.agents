@@ -15,6 +15,7 @@ HOOK="$HERE/00-agent-verify-work-complete.sh"
 
 SANDBOX="$(mktemp -d)"
 trap 'rm -rf "$SANDBOX"' EXIT
+export VERIFY_WORK_STATE_DB="$SANDBOX/verify-work-state.db"
 
 # --- gh stub ---------------------------------------------------------------
 mkdir -p "$SANDBOX/bin"
@@ -156,6 +157,23 @@ mk_transcript() {
         echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_sh1","name":"Bash","input":{"command":"cat > /tmp/deploy.sh <<EOF\n#!/usr/bin/env bash\nrush deploy\nEOF\nchmod +x /tmp/deploy.sh"}}]}}'
         echo '{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_sh1","content":[{"type":"text","text":"wrote /tmp/deploy.sh"}]}]}}'
         ;;
+      browser)
+        echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_b1","name":"Bash","input":{"command":"agents browser open https://example.test/app"}}]}}'
+        echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_b2","name":"Bash","input":{"command":"agents browser screenshot"}}]}}'
+        ;;
+      research)
+        echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_r1","name":"Read","input":{"file_path":"/repo/src/widget.ts"}}]}}'
+        echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_r2","name":"Grep","input":{"pattern":"Widget","path":"/repo"}}]}}'
+        ;;
+      ticket-create)
+        echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_t1","name":"Bash","input":{"command":"linear create --title widget-follow-up"}}]}}'
+        ;;
+      review-submit)
+        echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_rev1","name":"Bash","input":{"command":"gh pr review https://github.com/acme/widgets/pull/42 --approve"}}]}}'
+        ;;
+      repo-write)
+        echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_edit1","name":"Edit","input":{"file_path":"/repo/src/widget.ts","old_string":"old","new_string":"new"}}]}}'
+        ;;
     esac
     echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"step 2"}]}}'
     echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"step 3"}]}}'
@@ -227,6 +245,30 @@ check "stop_hook_active bypasses gate" "$rc" "0"
 T2=$(mk_transcript review)
 rc=$(FAKE_GH_STATE=OPEN run_hook "$T2" "Review finished, feedback posted." false)
 check "reviewing someone else's PR does not block" "$rc" "0"
+
+# 6a. Positive non-code outcomes must not be converted into code delivery merely
+# because their final message uses completion language inside a Git cwd.
+TBROWSER=$(mk_transcript browser)
+rc=$(FAKE_GH_STATE=MERGED run_hook "$TBROWSER" "Done. The external app record is present and the screenshot verifies it." false)
+check "browser-only completion does not trigger code delivery" "$rc" "0"
+
+TRESEARCH=$(mk_transcript research)
+rc=$(FAKE_GH_STATE=MERGED run_hook "$TRESEARCH" "Done. The diagnostic found the parser boundary and cited the source." false)
+check "read-only diagnostic completion does not trigger code delivery" "$rc" "0"
+
+TTICKET=$(mk_transcript ticket-create)
+rc=$(FAKE_GH_STATE=MERGED run_hook "$TTICKET" "Done. The requested implementation ticket is open with full context." false)
+check "ticket creation does not demand closing the requested ticket" "$rc" "0"
+
+TREVIEW=$(mk_transcript review-submit)
+rc=$(FAKE_GH_STATE=OPEN run_hook "$TREVIEW" "Done. I submitted the review; the author's PR remains open." false)
+check "review-only completion does not inherit merge ownership" "$rc" "0"
+
+# 6b. A tracked repository write is positive delivery evidence even without a
+# PR, so a done claim still receives the delivery/self-audit gates.
+TWRITE=$(mk_transcript repo-write)
+rc=$(FAKE_GH_STATE=MERGED run_hook "$TWRITE" "All done. The widget behavior is complete." false)
+check "repository mutation keeps delivery completion gates active" "$rc" "2"
 
 # 7. Session created pull/42 (merged) AND viewed someone else's pull/99 (open)
 #    -> allow: the viewed PR must not be attributed to this session
@@ -503,6 +545,14 @@ grep -q "RUSH-5678" "$SANDBOX/stderr" && echo "ok   - delivery gate cites relate
 # D8. Plain question (no done-claim, no PR) -> delivery gate must NOT fire.
 rc=$(run_hook "$TSHORT" "The config looks valid." false)
 check "plain question does not fire delivery gate" "$rc" "0"
+
+# D8b. State is a precision aid, not a safety dependency. If its schema cannot
+# be read, a done claim retains the pre-state delivery-chain enforcement.
+STATE_MISMATCH="$SANDBOX/state-mismatch.db"
+sqlite3 "$STATE_MISMATCH" "create table meta(key text primary key,value text not null); insert into meta values('schema_version','999');"
+rc=$(VERIFY_WORK_STATE_DB="$STATE_MISMATCH" FAKE_GIT_BRANCH=feature/RUSH-1234 FAKE_LINEAR_STATE=Todo run_hook "$TWRITE" "All done. The widget is complete." false)
+check "state evaluation failure preserves delivery enforcement" "$rc" "2"
+grep -q "STOP GATE (delivery)" "$SANDBOX/stderr" && echo "ok   - state failure reaches delivery gate" || { echo "FAIL - state failure weakened delivery gate"; fail=1; }
 
 # D9. Probe error (linear crashes/returns garbage) -> fail open.
 cat > "$SANDBOX/bin/linear" <<'STUB'

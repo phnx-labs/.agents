@@ -57,6 +57,25 @@ in **one** script.
 A hook with a `cache:` entry is wrapped in a generated shim (timing + optional SWR).
 Without `cache:`, the profiler cannot see it.
 
+## Hook-owned session state
+
+Programmable hooks own their logical state; agents-cli does not expose a generic
+state command or interpret hook schemas. Use this layout consistently:
+
+- Durable state: `~/.agents/.history/hooks/<stable-hook-id>/state.db`.
+- Disposable state: `~/.agents/.cache/state/hooks/<stable-hook-id>/`.
+- Stable hook ids are logical resource identities, never installed/version-home paths.
+- Key session rows by harness + native `session_id`; record `AGENT_LAUNCH_ID` as
+  a provisional alias and reconcile it when the native id arrives.
+- Each hook owns its SQLite schema and transactional migrations. Use WAL, private
+  permissions, a short busy timeout, bounded retention, and fail without exposing
+  raw database errors to the harness.
+- Never persist raw prompts, transcripts, commands, tool output, or credentials.
+
+Do not add one generic database per hook invocation or put non-derivable hook state
+only in `sessions.db`; that database is a rebuildable session index. A hook may have
+one namespaced database per device when it genuinely needs durable state.
+
 ## One script is present but never fires
 
 `user-prompt-submit/02-expand-prompt-skill-refs.py` has no entry in `../agents.yaml`

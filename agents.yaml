@@ -38,6 +38,13 @@ hooks:
       - Stop
     script: stop/00-agent-verify-work-complete.sh
     timeout: 20
+  verify-work-goal-boundary:
+    # Persists only a SHA-256 prompt fingerprint + session/launch identity in
+    # verify-work-complete's hook-owned SQLite DB. No prompt text is retained.
+    events:
+      - UserPromptSubmit
+    script: user-prompt-submit/04-verify-work-state.py
+    timeout: 2
   inject-repo-inflight:
     events:
       - SessionStart
