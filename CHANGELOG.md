@@ -10,6 +10,10 @@
 
 - **A "what earns a command or skill" philosophy in the maintenance contract.** The top-level `AGENTS.md` now states the bar for the command/skill surface: add only a *fundamental operation* (not a variant — those are modes/arguments of an existing one), make it general across *all* work not just code, and write it concretely enough that a *weak* model can execute it step by step. Source: `AGENTS.md`.
 
+### Fixed
+
+- **`usage-refresh` routine drops from every 1 minute to every 5 minutes (RUSH-2451).** The routine's own cadence gate already refreshes each account on a fixed 5-minute internal schedule, so the 1-minute cron was checking 5x more often than any account could ever be due — each check a full `agents __daemon-tick usage-refresh` CLI subprocess spawn. Source: `routines/usage-refresh.yml`.
+
 ### Changed
 
 - **`reflect` skill consolidated into the self plugin.** The flat top-level `skills/reflect` moved to `plugins/self/skills/reflect` (now the `self:reflect` skill), so the skill lives with its `/self:reflect` command instead of floating in the shared `skills/` list. Source: `plugins/self/skills/reflect/`, `plugins/self/commands/reflect.md`, `plugins/self/README.md`, `skills/README.md`.
