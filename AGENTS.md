@@ -31,12 +31,13 @@ that it stays trustworthy while doing it.
   the user must both be able to reason about what a change will do *before* it runs. Fail
   closed, make the safe action the easy one, and never trade manageability for a one-off win.
 - **Protect what can't be undone.** Autonomy stops at irreversible loss. An agent may remove
-  its own worktree freely, but it must **never delete a branch — local or remote**; accidental
-  branch deletion has lost real work. Local deletion is already denied (permission groups +
-  git-guard); the git-guard is being extended to the remote vectors (`git push --delete`,
-  `gh pr merge --delete-branch`) so the ban is complete. Never add a permission or guardrail
-  exception that re-enables it, and when you weigh a new capability, ask what it destroys if
-  it fires wrongly.
+  its own worktree freely, but it must **never delete a branch that could still hold unmerged
+  work**. The git-guard denies the dangerous forms — local `git branch -d/-D` and remote
+  `git push --delete` / `git push <remote> :<branch>` — because they can drop commits that
+  never landed. Deleting an *already-merged* PR branch loses nothing, so
+  `gh pr merge --delete-branch` stays allowed. Never add a permission or guardrail exception
+  that re-enables the dangerous forms, and when you weigh a new capability, ask what it
+  destroys if it fires wrongly.
 
 ## The two-file convention
 

@@ -242,6 +242,14 @@ check_segment() {
             deny_reason="git push --force is denied. Use --force-with-lease."
             report_friction "git.push-force" "$deny_reason"
             return 1 ;;
+          --delete|-d)
+            deny_reason="git push $a deletes a remote branch; branch deletion is banned. A merged PR branch is cleaned up with gh pr merge --delete-branch, which is allowed."
+            report_friction "git.push-delete" "$deny_reason"
+            return 1 ;;
+          :*)
+            deny_reason="git push with a leading-colon refspec ($a) deletes a remote branch; branch deletion is banned."
+            report_friction "git.push-delete" "$deny_reason"
+            return 1 ;;
         esac
       done
       return 0
