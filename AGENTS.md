@@ -100,7 +100,7 @@ the model decides its `description` matches; a command fires when the user types
 Those are different doors, and a skill with no command can only be reached by asking the
 agent nicely. Add `commands/<name>.md` (or `plugins/<p>/commands/<name>.md`) that routes
 to the skill — the command stays thin, the behavior stays in the skill, and they never
-fork (see the `/commit` → `/code:commit` alias pattern).
+fork (see the `/continue` → `/sessions:continue` alias pattern).
 
 **But the command is an accelerator, never the only door.** Commands are not universal
 across harnesses, and skills very nearly are. From the capability table

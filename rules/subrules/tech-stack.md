@@ -10,7 +10,7 @@
 | Interactive terminal (REPLs, TUIs) | `agents pty` — see `agents pty --help` |
 | Parallel coding agents | `agents teams` — see `parallel-teams` |
 | Credentials | `agents secrets` — OS keychain-backed |
-| Release/publish | `release` skill |
+| Release/publish | `/code:release` (the `code:release` skill) |
 | See what's already in flight (open PRs, live sessions) before taking work | auto-injected at session start (`inject-repo-inflight` hook); on demand: `gh pr list`, `agents sessions --active` |
 
 ## Charts in rendered artifacts

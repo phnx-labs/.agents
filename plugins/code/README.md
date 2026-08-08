@@ -8,10 +8,11 @@ better documented than you found it.
 
 | Skill | Use when |
 | --- | --- |
-| `code:loop` | A queue of work — one ticket, many tickets, a label, a markdown checklist, repo TODOs, or a single branch/PR to land — needs taking end-to-end: plan, code, test, review, rebase, fix CI, merge (and route to `/release`, for distributables). The top-level engineering loop; composes the skills below, the `agents` CLI primitives, and top-level `/release` instead of reimplementing them. |
+| `code:loop` | A queue of work — one ticket, many tickets, a label, a markdown checklist, repo TODOs, or a single branch/PR to land — needs taking end-to-end: plan, code, test, review, rebase, fix CI, merge (and route to `/code:release`, for distributables). The top-level engineering loop; composes the skills below, the `agents` CLI primitives, and `/code:release` instead of reimplementing them. |
 | `code:review` | Three modes on one skill. Default (no args): recap the session's goal, discover every PR it opened, review each with a sub-agent and act on the verdicts (merge / request-changes / close). Given PR number(s): a deep cold review of just those, with file:line grounding, an architecture rubric (reuse of primitives, cross-cutting at the source, no duplicate surfaces, doc-asserted invariants), and a security pass on risk-touching diffs. Given `repo` / a path / `--since`: a read-only whole-repo architecture-and-quality diagnostic — HTML report, ranked findings, never a merge verdict. |
 | `code:learn` | A coding session just finished, or you need to learn a codebase cold. Learns the structure, entry points, architecture, and non-obvious invariants, then writes what a future agent would otherwise re-derive into the project's own `AGENTS.md` — the primary durable output. Secondarily routes a genuinely durable coding-*workflow* lesson (about the loop itself, not the project) to the right `code:*` skill. |
 | `code:commit` | Split changes into the maximum number of small logical commits (one concept per commit) and push in the background. |
+| `code:release` | Publish a package/CLI/app to its registry — discover the repo's real release process, run tests, changelog, publish, tag, verify live. Invoked via `/code:release`. |
 
 ## Where verify/ship/quality went
 
@@ -21,9 +22,8 @@ skills. They're gone, not renamed:
 - **`code:verify`** — folded back into `code:loop` as an inline step. Verification is
   identifying the changed surfaces yourself and running each one's canonical test with
   quoted output — it never needed a dedicated skill call.
-- **`code:ship`** — replaced by the top-level **`/release`** command (the `release` skill).
-  Publishing a distributable isn't a code-plugin concern; it's the general release flow
-  every repo needs, coding-workflow or not.
+- **`code:ship`** — replaced by **`/code:release`** (the `code:release` skill).
+  Publishing a distributable lives in the code plugin as `/code:release`.
 - **`code:quality`** — became `code:review`'s third mode (`repo` / a path / `--since`).
   The rubric was always the same one a PR review applies to a diff — reuse, cross-cutting
   at the source, no duplicate surfaces, doc-asserted invariants — just run over a whole
@@ -48,7 +48,7 @@ skills. They're gone, not renamed:
 2. Agent runs.
 3. Agent claims done → identify the changed surfaces and run each one's canonical test inline, quoting real output (F3's closing gate — see `code:loop`).
 4. PASS → `/code:review` the PR, then merge. FAIL → file the failing line back to the agent.
-5. Merged a **distributable** (extension / CLI / web app)? → top-level `/release` publishes it, confirms it's live for users, activates and verifies it. Merge is the middle, not the end.
+5. Merged a **distributable** (extension / CLI / web app)? → `/code:release` publishes it, confirms it's live for users, activates and verifies it. Merge is the middle, not the end.
 
 `/code:loop` drives steps 1-5 over a whole queue; the skills above are what it composes.
 `/code:review repo` (or a path, or `--since <date>`) runs outside this loop — invoke it any

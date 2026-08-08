@@ -84,7 +84,7 @@ Done means merged. Not "PR open." Not "tests green locally." Not "approved but n
 - **A readable transcript of the session that did the work**, so the reasoning is recoverable. Render it with `agents sessions <id> --markdown` (for a host/worker run, run that on the worker, or `agents hosts logs <name>`), then `gh gist create --secret <file>.md` and link the returned URL. **Secret gist, never inline and never public** — transcripts carry secrets, tokens, and internal paths, and the tracker is private.
 - For an **already-fixed** close with no new PR, cite the prior PR that shipped it **and verify that PR exists and is actually relevant** before trusting the close — an unverified "already done" is how a real gap gets buried. Self-corrections (marked Done early, re-opened, rebased) belong on the ticket too.
 
-For a **distributable, merged is the middle, not the end.** If the item ships a VS Code extension, a published CLI, or a deployed web app, users don't run the default branch — merge alone reaches nobody. Route it through top-level `/release` (the `release` skill): it discovers the repo's real release process and drives publish → confirm-live → tag → verify, end to end. "Merged" on a distributable without a release pass is a half-landed item; say so in the summary rather than calling it done.
+For a **distributable, merged is the middle, not the end.** If the item ships a VS Code extension, a published CLI, or a deployed web app, users don't run the default branch — merge alone reaches nobody. Route it through `/code:release` (the `code:release` skill): it discovers the repo's real release process and drives publish → confirm-live → tag → verify, end to end. "Merged" on a distributable without a release pass is a half-landed item; say so in the summary rather than calling it done.
 
 When the queue is empty (every item merged — and shipped, where it's a distributable — or parked with a note), you summarize. What landed, what shipped, what parked, what blocked. The summary is short and lets the user pick the next move.
 
@@ -121,7 +121,7 @@ The order matters: dedup first (a PR or session means the claim belongs to someo
 
 - **Inline verification** — before opening the PR, and again after the final push, identify the changed surfaces yourself and run each one's canonical test (the project's own `scripts/sandbox.sh test` / `bun test` / `go test ./...`, a health-endpoint `curl`, a UI screenshot). Quote the real output in your response — this is F3's closing gate, not a separate skill call.
 - `code:review` — the pre-merge review. Run it after CI is green; act on its verdict.
-- Top-level `/release` (the `release` skill) — the post-merge step for distributables (extensions, CLIs, web apps): discovers the repo's own release process and drives publish, confirm-live, tag, and verify end to end. Merge is not the terminal state for anything users install or visit.
+- `/code:release` (the `code:release` skill) — the post-merge step for distributables (extensions, CLIs, web apps): discovers the repo's own release process and drives publish, confirm-live, tag, and verify end to end. Merge is not the terminal state for anything users install or visit.
 - `code:commit` — the splitting / message-writing primitive when you stage work.
 - `agents teams` — the fanout primitive for disjoint parallel items.
 - `agents run --device <box>` — send one agent to a fleet box when the work belongs there.
