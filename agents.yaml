@@ -127,13 +127,13 @@ hooks:
   #     expand-bang-commands:
   #       override: true
   #       events: [UserPromptSubmit]
-  #       script: user-prompt-submit/02-expand-prompt-bang-commands.py
+  #       script: user-prompt-submit/02-expand-prompt-bang-commands.sh
   #       timeout: 10
   expand-bang-commands:
     enabled: false
     events:
       - UserPromptSubmit
-    script: user-prompt-submit/02-expand-prompt-bang-commands.py
+    script: user-prompt-submit/02-expand-prompt-bang-commands.sh
     timeout: 10
   vacation-recap:
     events:

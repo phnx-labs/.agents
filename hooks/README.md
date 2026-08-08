@@ -86,7 +86,7 @@ register time). See [§Subrule hooks](#subrule-hooks-rules-not-this-tree).
 | Hook | What it does |
 |---|---|
 | [`02-expand-prompt-user-shortcuts.sh`](./user-prompt-submit/02-expand-prompt-user-shortcuts.sh) | Expands `#shortcut` tokens from `promptcuts.yaml` |
-| [`02-expand-prompt-bang-commands.py`](./user-prompt-submit/02-expand-prompt-bang-commands.py) | Runs inline `` `!cmd` `` and injects output |
+| [`02-expand-prompt-bang-commands.sh`](./user-prompt-submit/02-expand-prompt-bang-commands.sh) | Runs inline `` `!cmd` `` blocks concurrently and injects their output |
 | [`03-vacation-recap.py`](./user-prompt-submit/03-vacation-recap.py) | On a long gap since the session's last prompt, reminds the agent to open with a back-from-vacation recap |
 
 ### `stop/` — Stop
@@ -174,7 +174,7 @@ hooks:
   expand-bang-commands:
     override: true
     events: [UserPromptSubmit]
-    script: user-prompt-submit/02-expand-prompt-bang-commands.py
+    script: user-prompt-submit/02-expand-prompt-bang-commands.sh
     timeout: 10
 ```
 
@@ -190,9 +190,15 @@ the system entry wholesale; set `override: true` to silence the shadowing warnin
 
 ## Promptcuts
 
-Type `#checkit` in a prompt and it expands into the full verification discipline.
+Type `#checkit`, `` `#checkit` ``, `!!checkit`, or `` `!!checkit` `` in a prompt
+and it expands into the full verification discipline. The `!!` form leaves `#`
+available for hashtags; backticks make either marker visually explicit. Existing
+bare `#name` promptcuts remain compatible.
 `promptcuts.yaml` stays at **`hooks/promptcuts.yaml`** (not under an event dir) —
 agents-cli and the expand-promptcuts hook resolve that fixed path.
 
 - `~/.agents/.system/hooks/promptcuts.yaml` — system defaults
 - `~/.agents/hooks/promptcuts.yaml` — your shortcuts; user keys win
+
+Run `python3 hooks/tests/benchmark_prompt_expansion.py` to measure cold-process
+no-marker latency, promptcut expansion, and concurrent bang-command execution.

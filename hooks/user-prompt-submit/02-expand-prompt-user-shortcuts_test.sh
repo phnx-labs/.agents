@@ -55,7 +55,27 @@ out=$(HOME="$h" bash "$HOOK" <<< '{"prompt":"just a normal prompt","hook_event_n
 check_empty "no token -> no output" "$out"
 rm -rf "$h"
 
-# 5. No promptcuts.yaml anywhere: exit clean, emit nothing. Never block a prompt.
+# 5. Backticked # syntax is explicit and removes its delimiters on replacement.
+h=$(mkhome ".agents/.system/hooks" "BACKTICK_HASH_EXPANSION")
+out=$(HOME="$h" CLAUDECODE=1 bash "$HOOK" <<< '{"prompt":"Use `#tok` now","hook_event_name":"UserPromptSubmit"}' 2>&1)
+check "backticked # marker expands" "Use BACKTICK_HASH_EXPANSION now" "$out"
+rm -rf "$h"
+
+# 6. !! is the hashtag-free alias, bare or backticked.
+h=$(mkhome ".agents/.system/hooks" "DOUBLE_BANG_EXPANSION")
+out=$(HOME="$h" CLAUDECODE=1 bash "$HOOK" <<< '{"prompt":"Use !!tok now","hook_event_name":"UserPromptSubmit"}' 2>&1)
+check "bare !! marker expands" "Use DOUBLE_BANG_EXPANSION now" "$out"
+out=$(HOME="$h" CLAUDECODE=1 bash "$HOOK" <<< '{"prompt":"Use `!!tok` now","hook_event_name":"UserPromptSubmit"}' 2>&1)
+check "backticked !! marker expands" "Use DOUBLE_BANG_EXPANSION now" "$out"
+rm -rf "$h"
+
+# 7. Unregistered hashtags and doubled words remain ordinary prompt text.
+h=$(mkhome ".agents/.system/hooks" "SYSTEM_EXPANSION")
+out=$(HOME="$h" bash "$HOOK" <<< '{"prompt":"Discuss #release and !!important","hook_event_name":"UserPromptSubmit"}' 2>&1)
+check_empty "unregistered # / !! markers -> no output" "$out"
+rm -rf "$h"
+
+# 8. No promptcuts.yaml anywhere: exit clean, emit nothing. Never block a prompt.
 h="$(mktemp -d)"
 out=$(HOME="$h" bash "$HOOK" <<< '{"prompt":"#tok","hook_event_name":"UserPromptSubmit"}' 2>&1)
 rc=$?

@@ -4,6 +4,8 @@
 
 ### Added
 
+- **Promptcuts accept explicit and hashtag-free markers; inline bang commands run concurrently (#243).** A shortcut stored as `#name` now expands from `#name`, `` `#name` ``, `!!name`, or `` `!!name` ``, so prompts can reserve `#` for hashtags and use backticks when the shortcut should be visually explicit. Both UserPromptSubmit expansion hooks now reject ordinary prompts in shell before paying Python/YAML startup cost. Multiple backticked bang commands execute concurrently with at most 8 workers, retain source-order output, keep a 5-second timeout per command, and kill the timed-out process group. A cold-process benchmark records the no-marker, expansion, and three-command paths. Source: `hooks/user-prompt-submit/02-expand-prompt-user-shortcuts.sh`, `hooks/user-prompt-submit/02-expand-prompt-bang-commands.sh`, `hooks/tests/benchmark_prompt_expansion.py`.
+
 - **Routine guidance now uses explicit execution projects/CWDs and the native single-flight contract (RUSH-2290).** The routines skill teaches `--project-anchor` separately from metadata-only `--project`, target-side relative CWD resolution for Linear-imported projects without checkout bindings, readiness/repair before activation, transactional YAML edits, routine-first history, and the scheduler's slot plus active-run claims. The obsolete prompt-level `/tmp` overlap lock recipe is removed.
 
 - **`hooks/syntax_test.sh` — a parse gate for every hook script.** A hook that does not

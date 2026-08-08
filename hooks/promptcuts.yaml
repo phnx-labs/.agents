@@ -1,10 +1,10 @@
-# Promptcuts — type these anywhere in your prompt to expand them
+# Promptcuts — use #name / `#name` or !!name / `!!name` to expand them
 # Expanded by ~/.agents/hooks/02-expand-prompt-user-shortcuts.sh on UserPromptSubmit
 #
 # This file is VERSION-INDEPENDENT. It lives at ~/.agents/promptcuts.yaml
 # so that upgrading claude/codex/gemini versions never drops your shortcuts.
 #
-# Promptcuts augment messages (type #checkit alongside your prompt).
+# Promptcuts augment messages (type !!checkit alongside your prompt when # is a hashtag).
 # Slash commands (/debug, /plan, /recap) are standalone actions.
 
 shortcuts:
