@@ -15,6 +15,7 @@ HOOK="$HERE/00-agent-verify-work-complete.sh"
 
 SANDBOX="$(mktemp -d)"
 trap 'rm -rf "$SANDBOX"' EXIT
+export VERIFY_WORK_STATE_DB="$SANDBOX/verify-work-state.db"
 
 # --- gh stub ---------------------------------------------------------------
 mkdir -p "$SANDBOX/bin"
@@ -544,6 +545,14 @@ grep -q "RUSH-5678" "$SANDBOX/stderr" && echo "ok   - delivery gate cites relate
 # D8. Plain question (no done-claim, no PR) -> delivery gate must NOT fire.
 rc=$(run_hook "$TSHORT" "The config looks valid." false)
 check "plain question does not fire delivery gate" "$rc" "0"
+
+# D8b. State is a precision aid, not a safety dependency. If its schema cannot
+# be read, a done claim retains the pre-state delivery-chain enforcement.
+STATE_MISMATCH="$SANDBOX/state-mismatch.db"
+sqlite3 "$STATE_MISMATCH" "create table meta(key text primary key,value text not null); insert into meta values('schema_version','999');"
+rc=$(VERIFY_WORK_STATE_DB="$STATE_MISMATCH" FAKE_GIT_BRANCH=feature/RUSH-1234 FAKE_LINEAR_STATE=Todo run_hook "$TWRITE" "All done. The widget is complete." false)
+check "state evaluation failure preserves delivery enforcement" "$rc" "2"
+grep -q "STOP GATE (delivery)" "$SANDBOX/stderr" && echo "ok   - state failure reaches delivery gate" || { echo "FAIL - state failure weakened delivery gate"; fail=1; }
 
 # D9. Probe error (linear crashes/returns garbage) -> fail open.
 cat > "$SANDBOX/bin/linear" <<'STUB'

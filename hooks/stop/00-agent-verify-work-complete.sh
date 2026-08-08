@@ -57,7 +57,9 @@ except Exception:
     data = {}
 print("STATE_DELIVERY_EVIDENCE=" + shlex.quote("yes" if data.get("delivery_evidence") is True else "no"))
 print("STATE_CONTEXT_KIND=" + shlex.quote(str(data.get("context_kind") or "unknown")))
-' 2>/dev/null || printf '%s\n' 'STATE_DELIVERY_EVIDENCE=no' 'STATE_CONTEXT_KIND=unknown')"
+failed = bool(data.get("state_error")) or not isinstance(data.get("delivery_evidence"), bool)
+print("STATE_EVAL_FAILED=" + shlex.quote("yes" if failed else "no"))
+' 2>/dev/null || printf '%s\n' 'STATE_DELIVERY_EVIDENCE=no' 'STATE_CONTEXT_KIND=unknown' 'STATE_EVAL_FAILED=yes')"
 
 # --- repeated-gate guidance --------------------------------------------------
 # Repeating the identical block text eventually stops adding information. On a
@@ -811,9 +813,11 @@ print('yes' if seen else 'no')
 # Decide whether this stop is the end of a delivery. Completion wording and a
 # Git cwd are not evidence: the delivery chain runs only when this session
 # positively mutated a repo, authored/operated a PR, or started a deployment.
+# If state evaluation itself fails, preserve the prior done-claim enforcement;
+# state can improve precision but can never weaken an existing safety gate.
 # Created/worked PR evidence remains as an independent precision backstop.
 delivery_trigger="no"
-if [ "$is_claiming_done" = "yes" ] && [ "${STATE_DELIVERY_EVIDENCE:-no}" = "yes" ]; then
+if [ "$is_claiming_done" = "yes" ] && { [ "${STATE_DELIVERY_EVIDENCE:-no}" = "yes" ] || [ "${STATE_EVAL_FAILED:-yes}" = "yes" ]; }; then
   delivery_trigger="yes"
 elif [ -n "$responsible_prs" ] || [ "$delivery_activity" = "yes" ]; then
   has_merge_phrase=$(echo "$INPUT_JSON" | python3 -c "
