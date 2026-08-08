@@ -1,10 +1,11 @@
 ---
-description: Work with the project's issue tracker (Linear, GitHub Issues, Jira, etc.) — auto-detects whichever skill or CLI is available.
+name: tickets
+description: "Work with the project's issue tracker (Linear, GitHub Issues, Jira, GitLab, etc.) — auto-detect whichever tracker is available (a loaded tracker skill, an installed CLI, or a repo signal), then list / claim / comment / close / create / search issues, always closing with proof. Also drives the check-first / open-if-missing / close-on-delivery ticket lifecycle the conventions rule asks for. Triggers on: 'tickets', 'issues', 'issue tracker', 'my queue', \"what's on my plate\", 'claim/close/comment/create/search a ticket or issue', 'open an issue', 'move it to In Progress', 'linear', 'gh issue', 'jira', 'the board'."
 ---
 
-You're being asked to do something with the project's issue tracker: $ARGUMENTS
+You're being asked to do something with the project's issue tracker (arguments, if any, describe the action).
 
-(If `$ARGUMENTS` is empty, default to "show me what's on my plate right now.")
+(If no action is given, default to "show me what's on my plate right now.")
 
 ## Step 1: Find the available tracker
 
@@ -25,10 +26,10 @@ Check in this order. Stop at the first one that's actually present.
 
 4. **Ask.** If nothing's detectable, ask the user where issues live (Linear team key, GitHub repo, Jira project, etc.) — once. Save the answer to memory if it'll keep coming up.
 
-## When you're starting a task (not just reacting to `/tickets`)
+## When you're starting a task (not just reacting to a tracker request)
 
 The `conventions` + `truly-agentic-git-workflow` rules ask every substantive task to run a
-small ticket lifecycle; this command is the mechanism.
+small ticket lifecycle; this skill is the mechanism.
 
 1. **Check first.** Look for an open ticket that already covers the task (the injected Linear
    context, or a quick `search` / `gh issue list`). Found one? Claim it (move to In Progress).

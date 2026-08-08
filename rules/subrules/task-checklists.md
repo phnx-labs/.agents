@@ -23,7 +23,7 @@ what you are stuck on instead of guessing.
 A floating checklist is half the value. Bind it:
 
 - **Pair a ticket.** If a tracker is connected (this stack uses Linear via the
-  `linear` CLI / `/tickets`) and no ticket is paired with the work, create or claim
+  `linear` CLI / the `tickets` skill) and no ticket is paired with the work, create or claim
   one at the right moment — once the task is real and scoped, not for a passing
   question. Move it to In Progress when you start.
 - **Stamp each item** with the ticket via `TaskCreate` `metadata` (e.g.

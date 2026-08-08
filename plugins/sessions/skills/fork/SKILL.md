@@ -1,17 +1,19 @@
 ---
-description: Fork this conversation into a new, independent session and open it where you work
+name: fork
+description: "Fork this conversation into a NEW, independent session and open it in a fresh terminal — the 'git branch' of sessions. A native transcript copy (no re-run, no token cost); the original thread is untouched and continues normally. Where continue resumes the SAME thread, fork copies it under a new id. Triggers on: /sessions:fork, /fork, 'fork this session', 'branch this conversation', 'copy this session into a new one', 'explore an alternative direction without touching this thread', 'fork <id>'."
+argument-hint: "[empty = fork THIS session | <session-id> | topic to resolve first]"
 ---
 
 Fork a session: $ARGUMENTS
 
-Branch a conversation into a NEW, independent session and open it in a fresh terminal, so you can explore an alternative direction without touching the original. Where `/continue` resumes the *same* thread, `/fork` copies it under a new id — the "git branch" of conversations. Typically called as bare `/fork` (fork the CURRENT session) or `/fork <id>` (fork a specific one).
+Branch a conversation into a NEW, independent session and open it in a fresh terminal, so you can explore an alternative direction without touching the original. Where `/continue` resumes the *same* thread, `/sessions:fork` copies it under a new id — the "git branch" of conversations. Typically called as bare `/sessions:fork` (fork the CURRENT session) or `/sessions:fork <id>` (fork a specific one).
 
 This is cheap: a fork is a file copy of the transcript so far, not a re-run — it costs no tokens, and the new session carries the full context natively.
 
 ## Step 0: Resolve which session to fork
 
-- **Bare `/fork`** — fork THIS session. Its id is in the session-start context ("Your current session id is …"); use that. The current harness is the one you are running in.
-- **`/fork <id>`** — fork that session (UUID or short prefix). Resolve its harness from `agents sessions preview <id> --json` if you need it; the lookup includes remote devices.
+- **Bare `/sessions:fork`** — fork THIS session. Its id is in the session-start context ("Your current session id is …"); use that. The current harness is the one you are running in.
+- **`/sessions:fork <id>`** — fork that session (UUID or short prefix). Resolve its harness from `agents sessions preview <id> --json` if you need it; the lookup includes remote devices.
 
 Never guess an id — if `$ARGUMENTS` is a topic/name rather than an id, run `agents sessions "<query>"` to resolve it first, or ask once.
 

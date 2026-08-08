@@ -42,6 +42,7 @@ self-unblock ladder is exhausted.
 | [`mq`](./mq/SKILL.md) | Structure-aware query for large files — extract one section instead of reading the whole file |
 | [`learn`](./learn/SKILL.md) | Reflect on a finished session and write the durable lessons back into skills, rules, or memory |
 | [`reflect`](./reflect/SKILL.md) | Recall cumulative feedback during an active conversation before revising work |
+| [`tickets`](./tickets/SKILL.md) | Work with the project's issue tracker — auto-detect Linear/GitHub/Jira (skill/CLI/repo signal), then list/claim/comment/close/create/search with proof; drives the check-first/close-on-delivery lifecycle |
 
 ## Producing output for humans
 
