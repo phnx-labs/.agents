@@ -17,7 +17,7 @@ If you want something to fire on a **change** instead of a clock, that is a
 | [`launch-health`](./launch-health.yml) | every 6h | Probes each agent's default version actually launches; repairs a gutted install |
 | [`fleet-cache-warm`](./fleet-cache-warm.yml) | every 3 min | Publishes this host's auth-health + fleet-status rows for `agents fleet status` |
 | [`session-cache-warm`](./session-cache-warm.yml) | every 3 min | Publishes this host's local active sessions for the shared warm cache |
-| [`usage-refresh`](./usage-refresh.yml) | every 1 min | Refreshes the usage cache the `agents run` router reads, off the hot path |
+| [`usage-refresh`](./usage-refresh.yml) | every 5 min | Refreshes the usage cache the `agents run` router reads, off the hot path |
 | [`auto-dispatch`](./auto-dispatch.yml) | every 3 min | Dispatches delegated Linear tickets through agents-cli's cloud-provider layer (opt-in per project; pin with `agents routines devices auto-dispatch --set <device>`) |
 
 `check-updates` and the 8 housekeeping routines above all run on **every** box
