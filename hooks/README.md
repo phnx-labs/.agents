@@ -200,5 +200,6 @@ agents-cli and the expand-promptcuts hook resolve that fixed path.
 - `~/.agents/.system/hooks/promptcuts.yaml` — system defaults
 - `~/.agents/hooks/promptcuts.yaml` — your shortcuts; user keys win
 
-Run `python3 hooks/tests/benchmark_prompt_expansion.py` to measure cold-process
-no-marker latency, promptcut expansion, and concurrent bang-command execution.
+Run `python3 hooks/tests/benchmark_prompt_expansion.py` (or `py -3 ...` on
+Windows) to measure cold-process no-marker latency, promptcut expansion, and
+concurrent bang-command execution.
