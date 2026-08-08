@@ -118,6 +118,37 @@ Never move logic out of the skill and into the command. When a plugin is the rig
 grouping but a target harness has no plugin support, say so in the plugin's README
 rather than silently shipping something a third of the fleet cannot load.
 
+## What earns a command or skill — distill to the fundamental operation
+
+The command/skill surface is not a feature list; it is the set of **fundamental operations
+an agent needs to get work done**. Every addition is measured against that, and the default
+answer to "should this be a new command?" is **no — extend an existing one**. This is the
+philosophy behind keeping the surface small: fewer, sharper primitives an agent actually
+reaches for beat a long menu nobody remembers.
+
+- **A primitive, not a variant.** Add a capability only when it names a *fundamental
+  operation* the fleet doesn't already have — a distinct verb of getting work done. A new
+  flavor of something that exists (a second "review", a per-project "loop", a per-tracker
+  "tickets") is a **mode or argument of the existing one**, never a new command. When two
+  cover the same job, merge them. The surface shrinks by consolidation, not by never adding.
+- **All work, not just code.** The fleet does engineering, but also research, outreach,
+  content, browser/computer tasks, tickets, and session lifecycle. A capability earns its
+  place by being a primitive *across* those domains, not a code-only convenience. Prefer the
+  general verb (`tickets` works on any tracker; `loop` drains any kind of work; `blame`
+  traces any regression; `work:*` covers any unit of work) over one narrow command per case.
+- **General-purpose, yet concrete enough for a weak model.** Two opposite failure modes.
+  Too narrow → the bloat we trim. Too vague → a prompt only a frontier model can interpret,
+  which silently fails on the cheaper/smaller models the fleet also runs. Aim for the
+  middle: one command per fundamental operation, written as **explicit, ordered steps** with
+  the exact commands to run, the expectation to check, and the failure to avoid named
+  outright. The bar is that an agent on a *weak* model can follow it and still land the
+  result — if it only works because a strong model filled in the unstated, it is
+  underspecified. Write for the weakest model that must run it, not the strongest.
+
+Before you add anything here, answer three questions: **Is this a fundamental operation, or a
+variant of one that exists? Does it generalize past code? Could a weak model execute it from
+the text alone?** If any answer is no, extend, generalize, or rewrite — don't add.
+
 ## Common mistakes in this repo — check yourself against these first
 
 Every one of these has actually happened here. They share a shape: the change looks
