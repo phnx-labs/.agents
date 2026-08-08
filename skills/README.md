@@ -41,13 +41,13 @@ self-unblock ladder is exhausted.
 |---|---|
 | [`mq`](./mq/SKILL.md) | Structure-aware query for large files — extract one section instead of reading the whole file |
 | [`learn`](./learn/SKILL.md) | Reflect on a finished session and write the durable lessons back into skills, rules, or memory |
-| [`reflect`](./reflect/SKILL.md) | Recall cumulative feedback during an active conversation before revising work |
 | [`tickets`](./tickets/SKILL.md) | Work with the project's issue tracker — auto-detect Linear/GitHub/Jira (skill/CLI/repo signal), then list/claim/comment/close/create/search with proof; drives the check-first/close-on-delivery lifecycle |
 
 ## Producing output for humans
 
 | Skill | What it does |
 |---|---|
+| [`artifacts`](./artifacts/SKILL.md) | Author plans, reports, and visuals as Markdown, then render them to branded light/dark HTML or PDF with `artifacts-cli` — the general engine `plan-render` and `visualize` specialize |
 | [`plan-render`](./plan-render/SKILL.md) | Render an implementation plan as a self-contained, review-grade HTML doc, opened where the user sits |
 | [`visualize`](./visualize/SKILL.md) | Turn a concept, dataset, or finding into one self-contained shareable HTML visualization |
 | [`docs`](./docs/SKILL.md) | Write documentation — user-facing, technical, runbooks, onboarding, changelogs, and AGENTS.md (`write-agents-md.md`) |

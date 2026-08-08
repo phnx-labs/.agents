@@ -9,7 +9,13 @@ acting on itself, not on code, the fleet, or the outside world.
 |---|---|
 | [`/self:close`](./commands/close.md) | Cleanly self-terminate this session — `SIGTERM` the harness so it flushes the transcript, saves state, and runs post-session hooks. Guarded so it never signals a shell / tmux / sshd parent. |
 | [`/self:hibernate`](./commands/hibernate.md) | Hibernate THIS session until a future time, then wake it with full context (no transfer) to re-check a long wait — approval, deploy, review. |
-| [`/self:reflect`](./commands/reflect.md) | Recall every correction and constraint from the active conversation before revising work. |
+| [`/self:reflect`](./commands/reflect.md) | Recall every correction and constraint from the active conversation before revising work. Thin wrapper over the `self:reflect` skill. |
+
+## Skills
+
+| Skill | What it does |
+|---|---|
+| [`self:reflect`](./skills/reflect/SKILL.md) | Recall all cumulative feedback, corrections, and constraints from the active conversation before rewriting or iterating. Portable — it loads by description match on every harness, not only where the `/self:reflect` command exists. Moved here from the flat `skills/` list so the reflect skill lives with its command. |
 
 ## `/self:close` — the exit primitive
 

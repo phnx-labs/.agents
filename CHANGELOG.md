@@ -4,6 +4,13 @@
 
 ### Added
 
+- **A "what earns a command or skill" philosophy in the maintenance contract.** The top-level `AGENTS.md` now states the bar for the command/skill surface: add only a *fundamental operation* (not a variant — those are modes/arguments of an existing one), make it general across *all* work not just code, and write it concretely enough that a *weak* model can execute it step by step. Source: `AGENTS.md`.
+
+### Changed
+
+- **`reflect` skill consolidated into the self plugin.** The flat top-level `skills/reflect` moved to `plugins/self/skills/reflect` (now the `self:reflect` skill), so the skill lives with its `/self:reflect` command instead of floating in the shared `skills/` list. Source: `plugins/self/skills/reflect/`, `plugins/self/commands/reflect.md`, `plugins/self/README.md`, `skills/README.md`.
+- **`skills/README.md` now lists the `artifacts` skill** (it was on disk but missing from the catalog).
+
 - **`/blame` — regression forensics.** A new top-level command that traces a regression (a feature that worked and silently broke) to the culprit change, the removed/skipped/commented-out test that let it through, and the agent + session behind it — read-only, no fix. It pins expected vs observed, maps the code path, bisects the suspect commits, hunts for disabled tests in the same window, and attributes via `git blame` + `agents sessions`. Hand the verdict to `/debug` or `/finish` to repair. Source: `commands/blame.md`, `commands/README.md`.
 - **`/output` moved into the work plugin as `/work:output`.** The fleet token-burn/output report is a work action, so it now lives beside `/work:loop` and `/work:dispatch` (top-level `/output` removed). Source: `plugins/work/commands/output.md`, `commands/README.md`, `plugins/work/README.md`, `plugins/README.md`.
 
