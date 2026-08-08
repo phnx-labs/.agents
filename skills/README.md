@@ -22,10 +22,10 @@ skill stays loaded and brings tooling with it.
 | [`cloud`](./cloud/SKILL.md) | Dispatch agent tasks to Rush Cloud, Codex Cloud, or Factory pods |
 | [`routines`](./routines/SKILL.md) | Schedule agents on a cron schedule or one-shot at a specific time |
 | [`monitors`](./monitors/SKILL.md) | Durable event-triggered watchers — watch a source, fire an agent, routine, or notification on change |
-| [`escalate`](./escalate/SKILL.md) | Reach the owner out-of-band when genuinely blocked, climbing message → watch → call |
 
-`routines` fire on a clock; `monitors` fire on a change. Reach for `escalate` only after the
-self-unblock ladder is exhausted.
+`routines` fire on a clock; `monitors` fire on a change. To reach the owner when genuinely
+blocked, use `agents feed post --blocked` (it opens a needs-you record and delivers
+out-of-band) — after the self-unblock ladder is exhausted.
 
 ## Acting on the real world
 

@@ -103,7 +103,6 @@ register time). See [§Subrule hooks](#subrule-hooks-rules-not-this-tree).
 | Hook | What it does |
 |---|---|
 | [`06-attention-sentinel.sh`](./notification/06-attention-sentinel.sh) | Per-session attention state (also fires on Stop + UserPromptSubmit) |
-| [`12-escalate-on-notification.sh`](./notification/12-escalate-on-notification.sh) | Escalation ladder when the agent needs the user |
 
 ## Subrule hooks (rules, not this tree)
 
