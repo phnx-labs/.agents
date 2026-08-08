@@ -43,7 +43,7 @@ because you started with `/dispatch`.
 
 ## Step 4: File the ticket
 
-Route through `/tickets` Step 1 (tracker detection) and its Step 2 "create" mapping — title +
+Route through the `tickets` skill (Step 1 tracker detection) and its Step 2 "create" mapping — title +
 the Step 2 spec as the description, linked to any related tickets. File it **before**
 dispatching so the work is tracked and has an owner of record, even though you're about
 to dispatch it yourself.

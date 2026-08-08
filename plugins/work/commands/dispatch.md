@@ -11,7 +11,7 @@ This is a **single-target dispatch**, not a board sweep. There is **no survey, n
 ## Step 1: Resolve the target — find the ticket
 
 - **`$ARGUMENTS` names a ticket** (e.g. `RUSH-1234`) → that's the target.
-- **`$ARGUMENTS` describes a task** → look for an existing ticket first (`/tickets` detection; e.g. `linear tasks --query`, `gh issue list`) and **check for in-flight work** (an open PR or a live `agents sessions --active` on it). Never dispatch a duplicate of something already being built — that is the #1 waste on a busy board.
+- **`$ARGUMENTS` describes a task** → look for an existing ticket first (the `tickets` skill's detection; e.g. `linear tasks --query`, `gh issue list`) and **check for in-flight work** (an open PR or a live `agents sessions --active` on it). Never dispatch a duplicate of something already being built — that is the #1 waste on a busy board.
 - **`$ARGUMENTS` says "next work on <project>"** → pull that project's board, pick the top **clear, unblocked, keep-worthy** item. Skip anything that needs a human decision (is it wanted? cancel? reprioritize?) — surface it for `/triage`, don't dispatch it.
 - **Ground once** in the project (its `AGENTS.md`/`README`/`CHANGELOG`, or the Linear goal spine) so the spec isn't re-derived per call.
 

@@ -106,7 +106,7 @@ The transcript shows intent. Verify what landed.
 - `git status`, `git log --oneline -20`, `git diff`
 - Read the files the session touched
 - TODOs, FIXMEs, half-edited functions, failing tests
-- Tracker state via `/tickets` or the relevant tracker skill when an issue was referenced
+- Tracker state via the `tickets` skill or the relevant tracker skill when an issue was referenced
 
 Quote file:line evidence — do not paraphrase from memory.
 

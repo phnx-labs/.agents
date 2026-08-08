@@ -109,6 +109,8 @@
 
 ### Changed
 
+- **Command surface: moved `/fork` into the sessions plugin as `/sessions:fork`; converted the top-level `/tickets` command into a portable `tickets` skill.** Skills work on every harness; commands do not (not on `openclaw`, `kimi`, `hermes`; limited on `codex`). Every "route through `/tickets`" reference now points at the `tickets` skill. Committed the missing `clis/CLAUDE.md`/`clis/GEMINI.md` convention symlinks. Source: `plugins/sessions/commands/fork.md`, `skills/tickets/SKILL.md`, `commands/README.md`, `plugins/sessions/README.md`, `plugins/README.md`, `skills/README.md`, and tracker-reference updates across commands and rules.
+
 - **Removed the top-level `/recover` command; crash-recovery is now `/continue recover`.** The standalone `/recover` command was a thin alias for `sessions:continue` recover mode — the mode, keyword, and all behavior remain intact. Users reach it via `/continue recover`. The `sessions:continue` skill already implements recover mode; only the redundant standalone command and its references were removed. Source: `commands/continue.md`, `plugins/sessions/skills/continue/SKILL.md`, `plugins/sessions/skills/restore/SKILL.md`, `commands/README.md`, `plugins/README.md`, `plugins/sessions/README.md`, `README.md`.
 
 - **`code` plugin simplified to 0.9.0 — `code:loop`, `code:review` (three modes),

@@ -447,8 +447,8 @@ Enforced by the bundled `footer-guard.sh` (PreToolUse): a `gh`/`git commit` comm
 # Conventions
 
 - **Memory file:** `AGENTS.md` is canonical. `CLAUDE.md` and `GEMINI.md` are symlinks (or synced copies).
-- **Tickets — check first, open if missing, close on delivery.** Linear context is auto-injected at session start by the linear hook; read it before starting. `/tickets` takes any explicit action across Linear/GitHub/Jira.
-  - **Check first.** Before substantive work, check whether an open ticket already covers it (the injected context, or `/tickets` / `gh issue list`). If one exists, claim it (move it to In Progress).
+- **Tickets — check first, open if missing, close on delivery.** Linear context is auto-injected at session start by the linear hook; read it before starting. the `tickets` skill takes any explicit action across Linear/GitHub/Jira.
+  - **Check first.** Before substantive work, check whether an open ticket already covers it (the injected context, or the `tickets` skill / `gh issue list`). If one exists, claim it (move it to In Progress).
   - **Open if missing.** No ticket and a tracker is configured? Open one scoped to the task (title + short description) before you start. No tracker set up? Skip this and describe the work in the PR. One ticket per unit of delivery, not per file; skip it for a trivial fix or a plain question.
   - **Close on delivery, with proof.** When the task ships, post a closing update (what changed, the PR link, a screenshot or short screen recording of the outcome) and move the ticket to Done. Close only with proof.
 - **Parallel work:** Multi-surface changes use `agents teams` — see `parallel-teams`.
@@ -523,7 +523,7 @@ Mechanical backstop: for a session that ran an edit-mode swarm, the `verify-work
 | Task | Tool |
 | --- | --- |
 | Read a large file (200+ lines) or map an unfamiliar dir | `mq` — probe structure (`.tree`), then extract only the section you need. Works on **code (ts/py/go/…), docs (md/html/pdf), data (json/yaml/csv), Office** — not just docs. See `context-query-mq`. |
-| Issue tracker (Linear/GitHub/Jira) | `/tickets` command — auto-detects |
+| Issue tracker (Linear/GitHub/Jira) | `tickets` skill — auto-detects |
 | Browser automation | `browser` skill (a.k.a. `agents browser`) |
 | Interactive terminal (REPLs, TUIs) | `agents pty` — see `agents pty --help` |
 | Parallel coding agents | `agents teams` — see `parallel-teams` |
@@ -687,7 +687,7 @@ what you are stuck on instead of guessing.
 A floating checklist is half the value. Bind it:
 
 - **Pair a ticket.** If a tracker is connected (this stack uses Linear via the
-  `linear` CLI / `/tickets`) and no ticket is paired with the work, create or claim
+  `linear` CLI / the `tickets` skill) and no ticket is paired with the work, create or claim
   one at the right moment — once the task is real and scoped, not for a passing
   question. Move it to In Progress when you start.
 - **Stamp each item** with the ticket via `TaskCreate` `metadata` (e.g.
