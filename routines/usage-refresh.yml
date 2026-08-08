@@ -4,14 +4,16 @@
 #
 # Migrated off a hardcoded daemon setInterval (60s). This host is the sole
 # writer for its own local accounts; each account is internally scheduled at a
-# fixed 5-minute cadence and skipped under 429 backoff, so the 1-minute clock
-# here just decides how often to CHECK for due accounts, not how often each
-# one is actually fetched.
+# fixed 5-minute cadence and skipped under 429 backoff, so this clock just
+# decides how often to CHECK for due accounts, not how often each one is
+# actually fetched — so it never needs to run more often than that same
+# 5-minute cadence (RUSH-2451: a 1-minute check was 5x more invocations than
+# any account could ever be due, each one a full CLI subprocess spawn).
 #
 # Users override it with a same-named file in ~/.agents/routines/, or disable
 # it with `agents routines disable usage-refresh`.
 name: usage-refresh
-schedule: "* * * * *"
+schedule: "*/5 * * * *"
 enabled: true
 timeout: 1m
 command: agents __daemon-tick usage-refresh
