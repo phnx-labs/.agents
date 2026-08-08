@@ -6,6 +6,36 @@ This repo is the **system layer** of agents-cli: the npm-shipped defaults that l
 `~/.agents/.system/` on every machine and get merged under the user's own `~/.agents/`.
 Everything here ships to every agent on every box, so a broken file here breaks the fleet.
 
+## North star — every change here buys agents more *safe* autonomy
+
+The hooks, rules, permissions, and commands in this repo exist for one purpose: to let an
+agent act on the user's behalf with **more autonomy, safely** — reliably, predictably, and
+manageably, without a human babysitting each step. Judge every change you make here against
+that goal. The pull is always toward *more* the agent can do on its own; the discipline is
+that it stays trustworthy while doing it.
+
+- **The guardrails counter agent laziness — they don't just forbid.** A hook fires on an
+  event nobody asked for, which is what turns "the agent should have…" into "the agent
+  always does." Prefer a guardrail that makes the safe path the automatic one over a rule
+  that merely asks an agent to remember. The point is to *enable* reliable action, not to
+  cage it.
+- **Cross-harness by default.** A capability must work on every harness the fleet runs —
+  Claude Code, Codex, and the rest — not just the one you tested in. Skills are near-
+  universal; commands and plugins are not (see the coverage table under "Authoring a new
+  capability"). Ship the behavior in the portable layer, then add the accelerator on top.
+- **Cross-platform and cross-device by default.** macOS, Linux, and Windows; the user's
+  laptop and every worker box. A hook or script that assumes one shell, one path style, or
+  one bash version silently breaks the others — bash 3.2 on macOS is the usual tripwire (see
+  the hooks contract). Autonomy that works on only one machine is not autonomy.
+- **Predictable beats clever.** Creativity is welcome; unpredictability is not. An agent and
+  the user must both be able to reason about what a change will do *before* it runs. Fail
+  closed, make the safe action the easy one, and never trade manageability for a one-off win.
+- **Protect what can't be undone.** Autonomy stops at irreversible loss. An agent may remove
+  its own worktree freely, but it must **never delete a branch — local or remote**;
+  accidental branch deletion has lost real work, so branch deletion stays banned here (denied
+  in the permission groups and the git-guard). Never add a permission or guardrail exception
+  that re-enables it. When you weigh a new capability, ask what it destroys if it fires wrongly.
+
 ## The two-file convention
 
 This section is **this repo's instance** of the general rule. The rule itself — including
