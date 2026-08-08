@@ -5,6 +5,12 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 HOOK="$HERE/02-expand-prompt-bang-commands.sh"
 pass=0; fail=0
 
+if python3 --version >/dev/null 2>&1; then
+  PYTHON=(python3)
+else
+  PYTHON=(py -3)
+fi
+
 check() {
   if [[ "$3" == *"$2"* ]]; then pass=$((pass+1)); echo "  ok   $1"
   else fail=$((fail+1)); echo "  FAIL $1"; echo "       want: $2"; echo "       got: ${3:0:240}"; fi
@@ -19,7 +25,7 @@ out=$(printf '%s' '{"prompt":"Keep `!important` literal","cwd":"/tmp","hook_even
 if [[ -z "$out" ]]; then pass=$((pass+1)); echo "  ok   bare identifier stays literal"
 else fail=$((fail+1)); echo "  FAIL bare identifier stays literal — got: ${out:0:240}"; fi
 
-elapsed=$(python3 - "$HOOK" <<'PY'
+elapsed=$("${PYTHON[@]}" - "$HOOK" <<'PY'
 import json, subprocess, sys, time
 hook = sys.argv[1]
 payload = {"prompt": "`! sleep 0.4; printf one` `! sleep 0.4; printf two` `! sleep 0.4; printf three`", "cwd": "/tmp"}
@@ -30,7 +36,7 @@ assert all(word in result.stdout for word in ("one", "two", "three")), result.st
 print(f"{elapsed:.3f}")
 PY
 )
-if python3 - "$elapsed" <<'PY'
+if "${PYTHON[@]}" - "$elapsed" <<'PY'
 import sys
 raise SystemExit(0 if float(sys.argv[1]) < 0.8 else 1)
 PY
@@ -39,7 +45,7 @@ else fail=$((fail+1)); echo "  FAIL commands ran too slowly (${elapsed}s; sequen
 
 marker=$(mktemp)
 rm -f "$marker"
-payload=$(python3 - "$marker" <<'PY'
+payload=$("${PYTHON[@]}" - "$marker" <<'PY'
 import json, os, sys
 marker = sys.argv[1]
 if os.name == "nt":

@@ -9,7 +9,15 @@ case "$INPUT_JSON" in
   *) exit 0 ;;
 esac
 
-python3 - "$INPUT_JSON" <<'PY'
+if python3 --version >/dev/null 2>&1; then
+  PYTHON=(python3)
+elif py -3 --version >/dev/null 2>&1; then
+  PYTHON=(py -3)
+else
+  exit 0
+fi
+
+"${PYTHON[@]}" - "$INPUT_JSON" <<'PY'
 import json
 import os
 import re
