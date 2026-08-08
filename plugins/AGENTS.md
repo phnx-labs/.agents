@@ -38,10 +38,9 @@ skill follows [`skills/AGENTS.md`](../skills/AGENTS.md).
 
 ## The canonical definition lives in the plugin
 
-`/commit` at the top level is an **alias** of `/code:commit`.
-The behavior lives here; the alias only routes. When you change it, change the
-plugin skill — never fork the logic into the alias, and never leave the two describing
-different behavior.
+`/code:commit` is the canonical commit command. There is no top-level `/commit` alias —
+the behavior lives in the plugin skill exclusively. When you change it, change the plugin
+skill and let any thin top-level aliases follow. Never fork logic into an alias.
 
 ## What belongs here vs in extras
 

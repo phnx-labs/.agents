@@ -32,8 +32,6 @@ Multi-agent plan/spec/debug live under `/swarm …` and `/swarm:plan` / `/swarm:
 
 | Command | What it does |
 |---|---|
-| [`/commit`](./commit.md) | Split the working tree into the maximum number of small logical commits, then push. Alias of `/code:commit` |
-| [`/release`](./release.md) | Discover the repo's real release process and publish it end to end — tests, changelog, publish/tag, verify live |
 | [`/finish`](./finish.md) | Drive the current task to done end-to-end instead of stopping at a recap, blocker, or partial handoff |
 | [`/done`](./done.md) | Recap the session, then cleanly self-exit (SIGTERM the harness) |
 
@@ -52,7 +50,7 @@ working until it has. They are easy to confuse.
 
 The procedures for `/continue`, `/insights`, and `/restore` live in the
 [`sessions` plugin](../plugins/sessions/README.md) skills. Top-level files only invoke
-those skills (same pattern as `/commit` → `/code:commit`).
+those skills (same pattern as `/continue` → `/sessions:continue`).
 
 `/hibernate` and `/reflect` moved to the [`self` plugin](../plugins/self/README.md) as `/self:hibernate` and `/self:reflect`.
 

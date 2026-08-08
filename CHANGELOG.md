@@ -145,6 +145,8 @@
   Source: `plugins/swarm/`, `commands/swarm.md`, `commands/README.md`,
   `.claude-plugin/marketplace.json`.
 
+- **Command surface: removed the top-level `/commit` alias (use `/code:commit`); moved `/release` into the code plugin as `/code:release`.** Both the command (`plugins/code/commands/release.md`) and the `release` skill now live under `plugins/code/` (invoked as the `code:release` skill). Updated the tech-stack rule, catalogs, and cross-references. Source: `plugins/code/commands/release.md`, `plugins/code/skills/release/`, `commands/README.md`, `plugins/code/README.md`, `plugins/README.md`, `plugins/git/README.md`, `skills/README.md`, `rules/subrules/tech-stack.md`, root `README.md`.
+
 ### Added
 
 - **New `sessions` plugin — `/sessions:continue`, `/sessions:insights`,

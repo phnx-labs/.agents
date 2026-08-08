@@ -2,7 +2,7 @@
 description: Publish a package/CLI/app to its registry — discover the repo's real release process, run tests, update the changelog, publish, tag, and verify it's live.
 ---
 
-Invoke the `release` skill. Arguments: $ARGUMENTS
+Invoke the `code:release` skill. Arguments: $ARGUMENTS
 
 - No version given: analyze what's needed (current published version, commits since last tag) and suggest one.
 - A version (`1.2.3`, `patch`, `minor`, `major`), a monorepo package path, and `--skip-tests`/`--skip-build`/`--force` are all accepted — see the skill for the full contract.
