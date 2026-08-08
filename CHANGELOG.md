@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Removed
+
+- **The `escalate` skill and its `escalate-on-notification` hook.** Reaching the owner when genuinely blocked is now `agents feed post --blocked` (opens a needs-you record + delivers out-of-band) — the escalate ladder was superseded by it and still hard-wired Telegram, which the no-Telegram rule forbids. Deletes `skills/escalate/` (incl. `escalate.sh`, `owner.py`), `hooks/notification/12-escalate-on-notification.{sh,_test.sh}`, and the `escalate-on-notification` entry in `agents.yaml` (hook count 19 → 18); removes the rows from `skills/README.md` and `hooks/README.md`.
+
 ### Added
 
 - **A "what earns a command or skill" philosophy in the maintenance contract.** The top-level `AGENTS.md` now states the bar for the command/skill surface: add only a *fundamental operation* (not a variant — those are modes/arguments of an existing one), make it general across *all* work not just code, and write it concretely enough that a *weak* model can execute it step by step. Source: `AGENTS.md`.
