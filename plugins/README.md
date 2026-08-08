@@ -14,10 +14,10 @@ I run?* and § *Automate your work*. This page is the plugin catalog.
 
 | Situation | Plugin | Command |
 |---|---|---|
-| Overnight / unattended drain of **any** clear work (all projects) | **work** | `/work:loop` or `/drain` |
+| Overnight / unattended drain of **any** clear work (all projects) | **work** | `/work:loop` or `/loop` |
 | One mixed task (code *or* browser/outreach) | **work** | `/work:dispatch` |
 | Engineering queue to **merge** | **code** | `/code:loop` |
-| PR review or whole-repo architecture scan | **code** | `/code:review` (alias `/review`) |
+| PR review or whole-repo architecture scan | **code** | `/code:review` |
 | Parallel agents / blind plan / spec / debug | **swarm** | `/swarm`, `/swarm:plan`, … |
 | Resume / restore sessions / session analytics | **sessions** | `/continue`, `/restore`, `/insights` |
 | Multi-machine sync / onboard | **fleet** | `/fleet:sync`, `/fleet:onboard` |
@@ -33,13 +33,13 @@ Do not stretch `code:loop` into browser outreach — use `work:loop`.
 | Plugin | Commands | What it's for |
 |---|---|---|
 | [`code`](./code/README.md) | 4 | The coding loop — `/code:loop`, `/code:review` (session PRs / cold PR review / whole-repo scan, three modes on one skill), `/code:learn` (writes project AGENTS.md nav notes), `/code:commit`. Publishing a distributable is the top-level `/release` command, not this plugin. |
-| [`work`](./work/README.md) | 2 | General-purpose work — `/work:loop` (alias `/drain`) unattended multi-project drain with load spread + browser/computer; `/work:dispatch` is ONE unit of work (coding or not) |
+| [`work`](./work/README.md) | 2 | General-purpose work — `/work:loop` (alias `/loop`) unattended multi-project drain with load spread + browser/computer; `/work:dispatch` is ONE unit of work (coding or not) |
 | [`swarm`](./swarm/README.md) | 4 | Fan a task across parallel agents — top-level `/swarm` + `/swarm:run`, `/swarm:plan`, `/swarm:spec`, `/swarm:debug` (test/qa removed; plan/spec require mock-ups) |
-| [`fleet`](./fleet/README.md) | 3 | Fleet-wide ops — `/fleet:sync` brings every device to latest, `/fleet:onboard` brings a bare box to parity, `/fleet:mint-auth` self-mints setup tokens |
+| [`fleet`](./fleet/README.md) | 4 | Fleet-wide ops — `/fleet:sync` brings every device to latest, `/fleet:onboard` brings a bare box to parity, `/fleet:mint-auth` self-mints setup tokens, `/fleet:profile` profiles a sluggish machine and attributes the load to agents-cli surfaces |
 | [`git`](./git/README.md) | 2 | Pure git plumbing — `/git:prune` removes merged branches and worktrees with data-loss guards, `/git:tag-release` cuts and pushes a release tag |
 | [`share`](./share/README.md) | 2 | Publish agent-generated HTML to a link on your own Cloudflare R2 — `/share:public` (auto OG cover), `/share:private` (unlisted, expiring) |
 | [`design`](./design/README.md) | 1 | One keyless, offline-first front door for design — routes an intent to a mode and renders self-contained HTML/SVG |
-| [`self`](./self/README.md) | 1 | Agent self-operations — `/self:close` cleanly self-terminates the session (guarded SIGTERM to the harness); the exit primitive `/done` builds on |
+| [`self`](./self/README.md) | 3 | Agent self-operations — `/self:close` cleanly self-terminates the session (guarded SIGTERM to the harness); `/self:hibernate` sleeps the session until a future time; `/self:reflect` recalls corrections and constraints before revising work |
 | [`sessions`](./sessions/README.md) | 3 | Session lifecycle + analytics — `/sessions:continue` finishes prior work here, `/sessions:insights` orchestrates insights/trends/perf/stats, `/sessions:restore` re-opens crash windows; top-level `/continue` `/insights` `/restore` `/recover` are thin aliases |
 
 <p align="center">

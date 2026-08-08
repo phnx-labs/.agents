@@ -9,7 +9,7 @@ the fleet holds browser + computer + secrets.
 
 | Command | Use when |
 | --- | --- |
-| `/work:loop` | **Unattended drain** of many items across projects. Spreads load (`agents teams` + balanced accounts + worker hosts). Uses browser/computer when the task needs it. **No review/merge gate** — finish agent-doable work, open PRs for the human to review later. Top-level alias: `/drain`. |
+| `/work:loop` | **Unattended drain** of many items across projects. Spreads load (`agents teams` + balanced accounts + worker hosts). Uses browser/computer when the task needs it. **No review/merge gate** — finish agent-doable work, open PRs for the human to review later. Top-level alias: `/loop`. |
 | `/work:dispatch` | **ONE** unit of work — ticket, described task, or "next on `<project>`". Classify coding vs non-coding, file clean if needed, route to the right executor, drive to done. Single-target; not a board sweep. |
 
 ## Skills
@@ -32,7 +32,7 @@ the fleet holds browser + computer + secrets.
 - **`/code:loop`** — engineering drain with merge-oriented "done". `work:loop` may
   reuse its worktree/claim patterns but **stops at PR open** by default (human reviews
   later). Do not run `code:review` merge from `work:loop`.
-- **`/drain`** — short alias of `/work:loop`.
+- **`/loop`** — short alias of `/work:loop`.
 
 ## Load-spreading (why this exists)
 

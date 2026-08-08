@@ -10,7 +10,7 @@ Use this when you are blocked on something slow and external — an approval tha
 
 > **Prerequisite.** macOS, and `agents run claude` must be able to launch non-interactively — it drives the wake and manages claude auth itself. Concrete probe: `agents secrets exec claude.ai -- printenv CLAUDE_CODE_OAUTH_TOKEN` prints a token (same underlying auth `agents run` uses). For a logged-in Rush user it does. If it prompts or is empty, the wake can't authenticate — fix that first.
 
-> **`/hibernate` vs `/done` vs `/finish`** — `/done` self-exits because the work is *delivered*. `/finish` refuses to stop and drives to delivery. `/hibernate` is for work that is *neither done nor blocked-forever*: it's waiting on wall-clock time. You come back and finish it yourself later — the user doesn't have to remember to ping you.
+> **`/self:hibernate` vs `/done` vs `/finish`** — `/done` self-exits because the work is *delivered*. `/finish` refuses to stop and drives to delivery. `/self:hibernate` is for work that is *neither done nor blocked-forever*: it's waiting on wall-clock time. You come back and finish it yourself later — the user doesn't have to remember to ping you.
 
 ## Step 0 - Parse the argument
 
@@ -53,7 +53,7 @@ mkdir -p ~/.rush/hibernate
 NOTE=~/.rush/hibernate/"$SID".md
 if [ -f "$NOTE" ]; then
   # Re-hibernation: keep the running count + deadline; just refresh the wake time.
-  # (You already bumped "Wakes so far" per the on-wake checklist before calling /hibernate.)
+  # (You already bumped "Wakes so far" per the on-wake checklist before calling /self:hibernate.)
   echo "existing note — preserving Wakes-so-far + deadline; update only the 'Waking at' line"
   # Edit just the "Waking at:" line in "$NOTE" to <WAKE_HUMAN>; leave everything else intact.
 else
@@ -70,7 +70,7 @@ else
 1. Increment "Wakes so far" in this note (edit the line) BEFORE deciding to re-hibernate.
 2. Check whether <REASON> has resolved. Concrete check: <the exact command / inbox / URL / PR / API call to look at>.
 3. If RESOLVED → continue the task from where you left off (your full transcript is loaded).
-4. If STILL PENDING **and** before the give-up deadline **and** under the wake cap → run /hibernate again with a *longer* interval than last time (never re-hibernate shorter than the previous gap).
+4. If STILL PENDING **and** before the give-up deadline **and** under the wake cap → run /self:hibernate again with a *longer* interval than last time (never re-hibernate shorter than the previous gap).
 5. If PENDING but past the deadline OR at the wake cap → stop re-hibernating. Telegram Jeff with the status, then end the turn. Do not loop forever.
 6. If it now needs Muqsit (his face/voice/identity, a decision, a payment) → Telegram Jeff, then hibernate or stop.
 
@@ -88,7 +88,7 @@ On the first hibernation, fill every `<...>` placeholder with real values before
 Short and quote-free; the detail lives in the note and your transcript:
 
 ```
-WAKE FROM HIBERNATION. You scheduled this wake yourself via /hibernate to re-check a long-running wait. Read your hibernation note at <NOTE>, re-read your recent messages, then check on it. Resolved -> continue the task. Still pending -> /hibernate again with a longer backoff. Needs Muqsit -> Telegram Jeff. You own this wait; do not ask the user to remind you.
+WAKE FROM HIBERNATION. You scheduled this wake yourself via /self:hibernate to re-check a long-running wait. Read your hibernation note at <NOTE>, re-read your recent messages, then check on it. Resolved -> continue the task. Still pending -> /self:hibernate again with a longer backoff. Needs Muqsit -> Telegram Jeff. You own this wait; do not ask the user to remind you.
 ```
 
 ## Step 3 - Choose the wake transport, then schedule the launchd one-shot
@@ -190,7 +190,7 @@ Notes:
 - **Visible tab uses an interactive resume** (`--raw -i`) so the TUI stays open for the user; the headless floor uses `-p` (prompt → auto-headless, prints and exits). Same session, same `--mode auto` either way. `--raw` spawns the agent directly in the tab (no tmux re-attach wrapper).
 - **The visible branch RUNS the resume, it does not `exec` it — deliberately.** A terminal launcher (`ghostty -e`, `osascript`) exits 0 when the *window* opens, not when the *resume* succeeds, so the wrapper's `opened=1` cannot distinguish a live tab from one whose resume died on launch. Keeping the inner script as the tab's parent lets it check the resume's exit code and Telegram-ping on failure — closing the only seam where a visible wake could vanish silently. (Dismissing the woken tab with Ctrl-C exits 130, so a normal end can also ping — not just a genuine failure. We deliberately ping on *any* non-zero rather than whitelist clean-quit codes, because a real death can exit 130 too; erring toward a stray ping over a lost wait is the intended direction.)
 - **Don't wake a session you're actively sitting in headlessly.** A headless `-p` resume of a session that's also live in a foreground TUI briefly double-attaches one transcript. For short interactive waits prefer `WAKE_VISIBLE=1` (a fresh tab is a clean second surface); the headless floor is for when no one's watching anyway.
-- `--mode auto` lets the woken session act with the **smart permission classifier** — it auto-approves safe ops and still prompts/blocks on risky ones. **Never** `--mode skip` / `--dangerously-skip-permissions`: a persistent, auto-launched job must not carry a blanket permission bypass. The user issuing `/hibernate` is the authorization; `auto` keeps risky operations gated. (If a wake genuinely needs to run something the classifier would block, prefer a narrower allow-list over widening the mode.)
+- `--mode auto` lets the woken session act with the **smart permission classifier** — it auto-approves safe ops and still prompts/blocks on risky ones. **Never** `--mode skip` / `--dangerously-skip-permissions`: a persistent, auto-launched job must not carry a blanket permission bypass. The user issuing `/self:hibernate` is the authorization; `auto` keeps risky operations gated. (If a wake genuinely needs to run something the classifier would block, prefer a narrower allow-list over widening the mode.)
 - `StartCalendarInterval` drops the year, so it fires on the next occurrence of that month/day — the wrapper boots the job out on first fire, so it runs exactly once.
 - `agents run claude --resume` resumes the session natively and manages claude auth itself — no `agents secrets exec` wrapper, no `--dangerously-skip-permissions`, no routines daemon.
 
@@ -202,7 +202,7 @@ Do not claim you're hibernating until the job is loaded with the right fire time
 launchctl print gui/$(id -u)/"$LABEL" 2>/dev/null | grep -iE "state|StartCalendarInterval" -A4 | head
 ```
 
-Confirm the label is loaded and the calendar fields match your wake time. If it's missing, fix it before ending the turn — a `/hibernate` that didn't arm is a silent data-loss of the whole wait.
+Confirm the label is loaded and the calendar fields match your wake time. If it's missing, fix it before ending the turn — a `/self:hibernate` that didn't arm is a silent data-loss of the whole wait.
 
 ## Step 5 - Hibernate (end the turn)
 

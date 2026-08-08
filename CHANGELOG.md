@@ -183,6 +183,8 @@
   otherwise load the transcript and continue here. Carried into the plugin skill
   when the fat command moved. Source: `plugins/sessions/skills/continue/SKILL.md`.
 
+- **Command surface reorg — removed top-level aliases, moved commands into plugins, renamed `/drain`→`/loop`.** Removed top-level `/review` (use `/code:review`), `/test` (follow the Strict Testing rule), `/monitors` (use `agents monitors` CLI), and `/prune` (use `/git:prune`). Moved `/profile`→`/fleet:profile`, `/hibernate`→`/self:hibernate`, and `/reflect`→`/self:reflect` into their respective plugins. Renamed `/drain`→`/loop` (still a thin alias of `/work:loop`). Source: `commands/README.md`, `plugins/README.md`, `plugins/fleet/README.md`, `plugins/self/README.md`, `plugins/work/README.md`, `plugins/work/commands/dispatch.md`, `plugins/work/skills/loop/SKILL.md`, `plugins/code/README.md`, `plugins/git/README.md`, `plugins/swarm/README.md`, `commands/AGENTS.md`, `plugins/AGENTS.md`, `README.md`.
+
 ## [0.2.0] - 2026-08-06
 
 ### Highlights
