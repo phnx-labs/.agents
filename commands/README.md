@@ -24,7 +24,6 @@ commands are often thin wrappers that only invoke a skill (harness-friendly).
 | [`/swarm`](./swarm.md) | Front door to the `swarm` plugin — fan work across parallel agents (`run` by default; or `plan` / `spec` / `debug`) |
 | [`/debug`](./debug.md) | Trace the data path, hypothesize a root cause, then have independent agents confirm it before any fix (routes to `swarm:debug`) |
 | [`/clean`](./clean.md) | Identify and clean up technical debt, outdated code, and duplicates |
-| [`/test`](./test.md) | Test critical paths — parallel validation for complex scopes |
 
 Multi-agent plan/spec/debug live under `/swarm …` and `/swarm:plan` / `/swarm:spec` /
 `/swarm:debug` (see [`plugins/swarm`](../plugins/swarm/README.md)).
@@ -34,11 +33,9 @@ Multi-agent plan/spec/debug live under `/swarm …` and `/swarm:plan` / `/swarm:
 | Command | What it does |
 |---|---|
 | [`/commit`](./commit.md) | Split the working tree into the maximum number of small logical commits, then push. Alias of `/code:commit` |
-| [`/review`](./review.md) | Review every PR the session opened, review PR number(s) cold, or scan a whole repo for architecture/quality drift. Alias of `/code:review` |
 | [`/release`](./release.md) | Discover the repo's real release process and publish it end to end — tests, changelog, publish/tag, verify live |
 | [`/finish`](./finish.md) | Drive the current task to done end-to-end instead of stopping at a recap, blocker, or partial handoff |
 | [`/done`](./done.md) | Recap the session, then cleanly self-exit (SIGTERM the harness) |
-| [`/prune`](./prune.md) | Delete merged branches and worktrees locally and on origin — conservative, never removes recoverable work |
 
 `/done` **exits** the session and assumes the work already shipped. `/finish` keeps
 working until it has. They are easy to confuse.
@@ -53,12 +50,12 @@ working until it has. They are easy to confuse.
 | [`/fork`](./fork.md) | Branch this conversation into a new, independent session and open it where you work — the "git branch" of sessions, original untouched |
 | [`/recover`](./recover.md) | Mode of `/sessions:continue` — recover *many* crashed sessions by finishing agent-doable work headlessly |
 | [`/restore`](./restore.md) | Alias of `/sessions:restore` — re-open sessions killed by a crash or reboot as terminal windows |
-| [`/hibernate`](./hibernate.md) | Sleep this same session until a future time, then wake it with full context to check a long wait |
-| [`/reflect`](./reflect.md) | Recall every correction and constraint from the active conversation before revising work |
 
 The procedures for `/continue`, `/insights`, `/restore`, and `/recover` live in the
 [`sessions` plugin](../plugins/sessions/README.md) skills. Top-level files only invoke
 those skills (same pattern as `/commit` → `/code:commit`).
+
+`/hibernate` and `/reflect` moved to the [`self` plugin](../plugins/self/README.md) as `/self:hibernate` and `/self:reflect`.
 
 ## Coordinate
 
@@ -67,36 +64,32 @@ those skills (same pattern as `/commit` → `/code:commit`).
 | [`/tickets`](./tickets.md) | Work with the project's issue tracker — auto-detects Linear, GitHub Issues, or Jira |
 | [`/triage`](./triage.md) | Sweep the whole board — ground in real product goals, then force every item to keep-and-schedule-this-cycle or cancel. Never Backlog |
 | [`/dispatch`](./dispatch.md) | Take one task from idea to a working agent — understand the repo, spec fast, debug-skill for bugs, quick plan, file the ticket, dispatch |
-| [`/drain`](./drain.md) | Alias of `/work:loop` — unattended multi-project work drain (any kind; spread load; no review gate; browser/computer ok) |
+| [`/loop`](./loop.md) | Alias of `/work:loop` — unattended multi-project work drain (any kind; spread load; no review gate; browser/computer ok) |
 | [`/next`](./next.md) | Confirm the current task is actually done, then surface (and if clear, claim) the next related task — checks for in-flight PRs/sessions first so it never duplicates work |
 | [`/teams`](./teams.md) | Spawn parallel agents to work on a task together |
 
 `/tickets` is the general-purpose primitive (list, claim, comment, close). `/triage` is a
 board-wide sweep that forces every open item to a real decision. `/dispatch` is the
-single-task path from idea to a running agent. `/drain` / `/work:loop` is the unattended
+single-task path from idea to a running agent. `/loop` / `/work:loop` is the unattended
 **queue** drain across projects and kinds (not engineering-only). `/next` is the boundary
 command — run it right after finishing something to move to the next thing without
 re-deriving the tracker or duplicating a sibling agent's in-flight work. Easy to confuse:
 `/triage` never touches code; `/dispatch` always ends with an agent building something;
-`/drain` keeps going unattended until the clear queue is empty; `/next` picks among
+`/loop` keeps going unattended until the clear queue is empty; `/next` picks among
 *existing* tickets rather than creating one.
 
 ## Observe
 
 | Command | What it does |
 |---|---|
-| [`/monitors`](./monitors.md) | Set up a durable event-triggered watcher. Routines fire on a clock; monitors fire on a change |
 | [`/output`](./output.md) | Fleet-wide token-burn and output report across every device, rendered as an HTML dashboard and PDF |
-| [`/profile`](./profile.md) | Profile a sluggish machine, attribute the load to agents-cli surfaces, read the logs to root-cause it, and file a GitHub issue on the public agents-cli repo |
 
-<p align="center">
-  <img src="../.assets/monitors.png" alt="/monitors — a general-purpose watcher primitive for the agent fleet" width="82%">
-</p>
+Machine profiling moved to [`/fleet:profile`](../plugins/fleet/README.md); durable watchers are the `agents monitors` CLI + the [`monitors` skill](../skills/README.md).
 
 ## Related
 
 Several commands escalate to `agents teams` when the scope is wide: `/debug`, `/plan`,
-`/clean`, `/test`, `/recap`, `/review`, `/dispatch`.
+`/clean`, `/recap`, `/dispatch`.
 
 Capabilities like `/secrets`, `/sessions`, and `/browser` are **skills**, not commands —
 see [`skills/`](../skills/README.md). They are invoked the same way but carry their own

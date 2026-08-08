@@ -36,9 +36,9 @@ rule still references the old `/name`. `grep -rn "/<oldname>"` from the repo roo
 
 ## Aliases point at the canonical definition
 
-`/commit` and `/review` are thin aliases of the `code` plugin's `/code:commit` and
-`/code:review`. The behavior lives in the plugin; the alias file only routes to it. Do not
-fork the logic into the alias — change the plugin skill and let the alias follow.
+`/commit` is a thin alias of the `code` plugin's `/code:commit`. The behavior lives in the
+plugin; the alias file only routes to it. Do not fork the logic into the alias — change the
+plugin skill and let the alias follow.
 
 ## Namespacing
 
@@ -49,6 +49,6 @@ set only.
 ## Do not gate on the user
 
 Commands that ask for permission before acting on their own verdict violate F1 of the
-ruleset. `/review` merges on green; `/clean` executes its cleanup; `/finish` drives to done.
+ruleset. `/code:review` merges on green; `/clean` executes its cleanup; `/finish` drives to done.
 Reserve a question for genuine scope ambiguity. This has been fixed repo-wide once already —
 do not reintroduce it.

@@ -4,7 +4,7 @@ description: Recall feedback and constraints before rewriting
 
 You are reflecting on: $ARGUMENTS
 
-Load the `/reflect` skill to recall all feedback from the current conversation before proceeding.
+Load the `reflect` skill to recall all feedback from the current conversation before proceeding.
 
 ## When to Use
 

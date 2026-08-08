@@ -38,8 +38,8 @@ skill follows [`skills/AGENTS.md`](../skills/AGENTS.md).
 
 ## The canonical definition lives in the plugin
 
-`/commit` and `/review` at the top level are **aliases** of `/code:commit` and `/code:review`.
-The behavior lives here; the alias only routes. When you change one of these, change the
+`/commit` at the top level is an **alias** of `/code:commit`.
+The behavior lives here; the alias only routes. When you change it, change the
 plugin skill — never fork the logic into the alias, and never leave the two describing
 different behavior.
 
