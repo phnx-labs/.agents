@@ -78,7 +78,28 @@ else
   echo "FAIL: gate fired on a scratch-only change:"; echo "$out3"; fail=1
 fi
 
-rm -rf "$d1" "$d2" "$d3" "$bare2" "$bare3" "$tr1" "$tr2" "$tr3" 2>/dev/null
+# --- Test 4: release from already-merged code (no diff, no PR) -> gate FIRES ------
+# Regression guard: a release session ships without a local file diff or a PR, so
+# is_real_delivery is False. That must NOT disable the shippable/release-verification
+# gate — the release check keys off its own tag/publish/verify evidence.
+d4="$(mktemp -d)"; bare4="$(mktemp -d)/o.git"
+git init -q "$d4"
+git init -q --bare "$bare4"
+printf '{"name":"pkg","version":"1.0.0"}\n' > "$d4/package.json"
+git -C "$d4" add package.json; git -C "$d4" $GC commit -q -m "baseline"
+git -C "$d4" remote add origin "$bare4"
+git -C "$d4" push -q origin HEAD:main
+git -C "$d4" remote set-head origin main
+tr4="$(mktemp)"
+printf '%s\n' '{"role":"user","content":"please cut a release of version 1.0.1 to the registry"}' > "$tr4"
+out4="$(run_gate "$d4" "$tr4")"
+if printf '%s' "$out4" | grep -q "Independently-shippable change detected"; then
+  echo "PASS: release-verification gate still fires on a zero-diff release session"
+else
+  echo "FAIL: release-verification gate was silently disabled for a zero-diff release:"; echo "$out4"; fail=1
+fi
+
+rm -rf "$d1" "$d2" "$d3" "$d4" "$bare2" "$bare3" "$bare4" "$tr1" "$tr2" "$tr3" "$tr4" 2>/dev/null
 
 if [ "$fail" -ne 0 ]; then
   echo "verify-delivery-chain_test: FAILED"; exit 1

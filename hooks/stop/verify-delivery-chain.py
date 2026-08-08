@@ -558,16 +558,23 @@ def main():
         if state.lower() not in DONE_STATES:
             open_related.append((t, state, title))
 
-    # A delivery exists only if this session produced a shippable change: a real
-    # tracked file changed (outside scratch/artifact/tmp paths) or a responsible PR.
-    # Without one, the user-facing/shippable keyword heuristics below describe a
-    # *conversation about* a feature, not a *delivery of* one — do not gate on them.
-    # This can't be gamed: a genuine change shows up in `git diff` / a PR.
+    # The docs/CHANGELOG demand keys off _looks_user_facing, a keyword match on the
+    # conversation ("command", "flag", "feature", ...). A conversation that merely
+    # *mentions* a user-facing thing is not a *delivery* of one, so only gate it when
+    # this session produced a real change to document: a tracked file changed outside
+    # scratch/artifact/tmp paths, or a responsible PR. Can't be gamed — a genuine
+    # change shows up in `git diff` / a PR.
+    #
+    # NOTE: this gate is deliberately NOT applied to `shippable`. A release cut from
+    # already-merged code (tag/publish, no new local commits, no PR this session) is a
+    # real delivery with no file diff, and `_release_status` already gates it on
+    # independent tag/publish/verify evidence. ANDing is_real_delivery here would
+    # silently disable release verification for that ordinary flow.
     is_real_delivery = bool(pr_data) or (bool(repo_path) and bool(_deliverable_changed_files(repo_path, pr_data)))
 
     user_facing = _looks_user_facing(pr_data, first_user_msg) and is_real_delivery
     docs_ok, changelog_ok = _docs_changelog_status(repo_path, pr_data) if repo_path else (True, True)
-    shippable = _is_shippable_repo(repo_path) and _looks_shippable(pr_data, first_user_msg) and is_real_delivery
+    shippable = _is_shippable_repo(repo_path) and _looks_shippable(pr_data, first_user_msg)
     release_ran, release_verified = (
         _release_status(repo_path, pr_data, transcript_path, last_msg) if shippable else (True, True)
     )
