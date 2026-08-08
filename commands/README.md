@@ -45,13 +45,12 @@ working until it has. They are easy to confuse.
 | Command | What it does |
 |---|---|
 | [`/recap`](./recap.md) | Recap the current session, or transfer concise context from a prior session selected by ID, prefix, or keywords |
-| [`/continue`](./continue.md) | Alias of `/sessions:continue` — resume prior work **in this session** (reattach only if genuinely live); group-capable |
+| [`/continue`](./continue.md) | Alias of `/sessions:continue` — resume prior work **in this session** (reattach only if genuinely live); group-capable. Also finishes crashed sessions headlessly (`/continue recover`). |
 | [`/insights`](./insights.md) | Alias of `/sessions:insights` — orchestrate `agents insights` + trends + perf + sessions stats into evidence-backed actions |
 | [`/fork`](./fork.md) | Branch this conversation into a new, independent session and open it where you work — the "git branch" of sessions, original untouched |
-| [`/recover`](./recover.md) | Mode of `/sessions:continue` — recover *many* crashed sessions by finishing agent-doable work headlessly |
 | [`/restore`](./restore.md) | Alias of `/sessions:restore` — re-open sessions killed by a crash or reboot as terminal windows |
 
-The procedures for `/continue`, `/insights`, `/restore`, and `/recover` live in the
+The procedures for `/continue`, `/insights`, and `/restore` live in the
 [`sessions` plugin](../plugins/sessions/README.md) skills. Top-level files only invoke
 those skills (same pattern as `/commit` → `/code:commit`).
 

@@ -1,6 +1,6 @@
 ---
 name: continue
-description: "Resume previous agent work in this session — load a prior transcript (or a group of them), verify what actually landed, and finish the remaining work here. Reattach only when the session is genuinely still live and interactive. Also covers post-crash multi-session recovery (prefer finishing headlessly over resurrecting terminals). Triggers on: /continue, /recover, 'pick up where I left off', 'resume that session', 'continue the auth work', crash recovery that finishes work rather than reopening windows."
+description: "Resume previous agent work in this session — load a prior transcript (or a group of them), verify what actually landed, and finish the remaining work here. Reattach only when the session is genuinely still live and interactive. Also covers post-crash multi-session recovery (prefer finishing headlessly over resurrecting terminals). Triggers on: /continue, 'pick up where I left off', 'resume that session', 'continue the auth work', crash recovery that finishes work rather than reopening windows."
 argument-hint: "[session-id | topic | empty] [--device|--host <machine>] [recover]"
 allowed-tools: Bash(agents sessions*), Bash(agents *), Bash(git *), Bash(gh *), Bash(rg *), Bash(fd *), Bash(ls *), Bash(cat *), Bash(jq *), Bash(sysctl *), Bash(uptime *), Read(*), Write(*), Edit(*), Task(*), AskUserQuestion(*)
 user-invocable: true
@@ -24,9 +24,9 @@ keeps you in the current harness and drives the unfinished work to done.
 |---|---|---|
 | **Single** (default) | One id, topic, or bare `/continue` | Load that session → verify state → continue here |
 | **Group** | Several ids, a shared topic, or a team name | Load each (cheaply, in parallel), finish agent-doable work, hand off only what needs a human |
-| **Recover** | Crash / reboot / pile of mid-task sessions, or `/recover` | Find interrupted sessions, finish headlessly, one easy action for the rest |
+| **Recover** | Crash / reboot / pile of mid-task sessions, or the `recover` keyword | Find interrupted sessions, finish headlessly, one easy action for the rest |
 
-`$ARGUMENTS` may contain the word `recover` or come from `/recover` — treat that as recover
+`$ARGUMENTS` may contain the word `recover` (e.g. `/continue recover`) — treat that as recover
 mode. Multiple bare ids or a clear multi-session ask → group mode.
 
 ## Parse an optional source machine
@@ -147,7 +147,7 @@ When `$ARGUMENTS` lists several sessions (ids, a shared topic, a team) and the i
 
 ---
 
-## Recover mode (also `/recover`)
+## Recover mode (`/continue recover`)
 
 A crash, reboot, or pile of mid-task sessions left work in limbo. Finish what an agent can
 finish; hand back only what truly needs the user. **Not** `sessions:restore` (windows).
