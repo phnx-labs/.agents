@@ -1,6 +1,10 @@
 #!/bin/bash
 # Expands prompt shortcuts defined in promptcuts.yaml.
 #
+# Accepted markers for a shortcut stored as "#name":
+#   #name / `#name`   — original marker, bare or explicit
+#   !!name / `!!name` — alternate marker when # is being used as a hashtag
+#
 # Per-agent protocol:
 #   claude  — prints <user-prompt-submit-hook> wrapper; REPLACES prompt
 #   codex   — prints JSON with additionalContext; APPENDS (token stays)
@@ -14,6 +18,13 @@
 # shortcuts by adding the same key to its own promptcuts.yaml.
 
 INPUT_JSON=$(cat)
+
+# UserPromptSubmit runs for every prompt. Avoid Python + YAML startup entirely
+# when neither promptcut marker can possibly be present.
+case "$INPUT_JSON" in
+  *'#'*|*'!!'*) ;;
+  *) exit 0 ;;
+esac
 
 python3 - "$INPUT_JSON" <<'PY'
 import json, os, sys, yaml
@@ -57,17 +68,22 @@ if not shortcuts:
 
 matched = None
 for token, expansion in shortcuts.items():
-    if token in prompt:
-        matched = (token, expansion.strip())
+    name = token[1:] if token.startswith("#") else token
+    markers = (f"`#{name}`", f"`!!{name}`", f"!!{name}", token)
+    for marker in markers:
+        if marker in prompt:
+            matched = (token, marker, expansion.strip())
+            break
+    if matched:
         break
 if not matched:
     sys.exit(0)
 
-token, expansion = matched
+token, marker, expansion = matched
 
 # Claude Code harness: replace prompt via wrapper.
 if os.environ.get("CLAUDE_PROJECT_DIR") or os.environ.get("CLAUDECODE"):
-    replaced = prompt.replace(token, expansion)
+    replaced = prompt.replace(marker, expansion)
     print("<user-prompt-submit-hook>")
     print(replaced)
     print("</user-prompt-submit-hook>")
@@ -76,7 +92,7 @@ if os.environ.get("CLAUDE_PROJECT_DIR") or os.environ.get("CLAUDECODE"):
 # Codex / Kimi / Grok / Cursor / Droid: append as additionalContext.
 # Event name differs by harness; output shape is the Claude-compatible JSON.
 event_name = event or "UserPromptSubmit"
-context = f"Shortcut `{token}` expands to:\n\n{expansion}"
+context = f"Shortcut `{marker}` expands to:\n\n{expansion}"
 out = {
     "hookSpecificOutput": {
         "hookEventName": event_name,
