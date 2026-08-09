@@ -86,7 +86,8 @@ resolve_registered_path() {
   for d in "$HERE"/*/; do
     [ -d "$d" ] || continue
     case "$(basename "$d")" in
-      tests|test) continue ;;
+      # tests/: fixture-only. lib/: shared helpers sourced by hooks, not events.
+      tests|test|lib) continue ;;
     esac
     if [ -f "$d$base" ]; then
       printf '%s\n' "$d$base"
@@ -153,11 +154,12 @@ for f in "$HERE"/*.sh "$HERE"/*.py; do
   check_script "$f"
 done
 
-# One-level group dirs (session-starts/, …). Skip tests/.
+# One-level group dirs (session-starts/, …). Skip tests/ (fixtures) and lib/
+# (shared helpers sourced by hooks — not event scripts of their own).
 for d in "$HERE"/*/; do
   [ -d "$d" ] || continue
   case "$(basename "$d")" in
-    tests|test) continue ;;
+    tests|test|lib) continue ;;
   esac
   for f in "$d"*.sh "$d"*.py; do
     [ -e "$f" ] || continue

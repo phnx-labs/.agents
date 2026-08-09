@@ -2,6 +2,20 @@
 
 ## [Unreleased]
 
+### Performance
+
+- **Shared short-TTL git-fact cache for PreToolUse guards (RUSH-2293).**
+  `main-branch-guard` was forking `git rev-parse` + two `symbolic-ref` calls on every
+  Write/Edit/Bash fire (15k+ calls / 30d, `cacheMissPct: 100`). Full-hook `cache:` is
+  unsafe here — the agents-cli shim always exits 0 on hit and would soft-allow after a
+  branch switch onto the default branch. New `hooks/lib/git-facts.sh` caches only the
+  derived facts (repo root, current branch, origin/HEAD default, on-default) under
+  `~/.agents/.cache/state/git-facts/` with a 5s TTL, and re-reads the worktree HEAD file
+  on every lookup so a `git switch` invalidates immediately inside the TTL. Warm loads
+  skip the three git forks; correctness tests cover branch-switch invalidation, TTL
+  expiry, linked worktrees, and origin/HEAD defaults. Source: `hooks/lib/git-facts.sh`,
+  `hooks/lib/git-facts_test.sh`, `rules/subrules/truly-agentic-git-workflow/main-branch-guard.sh`.
+
 ### Fixed
 
 - **Guard denials now return the safe next command, not just a block (RUSH-2295).** `git-guard`, `rm-guard`, and `large-file-add-guard` print a structured stderr block on every deny:
