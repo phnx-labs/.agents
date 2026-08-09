@@ -25,6 +25,9 @@ hooks/<event-name>/<hook-file>.{sh,py}
 - **Do not nest deeper** than one event dir.
 - **Fixture-only dirs** under `hooks/` (e.g. `tests/` with no top-level scripts) are
   directory *bundles*, not event groups — leave them alone.
+- **`hooks/lib/`** holds shared helpers sourced by hooks (e.g. `git-facts.sh`). Not
+  event scripts: no `agents.yaml` entry, skipped by `registration_test.sh`. Source
+  them by path; do not register them as hooks.
 - **`promptcuts.yaml`** stays at `hooks/promptcuts.yaml` (hardcoded consumer paths).
 
 ## The script alone does nothing
@@ -56,6 +59,14 @@ in **one** script.
 
 A hook with a `cache:` entry is wrapped in a generated shim (timing + optional SWR).
 Without `cache:`, the profiler cannot see it.
+
+**Do not put `cache:` on a deny-capable PreToolUse guard.** The shim stores stdout and
+always exits 0 on hit, so the first allow within the TTL would soft-allow every later
+call — including after a branch switch onto the default branch. For git-derived facts
+that guards share (repo root, current branch, origin/HEAD default, on-default), use the
+shared short-TTL helper in `hooks/lib/git-facts.sh` instead: it re-validates HEAD on
+every lookup so a switch invalidates immediately, and each guard still runs its own
+allow/deny logic.
 
 ## Hook-owned session state
 
