@@ -112,7 +112,10 @@ input:  "FOO=bar git -C /tmp reset --hard HEAD~1"
 
       │ subcommand → reset
       ▼
-DENY  ─→  stderr: "git reset is denied (rewrites history or destroys work). …"
+DENY  ─→  stderr (structured, RUSH-2295):
+          blocked_op: git.reset
+          reason: git reset is denied (rewrites history or destroys work).
+          do_this_instead: reconcile with `git rebase origin/<default>` …
           exit 2
 ```
 
