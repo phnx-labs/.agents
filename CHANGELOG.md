@@ -12,6 +12,8 @@
 
 ### Fixed
 
+- **Stop gate no longer accepts an in-process `gh pr checks --watch` as a PR handoff (RUSH-2394).** A headless agent that backgrounds that command and exits strands its own PR — the watcher is a child of the agent process tree and dies with it (observed on agents-cli PR #2334 / #2352). The open-PR and keep-moving gates now accept only a durable lander (`agents pr land --detach`) or a ScheduleWakeup/Monitor tool_use as evidence that something outlives the agent, and the block message tells agents to use `--detach` instead of the in-process watch. Source: `hooks/stop/00-agent-verify-work-complete.sh`, `hooks/stop/00-agent-verify-work-complete_test.sh`.
+
 - **`usage-refresh` routine drops from every 1 minute to every 5 minutes (RUSH-2451).** The routine's own cadence gate already refreshes each account on a fixed 5-minute internal schedule, so the 1-minute cron was checking 5x more often than any account could ever be due — each check a full `agents __daemon-tick usage-refresh` CLI subprocess spawn. Source: `routines/usage-refresh.yml`.
 
 ### Changed
