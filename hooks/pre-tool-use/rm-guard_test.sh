@@ -73,6 +73,22 @@ check_allow() { # name, command-string
 
 echo "rm-guard"
 
+# RUSH-2295 structured denial shape
+check_deny_structured() {
+  run_guard "$2"
+  if [ "$RC" -ne 2 ]; then
+    echo "FAIL - $1: expected rc=2, got rc=$RC"; fail=$((fail+1)); return
+  fi
+  for needle in "blocked_op:" "reason:" "do_this_instead:" "$3" "$4"; do
+    if [ "${ERR#*"$needle"}" = "$ERR" ]; then
+      echo "FAIL - $1: stderr missing [$needle], got: $ERR"; fail=$((fail+1)); return
+    fi
+  done
+  echo "ok   - $1"; pass=$((pass+1))
+}
+check_deny_structured "structured deny for rm protected path" "rm -rf ~/.agents" "rm.protected-path" "trash"
+
+
 # --- 1. Blocks rm -r/-rf on protected paths, in various dressings ------------
 check_deny "rm -rf ~/.agents"                       "rm -rf ~/.agents" "protected path denied"
 check_deny "rm -rf \$HOME"                           'rm -rf $HOME' "protected path denied"

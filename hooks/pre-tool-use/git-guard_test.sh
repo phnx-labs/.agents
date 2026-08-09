@@ -77,6 +77,27 @@ check_allow() { # name, command-string
 
 echo "git-guard"
 
+# RUSH-2295: every deny must emit the structured next-step block so agents
+# stop retrying the same blocked op. Substring checks only need one unique
+# marker from each required line.
+check_deny_structured() { # name, command-string, blocked_op_marker, next_marker
+  run_guard "$2"
+  if [ "$RC" -ne 2 ]; then
+    echo "FAIL - $1: expected rc=2, got rc=$RC"; fail=$((fail+1)); return
+  fi
+  for needle in "blocked_op:" "reason:" "do_this_instead:" "$3" "$4"; do
+    if [ "${ERR#*"$needle"}" = "$ERR" ]; then
+      echo "FAIL - $1: stderr missing [$needle], got: $ERR"; fail=$((fail+1)); return
+    fi
+  done
+  echo "ok   - $1"; pass=$((pass+1))
+}
+
+# --- 0. Structured denial shape (RUSH-2295) ---------------------------------
+check_deny_structured "structured deny for git reset" "git reset --hard HEAD" "git.reset" "rebase origin"
+check_deny_structured "structured deny for git push --force" "git push --force origin main" "git.push-force" "session prefix"
+check_deny_structured "structured deny for git config write" "git config user.email x@y.z" "git.config-write" "config --get"
+
 # --- 1. Blocks destructive ops, in various dressings -------------------------
 check_deny  "plain git reset --hard"                          "git reset --hard HEAD" "reset is denied"
 check_deny  "git push --force"                                "git push --force origin main" "push --force is denied"

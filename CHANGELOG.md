@@ -2,6 +2,16 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- **Guard denials now return the safe next command, not just a block (RUSH-2295).** `git-guard`, `rm-guard`, and `large-file-add-guard` print a structured stderr block on every deny:
+  ```
+  blocked_op: git.reset
+  reason: …
+  do_this_instead: reconcile with `git rebase origin/<default>`; never `reset --hard`
+  ```
+  Sessions were burning dozens of retries on the same `failureId` (`rm.protected-path` 87×, `git.reset` 43×) because the model only saw "denied". The `do_this_instead` line is what kills the loop. Source: `hooks/pre-tool-use/git-guard.sh`, `rm-guard.sh`, `large-file-add-guard.sh` (+ their `_test.sh` fixtures).
+
 ### Removed
 
 - **The `escalate` skill and its `escalate-on-notification` hook.** Reaching the owner when genuinely blocked is now `agents feed post --blocked` (opens a needs-you record + delivers out-of-band) — the escalate ladder was superseded by it and still hard-wired Telegram, which the no-Telegram rule forbids. Deletes `skills/escalate/` (incl. `escalate.sh`, `owner.py`), `hooks/notification/12-escalate-on-notification.{sh,_test.sh}`, and the `escalate-on-notification` entry in `agents.yaml` (hook count 19 → 18); removes the rows from `skills/README.md` and `hooks/README.md`.

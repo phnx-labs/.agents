@@ -63,6 +63,22 @@ report_friction() {  # $1=failureId  $2=error-message
     --error "$_friction_msg" --command "$_friction_cmd" || true) </dev/null >/dev/null 2>&1 &
 }
 
+# Structured denial (RUSH-2295). Models that only see "blocked" retry the same
+# op; emitting blocked_op + do_this_instead in the same stderr kills the loop.
+deny_op=""
+deny_reason=""
+deny_next=""
+set_deny() {  # $1=blocked_op  $2=reason  $3=do_this_instead
+  deny_op=$1
+  deny_reason=$2
+  deny_next=$3
+  report_friction "$1" "$2"
+}
+emit_deny() {
+  printf 'blocked_op: %s\nreason: %s\ndo_this_instead: %s\n' \
+    "$deny_op" "$deny_reason" "$deny_next" >&2
+}
+
 # Fast path: if the raw JSON doesn't even contain the substring "git", there
 # is nothing for this hook to police. Skip parse entirely. Cuts the cost off
 # every non-git Bash call, which is >80% of them.
@@ -87,8 +103,6 @@ fi
 # scoped to an isolated worktree (safe) vs the user's main checkout (gated).
 cwd=$(_json_field "$input" cwd) || cwd=""
 [ -z "$cwd" ] && cwd=$(_json_field "$input" workspaceRoot) || true
-
-deny_reason=""
 
 # Detect `sh|bash -c <inner>` at the raw string level (BEFORE token split) so
 # that quoted args like `sh -c "git reset --hard"` stay intact. Naive
@@ -185,9 +199,16 @@ check_segment() {
   shift
 
   case "$sub" in
-    reset|checkout|stash|cherry-pick|revert|clean|reflog|filter-branch|gc|prune|fsck)
-      deny_reason="git $sub is denied (rewrites history or destroys work). Use a worktree-based flow instead."
-      report_friction "git.$sub" "$deny_reason"
+    reset)
+      set_deny "git.reset" \
+        "git reset is denied (rewrites history or destroys work)." \
+        "reconcile with \`git rebase origin/<default>\` (or \`git pull --rebase\`); never \`reset --hard\`. Commit instead of stashing; resolve obstacles at the source."
+      return 1
+      ;;
+    checkout|stash|cherry-pick|revert|clean|reflog|filter-branch|gc|prune|fsck)
+      set_deny "git.$sub" \
+        "git $sub is denied (rewrites history or destroys work)." \
+        "use a worktree-based flow under <repo>/.agents/worktrees/<slug>; never rewrite or destroy work on the default branch."
       return 1
       ;;
     rebase)
@@ -209,16 +230,18 @@ check_segment() {
       case "$cmd$cwd" in
         *"/.agents/worktrees/"*) return 0 ;;
       esac
-      deny_reason="git rebase (start) is denied outside a worktree (rewrites history). Run it inside a <repo>/.agents/worktrees/<slug> worktree; finishing an in-progress rebase (--continue/--skip/--abort) is allowed anywhere."
-      report_friction "git.rebase-outside-worktree" "$deny_reason"
+      set_deny "git.rebase-outside-worktree" \
+        "git rebase (start) is denied outside a worktree (rewrites history)." \
+        "run it inside a <repo>/.agents/worktrees/<slug> worktree; finishing an in-progress rebase (--continue/--skip/--abort) is allowed anywhere."
       return 1
       ;;
     branch)
       for a in "$@"; do
         case "$a" in
           -D|-d|-m|-M|--delete|--force-delete|--move|--force-move)
-            deny_reason="git branch $a is denied (deletes/renames a ref). Branch creation/listing is fine."
-            report_friction "git.branch-delete" "$deny_reason"
+            set_deny "git.branch-delete" \
+              "git branch $a is denied (deletes/renames a ref)." \
+              "create or list branches only; delete a merged PR branch with \`gh pr merge --delete-branch\`, not git branch -d/-D."
             return 1 ;;
         esac
       done
@@ -231,24 +254,28 @@ check_segment() {
             return 0 ;;
         esac
       done
-      deny_reason="git config write is denied. Use --get for reads."
-      report_friction "git.config-write" "$deny_reason"
+      set_deny "git.config-write" \
+        "git config write is denied." \
+        "use \`git config --get\` / \`--list\` for reads only; never rewrite git config from an agent shell."
       return 1
       ;;
     push)
       for a in "$@"; do
         case "$a" in
           --force|-f)
-            deny_reason="git push --force is denied. Use --force-with-lease."
-            report_friction "git.push-force" "$deny_reason"
+            set_deny "git.push-force" \
+              "git push --force is denied." \
+              "hand the force-push to the user via the \`!\` session prefix after non-destructive attempts are exhausted; prefer \`--force-with-lease\` only when the user explicitly asked."
             return 1 ;;
           --delete|-d)
-            deny_reason="git push $a deletes a remote branch; branch deletion is banned. A merged PR branch is cleaned up with gh pr merge --delete-branch, which is allowed."
-            report_friction "git.push-delete" "$deny_reason"
+            set_deny "git.push-delete" \
+              "git push $a deletes a remote branch; branch deletion is banned." \
+              "delete a merged PR branch with \`gh pr merge --delete-branch\`, which is allowed."
             return 1 ;;
           :*)
-            deny_reason="git push with a leading-colon refspec ($a) deletes a remote branch; branch deletion is banned."
-            report_friction "git.push-delete" "$deny_reason"
+            set_deny "git.push-delete" \
+              "git push with a leading-colon refspec ($a) deletes a remote branch; branch deletion is banned." \
+              "delete a merged PR branch with \`gh pr merge --delete-branch\`, which is allowed."
             return 1 ;;
         esac
       done
@@ -258,8 +285,9 @@ check_segment() {
       for a in "$@"; do
         case "$a" in
           --abort)
-            deny_reason="git merge --abort is denied."
-            report_friction "git.merge-abort" "$deny_reason"
+            set_deny "git.merge-abort" \
+              "git merge --abort is denied." \
+              "finish the merge (resolve conflicts + commit) or leave the state for the user; do not discard the in-progress merge from an agent shell."
             return 1 ;;
         esac
       done
@@ -283,22 +311,25 @@ check_segment() {
       [ ! -d "$target" ] && return 0
 
       if dirty=$(git -C "$target" status --porcelain 2>/dev/null) && [ -n "$dirty" ]; then
-        deny_reason="git worktree remove $target denied — worktree has uncommitted changes:
-$(printf '%s\n' "$dirty" | head -5)"
-        report_friction "git.worktree-remove-dirty" "$deny_reason"
+        set_deny "git.worktree-remove-dirty" \
+          "git worktree remove $target denied — worktree has uncommitted changes:
+$(printf '%s\n' "$dirty" | head -5)" \
+          "commit or discard the worktree changes first, then re-run \`git worktree remove\` without --force."
         return 1
       fi
       if upstream=$(git -C "$target" rev-parse --abbrev-ref --symbolic-full-name '@{upstream}' 2>/dev/null); then
         ahead=$(git -C "$target" rev-list --count "$upstream..HEAD" 2>/dev/null || echo 0)
         if [ "${ahead:-0}" -gt 0 ]; then
-          deny_reason="git worktree remove $target denied — $ahead unpushed commit(s) on $(git -C "$target" rev-parse --abbrev-ref HEAD). Push or merge first."
-          report_friction "git.worktree-remove-unpushed" "$deny_reason"
+          set_deny "git.worktree-remove-unpushed" \
+            "git worktree remove $target denied — $ahead unpushed commit(s) on $(git -C "$target" rev-parse --abbrev-ref HEAD)." \
+            "push or open a PR from the worktree first, then remove it."
           return 1
         fi
       fi
       if [ "$forced" = "1" ]; then
-        deny_reason="git worktree remove --force denied — drop --force; clean removal is allowed when work is preserved."
-        report_friction "git.worktree-remove-force" "$deny_reason"
+        set_deny "git.worktree-remove-force" \
+          "git worktree remove --force denied." \
+          "drop --force; clean removal is allowed when the worktree is clean and fully pushed."
         return 1
       fi
       return 0
@@ -339,7 +370,7 @@ check_command_string() {
 }
 
 if ! check_command_string "$cmd"; then
-  printf '%s\n' "$deny_reason" >&2
+  emit_deny
   exit 2
 fi
 exit 0

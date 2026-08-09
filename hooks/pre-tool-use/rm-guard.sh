@@ -63,6 +63,21 @@ report_friction() {  # $1=failureId  $2=error-message
     --error "$_friction_msg" --command "$_friction_cmd" || true) </dev/null >/dev/null 2>&1 &
 }
 
+# Structured denial (RUSH-2295) — same shape as git-guard.
+deny_op=""
+deny_reason=""
+deny_next=""
+set_deny() {  # $1=blocked_op  $2=reason  $3=do_this_instead
+  deny_op=$1
+  deny_reason=$2
+  deny_next=$3
+  report_friction "$1" "$2"
+}
+emit_deny() {
+  printf 'blocked_op: %s\nreason: %s\ndo_this_instead: %s\n' \
+    "$deny_op" "$deny_reason" "$deny_next" >&2
+}
+
 # Fast path: no "rm" anywhere in the JSON payload, nothing to police.
 input=$(cat)
 case "$input" in *rm*) ;; *) exit 0 ;; esac
@@ -77,7 +92,6 @@ fi
 [ -z "$cmd" ] && cmd=$(_json_field "$input" toolInput.command) || true
 [ -z "$cmd" ] && exit 0
 
-deny_reason=""
 
 is_protected_path() {
   _p=$1
@@ -214,10 +228,9 @@ check_segment() {
 
   for tgt in $targets; do
     if is_protected_path "$tgt"; then
-      deny_reason="rm -r on protected path denied: $tgt
-Protected paths: /, \$HOME, ~/.agents, ~/.ssh, ~/.config, ~/Library, ~/Documents, ~/Desktop, ~/src, ~/Phoenix, ~/Rush, /Users, /Applications, /System.
-Variable-expansion targets (\$VAR) are also denied because their value is unknown at hook time."
-      report_friction "rm.protected-path" "$deny_reason"
+      set_deny "rm.protected-path" \
+        "rm -r on protected path denied: $tgt. Protected paths: /, \$HOME, ~/.agents, ~/.ssh, ~/.config, ~/Library, ~/Documents, ~/Desktop, ~/src, ~/Phoenix, ~/Rush, /Users, /Applications, /System. Variable-expansion targets (\$VAR) are also denied because their value is unknown at hook time." \
+        "use \`trash\` (or move to /tmp), or scope the path to a non-protected dir; never \`rm -rf\` home, src, or system roots."
       return 1
     fi
   done
@@ -251,7 +264,7 @@ check_command_string() {
 }
 
 if ! check_command_string "$cmd"; then
-  printf '%s\n' "$deny_reason" >&2
+  emit_deny
   exit 2
 fi
 exit 0
