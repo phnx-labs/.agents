@@ -76,6 +76,21 @@ check_allow() { # name, command-string, [max-kb-override]
 
 echo "large-file-add-guard"
 
+# RUSH-2295 structured denial shape
+check_deny_structured() {
+  run_guard "$2"
+  if [ "$RC" -ne 2 ]; then
+    echo "FAIL - $1: expected rc=2, got rc=$RC"; fail=$((fail+1)); return
+  fi
+  for needle in "blocked_op:" "reason:" "do_this_instead:" "$3" "$4"; do
+    if [ "${ERR#*"$needle"}" = "$ERR" ]; then
+      echo "FAIL - $1: stderr missing [$needle], got: $ERR"; fail=$((fail+1)); return
+    fi
+  done
+  echo "ok   - $1"; pass=$((pass+1))
+}
+
+
 # --- fixtures ------------------------------------------------------------
 REPO="$SANDBOX/repo"
 git init -q "$REPO"
@@ -96,6 +111,7 @@ SUBDIR="$REPO/a-directory"
 mkdir -p "$SUBDIR"
 
 # --- 1. Blocks large / binary files, in various dressings --------------------
+check_deny_structured "structured deny for large file" "git add $BIGFILE_DEFAULT" "git.add-large-file" "git lfs"
 check_deny "file over the real 5 MiB default threshold" "git add $BIGFILE_DEFAULT" "limit"
 check_deny "file over a custom LARGE_FILE_GUARD_MAX_KB threshold" "git add $BIGFILE_SMALL" "limit" 1
 check_deny "binary magic bytes (ELF), regardless of size"        "git add $BINARYFILE" "binary magic bytes"

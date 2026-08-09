@@ -64,8 +64,6 @@ fi
 [ -z "$cmd" ] && cmd=$(_json_field "$input" toolInput.command) || true
 [ -z "$cmd" ] && exit 0
 
-deny_reason=""
-
 is_binary_magic() {
   _f=$1
   [ -r "$_f" ] || return 1
@@ -113,6 +111,21 @@ report_friction() {  # $1=failureId  $2=error-message
     --error "$_friction_msg" --command "$_friction_cmd" || true) </dev/null >/dev/null 2>&1 &
 }
 
+# Structured denial (RUSH-2295) — same shape as git-guard / rm-guard.
+deny_op=""
+deny_reason=""
+deny_next=""
+set_deny() {  # $1=blocked_op  $2=reason  $3=do_this_instead
+  deny_op=$1
+  deny_reason=$2
+  deny_next=$3
+  report_friction "$1" "$2"
+}
+emit_deny() {
+  printf 'blocked_op: %s\nreason: %s\ndo_this_instead: %s\n' \
+    "$deny_op" "$deny_reason" "$deny_next" >&2
+}
+
 check_path() {
   _p=$1
   # Skip quoted globs (caller-quoted *).
@@ -133,17 +146,17 @@ check_path() {
   if [ "$THRESHOLD_KB" -gt 0 ]; then
     _kb=$(size_kb "$_p")
     if [ "$_kb" -gt "$THRESHOLD_KB" ]; then
-      deny_reason="git add denied — $_p is $(( _kb / 1024 )) MiB (limit ${THRESHOLD_KB} KiB).
-Large files belong in Git LFS or external storage. Set LARGE_FILE_GUARD_MAX_KB=0 to bypass."
-      report_friction "git.add-large-file" "$deny_reason"
+      set_deny "git.add-large-file" \
+        "git add denied — $_p is $(( _kb / 1024 )) MiB (limit ${THRESHOLD_KB} KiB)." \
+        "add to \`.gitignore\` or use \`git lfs\`; do not commit the blob. Set LARGE_FILE_GUARD_MAX_KB=0 only when the user explicitly wants a large intentional asset."
       return 1
     fi
   fi
 
   if is_binary_magic "$_p"; then
-    deny_reason="git add denied — $_p has binary magic bytes (build artifact / compiled output).
-If this is intentional (asset, fixture), use \`git add -f\` after confirming with the user."
-    report_friction "git.add-binary-magic" "$deny_reason"
+    set_deny "git.add-binary-magic" \
+      "git add denied — $_p has binary magic bytes (build artifact / compiled output)." \
+      "add the path to \`.gitignore\` (build output) or confirm with the user and use \`git lfs\` / an intentional asset path — do not force-add binaries by default."
     return 1
   fi
 
@@ -299,7 +312,7 @@ check_command_string() {
 }
 
 if ! check_command_string "$cmd"; then
-  printf '%s\n' "$deny_reason" >&2
+  emit_deny
   exit 2
 fi
 exit 0
