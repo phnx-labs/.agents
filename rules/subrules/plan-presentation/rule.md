@@ -87,7 +87,7 @@ house structure, the product-brand theming, the light/dark toggle, and the open-
 transport — lives in the **`plan-render` skill**. Load it and follow it.
 
 - **Source of truth is Markdown.** Write `.agents/artifacts/yyyy-mm-dd/plan-<slug>.md`
-  and compile it with `artifacts render ... --format html`. The HTML is a build output;
+  and compile it with `artifacts render <source>.md`. The HTML is a build output;
   never hand-author a complete `.html` file.
 - **Structure (fixed).** Hero (kicker · headline · problem statement · metadata chips ·
   **provenance chips — harness · agent · host · session · date, so a rendered plan is never

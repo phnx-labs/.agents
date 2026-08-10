@@ -118,7 +118,7 @@ Do **not** present until `artifacts render` exits 0. A missing figure fails with
 
    ```bash
    SOURCE="$ARTIFACTS_DIR/plan-<slug>.md"
-   artifacts render "$SOURCE" --format html
+   artifacts render "$SOURCE"
    ```
 
    This writes `plan-<slug>.html` next to the source.
@@ -167,7 +167,7 @@ Do **not** present until `artifacts render` exits 0. A missing figure fails with
 
 - [ ] Markdown source written to `.agents/artifacts/yyyy-mm-dd/plan-<slug>.md` (not `/tmp/scratchpad`)
 - [ ] `artifacts check` reports **no errors** (figure present; required sections present)
-- [ ] HTML rendered next to the source with `artifacts render ... --format html` (exit 0)
+- [ ] HTML rendered next to the source with `artifacts render <source>.md` (exit 0)
 - [ ] Grep the HTML: at least one `<svg` with a drawn primitive; at least one `<pre`/`<table`
 - [ ] Output inspected headlessly in both themes and at desktop/mobile widths
 - [ ] HTML opened on the user's machine and copied to `~/Downloads`

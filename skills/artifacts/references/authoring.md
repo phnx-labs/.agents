@@ -52,6 +52,17 @@ omitted, the chip text is derived:
 | Explicit `label` | that label |
 | Otherwise | last path segment or host |
 
+Chip icons: known hosts (GitHub, Linear, Jira/Atlassian, Notion, GitLab,
+Bitbucket, Asana, Trello, Slack, Figma) get an offline brand mark. Any other
+host tries a remote favicon at view time and removes it if load fails.
+
+### Header chrome (render)
+
+At render time the hero is work-first: `status` becomes a kicker badge; freeform
+`facts` are a quiet monoline; `links` sit under **Related** as chips; provenance
+is one unlabeled line. Harness + model combine into a single display name
+(e.g. Grok 4.5). Optional `tracking` appears in that provenance line.
+
 Seed every related URL you already have when authoring. If you create tickets
 during the session, append them to `links` and re-render before presenting. Also
 list the same URLs under `## Tracking` as Markdown links so the body is readable
@@ -133,19 +144,18 @@ Example:
 
 ## Plan quality gate
 
-For `kind: plan`, validation is not optional chrome:
+For `kind: plan`, validation is not optional chrome. The goal is a **pleasant,
+reviewable** page — not a wall of bullets.
 
-| Check | Level | Rule |
+| Check | Level | What you see |
 | --- | --- | --- |
-| Live drawn SVG | **error** | `No SVG figure found.` Add a visualization as live inline SVG. Skills: **plan-render**, **artifacts**. |
-| Markdown table | warning | At least one `| … |` table (files, risks, validation) |
-| Fenced code | warning | At least one fenced code block — commands belong here, not only as inline pills |
-| `artifact-callout` | warning | One load-bearing takeaway for the reviewer |
+| Live drawn SVG | **error** | `No SVG figure found.` Add a visualization (architecture / before-after / flow) as live inline SVG with drawn children (`rect`/`path`/`text`/…). Empty shells and fenced ```` ```svg ```` blocks do not count. Skills: **plan-render**, **artifacts** (this diagram recipe). |
+| Markdown table | warning | `No table found.` Prefer a files/risks/validation table. |
+| Fenced code | warning | `No fenced code block.` Commands belong in fences, not only inline pills. |
+| `artifact-callout` | warning | `No callout found.` Highlight the one takeaway. |
 
 `artifacts render` **does not write HTML** when any error is present. Fix the
 Markdown source; do not open a partial file.
-
-Empty SVG shells (template placeholders with only a comment) do **not** pass.
 
 ## Diagram Recipe
 
@@ -175,6 +185,5 @@ print. See `examples/showcase.md` for a complete figure.
 ## Generated Files
 
 Do not edit compiled HTML to fix content or layout. It embeds the Markdown source
-for `artifacts decompile` (absent from `--help`, still runs), but decompile is
-recovery, not the normal authoring
+for `artifacts decompile`, but decompile is recovery, not the normal authoring
 path. Make the correction in Markdown or `DESIGN.md` and regenerate all outputs.

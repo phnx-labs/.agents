@@ -50,7 +50,7 @@ The proposed approach. Name concrete files and functions.
 
 ```bash
 # Commands, flags, or APIs this plan introduces
-artifacts render .agents/artifacts/$(date +%F)/plan-<slug>.md --format html
+artifacts render .agents/artifacts/$(date +%F)/plan-<slug>.md
 ```
 
 ## Validation
