@@ -5,6 +5,16 @@
 ### Fixed
 
 - **`hooks/promptcuts.yaml` #275: `#debugit` is no longer swallowed into `#rethink`'s block scalar.** The shortcut key was mis-indented 6 spaces, so YAML parsed it as part of `#rethink`'s value, making `#debugit` / `!!debugit` a no-op and gluing the debug root-cause block onto every `#rethink` expansion. Re-indented `#debugit` to the canonical 2-space key + 4-space body and fixed the same mid-block drift in `#simplifyit`. Added `hooks/tests/promptcuts_test.sh` to assert the expected shortcut key set on every load so a swallowed cut fails loudly. Source: `hooks/promptcuts.yaml`, `hooks/tests/promptcuts_test.sh`.
+- **`verify-work-complete` scopes PR refs to their repo (#264) and stops blaming
+  no-op sessions for repo history (#245).** Bare-number PR refs used with
+  `--repo owner/repo` now resolve against that repo, not the session cwd, closing
+  the cross-repo collision that could falsely block or pass the open-PR stop
+  gate. The delivery-chain gate also drops its `HEAD~10..HEAD` history fallback;
+  it had attributed other sessions' commits to browser/ops/research sessions that
+  made no repo change, producing false-positive "missing docs/CHANGELOG" blocks.
+  Source: `hooks/stop/00-agent-verify-work-complete.sh`,
+  `hooks/stop/verify-delivery-chain.py`,
+  `hooks/stop/tests/00-agent-verify-work-complete_test.sh`.
 
 - **Account guidance uses positional identity and target arguments (RUSH-2527).** Fleet sync, mint-auth, run, and agents-cli guidance now teach `accounts name <agent@version> <name>`, `attach <account> <target>`, and `sync <account> <device>` while keeping native OAuth material harness-owned.
 
