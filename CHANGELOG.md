@@ -19,6 +19,28 @@
 
 ### Changed
 
+- **`plugins/design` is now the single design front door; the anticipate mode,
+  anti-tells catalog, and brand identity are folded in (RUSH-2504).** Three
+  competing design entries existed — this plugin, an older user-layer
+  `create:design` skill, and a bare `create:design` command — and are now one.
+  Added `skills/design/anticipate.md`: diagnose a flow's dead-end (terminal
+  success, silent partial work, forced re-invocation, asymmetric confirms),
+  propose the continuation as before/after ASCII, and stop — no implementation
+  without approval. Added a 12-item anti-tells catalog (design-core §6): the
+  aesthetic signatures that read as AI-generated (italic serif display,
+  two-tone headlines, latin section markers, sodium-amber-on-warm-black,
+  gradient-glow buttons, lucide-card grids, and the rest), with the working
+  alternative for each — every mode now checks its render against it before
+  calling it done. Added design-core §5: browse the live web via the `browser`
+  skill for current inspiration instead of relying on frozen example files, and
+  removed the plugin's stale hardcoded `examples/` (frozen product screenshots
+  that go stale the moment they're written). Brand identity (`BRAND.md` — voice,
+  positioning, references, anti-tells) now lives as part of the `system` mode,
+  not a separate `brand` mode. Source: `plugins/design/skills/design/{design-core,system,anticipate,SKILL}.md`,
+  `plugins/design/README.md`, `plugins/design/.claude-plugin/plugin.json`
+  (0.1.0 → 0.2.0). The duplicate `create:design` skill/command are removed from
+  the user layer (`~/.agents/plugins/create/`), tracked separately.
+
 - **Stop hook `verify-work-complete` no longer references the removed `agents pr
   land` command (RUSH-2466, RUSH-2473).** The durable PR-lander evidence the
   open-PR and keep-moving gates accept is now solely a native `ScheduleWakeup` /
