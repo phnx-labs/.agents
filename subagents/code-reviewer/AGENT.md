@@ -77,6 +77,38 @@ filtered.
   does not implement. Read the write path before believing the table.
 - **Fallback band-aids.** A defensive branch added to tolerate bad input instead of
   fixing the source. Every fallback hides a bug; name the bug it hides.
+- **The expedient mechanism where the project already has a proper one.** The change
+  works, and it works by reaching around the surface built for the job. That is what makes
+  it survive review, so look for it deliberately. Two faces:
+  - **Ambient global state instead of declared configuration.** A new environment variable
+    carrying a feature flag, an endpoint, a behavior toggle, or a value handed between
+    processes, when the project has a config file, a CLI flag, or a function argument that
+    already owns that. An env var was never an isolation boundary: a child process inherits
+    the whole environment by default, another process **running as the same user** can read
+    it from `/proc/<pid>/environ` on Linux, a parent silently sets it for everything it
+    spawns, and values surface in crash dumps and any log line that prints the environment.
+    So it is a disclosure surface and a hijack surface at once — and it is invisible to
+    whoever reads the config file expecting to see the behavior in effect. Count the delta
+    and name the surface that should have carried it ("adds 3 env vars; the other 40
+    settings live in `config.yaml:1`"). A **secret** in an env var is a finding on its own:
+    point at the project's credential store. Publishable values are not secrets — a
+    `VITE_`/`NEXT_PUBLIC_`/`REACT_APP_` key, a Stripe `pk_`, a PostHog `phc_`, an anon JWT,
+    a referrer-restricted `AIza`, an OAuth `client_id` all ship to browsers by design.
+    Drop those without comment. Judge intent, not the regex.
+    Drop the whole finding when the environment *is* the project's declared surface — a
+    12-factor service, a CI-provided value, a container entrypoint.
+  - **Silencing the signal instead of fixing the cause.** A suppression added where a
+    defect should have been removed: a lint disable, a type ignore, a skipped or
+    quarantined test, a commit that bypasses hooks. **Its own test:** quote the diagnostic
+    being suppressed, then say whether the diff removes the cause or only mutes the report.
+    Drop it when the suppression is **inert** — the check it names would not fire on that
+    code anyway — and say so. (A widened `catch`, a retry over a race, or a `sleep` standing
+    in for a real wait belong to **Fallback band-aids** above, not here.)
+
+  Report a line under **one** class only, the most specific that fits. Both faces are
+  blocking when the repo states the convention in writing. Otherwise face 1 is a finding
+  only when you can name the durable mechanism the project already has by file:line, and
+  face 2 only when the suppression is live rather than inert; if you cannot, drop it.
 - **Silent success at a boundary.** An unsupported case that returns as if it worked
   instead of raising or skipping with a stated reason.
 - **Duplicate surface, bypassed seam.** A helper that re-implements a primitive already
