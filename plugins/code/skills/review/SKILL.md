@@ -223,6 +223,24 @@ spend a sub-agent. Multiple targets resolve independently and review in parallel
 ordering dependency unless one target's base is another target's head (treat that as a
 stack: see Mode A's dependency-graph handling).
 
+### B1b. Load the requirement — the ticket and the plan, before any reviewer spawns
+
+A reviewer with no requirement can only grade the code against itself. Resolve what this
+change was *supposed* to do and pass it into the brief:
+
+```bash
+# Ticket: from the branch name, PR title, or PR body (e.g. RUSH-2462, #412)
+TICKET=$(grep -oE '[A-Z]{2,}-[0-9]+' <<<"$BRANCH $TITLE $BODY" | head -1)
+[ -n "$TICKET" ] && linear tasks "$TICKET" 2>/dev/null   # or: gh issue view <n>
+# Plan: committed alongside the code, or under the dated artifact layout
+ls .agents/plans/plan-*.html .agents/artifacts/*/plan-*.md 2>/dev/null | tail -5
+```
+
+Quote the **acceptance criteria** verbatim into the brief (not a paraphrase, and not the
+whole ticket). The reviewer answers conformance per criterion before it reviews anything
+else. If no ticket and no plan exist, say so in one line and pass the PR body as the
+requirement — never spawn a reviewer with nothing to review against.
+
 ### B2. Pick the dispatch shape
 
 Auto-classify when no flag is set. Bias toward cheap.
@@ -270,16 +288,24 @@ pattern list, plus Mission / Full scope / Your assignment / Boundary contract / 
 criteria. The orchestrator collects each critique and synthesizes one verdict. Multiple
 PR targets each get their own single-agent-or-team dispatch, all in one message.
 
-### B4b. Security pass (risk surface touched, or `--security`)
+### B4b. Security pass — its own agent, spawned alongside the reviewer
 
-Run when changed files touch: HTTP/API routes, controllers, middleware · auth / sessions /
-billing / IAM · DB queries, ORM raw SQL, query builders · HTML rendering, share/preview
-pages · shell exec, `child_process`, `exec.Command`, `osascript` · native/IPC boundaries
-(Electron main↔renderer, extension content scripts) · infra (Terraform, CDN/worker config,
-Dockerfile, K8s) · dependency/lockfile bumps · anything that could carry a leaked secret.
-Fold into the single reviewer's brief as check #6 for a small diff; for a security-heavy
-diff, escalate to one read-only `Explore` agent per relevant vulnerability class, parallel,
-one message.
+**Spawn it as a separate agent in the same message as the reviewer, not as a check folded
+into that reviewer's brief.** Two reasons: it runs concurrently so it costs wall-clock
+nothing, and a reviewer working a long correctness rubric reliably gives the security tail
+the least attention. One cheap Sonnet agent whose only job is "does user input reach a
+sink" finds more than check #6 of seven ever did.
+
+Run it whenever changed files touch: HTTP/API routes, controllers, middleware · auth /
+sessions / billing / IAM · DB queries, ORM raw SQL, query builders · HTML rendering,
+share/preview pages · shell exec, `child_process`, `exec.Command`, `osascript` ·
+native/IPC boundaries (Electron main↔renderer, extension content scripts) · infra
+(Terraform, CDN/worker config, Dockerfile, K8s) · dependency/lockfile bumps · anything
+that could carry a leaked secret. Also whenever `--security` is passed.
+
+Skip it only for a diff that touches none of those (a docs edit, a pure rename) — say so
+in one line rather than silently dropping it. For a security-heavy diff, widen to one
+read-only `Explore` agent per relevant vulnerability class, all in one message.
 
 | Class | Run when | Grep for |
 |---|---|---|
