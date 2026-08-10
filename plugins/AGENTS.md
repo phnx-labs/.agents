@@ -30,11 +30,27 @@ plugins/<name>/
   .claude-plugin/plugin.json     # required — the plugin manifest
   commands/<command>.md          # becomes /<name>:<command>
   skills/<skill>/SKILL.md        # skills the commands load
+  agents/<subagent>.md           # a subagent the plugin's skills spawn
 ```
 
 A plugin command follows the same rules as a top-level
 [command](../commands/AGENTS.md): `description` frontmatter, `$ARGUMENTS` consumed. A plugin
 skill follows [`skills/AGENTS.md`](../skills/AGENTS.md).
+
+## Packaged subagents
+
+A plugin ships a subagent as a **flat** `agents/<name>.md` — one file, `name:` +
+`description:` frontmatter (`model:` and `color:` optional), discovered by
+`discoverPluginAgentDefs` in `apps/cli/src/lib/plugins.ts`. That is a different layout
+from the top-level [`subagents/`](../subagents/README.md) layer, which is a directory per
+subagent; do not copy one shape into the other.
+
+Ship one only when a skill in this plugin spawns it — a subagent nobody invokes is dead
+weight in every install. Name it for the role, spawn it by that name from the skill, and
+keep the standing rubric in the subagent so the skill's brief carries only per-run
+context. The name collides with a same-named user-layer `~/.agents/subagents/<name>/`,
+and the user layer wins, so a packaged subagent supersedes rather than merges: say so in
+the plugin README and the CHANGELOG entry.
 
 ## The canonical definition lives in the plugin
 

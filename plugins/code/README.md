@@ -14,6 +14,21 @@ better documented than you found it.
 | `code:commit` | Split changes into the maximum number of small logical commits (one concept per commit) and push in the background. |
 | `code:release` | Publish a package/CLI/app to its registry — discover the repo's real release process, run tests, changelog, publish, tag, verify live. Invoked via `/code:release`. |
 
+## Subagents
+
+Installing this plugin also installs the reviewer it spawns, so a repo whose automated
+code reviewer is missing, paused, or down still has a non-author review available with no
+per-repo setup.
+
+| Subagent | Use when |
+| --- | --- |
+| [`code-reviewer`](./agents/code-reviewer.md) | A diff, branch, or PR needs an independent verdict. Adversarial twice over: it hunts the input that breaks the change, then tries to kill each of its own candidate findings (guard elsewhere / unreachable / sanctioned by the repo) and reports only the survivors plus a count of what it filtered. Every finding carries a `file:line` quote and a concrete failure scenario. It reviews and reports — it never edits, pushes, or merges. |
+
+`code:review` spawns it as `subagent_type: "code-reviewer"`; a harness that does not load
+plugin subagents falls back to a generic agent carrying the same brief. The standing rubric
+lives in the subagent, so the skill's per-PR brief only supplies context and canonical
+patterns — change the rubric in one place.
+
 ## Where verify/ship/quality went
 
 Earlier versions of this plugin had separate `code:verify`, `code:ship`, and `code:quality`

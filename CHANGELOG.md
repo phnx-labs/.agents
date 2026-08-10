@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Added
+
+- **The `code` plugin ships a `code-reviewer` subagent.** Installing the plugin installs the reviewer, so a repo whose automated code reviewer is missing, paused, or down still has a non-author review with no per-repo setup — the case agents-cli is in today with `prix/code-reviewer` paused (#1767). It is adversarial twice: it hunts the input that breaks the change, then tries to kill each candidate finding (the guard is elsewhere / the line is unreachable / the repo sanctions it) and reports only survivors plus a count of what it filtered. Every finding carries a `file:line` quote and a concrete failure scenario; it never edits, pushes, or merges. `code:review` now spawns `subagent_type: "code-reviewer"` and its per-PR brief carries only context and canonical patterns, since the standing rubric lives in the subagent. First packaged subagent in this repo — `plugins/AGENTS.md` documents the flat `agents/<name>.md` layout and the user-layer shadowing rule. A same-named `~/.agents/subagents/code-reviewer/` wins over the packaged one; remove it to pick this up. Source: `plugins/code/agents/code-reviewer.md`, `plugins/code/skills/review/SKILL.md`.
+
 ### Changed
 
 - **Agent launch guidance uses durable credential accounts (RUSH-2402).** The `agents-cli` and `run` skills now teach `agents accounts add`, `agents run --account`, and device-local credential installation instead of attaching credentials to harness definitions.

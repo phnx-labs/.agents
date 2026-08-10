@@ -32,7 +32,7 @@ Do not stretch `code:loop` into browser outreach — use `work:loop`.
 
 | Plugin | Commands | What it's for |
 |---|---|---|
-| [`code`](./code/README.md) | 5 | The coding loop — `/code:loop`, `/code:review` (session PRs / cold PR review / whole-repo scan, three modes on one skill), `/code:learn` (writes project AGENTS.md nav notes), `/code:commit`, `/code:release` (publish a package/CLI/app to its registry — discover release process, run tests, changelog, publish, tag, verify live). |
+| [`code`](./code/README.md) | 5 | The coding loop — `/code:loop`, `/code:review` (session PRs / cold PR review / whole-repo scan, three modes on one skill), `/code:learn` (writes project AGENTS.md nav notes), `/code:commit`, `/code:release` (publish a package/CLI/app to its registry — discover release process, run tests, changelog, publish, tag, verify live). Also ships the `code-reviewer` subagent `/code:review` spawns. |
 | [`work`](./work/README.md) | 3 | General-purpose work — `/work:loop` (alias `/loop`) unattended multi-project drain with load spread + browser/computer; `/work:dispatch` is ONE unit of work (coding or not); `/work:output` is the fleet token-burn/output report |
 | [`swarm`](./swarm/README.md) | 4 | Fan a task across parallel agents — top-level `/swarm` + `/swarm:run`, `/swarm:plan`, `/swarm:spec`, `/swarm:debug` (test/qa removed; plan/spec require mock-ups) |
 | [`fleet`](./fleet/README.md) | 4 | Fleet-wide ops — `/fleet:sync` brings every device to latest, `/fleet:onboard` brings a bare box to parity, `/fleet:mint-auth` self-mints setup tokens, `/fleet:profile` profiles a sluggish machine and attributes the load to agents-cli surfaces |
