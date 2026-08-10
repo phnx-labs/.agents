@@ -275,10 +275,10 @@ generic "code style."
 
 ### B4. Spawn the reviewer
 
-**Single-agent** — one `Agent` call, `subagent_type: "code-reviewer"` (this plugin ships
-the repo ships that
+**Single-agent** — one `Agent` call, `subagent_type: "code-reviewer"` (the repo ships that
 subagent at `subagents/code-reviewer/AGENT.md`, materialized into every subagents-capable
-harness; fall back to `"claude"` on a harness without subagent support), `model: "sonnet"`, the brief below. The subagent already
+harness; fall back to `"claude"` on a harness without subagent support), `model: "sonnet"`,
+the brief below. The subagent already
 carries the standing rubric — the hunt classes, the three-kill refutation pass, the
 non-checks list, and the output shape — so the brief supplies only what is specific to
 this PR: context, canonical patterns, and the session goal. B5 has both shapes: the short
