@@ -3,7 +3,7 @@
 # Includes all subrules from `<repo>/rules/subrules/`.
 # `foundations` renders first: the five principles (F1-F5) every tactic references.
 # Linear tickets context is injected by hooks/03-linear-inject-tasks-context.sh.
-# Release/publish discipline lives in the `release` skill.
+# Release/publish discipline lives in the `code:release` skill.
 
 presets:
   default:

@@ -75,9 +75,10 @@ or the resource exists on disk and is invisible or dead:
 |---|---|---|
 | command | `commands/<name>.md` with `description:` frontmatter | the table in `commands/README.md` |
 | skill | `skills/<name>/SKILL.md` with `name:` + `description:` | the table in `skills/README.md` |
-| hook | `hooks/<NN>-<name>.{sh,py}` **and** the `hooks:` entry in `agents.yaml` | the table in `hooks/README.md`; ship a `_test.sh` beside it |
+| hook | `hooks/<NN>-<name>.{sh,py}` **and** the `hooks:` entry in `agents.yaml` | the table in `hooks/README.md`; ship a `_test.sh` in that event dir's `tests/` subdir (`hooks/<event>/tests/<name>_test.sh`) |
 | permission | a fragment in `permissions/groups/` | run `permissions/build.sh` to regenerate `default.yaml` |
 | plugin | `plugins/<name>/` with its own `README.md` | the table in `plugins/README.md` |
+| subagent | `subagents/<name>/AGENT.md` with `name:` + `description:` frontmatter | the table in `subagents/README.md`, **and** the skill that spawns it — a subagent nothing spawns is dead weight in every install. Do **not** put it in a plugin's `agents/` dir: that reaches only plugin-format harnesses, while `subagents/` reaches every subagents-capable one |
 | rule | `rules/subrules/<name>.md` | the `default` preset in `rules/rules.yaml`, then regenerate `rules/AGENTS.md` |
 | CLI manifest | `cli/<tool>.yaml` | the table in `cli/README.md` |
 | routine | `routines/<name>.yml` | the table in `routines/README.md` |
@@ -100,7 +101,7 @@ the model decides its `description` matches; a command fires when the user types
 Those are different doors, and a skill with no command can only be reached by asking the
 agent nicely. Add `commands/<name>.md` (or `plugins/<p>/commands/<name>.md`) that routes
 to the skill — the command stays thin, the behavior stays in the skill, and they never
-fork (see the `/commit` → `/code:commit` alias pattern).
+fork (see the `/continue` → `/sessions:continue` alias pattern).
 
 **But the command is an accelerator, never the only door.** Commands are not universal
 across harnesses, and skills very nearly are. From the capability table
@@ -117,6 +118,37 @@ Write the skill so it is complete on its own, then add the command as the fast p
 Never move logic out of the skill and into the command. When a plugin is the right
 grouping but a target harness has no plugin support, say so in the plugin's README
 rather than silently shipping something a third of the fleet cannot load.
+
+## What earns a command or skill — distill to the fundamental operation
+
+The command/skill surface is not a feature list; it is the set of **fundamental operations
+an agent needs to get work done**. Every addition is measured against that, and the default
+answer to "should this be a new command?" is **no — extend an existing one**. This is the
+philosophy behind keeping the surface small: fewer, sharper primitives an agent actually
+reaches for beat a long menu nobody remembers.
+
+- **A primitive, not a variant.** Add a capability only when it names a *fundamental
+  operation* the fleet doesn't already have — a distinct verb of getting work done. A new
+  flavor of something that exists (a second "review", a per-project "loop", a per-tracker
+  "tickets") is a **mode or argument of the existing one**, never a new command. When two
+  cover the same job, merge them. The surface shrinks by consolidation, not by never adding.
+- **All work, not just code.** The fleet does engineering, but also research, outreach,
+  content, browser/computer tasks, tickets, and session lifecycle. A capability earns its
+  place by being a primitive *across* those domains, not a code-only convenience. Prefer the
+  general verb (`tickets` works on any tracker; `loop` drains any kind of work; `blame`
+  traces any regression; `work:*` covers any unit of work) over one narrow command per case.
+- **General-purpose, yet concrete enough for a weak model.** Two opposite failure modes.
+  Too narrow → the bloat we trim. Too vague → a prompt only a frontier model can interpret,
+  which silently fails on the cheaper/smaller models the fleet also runs. Aim for the
+  middle: one command per fundamental operation, written as **explicit, ordered steps** with
+  the exact commands to run, the expectation to check, and the failure to avoid named
+  outright. The bar is that an agent on a *weak* model can follow it and still land the
+  result — if it only works because a strong model filled in the unstated, it is
+  underspecified. Write for the weakest model that must run it, not the strongest.
+
+Before you add anything here, answer three questions: **Is this a fundamental operation, or a
+variant of one that exists? Does it generalize past code? Could a weak model execute it from
+the text alone?** If any answer is no, extend, generalize, or rewrite — don't add.
 
 ## Common mistakes in this repo — check yourself against these first
 
@@ -206,8 +238,25 @@ agents sync claude@all system # reconcile this repo's resources into every insta
 agents inspect hooks          # the hook is registered, with its events
 ```
 
+**A plugin change needs a fourth command — the three above do not carry it.**
+`agents sync <agent> system` reports the kinds it reconciled (commands, skills, hooks,
+memory, permissions) and plugins are not among them, so the installed marketplace copy under
+`~/.<agent>/plugins/marketplaces/<repo>/plugins/<name>/` keeps serving the **old** version
+until you run:
+
+```bash
+agents plugins sync <name>    # push the plugin into every installed agent version
+```
+
+Measured 2026-08-09 on yosemite-m1: after `agents sync system` (mirror at the merge commit)
+and `agents sync claude@all system`, the installed copy still read `"version": "0.9.0"` with
+no `agents/` directory. `agents plugins sync code` moved it to `0.10.0` carrying
+`agents/code-reviewer.md`. Verify the **installed** copy's manifest version, not the mirror's.
+
 ## Tests
 
-Hooks carry `<name>_test.sh` beside the script and it must pass before the PR. Test against
-the real critical path — no mocking. A guard hook additionally needs a fixture proving it
-**fails closed**: the blocked input is refused when its JSON parser is absent.
+Hooks carry `<name>_test.sh` in a `tests/` subdir of their event dir
+(`hooks/<event>/tests/<name>_test.sh`, not beside the script — see `hooks/AGENTS.md`)
+and it must pass before the PR. Test against the real critical path — no mocking. A
+guard hook additionally needs a fixture proving it **fails closed**: the blocked
+input is refused when its JSON parser is absent.

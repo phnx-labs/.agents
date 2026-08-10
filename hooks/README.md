@@ -39,10 +39,16 @@ Scripts live under a **one-level event directory** (kebab-case of the harness ev
 ```
 hooks/
   session-start/          SessionStart
+    tests/                  its *_test.sh files
   pre-tool-use/           PreToolUse
+    tests/                  its *_test.sh files
   user-prompt-submit/     UserPromptSubmit
+    tests/                  its *_test.sh files
   stop/                   Stop
+    tests/                  its *_test.sh files
   notification/           Notification (+ multi-event hooks that start there)
+  lib/                    shared helpers sourced by hooks (not event scripts)
+    tests/                  its *_test.sh files
   promptcuts.yaml         data for expand-promptcuts (stays at hooks/ root)
   registration_test.sh    integrity gate (top-level)
   syntax_test.sh          parse gate — every hook script, incl. under bash 3.2
@@ -52,6 +58,12 @@ hooks/
 agents-cli discovers scripts one level under group dirs; the install name is the
 **file basename** so version homes stay flat. `agents.yaml` `script:` is relative
 to `hooks/` (e.g. `session-start/04-session-identity.sh`).
+
+**Tests live in a `tests/` subdir of their own event dir**, one level deeper than
+the hook script they cover — `hooks/<event-name>/tests/<name>_test.sh`, not
+beside the script. This keeps `ls hooks/<event-name>/` limited to the scripts
+that actually run on the harness event. See [`AGENTS.md`](./AGENTS.md) for the
+path-reference rule a moved test must follow.
 
 Rule-bundled guards do **not** live here — they ship with the subrule under
 `rules/subrules/<rule>/` via that dir's `hooks.yaml` (absolute script paths at
@@ -103,7 +115,6 @@ register time). See [§Subrule hooks](#subrule-hooks-rules-not-this-tree).
 | Hook | What it does |
 |---|---|
 | [`06-attention-sentinel.sh`](./notification/06-attention-sentinel.sh) | Per-session attention state (also fires on Stop + UserPromptSubmit) |
-| [`12-escalate-on-notification.sh`](./notification/12-escalate-on-notification.sh) | Escalation ladder when the agent needs the user |
 
 ## Subrule hooks (rules, not this tree)
 

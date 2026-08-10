@@ -22,10 +22,10 @@ skill stays loaded and brings tooling with it.
 | [`cloud`](./cloud/SKILL.md) | Dispatch agent tasks to Rush Cloud, Codex Cloud, or Factory pods |
 | [`routines`](./routines/SKILL.md) | Schedule agents on a cron schedule or one-shot at a specific time |
 | [`monitors`](./monitors/SKILL.md) | Durable event-triggered watchers — watch a source, fire an agent, routine, or notification on change |
-| [`escalate`](./escalate/SKILL.md) | Reach the owner out-of-band when genuinely blocked, climbing message → watch → call |
 
-`routines` fire on a clock; `monitors` fire on a change. Reach for `escalate` only after the
-self-unblock ladder is exhausted.
+`routines` fire on a clock; `monitors` fire on a change. To reach the owner when genuinely
+blocked, use `agents feed post --blocked` (it opens a needs-you record and delivers
+out-of-band) — after the self-unblock ladder is exhausted.
 
 ## Acting on the real world
 
@@ -39,15 +39,15 @@ self-unblock ladder is exhausted.
 
 | Skill | What it does |
 |---|---|
-| [`release`](./release/SKILL.md) | Publish to registries — discover repo structure, run tests, update the changelog, publish, tag |
 | [`mq`](./mq/SKILL.md) | Structure-aware query for large files — extract one section instead of reading the whole file |
 | [`learn`](./learn/SKILL.md) | Reflect on a finished session and write the durable lessons back into skills, rules, or memory |
-| [`reflect`](./reflect/SKILL.md) | Recall cumulative feedback during an active conversation before revising work |
+| [`tickets`](./tickets/SKILL.md) | Work with the project's issue tracker — auto-detect Linear/GitHub/Jira (skill/CLI/repo signal), then list/claim/comment/close/create/search with proof; drives the check-first/close-on-delivery lifecycle |
 
 ## Producing output for humans
 
 | Skill | What it does |
 |---|---|
+| [`artifacts`](./artifacts/SKILL.md) | Author plans, reports, and visuals as Markdown, then render them to branded light/dark HTML or PDF with `artifacts-cli` — the general engine `plan-render` and `visualize` specialize |
 | [`plan-render`](./plan-render/SKILL.md) | Render an implementation plan as a self-contained, review-grade HTML doc, opened where the user sits |
 | [`visualize`](./visualize/SKILL.md) | Turn a concept, dataset, or finding into one self-contained shareable HTML visualization |
 | [`docs`](./docs/SKILL.md) | Write documentation — user-facing, technical, runbooks, onboarding, changelogs, and AGENTS.md (`write-agents-md.md`) |

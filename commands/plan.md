@@ -7,9 +7,10 @@ You are planning: $ARGUMENTS
 ## CRITICAL: Ground the Plan in Reality
 
 Plans fail when they're based on assumptions instead of evidence. Before proposing anything:
+0. **Search what previous agents did on this feature** — `agents sessions "<feature keywords>"`, then read the latest plan/PR on that surface. Extend it; do not silently revert it (the most common regression).
 1. Research current best practices and APIs
 2. Read the actual code that will change
-3. Create concrete artifacts (mockups, diagrams)
+3. Create concrete artifacts (mockups, diagrams, and a per-file diff of the change)
 4. For medium+ work, get independent plans from a vendor-varied panel and adjudicate one
    merged plan against the code (Step 7)
 
@@ -104,34 +105,24 @@ Only create new primitives when:
 
 After reading code, create concrete artifacts. **No discussion without artifacts.**
 
-### For UI Changes — User Flow + Mockups REQUIRED
+### For UI Changes — User Flow + a REAL Mockup REQUIRED
 
-First, show the user flow:
-```
-[Landing] --click "Sign Up"--> [Registration Form] --submit--> [Email Verification]
-                                      |                              |
-                                      v                              v
-                               [Validation Error]            [Welcome Screen]
-```
+First, show the user flow as a **rendered figure** — a hand-authored inline-SVG
+diagram (the `plan-render` / `artifacts` house style), not an ASCII box. Name each
+screen and the transitions between them.
 
-Then, ASCII mockup for each screen:
-```
-+----------------------------------+
-| Logo                    [Login]  |
-+----------------------------------+
-|                                  |
-|     Create your account          |
-|                                  |
-|  Email:    [                  ]  |
-|  Password: [                  ]  |
-|                                  |
-|        [Create Account]          |
-|                                  |
-|  Already have an account? Login  |
-+----------------------------------+
-```
+Then a **real mockup** of each screen that reads like the actual product — not an
+ASCII wireframe, not a generic box diagram. Probe the repo for its design tokens
+(Tailwind config, CSS variables, brand colors, an existing component) and build the
+mockup with the `artifacts` CLI so it could pass for a screenshot of the real thing.
+When there is a genuine design choice, show **2-3 variations side by side**, each
+labeled with its one-line tradeoff, and treat that review as the design gate — the
+pick is the user's.
 
-Annotate:
+ASCII wireframes are not acceptable for a UI surface: the user judges look-and-feel
+and cannot do that from a box of pipes and dashes.
+
+Annotate each mockup:
 - What each element does
 - Validation rules
 - Error states
@@ -254,6 +245,11 @@ Collect every planner's design plus your own and synthesize **ONE** plan:
   missed.
 - Where designs differ on a genuine *trade-off* (not a factual error), surface it as a design
   question via `AskUserQuestion` rather than picking silently.
+- **For any API/CLI-surface or architectural change, the panel must judge two things
+  explicitly:** (1) is the proposed surface clean, minimal, and intuitive; (2) does it follow
+  the repo's **existing architectural conventions** — access centralized in one place, no
+  duplicated surface, cross-cutting change made at the source, not scattered into consumers.
+  A surface that fragments or over-extends is rejected for that point.
 
 You are the adjudicator, not an averager — the merged plan is the strongest grounded design,
 not the union of all of them.
@@ -286,10 +282,9 @@ Components, hooks, utilities, patterns to reuse. What each provides.
 **Artifacts:**
 [Mockups, API specs, state diagrams — MANDATORY]
 
-**Implementation:**
-- File: path/to/file.ts
-  - Function: existingFunction() — modify to add X
-  - New function: newFunction() — does Y
+**Implementation:** For each file that changes, show a per-file **diff** of the relevant
+hunk (added lines green, removed red) via the `code-diff` component — not a bare
+File/Function list. Name every module touched.
 
 **Design Questions:** (only if genuinely ambiguous)
 
@@ -317,7 +312,7 @@ reference this step.
    the **`artifacts`** skill. Resolve the repo root and write the Markdown source to
    `.agents/artifacts/yyyy-mm-dd/plan-<slug>.md`, then render:
    ```bash
-   artifacts render .agents/artifacts/yyyy-mm-dd/plan-<slug>.md --format html
+   artifacts render .agents/artifacts/yyyy-mm-dd/plan-<slug>.md
    ```
    This writes the HTML next to the Markdown source. Include the goal, the
    implementation table, existing-primitives-to-reuse, the design questions, and

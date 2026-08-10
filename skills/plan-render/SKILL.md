@@ -74,16 +74,30 @@ Architecture diagrams do not substitute for behavior views.
    ---
    ```
 
-   Use the section structure required by the `plan` template:
+   Follow the planning contract in the `plan-presentation` rule for the section
+   order and the pre-present gates. On top of the `plan` template's sections, a plan
+   leads with **Focus for review** (what you want weighed in on) and **Intent** (the
+   user's ask restated), and carries a **Current architecture** section (before/after
+   figure for architectural changes):
 
+   - `## Focus for review` — 2-5 bullets, at the very top
+   - `## Intent` — the user's ask in their own words
+   - `## Current architecture` — how the module works today (+ before/after figure)
    - `## Purpose` — what's broken or needed
-   - `## Proposed Changes` — the change, with concrete files and functions
+   - `## Proposed Changes` — the change, with a **per-file diff** of each change
+     (use the `code-diff` component: collapsible, +/- coloured, line numbers — see below)
    - `## Public Interface` — commands, flags, or APIs introduced
+   - `## Plan` — the to-do checklist, mirrored from `TaskCreate` (rendered, with status)
    - `## Validation` — how to verify the change
    - `## Risks` — edge cases and mitigations
    - `## Tracking` — ticket links / next step
 
-   A tagged files table and any other supporting tables can appear inside the relevant section.
+   **Show the implementation as real code, not a file table.** For each file that
+   changes, render the actual change as a diff — the relevant hunk only, added lines
+   green, removed lines red — with the `code-diff` component. Until artifacts-cli ships
+   it, fall back to a fenced ```` ```diff ```` block (do not put fenced code inside
+   `<details>` — artifacts-cli drops it). Render the to-do list with the `checklist`
+   component (fall back to a `- [ ]` task list).
 
    Use normal Markdown for prose, lists, tables, and code. Use inline HTML only for layouts Markdown cannot express (grids, panels, callouts) and **inline SVG for figures**.
 
@@ -120,7 +134,7 @@ Architecture diagrams do not substitute for behavior views.
 
    ```bash
    SOURCE="$ARTIFACTS_DIR/plan-<slug>.md"
-   artifacts render "$SOURCE" --format html
+   artifacts render "$SOURCE"
    ```
 
    This writes `plan-<slug>.html` next to the source.
@@ -153,7 +167,7 @@ Architecture diagrams do not substitute for behavior views.
 
 ## Design and theming
 
-- Use `artifacts init design` to create a project-wide `DESIGN.md` if one does not exist.
+- Use `artifacts new design` to create a project-wide `DESIGN.md` if one does not exist.
 - Preserve an existing `DESIGN.md`; it owns both light and dark palettes, typography, density, radius, and layout spacing.
 - Probe the target repo for brand tokens (design-system.css, tailwind config, logo/favicon colors) and reflect them in `DESIGN.md`.
 - The light/dark toggle must be present and default to `prefers-color-scheme`.
@@ -169,8 +183,8 @@ Architecture diagrams do not substitute for behavior views.
 
 - [ ] Markdown source written to `.agents/artifacts/yyyy-mm-dd/plan-<slug>.md` (not `/tmp/scratchpad`)
 - [ ] `surface` declares the review surface; non-internal plans show current + proposed capture/mockup evidence
-- [ ] `artifacts check` reports **no errors**
-- [ ] HTML rendered next to the source with `artifacts render ... --format html` (exit 0)
+- [ ] `artifacts check` reports **no errors** (surface + required sections present)
+- [ ] HTML rendered next to the source with `artifacts render <source>.md` (exit 0)
 - [ ] Grep the HTML: internal plan has a drawn SVG, or user-visible plan has `.artifact-behavior` plus current/proposed evidence; at least one `<pre`/`<table`
 - [ ] Output inspected headlessly in both themes and at desktop/mobile widths
 - [ ] HTML opened on the user's machine and copied to `~/Downloads`

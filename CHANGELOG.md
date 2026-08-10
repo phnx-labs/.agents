@@ -2,11 +2,122 @@
 
 ## [Unreleased]
 
+### Changed
+
+- **Hook tests moved into a `tests/` subdir of their own event dir (refactor, no
+  behavior change).** `hooks/<event>/<name>_test.sh` is now
+  `hooks/<event>/tests/<name>_test.sh`, so `ls hooks/<event>/` shows only the
+  scripts that actually run on the harness event — the 15 per-hook tests across
+  `pre-tool-use/`, `session-start/`, `stop/`, and `user-prompt-submit/` moved
+  (`git mv`), plus `hooks/lib/git-facts_test.sh` for consistency. Every relative
+  reference inside a moved test (the script under test, sibling helpers, and
+  `agents.yaml`) got one extra `../`. `hooks/run_tests.sh` and
+  `hooks/syntax_test.sh` now discover both the current `tests/` location and the
+  legacy beside-the-script one; `hooks/registration_test.sh` needed no change,
+  since its scan is one level deep and never descended into `tests/` anyway.
+  Source: `hooks/AGENTS.md`, `hooks/README.md`, `AGENTS.md`.
+
+- **Plan/artifact guidance: author directly, `artifacts new` is optional.** The
+  `plan-presentation` rule and the `artifacts` skill said to scaffold with
+  `artifacts new plan`, which nudged agents (especially weaker models) to run a
+  scaffold step they don't need. `artifacts render` already auto-fills the
+  provenance frontmatter (project · repo · branch · harness · agent · host ·
+  session · date) from git + the agent env for any blank field
+  (`validateMarkdown` → `detectArtifactContext`), so an agent authors the Markdown
+  directly with only `kind` + `title` and render fills the rest + validates
+  sections. Guidance now says so; `artifacts new` stays documented as an optional
+  scaffold. Source: `rules/subrules/plan-presentation/rule.md`, `skills/artifacts/SKILL.md`.
+
+- **Account guidance now matches bundle-backed accounts (RUSH-2470).** The
+  `agents-cli` and `run` skills explain that one provider account is one
+  prompt-free `agents secrets` bundle, document per-harness defaults and explicit
+  worker sync, and distinguish those bundles from harness-native signed-in
+  identities whose auth material is never copied.
+
+- **`/plan` Step 6 no longer mandates ASCII mockups for UI changes.** The command
+  told agents to draw each screen as an ASCII box (`+---+ | Logo | +---+`), which
+  Muqsit's `ui-work-discipline` rule (his personal ruleset layer) forbids and which
+  agents were told is "terrible" —
+  a user cannot judge look-and-feel from pipes and dashes. Step 6 now requires a
+  **real mockup** built with the `artifacts` CLI that reads like the actual product
+  (probe the repo's design tokens), the user flow as a rendered inline-SVG figure
+  (not ASCII), and 2-3 side-by-side variations with one-line tradeoffs for a genuine
+  design choice. Source: `commands/plan.md`.
+
 ### Added
+
+- **The `code-reviewer` subagent hunts the expedient mechanism.** A new class for the change that *works* and works by reaching around the surface built for the job — which is exactly why it survives review. Two faces. **Ambient global state instead of declared configuration**: a new env var carrying a flag, endpoint, toggle, or inter-process value when the project already has a config file, CLI flag, or function argument that owns it. The reviewer names why that is not a neutral choice — every child inherits the whole environment, a Linux co-tenant can read `/proc/<pid>/environ`, values land in crash dumps and any log line printing the environment, and anything in the process tree can silently *override* it, so it is a disclosure surface and a hijack surface at once, invisible to whoever reads the config expecting to see current behavior. It counts the delta and cites the surface that should have carried it; a secret in an env var is a finding on its own. **Silencing the signal instead of fixing the cause**: a lint disable, type ignore, skipped or quarantined test, widened `catch`, retry wrapping a race, `sleep` standing in for a real wait, or a hook-bypassing commit — asking what the check was telling the author and whether the diff answers it or mutes it. Report a line under one class only, the most specific; face 1 is a finding only when the durable mechanism can be named by file:line, face 2 only when the suppression is live rather than inert. Publishable values are carved out by name (`VITE_`/`NEXT_PUBLIC_`, Stripe `pk_`, PostHog `phc_`, anon JWTs, referrer-restricted `AIza`, OAuth `client_id`), as is the case where the environment *is* the declared surface (12-factor, CI-provided, container entrypoint). Source: `subagents/code-reviewer/AGENT.md`.
+- **Corrected what the rules claim about environment variables.** `operational.md` said "any co-tenant process can read another's via `/proc/<pid>/environ`" and that "anything in the same shell or process tree can read — or silently override — whatever you set". Measured on yosemite-s0: `/proc/<pid>/environ` is mode 400, so a same-user read succeeds and a cross-user read is denied; and a child's `export` does not reach its parent — only an ancestor sets what it spawns. The claims now say same-user rather than any co-tenant, and ancestor-sets rather than anything-overrides, in both the subrule and the composed ruleset. The old wording would have collapsed the moment an author pushed back with `ls -l /proc/<pid>/environ`, in exactly the place the argument has to hold. Source: `rules/subrules/operational.md`, `rules/AGENTS.md`.
+
+- **A rendered artifact's `session` provenance is now a deep link back into the session.** Documented in the artifacts authoring reference: the session value
+  renders as `agents://session/<id>`, and clicking it in an opened plan/report
+  reopens that session's terminal in its input bar via agents-cli's `agents open`
+  (which resolves the owning host). The behavior ships in artifacts-cli (render) and
+  agents-cli (the `agents open` handler + `agents://` scheme registration).
+
+- **A `code-reviewer` subagent ships in the system layer, reaching every subagents-capable harness.** Installing agents-cli now gives you a non-author reviewer with no per-repo setup — the case `agents-cli` is in today with `prix/code-reviewer` paused (#1767). It is adversarial twice: it hunts the input that breaks the change, then tries to kill each candidate finding (the guard is elsewhere / the line is unreachable / the repo sanctions it) and reports only survivors plus a count of what it filtered. Before judging it reads the **requirement** — the ticket the branch names and any committed plan — and answers conformance per acceptance criterion. It bounds what it reports to a **finding radius**: the diff, plus what the diff broke (stale callers, disagreeing siblings, and the old path this change orphaned but nobody deleted); pre-existing rot gets one line, never a finding. New hunt class: **design divergence at a declared surface**, diffing a new endpoint / CLI command / schema / component against three to five existing siblings (API envelope, error shape, pagination, auth attachment; CLI noun-then-verb and `--json`; UI tokens, scale, component reuse, full state set). It never edits, pushes, or merges. `code:review` spawns it as `subagent_type: "code-reviewer"` and its per-PR brief carries only the requirement, context, and canonical patterns.
+
+  It lives at `subagents/code-reviewer/AGENT.md`, **not** inside the `code` plugin. A plugin's `agents/<name>.md` is the Claude plugin format: the file is copied into every harness home but only a plugin-format harness registers it. Measured on yosemite-m1 with the plugin installed and that file present, `~/.claude/agents/`, `~/.grok/agents/`, `~/.kimi-code/agents/`, `~/.cursor/agents/`, and `~/.codex/agents/` were all empty. The top-level `subagents/` layer writes those native paths via `SUBAGENT_TARGETS`, so one definition reaches Claude, Codex, Grok, Kimi, Cursor, Droid, OpenCode, Copilot, Kiro, Goose, Antigravity, and OpenClaw. `code:review`'s security pass also became its own concurrent agent instead of check #6 inside the reviewer's brief, and it defers to an installed `security`/`audit` skill when the box has one. Source: `subagents/code-reviewer/AGENT.md`, `plugins/code/skills/review/SKILL.md`, `subagents/README.md`.
+- **`#noslop` promptcut — a hard gate against vague, imprecise prose.** Type `#noslop` / `` `#noslop` `` / `!!noslop` alongside a prompt and it expands into a discipline that bans the words agents reach for to avoid committing to a verifiable claim: approximation hedges (`directionally`, `roughly`, `basically`, `-ish`), vague placeholder nouns (`things`, `stuff`, `various`, `several`), empty verbs that hide the mechanism (`gate`, `handle`, `manage`, `leverage`), unearned marketing adjectives (`seamless`, `powerful`, `robust`, `simply`), false-confidence connectives (`clearly`, `obviously`), and drama headers (`Critically:`, `Notably:`). It requires naming the concrete referent (file, function, flag, error, count, byte size) and describing the topic at full resolution — including the edge cases the tidy summary omits — and ends with a pre-send self-check that replaces each banned word with the fact it stood in for. It is `code-quality` ("Write prose precisely; don't market") turned up to a per-turn gate. Verified end-to-end through the real UserPromptSubmit hook on all four markers plus the codex append path. Source: `hooks/promptcuts.yaml`.
+- **Plans carry a cross-harness planning contract.** Built-in plan mode (`/plan`, Shift+Tab, `--mode plan`) only toggles a permission mode and injects no methodology on any harness — so the `plan-presentation` rule (the one lever loaded during plan mode on claude/codex/kimi/grok/droid) now carries what every plan must do: search prior sessions on the feature first (`agents sessions`, so agents extend rather than revert prior work), locate/propose the module spec, and lead with **Focus for review** + restated **Intent**, a **Current architecture** section (before/after figure for architectural changes), an implementation shown as a **per-file diff** (not a path table), and a **rendered to-do list**. Two gates before presenting: a non-author **adversarial review** of API-surface cleanliness + adherence to existing architectural conventions (via a subagent or `agents run`), and render+open. `commands/plan.md` gains the prior-work step (Step 0) and the panel's API/convention criterion (Step 7); `skills/plan-render/SKILL.md` documents the section order and the `code-diff`/`checklist` render components. Motivated by two real sessions (codex `019fe962`, kimi `5908db92`) where the agent never showed the interface, never restated intent, and iterated a bad API surface until the user authored it. Sibling of RUSH-2140; coordinates with PR #256. Source: `rules/subrules/plan-presentation/rule.md`, `commands/plan.md`, `skills/plan-render/SKILL.md`.
+
+### Changed
+
+- **Agent launch guidance uses durable credential accounts (RUSH-2402).** The `agents-cli` and `run` skills now teach `agents accounts add`, `agents run --account`, and device-local credential installation instead of attaching credentials to harness definitions.
+
+### Performance
+
+- **Shared short-TTL git-fact cache for PreToolUse guards (RUSH-2293).**
+  `main-branch-guard` was forking `git rev-parse` + two `symbolic-ref` calls on every
+  Write/Edit/Bash fire (15k+ calls / 30d, `cacheMissPct: 100`). Full-hook `cache:` is
+  unsafe here — the agents-cli shim always exits 0 on hit and would soft-allow after a
+  branch switch onto the default branch. New `hooks/lib/git-facts.sh` caches only the
+  derived facts (repo root, current branch, origin/HEAD default, on-default) under
+  `~/.agents/.cache/state/git-facts/` with a 5s TTL, and re-reads the worktree HEAD file
+  on every lookup so a `git switch` invalidates immediately inside the TTL. Warm loads
+  skip the three git forks; correctness tests cover branch-switch invalidation, TTL
+  expiry, linked worktrees, and origin/HEAD defaults. Source: `hooks/lib/git-facts.sh`,
+  `hooks/lib/git-facts_test.sh`, `rules/subrules/truly-agentic-git-workflow/main-branch-guard.sh`.
+
+### Fixed
+
+- **`pr-description-reminder` now inspects the body an agent actually ships — the `--body-file` hole is closed.** The PreToolUse backstop that requires a run-evidence screenshot only ever looked at an inline `--body`/`-b`; a `--body-file`/`-F` body (the path agents route nearly every multi-line PR through) was waved through unread, so evidence-free feature PRs landed unreviewable (real case: agents-cli PR #2460, a `feat(cli)` with no screenshot — replaying its exact body through the old hook via `--body-file` returns exit 0, the new hook returns exit 2). The hook now reads the referenced file and inspects its content, and a bare Linear ticket / plan-`.html` link no longer clears the requirement on its own — clearing needs a real run result (image/recording/asset) or an explicit no-run declaration (`release`/`docs-only`/`refactor`/`test-only`). It still fails open on a `--fill`/`--template`/editor body it cannot read and on an unreadable `--body-file`. Source: `rules/subrules/truly-agentic-git-workflow/pr-description-reminder.sh` (+ `_test.sh`, 26 cases), rule text in `rule.md` (regenerated into `rules/AGENTS.md`).
+
+- **Guard denials now return the safe next command, not just a block (RUSH-2295).** `git-guard`, `rm-guard`, and `large-file-add-guard` print a structured stderr block on every deny:
+  ```
+  blocked_op: git.reset
+  reason: …
+  do_this_instead: reconcile with `git rebase origin/<default>`; never `reset --hard`
+  ```
+  Sessions were burning dozens of retries on the same `failureId` (`rm.protected-path` 87×, `git.reset` 43×) because the model only saw "denied". The `do_this_instead` line is what kills the loop. Source: `hooks/pre-tool-use/git-guard.sh`, `rm-guard.sh`, `large-file-add-guard.sh` (+ their `_test.sh` fixtures).
+
+### Removed
+
+- **The `escalate` skill and its `escalate-on-notification` hook.** Reaching the owner when genuinely blocked is now `agents feed post --blocked` (opens a needs-you record + delivers out-of-band) — the escalate ladder was superseded by it and still hard-wired Telegram, which the no-Telegram rule forbids. Deletes `skills/escalate/` (incl. `escalate.sh`, `owner.py`), `hooks/notification/12-escalate-on-notification.{sh,_test.sh}`, and the `escalate-on-notification` entry in `agents.yaml` (hook count 19 → 18); removes the rows from `skills/README.md` and `hooks/README.md`.
+
+### Added
+
+- **A "what earns a command or skill" philosophy in the maintenance contract.** The top-level `AGENTS.md` now states the bar for the command/skill surface: add only a *fundamental operation* (not a variant — those are modes/arguments of an existing one), make it general across *all* work not just code, and write it concretely enough that a *weak* model can execute it step by step. Source: `AGENTS.md`.
+
+### Fixed
+
+- **Stop gate no longer accepts an in-process `gh pr checks --watch` as a PR handoff (RUSH-2394).** A headless agent that backgrounds that command and exits strands its own PR — the watcher is a child of the agent process tree and dies with it (observed on agents-cli PR #2334 / #2352). The open-PR and keep-moving gates now accept only a durable lander (`agents pr land --detach`) or a ScheduleWakeup/Monitor tool_use as evidence that something outlives the agent, and the block message tells agents to use `--detach` instead of the in-process watch. Source: `hooks/stop/00-agent-verify-work-complete.sh`, `hooks/stop/00-agent-verify-work-complete_test.sh`.
+
+- **`usage-refresh` routine drops from every 1 minute to every 5 minutes (RUSH-2451).** The routine's own cadence gate already refreshes each account on a fixed 5-minute internal schedule, so the 1-minute cron was checking 5x more often than any account could ever be due — each check a full `agents __daemon-tick usage-refresh` CLI subprocess spawn. Source: `routines/usage-refresh.yml`.
+
+### Changed
+
+- **`reflect` skill consolidated into the self plugin.** The flat top-level `skills/reflect` moved to `plugins/self/skills/reflect` (now the `self:reflect` skill), so the skill lives with its `/self:reflect` command instead of floating in the shared `skills/` list. Source: `plugins/self/skills/reflect/`, `plugins/self/commands/reflect.md`, `plugins/self/README.md`, `skills/README.md`.
+- **`skills/README.md` now lists the `artifacts` skill** (it was on disk but missing from the catalog).
+
+- **`/blame` — regression forensics.** A new top-level command that traces a regression (a feature that worked and silently broke) to the culprit change, the removed/skipped/commented-out test that let it through, and the agent + session behind it — read-only, no fix. It pins expected vs observed, maps the code path, bisects the suspect commits, hunts for disabled tests in the same window, and attributes via `git blame` + `agents sessions`. Hand the verdict to `/debug` or `/finish` to repair. Source: `commands/blame.md`, `commands/README.md`.
+- **`/output` moved into the work plugin as `/work:output`.** The fleet token-burn/output report is a work action, so it now lives beside `/work:loop` and `/work:dispatch` (top-level `/output` removed). Source: `plugins/work/commands/output.md`, `commands/README.md`, `plugins/work/README.md`, `plugins/README.md`.
 
 - **git-guard now blocks remote branch deletion.** The `git push` handler denies `--delete`/`-d` and a leading-colon refspec (`git push <remote> :<branch>`), closing the remote counterpart to the already-denied local `git branch -d/-D`. Deleting an *already-merged* PR branch is safe and stays allowed via `gh pr merge --delete-branch` — only the forms that can drop unmerged commits are banned. Source: `hooks/pre-tool-use/git-guard.sh`, `git-guard_test.sh`, `git-guard.md`, plus the `AGENTS.md` north-star wording.
 
 - **Hook-owned session state convention + evidence-based `verify-work-complete` delivery classification (RUSH-2113).** Programmable hooks may keep their own namespaced SQLite database under `~/.agents/.history/hooks/<stable-hook-id>/`, keyed by harness/native session id with launch-id reconciliation; agents-cli does not gain a generic state command. The first pilot records privacy-preserving goal boundaries and materializes positive session evidence during Stop. Browser/external-app work, read-only diagnostics, requested ticket creation, and review-only sessions no longer become supposed code deliveries merely because the final message says “done” inside a Git cwd. Repository mutation, authored/operated PRs, and deployments retain the full delivery chain. No raw prompts, transcripts, commands, or tool output are stored. Source: `hooks/stop/verify-work-state.py`, `hooks/user-prompt-submit/04-verify-work-state.py`, `hooks/stop/00-agent-verify-work-complete.sh`.
+
+- **`verify-work-complete` delivery gate no longer fires on no-delivery turns.** The delivery close-the-loop check (`verify-delivery-chain.py`) treated a conversation that merely *mentioned* a user-facing thing (the words "command", "flag", "feature", etc.) as a delivery, so a read-only analysis turn whose only write was a gitignored `.agents/artifacts/` file was gated for "missing docs and CHANGELOG". The user-facing keyword heuristic (which drives the docs/CHANGELOG demand) now counts only when the session produced a real change to document — a tracked file changed outside scratch/artifact/worktree/tmp paths, or a responsible PR. It cannot be gamed: a genuine change always shows in `git diff` or a PR. Real deliveries missing docs/CHANGELOG still gate exactly as before, and release verification is untouched — a release cut from already-merged code (no diff, no PR) still gates on its own tag/publish/verify evidence. Source: `hooks/stop/verify-delivery-chain.py`, `hooks/stop/verify-delivery-chain_test.sh`.
 
 - **A "safe autonomy" north star in the repo maintenance contract.** The top-level `AGENTS.md` (canonical; `CLAUDE.md`/`GEMINI.md` are symlinks) now opens with the goal every change here serves: give agents *more autonomy, safely* — guardrails that counter laziness rather than merely forbid, cross-harness / cross-platform / cross-device by default, predictability over cleverness, and protecting against irreversible loss (branch deletion stays banned). Source: `AGENTS.md`.
 
@@ -109,6 +220,10 @@
 
 ### Changed
 
+- **Command surface: moved `/fork` into the sessions plugin as `/sessions:fork`; converted the top-level `/tickets` command into a portable `tickets` skill.** Skills work on every harness; commands do not (not on `openclaw`, `kimi`, `hermes`; limited on `codex`). Every "route through `/tickets`" reference now points at the `tickets` skill. Committed the missing `clis/CLAUDE.md`/`clis/GEMINI.md` convention symlinks. Source: `plugins/sessions/commands/fork.md`, `skills/tickets/SKILL.md`, `commands/README.md`, `plugins/sessions/README.md`, `plugins/README.md`, `skills/README.md`, and tracker-reference updates across commands and rules.
+
+- **Removed the top-level `/recover` command; crash-recovery is now `/continue recover`.** The standalone `/recover` command was a thin alias for `sessions:continue` recover mode — the mode, keyword, and all behavior remain intact. Users reach it via `/continue recover`. The `sessions:continue` skill already implements recover mode; only the redundant standalone command and its references were removed. Source: `commands/continue.md`, `plugins/sessions/skills/continue/SKILL.md`, `plugins/sessions/skills/restore/SKILL.md`, `commands/README.md`, `plugins/README.md`, `plugins/sessions/README.md`, `README.md`.
+
 - **`code` plugin simplified to 0.9.0 — `code:loop`, `code:review` (three modes),
   `code:learn`, `code:commit`.** Dropped `code:verify` (folded into `code:loop` as an
   inline verification step — identify changed surfaces, run each one's canonical test,
@@ -142,6 +257,8 @@
   bar for UI/flow surfaces. Marketplace + plugin.json + README catalogs updated.
   Source: `plugins/swarm/`, `commands/swarm.md`, `commands/README.md`,
   `.claude-plugin/marketplace.json`.
+
+- **Command surface: removed the top-level `/commit` alias (use `/code:commit`); moved `/release` into the code plugin as `/code:release`.** Both the command (`plugins/code/commands/release.md`) and the `release` skill now live under `plugins/code/` (invoked as the `code:release` skill). Updated the tech-stack rule, catalogs, and cross-references. Source: `plugins/code/commands/release.md`, `plugins/code/skills/release/`, `commands/README.md`, `plugins/code/README.md`, `plugins/README.md`, `plugins/git/README.md`, `skills/README.md`, `rules/subrules/tech-stack.md`, root `README.md`.
 
 ### Added
 

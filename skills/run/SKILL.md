@@ -122,8 +122,11 @@ Controls which installed version/account gets the work.
 agents run claude "..." --strategy balanced
 agents run claude "..." -b                  # shortcut for --strategy balanced
 
-# Pin a logical identity label instead of rotating across accounts
+# Select a durable provider credential
 agents run claude "..." --account work
+
+# Set the provider account used when --account is omitted
+agents accounts set-default claude work
 ```
 
 Strategy is ignored when `@version` is pinned, a profile is used, or `--fallback` is set.
@@ -253,7 +256,7 @@ agents run claude "fix the flaky test" --device auto
 agents run claude "summarize logs" --device auto --no-follow
 ```
 
-Use this as the default for "send this to the fleet" unless the task must land on a specific box. Mark preferred machines with `agents devices prefer <name>`; exclude a box with `agents devices disable <name>`.
+Use this as the default for "send this to the fleet" unless the task must land on a specific box. Mark preferred machines with `agents devices config <name> auto-launch.preferred on`; exclude a box with `agents devices config <name> auto-launch.enabled off`.
 
 ## Quick reference
 
@@ -280,7 +283,11 @@ Use this as the default for "send this to the fleet" unless the task must land o
 
 For everything else, run `agents run --help`.
 
-`--account <label>` selects a healthy installed version whose live provider
-identity matches a name created with `agents accounts name`. It never falls
-back to another account. There are no version bindings and local account names
-do not apply to cloud or lease placement.
+`--account <name>` selects a provider account bundle created with `agents
+accounts add`; it overrides `agents accounts set-default`. Accounts are
+independent of agent versions and one provider account may be used by multiple
+compatible harnesses. The execution device resolves the secret locally and
+fails before spawn when it is absent. Copy a provider bundle explicitly with
+`agents accounts sync <name> --device <device>`. Harness-native signed-in
+identities remain in version homes and their auth material is never copied.
+Accounts do not apply to cloud or lease placement.

@@ -36,12 +36,28 @@ A plugin command follows the same rules as a top-level
 [command](../commands/AGENTS.md): `description` frontmatter, `$ARGUMENTS` consumed. A plugin
 skill follows [`skills/AGENTS.md`](../skills/AGENTS.md).
 
+## A cross-harness subagent does NOT go in a plugin
+
+A plugin *can* carry `agents/<name>.md` (the Claude plugin format, discovered by
+`discoverPluginAgentDefs` in `apps/cli/src/lib/plugins.ts`), and `agents-cli` copies the
+whole plugin dir into each harness home. But only a harness that parses plugin agent
+definitions ever registers one. The path each harness actually reads is its **native**
+subagent dir (`~/.claude/agents/`, `~/.grok/agents/`, `~/.kimi-code/agents/`,
+`~/.factory/droids/`, `~/.cursor/agents/`, ...), and those are written from the top-level
+[`subagents/`](../subagents/README.md) layer through `SUBAGENT_TARGETS` — never from a
+plugin.
+
+Measured 2026-08-09 on yosemite-m1: the `code` plugin was installed with
+`agents/code-reviewer.md` present on disk, and every native path above was **empty**. So a
+subagent a plugin's skills spawn belongs in `subagents/`, where one definition reaches every
+subagents-capable harness. Reference it from the plugin's README; do not copy it in. Two
+copies of one rubric is the drift the reviewer itself is built to catch.
+
 ## The canonical definition lives in the plugin
 
-`/commit` at the top level is an **alias** of `/code:commit`.
-The behavior lives here; the alias only routes. When you change it, change the
-plugin skill — never fork the logic into the alias, and never leave the two describing
-different behavior.
+`/code:commit` is the canonical commit command. There is no top-level `/commit` alias —
+the behavior lives in the plugin skill exclusively. When you change it, change the plugin
+skill and let any thin top-level aliases follow. Never fork logic into an alias.
 
 ## What belongs here vs in extras
 

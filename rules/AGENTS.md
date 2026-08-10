@@ -291,11 +291,15 @@ The body carries **the actual run result, not a description of it**:
   shared — a **shareable link to the plan file**. The same screenshot/recording also goes
   on the ticket when you close it (see `conventions`).
 
-The bundled `pr-description-reminder` (PreToolUse) is the backstop: it nudges once when a
-`gh pr create`/`edit` inline body shows **no run result** — no image/recording/asset, no
-ticket/plan link, and no release/docs/no-surface declaration. A code block or table does
-**not** clear it. Run it, capture the result, attach, retry. It **fails open** — a
-`--body-file`/`--fill` body is never nudged — and is satisfiable, never a hard wall.
+The bundled `pr-description-reminder` (PreToolUse) is the backstop, and it **reads the body
+you actually ship** — an inline `--body`/`-b` and the file behind `--body-file`/`-F` alike
+(the common multi-line path, and the hole that used to let evidence-free feature PRs through).
+It nudges — a satisfiable block, `exit 2` — when that body shows **no run result** (no
+image / recording / uploaded asset), and it is **not** cleared by a code block, a table, or a
+bare ticket/plan link: those are context, not proof you ran it. It clears on a real run result
+**or** an explicit no-run declaration (`release` / `docs-only` / `refactor` / `test-only`). It
+still **fails open** on a `--fill` / `--template` / editor body it cannot read, and on an
+unreadable `--body-file` — a reminder must never block a legit PR.
 
 ### Attaching evidence on GitHub — the mechanics
 
@@ -445,7 +449,7 @@ Enforced by the bundled `footer-guard.sh` (PreToolUse): a `gh`/`git commit` comm
 - **Waiting: echo/sleep only, never `Monitor` / `ScheduleWakeup` / `until` loops** (they fail silently). Short waits (<2 min): `cmd && sleep N && check && echo "result: …"`. Long waits (2+ min): `run_in_background: true` with a trailing finish-echo so you know the next action when it fires. Never say "I'll check back later" — the echo keeps you in the loop.
 - **No emojis** in code, comments, commits, or user-facing output — unless explicitly asked.
 - **No credentials in env vars or config.** Use `agents secrets` (OS keychain-backed).
-- **Env vars are not a secure boundary — treat anything in them as visible, not private.** Every child process inherits the full parent environment; on Linux any co-tenant process can read another's via `/proc/<pid>/environ`; values routinely leak into crash dumps, log lines that dump `os.Environ()`/`process.env`, and error reports; and anything else running in the same shell or process tree can read — or silently override — whatever you set. That holds whether the value is a secret or an ordinary config toggle: an env var was never an isolation mechanism, just ambient global state anything nearby can read and hijack.
+- **Env vars are not a secure boundary — treat anything in them as visible, not private.** A child process inherits the full parent environment by default; on Linux another process **running as the same user** can read it from `/proc/<pid>/environ` (mode 400 — a different user cannot, but on this fleet every agent runs as the same uid); values routinely leak into crash dumps, log lines that dump `os.Environ()`/`process.env`, and error reports; and any ancestor silently sets what everything it spawns will see. That holds whether the value is a secret or an ordinary config toggle: an env var was never an isolation mechanism, just ambient global state anything nearby can read and hijack.
 - **Configuration belongs in real config, not env var overrides.** Feature flags, endpoints, and behavior toggles go in `agents.yaml` / project config / the resource files this repo defines — not an env var that silently shadows what the config file says. Someone reading the config should see the actual behavior in effect; an env var override makes that invisible and lets the running behavior drift from what's documented without anyone noticing.
 - **Don't create env vars you don't need.** Before reaching for a new one, ask whether a config entry, a CLI flag, or a function argument would do the job. Each ad-hoc env var is a hidden, undocumented configuration surface — global state nobody reading the code or the config file expects to find. Proliferating them (one per override, per session) is itself the failure, not a shortcut.
 - **No locally built CLIs.** Install globally (`npm i -g`, `cargo install`); don't invoke `./bin/foo`.
@@ -460,8 +464,8 @@ Enforced by the bundled `footer-guard.sh` (PreToolUse): a `gh`/`git commit` comm
 # Conventions
 
 - **Memory file:** `AGENTS.md` is canonical. `CLAUDE.md` and `GEMINI.md` are symlinks (or synced copies).
-- **Tickets — check first, open if missing, close on delivery.** Linear context is auto-injected at session start by the linear hook; read it before starting. `/tickets` takes any explicit action across Linear/GitHub/Jira.
-  - **Check first.** Before substantive work, check whether an open ticket already covers it (the injected context, or `/tickets` / `gh issue list`). If one exists, claim it (move it to In Progress).
+- **Tickets — check first, open if missing, close on delivery.** Linear context is auto-injected at session start by the linear hook; read it before starting. the `tickets` skill takes any explicit action across Linear/GitHub/Jira.
+  - **Check first.** Before substantive work, check whether an open ticket already covers it (the injected context, or the `tickets` skill / `gh issue list`). If one exists, claim it (move it to In Progress).
   - **Open if missing.** No ticket and a tracker is configured? Open one scoped to the task (title + short description) before you start. No tracker set up? Skip this and describe the work in the PR. One ticket per unit of delivery, not per file; skip it for a trivial fix or a plain question.
   - **Close on delivery, with proof.** When the task ships, post a closing update (what changed, the PR link, a screenshot or short screen recording of the outcome) and move the ticket to Done. Close only with proof.
 - **Parallel work:** Multi-surface changes use `agents teams` — see `parallel-teams`.
@@ -557,12 +561,12 @@ Mechanical backstop: for a session that ran an edit-mode swarm, the `verify-work
 | Task | Tool |
 | --- | --- |
 | Read a large file (200+ lines) or map an unfamiliar dir | `mq` — probe structure (`.tree`), then extract only the section you need. Works on **code (ts/py/go/…), docs (md/html/pdf), data (json/yaml/csv), Office** — not just docs. See `context-query-mq`. |
-| Issue tracker (Linear/GitHub/Jira) | `/tickets` command — auto-detects |
+| Issue tracker (Linear/GitHub/Jira) | `tickets` skill — auto-detects |
 | Browser automation | `browser` skill (a.k.a. `agents browser`) |
 | Interactive terminal (REPLs, TUIs) | `agents pty` — see `agents pty --help` |
 | Parallel coding agents | `agents teams` — see `parallel-teams` |
 | Credentials | `agents secrets` — OS keychain-backed |
-| Release/publish | `release` skill |
+| Release/publish | `/code:release` (the `code:release` skill) |
 | See what's already in flight (open PRs, live sessions) before taking work | auto-injected at session start (`inject-repo-inflight` hook); on demand: `gh pr list`, `agents sessions --active` |
 
 ## Charts in rendered artifacts
@@ -631,6 +635,56 @@ in terminal scrollback. Author a Markdown source under the repo's dated artifact
 layout, render it to a self-contained HTML doc with `artifacts-cli`, and open it in
 the user's default browser on the machine they sit at.**
 
+## What every plan must contain — and do before presenting
+
+Built-in plan mode (`/plan`, Shift+Tab, `--mode plan`) only restricts tools and asks
+for an `ExitPlanMode` — it injects **no** methodology, on any harness. This section is
+that methodology. Do all of it before you present a plan, whether you entered plan mode
+by a keystroke, a flag, or just started planning.
+
+**Research first — before you draft:**
+
+1. **Search what previous agents did on this feature.** Run
+   `agents sessions "<feature keywords>"` (and read the latest plan/PR on
+   that surface) before drafting. **Extend** prior work; do not silently revert it —
+   reverting an earlier agent's change is the most common regression on this fleet.
+2. **Find the module's specification.** Locate where this module's spec lives (a
+   `SPEC*.md`, a doc, an OpenSpec change). If none exists, propose writing a short one.
+   Keep specs **succinct and current** — do not pile on rules nobody asked for.
+
+**The plan must contain, in this order:**
+
+3. **Focus for review (at the very top).** 2-5 bullets naming exactly what you want the
+   user to weigh in on. Lead with this — it is the first thing they read.
+4. **Intent.** Restate the user's ask in their own words, so the plan visibly tracks it.
+5. **Current architecture.** How the affected module works **today** — the files
+   involved and how they talk to each other. For an architectural change, show the
+   communication pattern **before and after** as an inline-SVG figure.
+6. **Implementation shown as real code.** For every file that changes, show the actual
+   change as a **diff** — the relevant hunk only (not the whole file), added lines
+   green, removed lines red — via the artifacts-cli `code-diff` component (fall back to
+   a fenced ```` ```diff ```` block until it ships). Name every module that changes.
+   Pick the load-bearing hunks; keep it readable, not exhaustive.
+7. **A rendered to-do list.** Beyond creating the `TaskCreate` checklist (see *A
+   multi-step plan also carries a checklist*, below), **render** it into the plan as a
+   checklist section, so the user sees the steps and their status in the plan itself —
+   not only in the harness's to-do UI.
+
+**Two gates before you present:**
+
+- **Adversarial review.** For any change to an API/CLI surface or the system
+  architecture, get a **non-author** review before presenting — a subagent, or
+  `agents run claude --mode plan "Adversarially review this plan's API surface and
+  adherence to existing architectural conventions. Return file:line evidence."
+  --attach <plan.md>` on harnesses with no subagent tool. It checks the surface is
+  clean and intuitive and follows existing conventions (access centralized in one
+  place, no duplicated surface, cross-cutting change made at the source). Fold its
+  findings in before you present.
+- **Render + open** the HTML (below).
+
+Scale to the change: a trivial, single-file edit with no interface or architectural
+impact skips the architecture figure and the adversarial review.
+
 ## Canonical artifact path (plans, HTML, and related items)
 
 All agent-produced durable artifacts — **plans, rendered HTML, visuals, reports,
@@ -664,7 +718,7 @@ house structure, the product-brand theming, the light/dark toggle, and the open-
 transport — lives in the **`plan-render` skill**. Load it and follow it.
 
 - **Source of truth is Markdown.** Write `.agents/artifacts/yyyy-mm-dd/plan-<slug>.md`
-  and compile it with `artifacts render ... --format html`. The HTML is a build output;
+  and compile it with `artifacts render <source>.md`. The HTML is a build output;
   never hand-author a complete `.html` file.
 - **Declare the surface.** Every plan frontmatter sets `surface` to one of
   `internal`, `cli`, `web`, `native`, `api`, or `workflow`. Internal plans use a
@@ -673,8 +727,7 @@ transport — lives in the **`plan-render` skill**. Load it and follow it.
   each side is a real capture when available or an explicitly labeled mockup.
 - **Structure (fixed).** Hero (kicker · headline · problem statement · metadata chips ·
   **provenance chips — harness · agent · host · session · date, so a rendered plan is never
-  an orphan** · TOC), numbered sections, **≥1 visual figure** (hand-authored inline SVG for timeline / architecture / before-after / charts — never mermaid), callouts, tagged tables, code blocks. Follow the
-  `plan` template (`artifacts template plan`) or scaffold with `artifacts new plan`.
+  an orphan** · TOC), numbered sections, **≥1 visual figure** (hand-authored inline SVG for timeline / architecture / before-after / charts — never mermaid), callouts, tagged tables, code blocks. **Author the Markdown directly** using the section list above — you do **not** need to run `artifacts new`. At render, `artifacts` auto-fills the provenance chips (project · repo · branch · harness · agent · host · session · date) from git + the agent env for any blank frontmatter field, so your frontmatter needs only `kind` + `title`, and it validates the required sections. (`artifacts new plan` stays available as an optional scaffold.)
 - **Quality is enforced, not suggested.** `artifacts check`/`render` **error** when
   surface metadata or required visual evidence is absent, and they **do not write
   HTML** on validation failure. The hook checks the Markdown surface plus semantic
@@ -729,7 +782,7 @@ what you are stuck on instead of guessing.
 A floating checklist is half the value. Bind it:
 
 - **Pair a ticket.** If a tracker is connected (this stack uses Linear via the
-  `linear` CLI / `/tickets`) and no ticket is paired with the work, create or claim
+  `linear` CLI / the `tickets` skill) and no ticket is paired with the work, create or claim
   one at the right moment — once the task is real and scoped, not for a passing
   question. Move it to In Progress when you start.
 - **Stamp each item** with the ticket via `TaskCreate` `metadata` (e.g.

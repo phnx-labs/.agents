@@ -327,6 +327,33 @@ def _changed_files(repo_path, pr_data):
     return files
 
 
+# Path segments that are mechanically incapable of being a user-facing delivery:
+# the gitignored scratch/artifact/worktree scratch space and OS temp dirs. A write
+# confined to one of these can never ship, so it must not raise a delivery gate.
+NON_DELIVERABLE_MARKERS = (
+    ".agents/artifacts/", ".agents/scratch/", ".agents/worktrees/",
+)
+
+
+def _is_non_deliverable_path(path):
+    low = path.replace("\\", "/").lower()
+    if low.startswith("./"):
+        low = low[2:]
+    if any(m in low for m in NON_DELIVERABLE_MARKERS):
+        return True
+    if low.startswith("tmp/") or "/tmp/" in low or "/var/folders/" in low:
+        return True
+    return False
+
+
+def _deliverable_changed_files(repo_path, pr_data):
+    """Changed files that could actually ship. `_changed_files` already excludes
+    gitignored/untracked paths (it diffs tracked commit ranges); this additionally
+    drops scratch/artifact/worktree/tmp paths, so a session whose only changes are
+    non-shippable scratch writes counts as producing no delivery."""
+    return {f for f in _changed_files(repo_path, pr_data) if not _is_non_deliverable_path(f)}
+
+
 def _is_shippable_repo(repo_path):
     """Detect whether this repo produces an independently-shippable artifact."""
     if not repo_path:
@@ -531,7 +558,21 @@ def main():
         if state.lower() not in DONE_STATES:
             open_related.append((t, state, title))
 
-    user_facing = _looks_user_facing(pr_data, first_user_msg)
+    # The docs/CHANGELOG demand keys off _looks_user_facing, a keyword match on the
+    # conversation ("command", "flag", "feature", ...). A conversation that merely
+    # *mentions* a user-facing thing is not a *delivery* of one, so only gate it when
+    # this session produced a real change to document: a tracked file changed outside
+    # scratch/artifact/tmp paths, or a responsible PR. Can't be gamed — a genuine
+    # change shows up in `git diff` / a PR.
+    #
+    # NOTE: this gate is deliberately NOT applied to `shippable`. A release cut from
+    # already-merged code (tag/publish, no new local commits, no PR this session) is a
+    # real delivery with no file diff, and `_release_status` already gates it on
+    # independent tag/publish/verify evidence. ANDing is_real_delivery here would
+    # silently disable release verification for that ordinary flow.
+    is_real_delivery = bool(pr_data) or (bool(repo_path) and bool(_deliverable_changed_files(repo_path, pr_data)))
+
+    user_facing = _looks_user_facing(pr_data, first_user_msg) and is_real_delivery
     docs_ok, changelog_ok = _docs_changelog_status(repo_path, pr_data) if repo_path else (True, True)
     shippable = _is_shippable_repo(repo_path) and _looks_shippable(pr_data, first_user_msg)
     release_ran, release_verified = (

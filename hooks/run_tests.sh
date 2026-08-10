@@ -5,6 +5,11 @@
 # registration_test.sh — the integrity check that a hook script has not silently
 # lost its agents.yaml registration). Exits non-zero if any test fails.
 #
+# A per-hook test lives in a `tests/` subdir of its own event dir
+# (hooks/<event>/tests/<name>_test.sh), one level deeper than the hook script it
+# covers — see hooks/AGENTS.md. This runner discovers both layouts so a test is
+# never silently skipped by living in the "wrong" place.
+#
 # Run it before opening a PR that touches hooks/, rules/subrules/, or agents.yaml.
 
 set -u
@@ -33,8 +38,16 @@ for t in "$HERE"/*_test.sh; do
   run_one "$t"
 done
 
-# Hooks in one-level group dirs (e.g. session-starts/).
+# Hooks in one-level group dirs (e.g. session-start/), for any test still
+# living beside its script.
 for t in "$HERE"/*/*_test.sh; do
+  [ -e "$t" ] || continue
+  run_one "$t"
+done
+
+# Hooks in the per-event tests/ subdir (hooks/<event>/tests/<name>_test.sh) —
+# the current convention (hooks/AGENTS.md).
+for t in "$HERE"/*/tests/*_test.sh; do
   [ -e "$t" ] || continue
   run_one "$t"
 done

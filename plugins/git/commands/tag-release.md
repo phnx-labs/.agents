@@ -10,7 +10,7 @@ This command only ever *creates a new tag and pushes it*. It never force-pushes,
 
 **If the target tag already exists (locally or on `origin`), STOP and report. Do not clobber it.** The fix is a new version number, never an overwrite.
 
-This command is the pure git-tag slice only. For a full package release — version bump, changelog, build, `npm`/CDN publish — use the `release` skill; it calls into this kind of tagging as its final step.
+This command is the pure git-tag slice only. For a full package release — version bump, changelog, build, `npm`/CDN publish — use the `code:release` skill; it calls into this kind of tagging as its final step.
 
 ## Process
 

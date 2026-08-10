@@ -23,6 +23,7 @@ commands are often thin wrappers that only invoke a skill (harness-friendly).
 | [`/plan`](./plan.md) | Plan with grounded design — research, read code, create artifacts, optionally get early review |
 | [`/swarm`](./swarm.md) | Front door to the `swarm` plugin — fan work across parallel agents (`run` by default; or `plan` / `spec` / `debug`) |
 | [`/debug`](./debug.md) | Trace the data path, hypothesize a root cause, then have independent agents confirm it before any fix (routes to `swarm:debug`) |
+| [`/blame`](./blame.md) | Trace a regression — a feature that worked and silently broke — to the culprit change, the removed/skipped test that let it through, and the agent/session behind it. Read-only forensics, no fix |
 | [`/clean`](./clean.md) | Identify and clean up technical debt, outdated code, and duplicates |
 
 Multi-agent plan/spec/debug live under `/swarm …` and `/swarm:plan` / `/swarm:spec` /
@@ -32,8 +33,6 @@ Multi-agent plan/spec/debug live under `/swarm …` and `/swarm:plan` / `/swarm:
 
 | Command | What it does |
 |---|---|
-| [`/commit`](./commit.md) | Split the working tree into the maximum number of small logical commits, then push. Alias of `/code:commit` |
-| [`/release`](./release.md) | Discover the repo's real release process and publish it end to end — tests, changelog, publish/tag, verify live |
 | [`/finish`](./finish.md) | Drive the current task to done end-to-end instead of stopping at a recap, blocker, or partial handoff |
 | [`/done`](./done.md) | Recap the session, then cleanly self-exit (SIGTERM the harness) |
 
@@ -45,15 +44,14 @@ working until it has. They are easy to confuse.
 | Command | What it does |
 |---|---|
 | [`/recap`](./recap.md) | Recap the current session, or transfer concise context from a prior session selected by ID, prefix, or keywords |
-| [`/continue`](./continue.md) | Alias of `/sessions:continue` — resume prior work **in this session** (reattach only if genuinely live); group-capable |
+| [`/continue`](./continue.md) | Alias of `/sessions:continue` — resume prior work **in this session** (reattach only if genuinely live); group-capable. Also finishes crashed sessions headlessly (`/continue recover`). |
 | [`/insights`](./insights.md) | Alias of `/sessions:insights` — orchestrate `agents insights` + trends + perf + sessions stats into evidence-backed actions |
-| [`/fork`](./fork.md) | Branch this conversation into a new, independent session and open it where you work — the "git branch" of sessions, original untouched |
-| [`/recover`](./recover.md) | Mode of `/sessions:continue` — recover *many* crashed sessions by finishing agent-doable work headlessly |
 | [`/restore`](./restore.md) | Alias of `/sessions:restore` — re-open sessions killed by a crash or reboot as terminal windows |
 
-The procedures for `/continue`, `/insights`, `/restore`, and `/recover` live in the
+The procedures for `/continue`, `/insights`, and `/restore` live in the
 [`sessions` plugin](../plugins/sessions/README.md) skills. Top-level files only invoke
-those skills (same pattern as `/commit` → `/code:commit`).
+those skills (same pattern as `/continue` → `/sessions:continue`). `/fork` moved into
+the sessions plugin as [`/sessions:fork`](../plugins/sessions/README.md).
 
 `/hibernate` and `/reflect` moved to the [`self` plugin](../plugins/self/README.md) as `/self:hibernate` and `/self:reflect`.
 
@@ -61,14 +59,13 @@ those skills (same pattern as `/commit` → `/code:commit`).
 
 | Command | What it does |
 |---|---|
-| [`/tickets`](./tickets.md) | Work with the project's issue tracker — auto-detects Linear, GitHub Issues, or Jira |
 | [`/triage`](./triage.md) | Sweep the whole board — ground in real product goals, then force every item to keep-and-schedule-this-cycle or cancel. Never Backlog |
 | [`/dispatch`](./dispatch.md) | Take one task from idea to a working agent — understand the repo, spec fast, debug-skill for bugs, quick plan, file the ticket, dispatch |
 | [`/loop`](./loop.md) | Alias of `/work:loop` — unattended multi-project work drain (any kind; spread load; no review gate; browser/computer ok) |
 | [`/next`](./next.md) | Confirm the current task is actually done, then surface (and if clear, claim) the next related task — checks for in-flight PRs/sessions first so it never duplicates work |
 | [`/teams`](./teams.md) | Spawn parallel agents to work on a task together |
 
-`/tickets` is the general-purpose primitive (list, claim, comment, close). `/triage` is a
+The `tickets` skill is the general-purpose primitive (list, claim, comment, close). `/triage` is a
 board-wide sweep that forces every open item to a real decision. `/dispatch` is the
 single-task path from idea to a running agent. `/loop` / `/work:loop` is the unattended
 **queue** drain across projects and kinds (not engineering-only). `/next` is the boundary
@@ -80,11 +77,7 @@ re-deriving the tracker or duplicating a sibling agent's in-flight work. Easy to
 
 ## Observe
 
-| Command | What it does |
-|---|---|
-| [`/output`](./output.md) | Fleet-wide token-burn and output report across every device, rendered as an HTML dashboard and PDF |
-
-Machine profiling moved to [`/fleet:profile`](../plugins/fleet/README.md); durable watchers are the `agents monitors` CLI + the [`monitors` skill](../skills/README.md).
+The fleet token-burn / output report moved to [`/work:output`](../plugins/work/README.md); machine profiling to [`/fleet:profile`](../plugins/fleet/README.md); durable watchers are the `agents monitors` CLI + the [`monitors` skill](../skills/README.md).
 
 ## Related
 

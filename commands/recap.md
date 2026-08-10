@@ -107,8 +107,8 @@ A "wastebasket bullet" is anything in Recommended Next Steps that (a) you could 
 
 Anything mechanical that the session's work implies as finishing touches — do it, then land it in "Completed" with the concrete artifact (commit hash, closed issue ID, removed file, updated state). Examples of what this covers (non-exhaustive — the principle is the point, not the list):
 
-- Uncommitted work in the tree (whether from this session or a parallel agent's session) → inspect the diff of every changed file, group related changes into logical commits by concern, then commit + push per the project's `/commit` command (conventional, <72 chars, single line, no co-author trailer). Another agent's uncommitted work is still yours to land — don't leave it dangling.
-- Completed tickets that the session clearly finished → close them via `/tickets` (or the project's tracker skill / CLI directly). Post a short completion comment linking to the commit/PR.
+- Uncommitted work in the tree (whether from this session or a parallel agent's session) → inspect the diff of every changed file, group related changes into logical commits by concern, then commit + push per `/code:commit` (conventional, <72 chars, single line, no co-author trailer). Another agent's uncommitted work is still yours to land — don't leave it dangling.
+- Completed tickets that the session clearly finished → close them via the `tickets` skill (or the project's tracker skill / CLI directly). Post a short completion comment linking to the commit/PR.
 - Satisfied TODOs or in-session task checklists → mark done in their source file.
 - Stale branches, dead feature flags, leftover `.tmp` files that the session's work makes obsolete → remove them.
 - Tests you wrote but didn't run → run them. Report counts.

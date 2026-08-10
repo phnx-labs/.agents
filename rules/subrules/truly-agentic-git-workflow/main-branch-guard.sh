@@ -101,11 +101,39 @@ case "$cwd" in *\\*) cwd=$(printf '%s' "$cwd" | tr '\\' '/') ;; esac
 
 deny_reason=""
 
+# Shared short-TTL git-fact cache (RUSH-2293). NOT the agents-cli hook `cache:`
+# shim — that soft-allows (exit 0) on hit and would miss a branch switch onto
+# the default branch. Facts only; this guard still decides allow/deny itself.
+# Resolve the lib relative to this script so it works both from the system
+# install (~/.agents/.system/...) and from a worktree checkout of this repo.
+_MBG_DIR=$(CDPATH= cd "$(dirname "$0")" 2>/dev/null && pwd)
+_GIT_FACTS_READY=0
+for _cand in \
+  "$_MBG_DIR/../../../hooks/lib/git-facts.sh" \
+  "${HOME}/.agents/.system/hooks/lib/git-facts.sh"
+do
+  if [ -f "$_cand" ]; then
+    # shellcheck source=../../../hooks/lib/git-facts.sh
+    . "$_cand"
+    _GIT_FACTS_READY=1
+    break
+  fi
+done
+unset _MBG_DIR _cand
+
 # on_default_branch <dir> — return 0 (protected) if <dir> is inside a git
 # work-tree whose current branch IS the repo's default branch. Return 1 (allow)
 # for: not a git repo, detached HEAD, or a non-default (feature/worktree) branch.
 # Sets _top / _cur / _def for the caller's deny message.
+#
+# Uses the shared git-facts cache (HEAD-validated, short TTL). If the lib is
+# missing (partial install), fall through to the three git forks so the guard
+# never soft-opens.
 on_default_branch() {
+  if [ "${_GIT_FACTS_READY:-0}" = 1 ]; then
+    git_facts_on_default "$1"
+    return $?
+  fi
   _top=$(git -C "$1" rev-parse --show-toplevel 2>/dev/null) || return 1
   _cur=$(git -C "$_top" symbolic-ref --short -q HEAD 2>/dev/null) || _cur=""
   [ -z "$_cur" ] && return 1

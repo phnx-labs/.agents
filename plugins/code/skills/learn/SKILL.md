@@ -90,7 +90,7 @@ that's fine — not every session has both kinds of lesson.
 | Draining a queue, conflict-graph parallelism, rebasing, what "done" means | `code:loop` |
 | Pre-merge review, whole-repo diagnostics, security pass, merge verdict | `code:review` |
 | Splitting a working tree into logical commits | `code:commit` |
-| Publishing / activating / confirming a distributable is live | top-level `release` skill (not this plugin — see `release-to-fleet`) |
+| Publishing / activating / confirming a distributable is live | `code:release` skill (see `release-to-fleet`) |
 
 **Routing calls that aren't a code:\* skill either:**
 
