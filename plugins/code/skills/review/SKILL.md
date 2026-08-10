@@ -443,11 +443,43 @@ speculation. If you can't prove it, drop the finding.>
 Return file:line quotes for every claim. Do NOT paraphrase. If you can't quote it, don't claim it.
 ```
 
-### B6. Synthesize + post
+### B6. Synthesize + post — findings land **on the lines**, not in a wall
 
 Read the reviewer's output (merge per-surface critiques into one verdict for a team
-review — BLOCKER count wins). Post one comment via `gh pr comment <N> --body-file
-<synthesized>.md`, opening with the verdict, findings sorted BLOCKER → SHOULD → NICE.
+review — BLOCKER count wins). Then post **one review** carrying inline comments, not a
+single blob the author has to map back onto the diff themselves. Every finding already
+carries `file:line`; that is exactly what anchors a comment.
+
+Split the findings first:
+
+- **Anchorable** — the cited line is on the **right side of this diff** (an added or
+  context line in the PR's own hunks). Check against `git diff origin/$BASE...origin/$BRANCH`,
+  which you already have from B1.
+- **Not anchorable** — a finding about a file the diff never touched (an absent call site,
+  an orphaned path, a missing test), or a line that exists only on the left side. These
+  are real findings and often the most valuable ones; they go in the review **body**.
+
+Post both in a single API call so the author gets one notification, not N:
+
+```bash
+jq -n --arg body "$(cat <synthesized>.md)" --arg sha "$(gh pr view $PR --json headRefOid -q .headRefOid)" \
+  --slurpfile c <inline-comments>.json \
+  '{body: $body, event: "COMMENT", commit_id: $sha, comments: $c[0]}' \
+  | gh api repos/{owner}/{repo}/pulls/$PR/reviews --input -
+```
+
+Each element of `<inline-comments>.json` is `{"path": "...", "line": <n>, "side": "RIGHT",
+"body": "**BLOCKER** — <one line>\n\n<why, and the fix>"}`; use `start_line` with `line`
+for a range. Keep the inline body short — the defect and the fix. The review body carries
+the verdict, the non-anchorable findings, and the `Filtered:` line.
+
+`event: "COMMENT"` deliberately: `REQUEST_CHANGES` blocks the PR and pages the author, so
+reserve it for `$ARGUMENTS` containing `formal-review`. Never `APPROVE` your own work.
+
+If the API call fails — a stale `commit_id` after a force-push, a line that moved, an
+outdated position — do not silently drop the findings: fall back to the whole synthesized
+report as one `gh pr comment <N> --body-file <synthesized>.md`, and say in the body that
+inline anchoring failed and why.
 
 ### B7. Act on the verdict
 
