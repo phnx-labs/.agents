@@ -51,9 +51,12 @@ output format; every kind renders to the same HTML.
    links under `## Tracking` (plans) so the body stays readable without chip
    chrome.
 
-   Follow the section structure for the kind (`artifacts new <kind> --blank`
-   shows it), or scaffold the whole file with `artifacts new <kind> --out
-   <source.md>`.
+   Author the Markdown directly with the section structure for the kind — you do
+   **not** need to run `artifacts new`. `render` auto-fills the provenance
+   frontmatter (project · repo · branch · harness · agent · host · session · date)
+   from git + the agent env for any blank field, so your frontmatter needs only
+   `kind` + `title`. (`artifacts new <kind> --blank` shows the section structure,
+   and `artifacts new <kind> --out <source.md>` scaffolds a file — both optional.)
    Do not repeat provenance in the body. Use normal headings, lists, tables,
    images, and fenced code. Reach for direct HTML only for grids, panels,
    figures, and callouts; reach for inline SVG for architecture, timelines,
