@@ -158,6 +158,10 @@ hooks:
 - `matches` — optional predicates.
 - `enabled` — set `false` to disable a hook in a manifest. The user layer can
   disable any system-shipped hook.
+- `override` — set `true` on a user-layer entry to silence the
+  `User-layer hook '<name>' shadows/disables system-shipped hook` warning. It
+  does **not** gate the shadowing itself: the user layer wins on a key collision
+  either way, and `enabled: false` disables with or without it.
 - `agents` — **deprecated**; ignored.
 
 ## Enabling and disabling hooks
