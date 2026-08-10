@@ -100,7 +100,7 @@ Treat the keystrokes below as the map, not gospel.
 
 6. **Copy to a worker device** (when provisioning for a remote box):
    ```
-   agents accounts sync "$ACCOUNT_NAME" --device <target-device>
+   agents accounts sync "$ACCOUNT_NAME" <target-device>
    ```
    This copies the bundle explicitly; the target inherits `policy: never` and the full
    account schema. Native auth material (keychain credentials, OAuth sessions) is never

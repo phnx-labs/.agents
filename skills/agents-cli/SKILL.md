@@ -40,9 +40,11 @@ A provider account is one `agents secrets` bundle: create it with `agents
 accounts add <name> --provider <provider> --auth <type>`, optionally importing
 an existing value with `--from-secrets <bundle>:<key>`. Account bundles use
 policy `never`, so agent launches read them without Touch ID. Use `agents accounts
-set-default <agent> <name>` for a harness default, `--account <name>` for a
-one-run override, and `agents accounts sync <name> --device <device>` to copy that
-provider bundle explicitly to a worker. Harness-native auth material remains
+attach <name> <target>` for a durable binding, `--account <name>` for a
+one-run override, and `agents accounts sync <name> <device>` to copy that
+provider bundle explicitly to a worker. Name native identities with `agents
+accounts name <agent@version> <name>` and bind them with `agents accounts attach
+<name> <target>`; harness-native auth material remains
 owned by the harness and is never copied by account sync.
 
 Use this when you want to delegate a bounded task to another agent and capture its output, rather than spawning a full team.

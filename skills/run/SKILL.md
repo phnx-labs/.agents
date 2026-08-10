@@ -122,11 +122,11 @@ Controls which installed version/account gets the work.
 agents run claude "..." --strategy balanced
 agents run claude "..." -b                  # shortcut for --strategy balanced
 
-# Select a durable provider credential
+# Select any named provider or native account
 agents run claude "..." --account work
 
-# Set the provider account used when --account is omitted
-agents accounts set-default claude work
+# Attach the account used when --account is omitted
+agents accounts attach work claude
 ```
 
 Strategy is ignored when `@version` is pinned, a profile is used, or `--fallback` is set.
@@ -283,11 +283,14 @@ Use this as the default for "send this to the fleet" unless the task must land o
 
 For everything else, run `agents run --help`.
 
-`--account <name>` selects a provider account bundle created with `agents
-accounts add`; it overrides `agents accounts set-default`. Accounts are
-independent of agent versions and one provider account may be used by multiple
-compatible harnesses. The execution device resolves the secret locally and
-fails before spawn when it is absent. Copy a provider bundle explicitly with
-`agents accounts sync <name> --device <device>`. Harness-native signed-in
-identities remain in version homes and their auth material is never copied.
+`--account <name>` selects any named provider or native account and overrides
+an `agents accounts attach` binding. Provider accounts are independent of
+agent versions and may be used by multiple compatible harnesses; the execution
+device resolves their secret locally and fails before spawn when it is absent.
+Native accounts retain their declared version or device scope and validate the
+harness-owned login before spawn without injecting a secret. Copy a provider bundle explicitly with
+`agents accounts sync <name> <device>`. Harness-native signed-in identities may
+be named with `agents accounts name <agent@version> <name>` and bound with
+`agents accounts attach <name> <target>`; their auth material remains in the
+harness home and is never copied.
 Accounts do not apply to cloud or lease placement.
