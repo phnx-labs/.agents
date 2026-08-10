@@ -2,6 +2,17 @@
 
 ## [Unreleased]
 
+### Changed
+
+- **`/plan` Step 6 no longer mandates ASCII mockups for UI changes.** The command
+  told agents to draw each screen as an ASCII box (`+---+ | Logo | +---+`), which
+  the `ui-work-discipline` rule forbids and which agents were told is "terrible" —
+  a user cannot judge look-and-feel from pipes and dashes. Step 6 now requires a
+  **real mockup** built with the `artifacts` CLI that reads like the actual product
+  (probe the repo's design tokens), the user flow as a rendered inline-SVG figure
+  (not ASCII), and 2-3 side-by-side variations with one-line tradeoffs for a genuine
+  design choice. Source: `commands/plan.md`.
+
 ### Added
 
 - **A `code-reviewer` subagent ships in the system layer, reaching every subagents-capable harness.** Installing agents-cli now gives you a non-author reviewer with no per-repo setup — the case `agents-cli` is in today with `prix/code-reviewer` paused (#1767). It is adversarial twice: it hunts the input that breaks the change, then tries to kill each candidate finding (the guard is elsewhere / the line is unreachable / the repo sanctions it) and reports only survivors plus a count of what it filtered. Before judging it reads the **requirement** — the ticket the branch names and any committed plan — and answers conformance per acceptance criterion. It bounds what it reports to a **finding radius**: the diff, plus what the diff broke (stale callers, disagreeing siblings, and the old path this change orphaned but nobody deleted); pre-existing rot gets one line, never a finding. New hunt class: **design divergence at a declared surface**, diffing a new endpoint / CLI command / schema / component against three to five existing siblings (API envelope, error shape, pagination, auth attachment; CLI noun-then-verb and `--json`; UI tokens, scale, component reuse, full state set). It never edits, pushes, or merges. `code:review` spawns it as `subagent_type: "code-reviewer"` and its per-PR brief carries only the requirement, context, and canonical patterns.
