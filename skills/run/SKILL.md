@@ -124,6 +124,9 @@ agents run claude "..." -b                  # shortcut for --strategy balanced
 
 # Select a durable provider credential
 agents run claude "..." --account work
+
+# Set the provider account used when --account is omitted
+agents accounts set-default claude work
 ```
 
 Strategy is ignored when `@version` is pinned, a profile is used, or `--fallback` is set.
@@ -280,8 +283,11 @@ Use this as the default for "send this to the fleet" unless the task must land o
 
 For everything else, run `agents run --help`.
 
-`--account <name>` selects a durable credential created with `agents accounts
-add`. Accounts are independent of agent versions; one provider account may be
-used by multiple compatible harnesses. The execution device resolves the
-secret locally and fails before spawn when it is absent. Device-local accounts
-do not apply to cloud or lease placement.
+`--account <name>` selects a provider account bundle created with `agents
+accounts add`; it overrides `agents accounts set-default`. Accounts are
+independent of agent versions and one provider account may be used by multiple
+compatible harnesses. The execution device resolves the secret locally and
+fails before spawn when it is absent. Copy a provider bundle explicitly with
+`agents accounts sync <name> --device <device>`. Native OAuth identities remain
+in harness version homes and are never copied. Accounts do not apply to cloud
+or lease placement.
