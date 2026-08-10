@@ -1,6 +1,6 @@
 ---
 name: restore
-description: "Re-open agent sessions killed by a crash or reboot as Ghostty (or terminal) windows, each resuming its real transcript. Not /continue (finish work here) and not recover mode (finish many headlessly). Triggers on: /restore, /sessions:restore, 'bring the windows back', 'reopen crashed sessions', 'restore after reboot'."
+description: "Re-open agent sessions killed by a crash or reboot as Ghostty (or terminal) windows, each resuming its real transcript. Not /continue (finish work here) and not recover mode (finish many headlessly). Triggers on: /sessions:restore, 'bring the windows back', 'reopen crashed sessions', 'restore after reboot'."
 argument-hint: "[repo path or keyword to scope | 'all' | empty = auto-detect last crash]"
 allowed-tools: Bash(agents sessions*), Bash(open *), Bash(sysctl *), Bash(uptime *), Bash(who *), Bash(date *), Bash(ls *), Bash(rg *), Bash(jq *), Bash(sleep *), Bash(pbcopy *), Bash(xclip *), Bash(wl-copy *), Read(*), Task(*), AskUserQuestion(*), computer(*)
 user-invocable: true

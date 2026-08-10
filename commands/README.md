@@ -24,20 +24,17 @@ commands are often thin wrappers that only invoke a skill (harness-friendly).
 | [`/swarm`](./swarm.md) | Front door to the `swarm` plugin — fan work across parallel agents (`run` by default; or `plan` / `spec` / `debug`) |
 | [`/debug`](./debug.md) | Trace the data path, hypothesize a root cause, then have independent agents confirm it before any fix (routes to `swarm:debug`) |
 | [`/blame`](./blame.md) | Trace a regression — a feature that worked and silently broke — to the culprit change, the removed/skipped test that let it through, and the agent/session behind it. Read-only forensics, no fix |
-| [`/clean`](./clean.md) | Identify and clean up technical debt, outdated code, and duplicates |
 
 Multi-agent plan/spec/debug live under `/swarm …` and `/swarm:plan` / `/swarm:spec` /
-`/swarm:debug` (see [`plugins/swarm`](../plugins/swarm/README.md)).
+`/swarm:debug` (see [`plugins/swarm`](../plugins/swarm/README.md)). Cleaning up technical
+debt moved into the code plugin as [`/code:clean`](../plugins/code/README.md).
 
 ## Ship and review
 
-| Command | What it does |
-|---|---|
-| [`/finish`](./finish.md) | Drive the current task to done end-to-end instead of stopping at a recap, blocker, or partial handoff |
-| [`/done`](./done.md) | Recap the session, then cleanly self-exit (SIGTERM the harness) |
-
-`/done` **exits** the session and assumes the work already shipped. `/finish` keeps
-working until it has. They are easy to confuse.
+Driving the current task all the way to delivered is **Part A of [`/next`](./next.md)** (it
+absorbed the old `/finish`); reviewing and merging PRs is
+[`/code:review`](../plugins/code/README.md). There are no top-level ship/exit commands — to
+recap-and-leave, run `/recap` then [`/self:close`](../plugins/self/README.md).
 
 ## Recap and resume
 
@@ -46,12 +43,12 @@ working until it has. They are easy to confuse.
 | [`/recap`](./recap.md) | Recap the current session, or transfer concise context from a prior session selected by ID, prefix, or keywords |
 | [`/continue`](./continue.md) | Alias of `/sessions:continue` — resume prior work **in this session** (reattach only if genuinely live); group-capable. Also finishes crashed sessions headlessly (`/continue recover`). |
 | [`/insights`](./insights.md) | Alias of `/sessions:insights` — orchestrate `agents insights` + trends + perf + sessions stats into evidence-backed actions |
-| [`/restore`](./restore.md) | Alias of `/sessions:restore` — re-open sessions killed by a crash or reboot as terminal windows |
 
-The procedures for `/continue`, `/insights`, and `/restore` live in the
+The procedures for `/continue` and `/insights` live in the
 [`sessions` plugin](../plugins/sessions/README.md) skills. Top-level files only invoke
-those skills (same pattern as `/continue` → `/sessions:continue`). `/fork` moved into
-the sessions plugin as [`/sessions:fork`](../plugins/sessions/README.md).
+those skills (same pattern as `/continue` → `/sessions:continue`). Re-opening crashed
+sessions as windows is [`/sessions:restore`](../plugins/sessions/README.md) (no top-level
+alias); `/fork` is [`/sessions:fork`](../plugins/sessions/README.md).
 
 `/hibernate` and `/reflect` moved to the [`self` plugin](../plugins/self/README.md) as `/self:hibernate` and `/self:reflect`.
 
@@ -62,7 +59,7 @@ the sessions plugin as [`/sessions:fork`](../plugins/sessions/README.md).
 | [`/triage`](./triage.md) | Sweep the whole board — ground in real product goals, then force every item to keep-and-schedule-this-cycle or cancel. Never Backlog |
 | [`/dispatch`](./dispatch.md) | Take one task from idea to a working agent — understand the repo, spec fast, debug-skill for bugs, quick plan, file the ticket, dispatch |
 | [`/loop`](./loop.md) | Alias of `/work:loop` — unattended multi-project work drain (any kind; spread load; no review gate; browser/computer ok) |
-| [`/next`](./next.md) | Confirm the current task is actually done, then surface (and if clear, claim) the next related task — checks for in-flight PRs/sessions first so it never duplicates work |
+| [`/next`](./next.md) | Drive the current task to delivered (verify E2E, docs, commit, PR, release gate, close the ticket — the old `/finish`), then surface (and if clear, claim) the next related task; checks in-flight PRs/sessions first so it never duplicates work |
 | [`/teams`](./teams.md) | Spawn parallel agents to work on a task together |
 
 The `tickets` skill is the general-purpose primitive (list, claim, comment, close). `/triage` is a
@@ -82,7 +79,7 @@ The fleet token-burn / output report moved to [`/work:output`](../plugins/work/R
 ## Related
 
 Several commands escalate to `agents teams` when the scope is wide: `/debug`, `/plan`,
-`/clean`, `/recap`, `/dispatch`.
+`/recap`, `/dispatch` (and `/code:clean`).
 
 Capabilities like `/secrets`, `/sessions`, and `/browser` are **skills**, not commands —
 see [`skills/`](../skills/README.md). They are invoked the same way but carry their own

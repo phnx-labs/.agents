@@ -26,15 +26,16 @@ does not recap, verify, or clean up.
 
 Build on it, don't reach past it:
 
-- **`/done`** = recap → `/self:close` (wrap up a delivered session and leave).
-- **`/finish`** = drive the work to delivered (verify E2E, docs, commit, PR, close tickets) —
-  and does **not** exit.
+- **`/recap`** = summarize the session's state for handoff — does not exit. Run it before
+  `/self:close` when you want a recap on the way out.
+- **`/next`** = drive the work to delivered (verify E2E, docs, commit, PR, close tickets) and
+  then pick up the next task — does **not** exit.
 - **`/self:close`** = just leave. Use it only when the work is genuinely wrapped or you were
   asked to end the session — never to dodge unfinished work.
 
 ## How it runs headlessly
 
-`/self:close` (and `/done`'s exit step) run two calls: a read-only
+`/self:close` runs two calls: a read-only
 `ps -o comm= -p $PPID` guard that refuses infra parents, then **exactly** `kill -TERM $PPID`.
 That exact form is allowlisted by the `self` permission group
 ([`permissions/groups/12-self.yaml`](../../permissions/groups/12-self.yaml)), so in auto/headless

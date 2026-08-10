@@ -3,6 +3,6 @@
   # ends its own session cleanly. Scoped to this ONE exact form — the direct
   # parent, TERM only — never a general `kill` allow. /self:close runs a
   # read-only `ps -o comm= -p $PPID` guard first (covered by the core `ps` allow)
-  # so it never signals a shell/tmux/sshd parent. /done and /finish use the same
-  # exact form for their self-exit step.
+  # so it never signals a shell/tmux/sshd parent. `/self:close` is the only
+  # command that uses this exact form.
   - "Bash(kill -TERM $PPID)"
