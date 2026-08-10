@@ -6,7 +6,8 @@
 
 - **`/plan` Step 6 no longer mandates ASCII mockups for UI changes.** The command
   told agents to draw each screen as an ASCII box (`+---+ | Logo | +---+`), which
-  the `ui-work-discipline` rule forbids and which agents were told is "terrible" —
+  Muqsit's `ui-work-discipline` rule (his personal ruleset layer) forbids and which
+  agents were told is "terrible" —
   a user cannot judge look-and-feel from pipes and dashes. Step 6 now requires a
   **real mockup** built with the `artifacts` CLI that reads like the actual product
   (probe the repo's design tokens), the user flow as a rendered inline-SVG figure
