@@ -1,6 +1,6 @@
 ---
 name: design
-description: "One keyless, offline-first front door for design. Routes a design intent to a mode and renders it as self-contained HTML/SVG (no CDN, no paid keys): UI screens and flows, clickable prototypes, design systems and tokens, architecture/flow/ER diagrams, infographics and data-stories, slide decks, vector assets (OG cards, SVG logos, icon sets, posters), and critique of an existing screen. True raster (photo, illustration, painterly cover) is an optional layer that degrades to a spec plus an editable placeholder rather than hard-failing. Every mode loads design-core first (hierarchy, WCAG AA contrast, colorblind-safe palettes, brand-probe, precise non-marketing copy, render/screenshot/critique verification). Triggers on: design a screen/page/UI, mock up, prototype, design system, tokens, wireframe, diagram this, infographic, dataviz, slide deck, logo, OG image, social card, icon, poster, critique this design, redesign, is this design any good."
+description: "One keyless, offline-first front door for design. Routes a design intent to a mode and renders it as self-contained HTML/SVG (no CDN, no paid keys): UI screens and flows, clickable prototypes, design systems and tokens (including brand identity, BRAND.md), architecture/flow/ER diagrams, infographics and data-stories, slide decks, vector assets (OG cards, SVG logos, icon sets, posters), critique of an existing screen, and anticipating a flow's dead-ends. True raster (photo, illustration, painterly cover) is an optional layer that degrades to a spec plus an editable placeholder rather than hard-failing. Every mode loads design-core first (hierarchy, WCAG AA contrast, colorblind-safe palettes, brand-probe, the anti-tells catalog of what makes a design look AI-generated, precise non-marketing copy, render/screenshot/critique verification). Triggers on: design a screen/page/UI, mock up, prototype, design system, tokens, brand, BRAND.md, wireframe, diagram this, infographic, dataviz, slide deck, logo, OG image, social card, icon, poster, critique this design, redesign, is this design any good, anticipate, flow improvement, dead-end."
 allowed-tools: Bash(scp*), Bash(agents ssh*), Bash(agents browser*), Bash(open*), Bash(xdg-open*), Bash(node*), Bash(find*), Bash(cp*), Bash(mkdir*), Bash(test*), Bash(git rev-parse*), Write
 user-invocable: true
 ---
@@ -24,9 +24,10 @@ configured, never a hard failure.
 
 Every mode reads **`design-core.md`** before producing anything: visual hierarchy and
 rhythm, accessibility (WCAG AA contrast, colorblind-safe palettes), the brand-probe
-cascade, precise non-marketing copy, the graceful-raster rule, and mandatory
-render/screenshot/critique verification. That shared core is what keeps quality consistent
-across every mode and every user.
+cascade, browsing for live current inspiration instead of frozen examples, the anti-tells
+catalog (the tells that make a design look AI-generated), precise non-marketing copy, the
+graceful-raster rule, and mandatory render/screenshot/critique verification. That shared
+core is what keeps quality consistent across every mode and every user.
 
 ## Routing — pick the mode from the intent
 
@@ -34,13 +35,14 @@ across every mode and every user.
 | --- | --- | --- | --- |
 | a screen, page, UI, dashboard; "make this look good"; redesign | `interface` | self-contained HTML | none |
 | something to click through; a multi-screen flow | `prototype` | linked HTML screens | none |
-| a design system, tokens, components, a `DESIGN.md` | `system` | tokens + HTML preview | none |
+| a design system, tokens, components, a `DESIGN.md`, or brand identity (`BRAND.md`, voice) | `system` | tokens + HTML preview | none |
 | an architecture / flow / sequence / ER / org diagram | `diagram` | HTML + hand-authored SVG | none |
 | an infographic, data-story, chart, status dashboard | `dataviz` | HTML + SVG | none |
 | a slide deck (pitch, talk, teaching) | `deck` | HTML slides (PPTX optional) | none |
 | an OG card, social graphic, logo, icon set, poster, favicon | `asset` | SVG/HTML (raster optional) | none for vector |
 | motion, a micro-interaction, an animated hero | `motion` | CSS/HTML animation | none |
 | "is this any good?", review/critique an existing screen | `critique` | checklist verdict | none |
+| "what happens after this?", fix a dead-end flow, anticipate next action | `anticipate` | before/after ASCII + rationale | none |
 | a photo, illustration, or painterly cover | `asset` (raster) | raster, or spec + placeholder | optional backend |
 
 When the intent is vague ("make me something nice"), ask one clarifying question about the
@@ -59,6 +61,7 @@ Each mode file lives beside this one. Read design-core first, then the mode:
 - **`asset.md`** — OG cards, logos, icons, posters (vector-first); raster with graceful degradation.
 - **`motion.md`** — CSS/HTML motion and micro-interactions.
 - **`critique.md`** — run the design-core checklist on an existing screen or asset.
+- **`anticipate.md`** — diagnose a dead-end flow and propose the continuation (before/after ASCII, no implementation).
 
 ## Deliver it (reuse the plan-render/visualize transport)
 
@@ -77,6 +80,6 @@ re-derive them.
 - **Keyless core.** The HTML/SVG substrate needs no API key and works offline. That covers
   interface, prototype, system, diagram, dataviz, deck, critique, and vector assets.
 - **Raster degrades.** True raster uses a backend if one exists, otherwise emits a spec +
-  editable placeholder + enable-steps and exits successfully (design-core §6).
+  editable placeholder + enable-steps and exits successfully (design-core §8).
 - **Brand is optional.** Unbranded output is tasteful by default; brand plugins layer on
   top by calling `/design`.

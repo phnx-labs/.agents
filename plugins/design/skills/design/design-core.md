@@ -12,7 +12,7 @@ and `visualize` (inline CSS/SVG, no CDN, opens offline by double-click). Most de
 have a better answer in editable vector/HTML than in a generated raster: pages, UIs,
 prototypes, diagrams, dataviz, decks, OG cards, logos, icons, posters. Reach for raster
 generation only when the deliverable is genuinely photographic or painterly. See
-**§6 graceful raster**.
+**§8 graceful raster**.
 
 ## 2 · Visual quality (the non-negotiables)
 
@@ -51,8 +51,80 @@ order, first hit wins (the same cascade as `plan-render`):
 
 Brand is a **layer, not a requirement**. Unbranded output must still be tasteful by
 default. Brand plugins (rush, prix) skin on top by calling `/design`; never require them.
+A full brand identity (voice, palette, type, anti-tells, `BRAND.md`) is defined by the
+**`system`** mode, not a separate mode — see `system.md`.
 
-## 5 · Precise, non-marketing copy
+## 5 · Live inspiration, not frozen examples
+
+Before rendering, especially for an unfamiliar domain or when the brand-probe (§4) finds
+nothing to skin to, browse for real, **current** inspiration instead of relying on
+memorized or hardcoded examples — training-data recall and a frozen example file both go
+stale, and stale references are exactly what produces the tells in §6.
+
+1. Use the `browser` skill to open 2-4 real, live sites relevant to the job (the same
+   category of product, or named references the user gives) and screenshot them.
+2. Look at what you captured before drawing on it: what does it actually do with
+   hierarchy, density, type, color — not what you assume it does from the name.
+3. Borrow specific, nameable choices ("dense left-aligned nav with mono labels, flat
+   buttons, no drop-shadow"), never the whole composition. Never copy a screenshot's
+   layout wholesale — synthesize your own from what several examples do.
+4. Treat what you find as a positive AND a negative reference: note what to borrow and
+   what to deliberately avoid (an of-the-moment trend that reads as generic).
+
+This replaces keeping a fixed set of example screenshots in the skill itself — those
+freeze in time the moment they're written and start training toward whatever was current
+then. Live browsing keeps the reference set current for every render.
+
+## 6 · Anti-tells — what makes a design look AI-generated
+
+A design gets flagged as AI-made for one of two reasons: a **trained-corpus signature**
+(the model reproduces the same handful of "tasteful indie SaaS" landing pages from its
+training data) or a **tagline-factory voice** (copy that reads like the model trying to
+sound design-y). Both are diagnosable; check every render against this list before
+calling it done, and avoid the combination even when one move alone would be fine.
+
+1. **Italic serif display headlines** (Tiempos / Newsreader / GT Sectra Italic, often one
+   italicized accent word). Now the default "tasteful AI tool" look. Use a heavy sans
+   display (NB International, Söhne, GT America, Geist) at 700/800, or all-mono display
+   (JetBrains Mono, Berkeley Mono, IBM Plex Mono) instead.
+2. **Two-tone "muted gray + bright white" headlines** — first line bright, next line
+   `text-zinc-500`, same font and weight. Use a single tone; get hierarchy from size or
+   weight, or a kicker label / accent word / underline rule instead.
+3. **Italic mid-sentence accent words** ("You stay the *architect*."). Bold the word, set
+   it in mono in the accent color, or don't emphasize at all.
+4. **Italic asides under list items** ("— because windows you cannot see are windows you
+   cannot trust."). Delete the aside, or rewrite it as a concrete sentence with a verb
+   and a noun.
+5. **Latin / typographic section markers** (`§ № I · the editor, reconsidered`). Drop
+   them, or use the most boring label possible ("01 / Features", "Workflow").
+6. **Sodium amber / warm cream on warm off-black** (`#ebe6da` on `#0d0c0b` with a
+   `#ffb347` accent). Pick a CRT phosphor green, a desaturated chartreuse, a real brand
+   color, or commit to pure achromatic instead.
+7. **"Made on a Sunday on cold brew" colophons.** Say something concrete (a real
+   changelog timestamp, an actual build number, a one-sentence positioning statement) or
+   say nothing.
+8. **The strikethrough metaphor headline** ("Your editor is not ~~a text box~~. It is a
+   *foreman*."). Lead with the actual product claim, in plain language.
+9. **The lucide-react feature-card grid** (3×3 or 2×3 cards, one icon, a short title, a
+   sentence). Show the product instead — a diff hunk, real terminal output, an actual
+   screenshot — or use a numbered text list / comparison table.
+10. **"Built for X. Trusted by Y." sequencing** — hero, then a grayscale logo row (often
+    invented), then features. If there are no real logos, don't fake the row; use one
+    specific, credible testimonial or skip social proof on a v0.x product.
+11. **Gradient accent buttons + drop-shadow glow halos.** Flat color, square or 4-6px
+    corners, no glow. Or a fully outlined button.
+12. **Em-dash-heavy prose** — clauses separated by em-dashes every other sentence. Use
+    periods and short sentences; keep at most one em-dash per paragraph (§7).
+
+**How to use this list.** Check every render against it. For any tell that's present,
+decide deliberately — keep it with a reason, or replace it with the alternative. If
+three or more are present together, the design reads as AI-made regardless of how nice
+it looks individually, even though no single move is forbidden in isolation. The goal is
+not to avoid every move an LLM ever makes — it's to avoid the recognizable *combination*.
+This catalog is meant to evolve: when a render is called out for a new tell, add it here
+so every mode inherits the fix.
+
+## 7 · Precise, non-marketing copy
 
 All copy in a design follows the `code-quality` "write prose precisely" rule: name the
 concrete thing, drop the marketing register (no slogans, no "Critically:" drama, no filler
@@ -60,7 +132,7 @@ adjectives like "seamless" or "powerful"), and cap em-dashes at one per paragrap
 headline states what the thing is or does; it is not a tagline. A shareable marketing asset
 may carry one accurate punchy line, but the body copy stays plain.
 
-## 6 · Graceful raster (never hard-fail)
+## 8 · Graceful raster (never hard-fail)
 
 When a job needs true raster:
 
@@ -73,13 +145,14 @@ When a job needs true raster:
    complete generation spec (subject, style, palette, aspect ratio, negative prompts);
    (c) one line on how to enable a backend. The user is never left staring at an error.
 
-## 7 · Verification is mandatory (see it, then critique it)
+## 9 · Verification is mandatory (see it, then critique it)
 
 No visual mode is done until you have **rendered it, looked at it, and critiqued it**:
 
 1. Render the HTML/SVG (a headless screenshot, or open it in a browser).
 2. Look at the screenshot against the stated intent.
-3. Run the critique checklist below; fix what fails; re-render. Repeat until it passes.
+3. Run the critique checklist below, and the anti-tells list (§6); fix what fails;
+   re-render. Repeat until both pass.
 
 ## The critique checklist (also the standalone `critique` mode)
 
@@ -94,4 +167,5 @@ Score each. Anything failing is a fix, not a nit.
 7. **Copy** — precise, concrete, non-marketing; the headline states rather than sells?
 8. **Density** — enough whitespace; nothing cramped or chartjunky?
 9. **Consistency** — components and tokens reused, not reinvented per view?
-10. **Intent** — does it actually do the job the user asked for?
+10. **Anti-tells (§6)** — fewer than three tells present in combination?
+11. **Intent** — does it actually do the job the user asked for?

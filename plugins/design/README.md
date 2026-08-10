@@ -13,13 +13,18 @@ optional, never required.
 | --- | --- | --- | --- |
 | `interface` | screens, pages, components, redesign | self-contained HTML | none |
 | `prototype` | clickable multi-screen flows | linked HTML | none |
-| `system` | design systems, tokens, `DESIGN.md` | tokens + HTML preview | none |
+| `system` | design systems, tokens, `DESIGN.md`, and brand identity (`BRAND.md`) | tokens + HTML preview | none |
 | `diagram` | architecture / flow / sequence / ER | HTML + hand-authored SVG | none |
 | `dataviz` | infographics, charts, dashboards | HTML + SVG | none |
 | `deck` | slide decks | HTML (PPTX optional) | none |
 | `asset` | OG cards, logos, icons, posters | SVG/HTML (raster optional) | none for vector |
 | `motion` | UI motion, micro-interactions | CSS/HTML | none |
 | `critique` | review an existing screen | checklist verdict | none |
+| `anticipate` | diagnose a dead-end flow, propose the continuation | before/after ASCII + rationale | none |
+
+There is no separate `brand` mode — brand identity is part of `system` (see
+`skills/design/system.md`), since it is the identity layer a design system is
+built from, not a distinct deliverable.
 
 ## Why offline-first
 
@@ -29,6 +34,14 @@ generates; without one it degrades to a spec plus an editable placeholder plus e
 never a hard failure.
 
 Every mode loads `skills/design/design-core.md` first: visual hierarchy, WCAG AA contrast,
-colorblind-safe palettes, the brand-probe cascade, precise non-marketing copy, and
-render/screenshot/critique verification. That shared core keeps quality consistent across
-every mode and every user.
+colorblind-safe palettes, the brand-probe cascade, browsing the live web for current
+inspiration instead of frozen examples, the anti-tells catalog (the tells that make a
+design read as AI-generated — generic gradients, italic serif display, lucide-icon feature
+grids, and the rest), precise non-marketing copy, and render/screenshot/critique
+verification. That shared core keeps quality consistent across every mode and every user.
+
+## Only one design door
+
+This is the single design skill/plugin in the fleet. There is no separate `create:design`
+or user-layer `design` skill — those were folded in here and retired (RUSH-2504) so
+`/design` is the one front door, cross-harness.

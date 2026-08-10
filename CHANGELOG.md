@@ -21,6 +21,33 @@
 
 - **`pr-merge-on-green` monitor now retries a silently-failed merge instead of stranding the PR (RUSH-2488).** Its condition was `mode: match` (`[0-9].*`), which only re-fires when the mergeable-PR set *changes* — so if a dispatched merge failed silently (transient `gh` error, box down, agent crashes before merging), the PR stayed approved+green, the next poll's observation was identical, and the merge was never retried until some other PR incidentally re-triggered the monitor. It now uses `mode: every`, which fires every 5-minute tick that reports a non-empty set (empty stays silent) and re-fires while the same PR is still listed, so the merge is retried — bounded by the existing `rateLimit: 6/1h`. This is the "job that can no-op forever after a silent failure" case `unattended-verification` warns about. Requires the empty-safe `every` from agents-cli #2536 (>= 1.22.36); the monitor is opt-in and inert until then. Source: `monitors/pr-merge-on-green.yml`, `monitors/AGENTS.md`, `skills/monitors/SKILL.md`.
 
+- **`plugins/design` is now the single design front door; the anticipate mode,
+  anti-tells catalog, and brand identity are folded in (RUSH-2504).** Three
+  competing design entries existed — this plugin, an older user-layer
+  `create:design` skill, and a bare `create:design` command — and are now one.
+  Added `skills/design/anticipate.md`: diagnose a flow's dead-end (terminal
+  success, silent partial work, forced re-invocation, asymmetric confirms),
+  propose the continuation as before/after ASCII, and stop — no implementation
+  without approval. Added a 12-item anti-tells catalog (design-core §6): the
+  aesthetic signatures that read as AI-generated (italic serif display,
+  two-tone headlines, latin section markers, sodium-amber-on-warm-black,
+  gradient-glow buttons, lucide-card grids, and the rest), with the working
+  alternative for each — every mode now checks its render against it before
+  calling it done. Added design-core §5: browse the live web via the `browser`
+  skill for current inspiration instead of relying on frozen example files —
+  this plugin never carried an `examples/` directory itself, but the older
+  user-layer skill's hardcoded `examples/` (frozen product screenshots that go
+  stale the moment they're written) were dropped rather than ported, in the
+  companion PR below. Brand identity (`BRAND.md` — voice, positioning,
+  references, anti-tells) now lives as part of the `system` mode, not a
+  separate `brand` mode. `marketplace.json`'s design entry updated to match.
+  Source: `plugins/design/skills/design/{design-core,system,anticipate,SKILL,
+  asset,dataviz,deck,diagram,interface,critique}.md`, `plugins/design/README.md`,
+  `plugins/design/commands/design.md`, `plugins/design/.claude-plugin/plugin.json`
+  (0.1.0 → 0.2.0), `.claude-plugin/marketplace.json`. The duplicate
+  `create:design` skill/command are removed from the user layer
+  (`~/.agents/plugins/create/`), tracked separately.
+
 - **Stop hook `verify-work-complete` no longer references the removed `agents pr
   land` command (RUSH-2466, RUSH-2473).** The durable PR-lander evidence the
   open-PR and keep-moving gates accept is now solely a native `ScheduleWakeup` /

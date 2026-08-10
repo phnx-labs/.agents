@@ -28,7 +28,7 @@ render/critique verification.
    (hover / focus / disabled) with visible focus rings; responsive at a couple of breakpoints.
 5. **Redesign path:** given a screenshot, first name what is wrong against the critique
    checklist (hierarchy, contrast, density, copy), then rebuild addressing each point.
-6. **Verify** (design-core §7): render, screenshot, run the checklist, fix, re-render.
+6. **Verify** (design-core §9): render, screenshot, run the checklist, fix, re-render.
 
 ## Output & delivery
 

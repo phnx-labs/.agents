@@ -8,7 +8,7 @@ notation; a legend appears whenever color or line-style encodes meaning.
 
 Read `design-core.md`. Everything here inherits its spatial rhythm, color discipline,
 accessibility (contrast + colorblind-safe palettes), brand-probe, precise non-marketing copy,
-and mandatory render/critique verification (§7).
+and mandatory render/critique verification (§9).
 
 ## When to use (vs neighbors)
 
@@ -33,7 +33,7 @@ and mandatory render/critique verification (§7).
 4. **Add a legend** whenever color or line-style encodes meaning. For C4 this is mandatory.
    Use colorblind-safe palettes: Okabe-Ito for categorical distinctions, Viridis for
    sequential encoding.
-5. **Verify** (design-core §7): screenshot the rendered SVG and check it against the
+5. **Verify** (design-core §9): screenshot the rendered SVG and check it against the
    amateur-tells in `diagram-conventions.md` (unlabeled arrows, decision boxes not diamonds,
    mixed notations, color without a legend). Fix what fails and re-render.
 
