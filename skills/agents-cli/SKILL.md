@@ -35,13 +35,13 @@ The key insight: sessions are your memory. Before starting a task, search for pr
 
 `agents run <agent> "prompt"` executes an agent headlessly and returns when done. You can set the reasoning effort, working directory, mode (plan/edit/full), and inject secrets or env vars. You can also resume a previous Claude session by session ID.
 
-`agents accounts` lists harness-native OAuth identities and provider accounts.
+`agents accounts` lists harness-native signed-in identities and provider accounts.
 A provider account is one `agents secrets` bundle: create it with `agents
 accounts add <name> --provider <provider> --auth <type>`, optionally importing
 an existing value with `--from-secrets <bundle>:<key>`. Account bundles use
-policy `never`, so agent launches read them without Touch ID. Use `accounts
+policy `never`, so agent launches read them without Touch ID. Use `agents accounts
 set-default <agent> <name>` for a harness default, `--account <name>` for a
-one-run override, and `accounts sync <name> --device <device>` to copy that
+one-run override, and `agents accounts sync <name> --device <device>` to copy that
 provider bundle explicitly to a worker. Native OAuth auth files remain owned by
 the harness and are never copied by account sync.
 
