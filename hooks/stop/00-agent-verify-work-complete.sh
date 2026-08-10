@@ -222,18 +222,16 @@ except Exception:
     done <<< "$responsible_prs"
 
     if [ -n "$open_prs" ]; then
-      # Durable lander evidence (RUSH-2394): a process that OUTLIVES this agent
+      # Durable watcher evidence (RUSH-2394): a process that OUTLIVES this agent
       # may own the next step. Background `gh pr checks --watch` is NOT durable
       # — it is a child of the agent process tree and dies when a headless agent
-      # exits, stranding the PR (observed on PR #2334 / #2352). Accept only:
-      #   - `agents pr land --detach` (own process group; state under
-      #     ~/.agents/.history/pr-land/), or
-      #   - a ScheduleWakeup / Monitor tool_use (session re-invoke path).
-      # Never phrasing alone; never in-process `gh pr checks --watch`.
+      # exits, stranding the PR (observed on PR #2334 / #2352). Accept ONLY a
+      # native ScheduleWakeup / Monitor tool_use: the harness owns the re-invoke,
+      # so it outlives this agent (a headless run's daemon-owned monitor, or the
+      # session re-invoke path). Never phrasing alone; never in-process
+      # `gh pr checks --watch`.
       live_watcher=$(python3 -c "
 import json, re, sys
-# Durable CLI lander — must include --detach (foreground land is still this process).
-DETACH_LAND = re.compile(r'agents\s+pr\s+land\b[^\n]*--detach', re.S)
 # Legacy in-process watch — REJECT as a handoff (dies with the agent).
 INPROC_WATCH = re.compile(r'gh\s+pr\s+checks\b.*--watch', re.S)
 found = False
@@ -254,11 +252,9 @@ try:
                 if not isinstance(b, dict) or b.get('type') != 'tool_use':
                     continue
                 name = b.get('name') or ''
-                inp = b.get('input') or {}
-                cmd = str(inp.get('command', ''))
+                # The only durable handoff evidence is a native re-invoke tool the
+                # harness owns (ScheduleWakeup / Monitor) — it outlives this agent.
                 if name in ('ScheduleWakeup', 'Monitor'):
-                    found = True
-                if name == 'Bash' and DETACH_LAND.search(cmd):
                     found = True
                 # Explicitly do NOT accept run_in_background + gh pr checks --watch
                 # (RUSH-2394). Leave INPROC_WATCH unused except as documentation of
@@ -287,13 +283,14 @@ pat = r'\b(handed off|hand-off|handoff|handing (this|it) off|will babysit|is bab
 # on you' / 'watching' are ordinary PR-abandonment prose — wanting a human review
 # is NOT an external blocker (keep driving it, or hand off via the phrase above).
 blocked = re.search(r'\bblocked on\b', msg)
-# nextstep must name a DURABLE finish path (detach lander / biometric), never
-# an in-process gh pr checks --watch (RUSH-2394).
-nextstep = re.search(r'\b(agents pr land --detach|durable lander|will merge on green)\b|\byour (touch ?id|biometric)\b', msg)
-# Fix 2 (phrasing): trusted ONLY when a durable lander / monitor tool_use exists
-# this session (live_watcher). An in-process background gh pr checks --watch is
-# NOT enough — that child dies with a headless agent (RUSH-2394).
-watcher_phrase = re.search(r'\b(agents pr land --detach|durable lander|poll(?:er|ing)?|re-?invoke|re-?invokes me|will merge on green|owns the (?:next|merge))\b', msg)
+# nextstep must name a DURABLE finish path (a native ScheduleWakeup/Monitor
+# re-invoke or the pr-merge-on-green monitor, or a biometric), never an
+# in-process gh pr checks --watch (RUSH-2394).
+nextstep = re.search(r'\b(schedulewakeup|monitor|pr-merge-on-green|will merge on green)\b|\byour (touch ?id|biometric)\b', msg)
+# Fix 2 (phrasing): trusted ONLY when a durable ScheduleWakeup/Monitor tool_use
+# exists this session (live_watcher). An in-process background gh pr checks
+# --watch is NOT enough — that child dies with a headless agent (RUSH-2394).
+watcher_phrase = re.search(r'\b(schedulewakeup|monitor|pr-merge-on-green|poll(?:er|ing)?|re-?invoke|re-?invokes me|will merge on green|owns the (?:next|merge))\b', msg)
 # Fix 3 (plan mode): plan mode mechanically forbids commit/push/merge, so the
 # agent physically cannot drive the PR — demanding it is a loop. Require the
 # 'plan mode' phrase together with a can't/forbid cue to avoid an incidental hit.
@@ -316,24 +313,27 @@ STOP GATE: This session created OR worked pull request(s) that are still OPEN:
 $open_prs
 An open PR is not a finished task — merged-or-handed-off is done. Before
 stopping you must do ONE of:
-1. Keep driving it: run \`agents pr land --detach <n>\` (durable lander that
-   outlives this process), get the non-author review, and merge on green.
-   Do NOT background \`gh pr checks --watch\` — that child dies when a headless
-   agent exits and strands the PR (RUSH-2394). Do NOT open the PR link for the
-   user or ask them to click merge.
+1. Keep driving it: set a native \`ScheduleWakeup\`/\`Monitor\` to re-invoke you
+   when CI settles, or enable the built-in \`pr-merge-on-green\` monitor
+   (\`agents monitors enable pr-merge-on-green\`) — the daemon owns it, so it
+   outlives this agent. Get the non-author review and merge on green. Do NOT
+   background \`gh pr checks --watch\` — that child dies when a headless agent
+   exits and strands the PR (RUSH-2394). Do NOT open the PR link for the user
+   or ask them to click merge.
 2. Non-author review path: if the automated code reviewer is configured and
    posting (e.g. prix-cloud), wait for it. If it is missing, silent, down, or
    the repo has none — spawn a non-author subagent review NOW (code:review /
    Agent that is not the author). Do not wait, and do not hand the merge to
    the user because the bot is down.
 3. Hand it off EXPLICITLY only when someone/something else truly owns it: name
-   who or what now owns the PR (a person, a session, a durable lander) in your
+   who or what now owns the PR (a person, a session, a durable monitor) in your
    final message. "Needs you to merge" / "open the PR" is NOT a handoff.
 4. If stopping is genuinely correct — a GENUINE external blocker you cannot
    resolve — name it ("blocked on <what>") AND point to either a DURABLE process
-   that will finish it (\`agents pr land --detach <n>\` / "will merge on green")
-   or an action only your biometric can do ("your Touch ID"). A background
-   \`gh pr checks --watch\` is NOT durable. Wanting a human REVIEW is NOT this
+   that will finish it (a native \`ScheduleWakeup\`/\`Monitor\` re-invoke, or the
+   \`pr-merge-on-green\` monitor — "will merge on green") or an action only your
+   biometric can do ("your Touch ID"). A background \`gh pr checks --watch\` is
+   NOT durable. Wanting a human REVIEW is NOT this
    case: keep driving it (spawn a reviewer) or hand it off explicitly by naming
    the owner (option 3) — "awaiting your review" will NOT pass this gate.
 
@@ -589,9 +589,9 @@ try:
 except Exception:
     print('allow'); sys.exit(0)
 
-# Durable lander / monitor tool_use this session (evidence, not phrasing).
-# RUSH-2394: in-process `gh pr checks --watch` is NOT durable — reject it.
-DETACH_LAND = re.compile(r'agents\s+pr\s+land\b[^\n]*--detach', re.S)
+# Durable monitor tool_use this session (evidence, not phrasing). RUSH-2394:
+# in-process `gh pr checks --watch` is NOT durable — only a native re-invoke
+# tool the harness owns (ScheduleWakeup / Monitor) outlives the agent.
 live_watcher = False
 last_struct_tool = ''
 try:
@@ -611,12 +611,8 @@ try:
                 if not isinstance(b, dict) or b.get('type') != 'tool_use':
                     continue
                 name = b.get('name') or ''
-                inp = b.get('input') or {}
                 last_struct_tool = name
-                cmd = str(inp.get('command', ''))
                 if name in ('ScheduleWakeup', 'Monitor'):
-                    live_watcher = True
-                if name == 'Bash' and DETACH_LAND.search(cmd):
                     live_watcher = True
 except Exception:
     pass
@@ -635,11 +631,11 @@ plan_mode = bool(re.search(r'\bplan mode\b', msg)
                  and re.search(r'\b(cannot|can not|forbid|forbids|blocks?|blocked|prevent|no (?:commit|push|merge))\b', msg))
 # Escape 3 — a genuine external blocker + who/what finishes it.
 blocked = re.search(r'\bblocked on\b', msg)
-nextstep = re.search(r'\b(agents pr land --detach|durable lander|will merge on green)\b|\byour (touch ?id|biometric)\b', msg)
+nextstep = re.search(r'\b(schedulewakeup|monitor|pr-merge-on-green|will merge on green)\b|\byour (touch ?id|biometric)\b', msg)
 # Escape 4 — explicit handoff of the remaining work to a named owner.
 handoff = re.search(r'\b(handed off|hand-off|handoff|handing (this|it) off|will babysit|is babysitting|takes over from here|owns (this|the) (pr|task|work))\b', msg)
-# Escape 5 — a durable lander/monitor owns the remaining step (evidence-gated).
-watcher_phrase = re.search(r'\b(agents pr land --detach|durable lander|poll(?:er|ing)?|re-?invoke|re-?invokes me|will merge on green|owns the (?:next|merge))\b', msg)
+# Escape 5 — a durable ScheduleWakeup/Monitor owns the remaining step (evidence-gated).
+watcher_phrase = re.search(r'\b(schedulewakeup|monitor|pr-merge-on-green|poll(?:er|ing)?|re-?invoke|re-?invokes me|will merge on green|owns the (?:next|merge))\b', msg)
 
 ok = bool(asking or plan_mode or (blocked and nextstep) or handoff or (live_watcher and watcher_phrase))
 print('allow' if ok else 'block')
