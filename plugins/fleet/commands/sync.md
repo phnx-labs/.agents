@@ -36,6 +36,13 @@ real `user` repo can have a dozen uncommitted changes). So:
 - Do **not** auto-commit or push a device's local edits to propagate them. That's a
   separate, explicit opt-in (`fleet:sync --push`, not in scope here).
 
+## HARD LINE — NEVER COPY CREDENTIALS
+
+This command syncs repos and refreshes agents. It does **not** copy credentials or
+provision auth. If a device is missing an account, report it with the exact remediation
+command — do not attempt to propagate auth material automatically. See account
+readiness in step 4.
+
 ## Process
 
 ### 1. Orient (on the machine you're running from)
@@ -73,28 +80,12 @@ AFTER=$(git -C "$R" rev-parse --short HEAD)
 #   RC == 0 && BEFORE != AFTER -> synced    (fast-forwarded)
 #   RC == 0 && BEFORE == AFTER -> up-to-date
 ```
-Then **once per device, after all its repos**: `agents repos refresh -y` — materializes
-the pulled skills/commands/plugins into **ALL installed agent homes** (every agent type
-on the box: claude, codex, gemini, grok, opencode, …), **not just the default**. Pass no
-agent argument — a bare `agents repos refresh claude` refreshes only claude and leaves the
-other agents stale — and keep `-y` so an unattended run never blocks on a prompt.
 
-**Then propagate plugins to EVERY installed version, not just the default** —
-`agents plugins sync <name>` per newly-added/updated plugin (no agent arg = all
-agents + all versions). This is the step people miss: `agents repos refresh` only
-materializes into the **default** version home per agent (the one `~/.claude`
-points at). A box that runs **multiple versions of the same agent** — e.g. several
-Claude versions, one signed into each account (a real setup: 2.1.207/2.1.187/
-2.1.181/2.1.170 side by side) — leaves the **non-default** version homes stale, so
-a plugin added to the repo (like `fleet` itself) **never appears in the account you
-happen to be running**. The tell: `agents plugins list` shows the plugin as
-`N of M installs` instead of `everywhere`. Fix it in the sync:
-
-```bash
-# after refresh, sync any plugin that isn't 'everywhere' to all installed versions
-agents plugins list 2>/dev/null | awk 'NR>1 && $0 !~ /everywhere/ {print $1}' \
-  | while read -r p; do [ -n "$p" ] && agents plugins sync "$p" >/dev/null 2>&1; done
-```
+Then **once per device, after all its repos**: `agents sync --yes --local` —
+reconciles the pulled skills/commands/plugins into every installed version of every
+agent type on the box (claude, codex, gemini, grok, opencode, …). `--local` skips a
+second repo fetch; `--yes` selects the unattended path, which deliberately syncs all
+installed versions rather than only each agent's default.
 
 Commands load at **agent startup**, so a version that was already running when it got
 the plugin needs a **restart of that session** before the new command appears — call
@@ -108,10 +99,8 @@ that bites (learned the hard way): use `Set-Location` then **plain `git`** (not
 Set-Location $env:USERPROFILE\.agents\.system; git remote set-head origin --auto 2>$null; $def=(git symbolic-ref --short refs/remotes/origin/HEAD) -replace '^origin/',''; if (-not $def) { $def='main' }; git fetch origin; git merge --ff-only "origin/$def"; $rc=$LASTEXITCODE
 ```
 Classify on `$rc` exactly as POSIX (`$rc -ne 0` → blocked). Repeat per repo path; then
-`agents repos refresh -y` (all agent types, unattended), then the same
-`agents plugins sync` pass for any plugin not `everywhere` (all installed versions —
-Windows boxes run multiple agent versions too). (Detect the default branch here too —
-don't hardcode `main`.)
+`agents sync --yes --local` (all agent types and all installed versions, unattended).
+(Detect the default branch here too — don't hardcode `main`.)
 
 ### 3. Gotchas — bake these in, don't rediscover them
 
@@ -126,7 +115,33 @@ don't hardcode `main`.)
 - **Non-interactive PATH:** a bare `agents ssh <dev> 'agents …'` may not find
   agents-cli. Use `bash -lc "…"` (posix) so the login PATH is loaded.
 
-### 4. Report — a repo × device matrix
+### 4. Account readiness check
+
+After repos sync, check whether each device has the expected provider accounts:
+
+```bash
+agents ssh <dev> bash -lc "agents accounts list"
+```
+
+For any account missing on a device, **do not copy credentials** — report the gap
+and print the exact remediation command:
+
+```bash
+agents accounts sync <account-name> --device <device-name>
+```
+
+Emit a line per gap, so the user can run each one:
+
+```
+ACCOUNT GAPS (run each to remediate):
+  agents accounts sync claude-muqsit --device yosemite-m3
+  agents accounts sync claude-muqsit --device yosemite-m4
+```
+
+Sync does not run these automatically — account provisioning is an explicit,
+per-account act, not a side-effect of repo sync.
+
+### 5. Report — a repo × device matrix
 
 ```
 FLEET SYNC — <N> devices · <M> repos
@@ -142,7 +157,8 @@ Legend: `✓ synced` (fast-forwarded) · `✓ up-to-date` · `⏸ blocked (local
 `· not registered` · `⚠ unreachable`. For every `⏸ blocked` cell, list the device,
 repo, and the first line of `git status --porcelain` so the user can resolve it. End
 with a one-line summary: how many device×repo pairs advanced, how many are blocked on
-local drift, how many devices were unreachable.
+local drift, how many devices were unreachable, and how many account gaps need
+remediation.
 
 ## Safety rules (non-negotiable)
 
@@ -151,8 +167,10 @@ local drift, how many devices were unreachable.
 - Never auto-commit or push a device's local changes in `sync` (that's `--push`, out
   of scope).
 - A repo that won't fast-forward is **reported, not forced**.
-- Refresh **all** agent types (`agents repos refresh -y`, no agent arg) **after** the
-  repos pull, once per device — never just the default agent.
+- After repo pull, run `agents sync --yes --local` once per device to reconcile every
+  installed version of every agent type.
+- Account gaps are **reported with exact remediation commands** — never automatically
+  copied. Credential provisioning is always explicit.
 - Offline/unreachable device → report it, never block the rest of the fleet.
 - A repo not registered on a device is a `fleet:onboard` job — note it, don't clone it
   here.

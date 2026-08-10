@@ -51,6 +51,13 @@ rateLimit:                   # optional firehose guard
 - **`mode: match` fires once per distinct matched value**, not every tick — the
   engine only fires when the matched value differs from the last fire, so a
   still-true condition is reported once, not on a loop.
+- **`mode: every` fires on every tick with a non-empty observation** — an empty
+  or whitespace-only observation is silent, but it does NOT dedupe, so a
+  still-true condition re-fires each tick. Use it (bounded by `rateLimit`) when an
+  action must be **retried while its condition persists** — e.g. a merge that can
+  fail silently, where `match`/`on-change` would report the unchanged PR set once
+  and never retry. Empty-safe `every` requires agents-cli >= 1.22.36
+  (phnx-labs/agents-cli#2536); an older CLI fires `every` on an empty poll too.
 - **Placement:** leave `device` / `devices` unset so any box may own it once
   enabled; pin only when a monitor must run on a specific machine.
 

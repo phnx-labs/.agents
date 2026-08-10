@@ -1,10 +1,10 @@
 ---
-description: Mint a harness auth credential YOURSELF by driving the login/OAuth flow (no user hand-off). Default: a long-lived Claude `setup-token` via the device flow, driven with a pty + a logged-in browser (computer-use or CDP), then stored file-backed so reads are headless and Touch-ID-free. Use when an account shows "not logged in" on a device.
+description: Mint a harness auth credential YOURSELF by driving the login/OAuth flow (no user hand-off). Default: a long-lived Claude `setup-token` via the device flow, driven with a pty + a logged-in browser (computer-use or CDP), then stored as a named provider account so reads are headless and Touch-ID-free. Use when an account shows "not logged in" on a device.
 ---
 
 Provision a harness credential for a device **without handing the login off to the
-user**. Argument (optional): $ARGUMENTS = the account email (or the device/agent) you
-need signed in; default to the account that is showing "not logged in".
+user**. Argument (optional): $ARGUMENTS = the account name to create (defaults to
+the email of the account showing "not logged in").
 
 ## Why this exists
 
@@ -28,7 +28,7 @@ command produces.
 ## DISCOVER first — the CLI surface moves
 
 Confirm the current verbs before running: `claude setup-token --help`, `agents pty
---help`, `agents computer --help` / `agents browser --help`, `agents secrets --help`.
+--help`, `agents computer --help` / `agents browser --help`, `agents accounts --help`.
 Treat the keystrokes below as the map, not gospel.
 
 ## Recipe — Claude setup-token (the common case)
@@ -63,42 +63,62 @@ Treat the keystrokes below as the map, not gospel.
    agents pty stop "$SID"
    ```
 
-4. **Store it in the reserved FILE-backed `auth` bundle** — the exact bundle the usage
-   reader consults (`AUTH_BUNDLE = 'auth'` in `apps/cli/src/lib/usage.ts`, which requires
-   `bundleBackend('auth') === 'file'`; a keychain- or vault-backed bundle is ignored and
-   the reader falls back to the keychain → Touch ID). So it MUST be **`--backend file`**:
+4. **Store it as a named provider account** — not in any shared bundle. One account
+   is one `agents secrets` bundle with `policy: never`, so agent launches read it
+   without Touch ID on any OS. Pick a name that identifies the account (e.g. the
+   email slug):
    ```
-   agents secrets create auth --backend file          # once. Do NOT pass --synced:
-                                                       # --synced forces a VAULT bundle
-                                                       # (needs `agents login`), which the
-                                                       # file-only usage reader rejects.
-   printf '%s' "$TOKEN" | agents secrets add auth <KEY> --value-stdin --type token
+   agents accounts add claude-muqsit \
+       --provider anthropic \
+       --auth setup-token
    ```
-   Per-account key convention (`accountTokenKey`): upper-case, `@`→`_AT_`, `.`→`_DOT_` —
-   e.g. `muqsit@trp.so` → `CLAUDE_CODE_OAUTH_TOKEN_MUQSIT_AT_TRP_DOT_SO`.
+   Enter the setup token at the command's secret prompt. Do not put it in an
+   environment variable, command argument, or shell history.
+   If you already stored the token in an intermediate bundle with `agents secrets add`,
+   import it instead of re-entering:
+   ```
+   agents accounts add "$ACCOUNT_NAME" \
+       --provider anthropic \
+       --auth setup-token \
+       --from-secrets <bundle>:<key>
+   ```
+   Account bundles use `policy: never` automatically — no passphrase, no Touch ID
+   prompt, no `--backend` flag to juggle.
 
-   **macOS provisioning (required):** a file-backed bundle is not auto-provisioned on
-   macOS, and headless reads (the daemon's usage/auth probe reads with `agentOnly`) can't
-   pop a biometric prompt — so the file-store passphrase must be available via
-   `AGENTS_SECRETS_PASSPHRASE` (export it for the daemon's environment, or run the
-   create/add in a TTY that has it set). Without it, the `auth` read throws and the code
-   falls back to the keychain (Touch ID). On Linux the machine-local passphrase is
-   auto-provisioned, so this is macOS-only.
+5. **Verify (headless, zero keychain):**
+   ```
+   agents run claude "Reply with exactly: AUTH_OK" \
+       --account "$ACCOUNT_NAME" \
+       --mode plan \
+       --timeout 2m
+   ```
+   A reply of `AUTH_OK` proves the account resolves and the token is readable headless.
+   Then confirm the account appears in the list:
+   ```
+   agents accounts list
+   ```
 
-5. **Verify (zero keychain):** in a shell where `AGENTS_SECRETS_PASSPHRASE` is set (macOS),
-   `agents secrets get auth <KEY> </dev/null | wc -c` → ~108 chars, no prompt. Then
-   `agents view` draws that account's bars from the `auth` token with no keychain read.
+6. **Copy to a worker device** (when provisioning for a remote box):
+   ```
+   agents accounts sync "$ACCOUNT_NAME" --device <target-device>
+   ```
+   This copies the bundle explicitly; the target inherits `policy: never` and the full
+   account schema. Native auth material (keychain credentials, OAuth sessions) is never
+   copied — only the account bundle produced by this recipe is safe to sync.
 
 ## Other harnesses
 
 - **API-key harnesses** (Codex `OPENAI_API_KEY`, Grok `XAI_API_KEY`): no browser dance —
-  provision the key into the auth bundle via `agents secrets`/`agents profiles login`.
+  provision the key with the provider name the account registry owns:
+  `agents accounts add codex-work --provider openai --auth api-key` or
+  `agents accounts add grok-work --provider xai --auth api-key`.
 - **Device-code harnesses** (Droid, Kimi): drive their device-code flow the same way
   (`agents pty` to start it, read the URL+code, authorize in the logged-in browser).
   These are login-only per-machine — mint/log in on the target, do not copy the file.
 
 ## Report
 
-Which account you minted, where it is stored (bundle + key, value **redacted**), and the
-headless-read verification. **Never** paste the token itself into a message, PR, or
-commit — it is a live credential; the bundle holds it.
+Which account you minted, the account name and provider, the headless
+`agents run --account` verification output, and (if synced) which devices received the
+bundle. **Never** paste the token itself into a message, PR, or commit — it is a live
+credential; the account bundle holds it.
