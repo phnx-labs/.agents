@@ -3,7 +3,7 @@
 set -euo pipefail
 
 DIR=$(CDPATH= cd "$(dirname "$0")" && pwd)
-HOOK="$DIR/09-git-pull-forward.sh"
+HOOK="$DIR/../09-git-pull-forward.sh"
 ROOT=$(mktemp -d)
 trap 'rm -rf "$ROOT"' EXIT
 

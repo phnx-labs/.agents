@@ -9,7 +9,7 @@
 #   - microbench: warm load is materially cheaper than cold (git forks)
 set -u
 DIR=$(cd "$(dirname "$0")" && pwd)
-LIB="$DIR/git-facts.sh"
+LIB="$DIR/../git-facts.sh"
 pass=0
 fail=0
 

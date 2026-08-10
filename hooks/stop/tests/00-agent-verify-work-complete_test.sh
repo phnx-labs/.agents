@@ -11,7 +11,7 @@
 # gh, git, and linear are stubbed via a PATH shim so no network is touched.
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
-HOOK="$HERE/00-agent-verify-work-complete.sh"
+HOOK="$HERE/../00-agent-verify-work-complete.sh"
 
 SANDBOX="$(mktemp -d)"
 trap 'rm -rf "$SANDBOX"' EXIT
@@ -876,7 +876,7 @@ grep -qi "this gate has now fired 3 times" "$SANDBOX/stderr" && echo "ok   - kee
 # --- todo-progress.py folding (unit) -----------------------------------------
 # The helper folds snapshot checklist tools + Claude TaskCreate/TaskUpdate the
 # same way the CLI's extractTodoProgressFromEvents does.
-TODO="$HERE/todo-progress.py"
+TODO="$HERE/../todo-progress.py"
 
 # TaskCreate x2 + one set in_progress -> remaining 1, next is the pending one.
 rc_json=$(python3 "$TODO" "$TK")

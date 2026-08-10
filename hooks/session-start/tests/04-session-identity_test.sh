@@ -11,7 +11,7 @@
 # hook's ancestor walk will find.
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
-HOOK="$HERE/04-session-identity.sh"
+HOOK="$HERE/../04-session-identity.sh"
 
 # Hermetic HOME: the hook resolves every path via ~, and its registry ancestor
 # walk checks ~/.agents/.cache/terminals/by-pid/<pid>.json. A sandbox HOME with

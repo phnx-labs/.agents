@@ -11,7 +11,7 @@
 # script. No mocking.
 set -uo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-SCRIPT="$HERE/verify-delivery-chain.py"
+SCRIPT="$HERE/../verify-delivery-chain.py"
 fail=0
 GC="-c user.email=t@example.com -c user.name=tester"
 

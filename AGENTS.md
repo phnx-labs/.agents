@@ -75,7 +75,7 @@ or the resource exists on disk and is invisible or dead:
 |---|---|---|
 | command | `commands/<name>.md` with `description:` frontmatter | the table in `commands/README.md` |
 | skill | `skills/<name>/SKILL.md` with `name:` + `description:` | the table in `skills/README.md` |
-| hook | `hooks/<NN>-<name>.{sh,py}` **and** the `hooks:` entry in `agents.yaml` | the table in `hooks/README.md`; ship a `_test.sh` beside it |
+| hook | `hooks/<NN>-<name>.{sh,py}` **and** the `hooks:` entry in `agents.yaml` | the table in `hooks/README.md`; ship a `_test.sh` in that event dir's `tests/` subdir (`hooks/<event>/tests/<name>_test.sh`) |
 | permission | a fragment in `permissions/groups/` | run `permissions/build.sh` to regenerate `default.yaml` |
 | plugin | `plugins/<name>/` with its own `README.md` | the table in `plugins/README.md` |
 | subagent | `subagents/<name>/AGENT.md` with `name:` + `description:` frontmatter | the table in `subagents/README.md`, **and** the skill that spawns it — a subagent nothing spawns is dead weight in every install. Do **not** put it in a plugin's `agents/` dir: that reaches only plugin-format harnesses, while `subagents/` reaches every subagents-capable one |
@@ -255,6 +255,8 @@ no `agents/` directory. `agents plugins sync code` moved it to `0.10.0` carrying
 
 ## Tests
 
-Hooks carry `<name>_test.sh` beside the script and it must pass before the PR. Test against
-the real critical path — no mocking. A guard hook additionally needs a fixture proving it
-**fails closed**: the blocked input is refused when its JSON parser is absent.
+Hooks carry `<name>_test.sh` in a `tests/` subdir of their event dir
+(`hooks/<event>/tests/<name>_test.sh`, not beside the script — see `hooks/AGENTS.md`)
+and it must pass before the PR. Test against the real critical path — no mocking. A
+guard hook additionally needs a fixture proving it **fails closed**: the blocked
+input is refused when its JSON parser is absent.

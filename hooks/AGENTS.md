@@ -22,9 +22,37 @@ hooks/<event-name>/<hook-file>.{sh,py}
 
 - **Install name** = file **basename** (agents-cli flattens into version homes).
 - **`script:` in agents.yaml** = path relative to `hooks/` (e.g. `session-start/04-session-identity.sh`).
-- **Do not nest deeper** than one event dir.
-- **Fixture-only dirs** under `hooks/` (e.g. `tests/` with no top-level scripts) are
-  directory *bundles*, not event groups — leave them alone.
+- **Do not nest deeper** than one event dir (the `tests/` subdir below is the one
+  standing exception, and it never carries a `script:` entry of its own).
+- **A hook's `*_test.sh` lives in a `tests/` subdir of its own event dir** —
+  `hooks/<event-name>/tests/<name>_test.sh`, not beside the script. This keeps
+  `ls hooks/<event-name>/` down to the scripts that actually run on the harness
+  event, so the registered surface is visible at a glance instead of interleaved
+  with its tests. `hooks/lib/` follows the same convention for its own helper
+  tests (`hooks/lib/tests/git-facts_test.sh`).
+  - **Path-reference rule:** a moved test resolves its own dir with
+    `HERE="$(cd "$(dirname "$0")" && pwd)"` as before, but every reference to the
+    script under test — and any sibling helper it also calls (e.g.
+    `stop/00-agent-verify-work-complete_test.sh` reaching `stop/todo-progress.py`)
+    — now needs one extra `../`: `HOOK="$HERE/../<script>.sh"`, not
+    `HOOK="$HERE/<script>.sh"`. A reference to something outside `hooks/<event>/`
+    (e.g. `../../../agents.yaml` from a `tests/` subdir, one level deeper than the
+    `../../agents.yaml` an event-dir-level script would use) needs an extra `../`
+    too. Fixtures/testdata that a test owns move into the same `tests/` dir.
+  - `hooks/run_tests.sh` discovers tests in both the current `<event>/tests/`
+    location and the legacy beside-the-script location, so nothing is silently
+    skipped mid-migration. `hooks/syntax_test.sh` parses `.sh`/`.py` under
+    `<event>/tests/` too. `hooks/registration_test.sh` needs no change: its
+    group-dir scan is one level deep (`hooks/<event>/*.sh`), so it never
+    descends into `hooks/<event>/tests/` at all — a moved `_test.sh` is simply
+    outside its scan, the same net effect as the case-statement skip it used
+    when tests sat beside the script.
+- **Fixture-only dirs** under `hooks/` (e.g. the top-level `hooks/tests/` with
+  benchmark/integration scripts that cover more than one event, and no
+  top-level hook scripts of its own) are directory *bundles*, not event groups
+  — leave them alone. This is a different thing from the per-event
+  `hooks/<event-name>/tests/` above: the top-level one is cross-cutting infra,
+  the per-event ones hold that event's own hook tests.
 - **`hooks/lib/`** holds shared helpers sourced by hooks (e.g. `git-facts.sh`). Not
   event scripts: no `agents.yaml` entry, skipped by `registration_test.sh`. Source
   them by path; do not register them as hooks.
@@ -38,8 +66,10 @@ entry is dead code that looks alive. Adding a hook is always two edits:
 1. `hooks/<event-name>/<NN>-<name>.{sh,py}`, executable (`chmod +x`).
 2. A `hooks:` entry in `../agents.yaml` with `script: <event-name>/<file>`, `events`, `timeout`.
 
-Then add a row to [`README.md`](./README.md) under that event, ship a `<name>_test.sh`
-beside the script, and add a `CHANGELOG.md` entry.
+Then add a row to [`README.md`](./README.md) under that event, ship a
+`<name>_test.sh` in that event dir's `tests/` subdir
+(`hooks/<event-name>/tests/<name>_test.sh` — see the layout note above), and add
+a `CHANGELOG.md` entry.
 
 ### Subrule hooks stay with the rule
 
@@ -115,9 +145,11 @@ parser is available.
 
 ## Registration integrity
 
-`registration_test.sh` walks `hooks/*/*.{sh,py}` (event groups) and the top level.
-`run_tests.sh` runs every `*_test.sh` under `hooks/` and one-level event dirs.
-Run both before a PR that touches `hooks/`, `rules/subrules/`, or `agents.yaml`.
+`registration_test.sh` walks `hooks/*/*.{sh,py}` (event groups) and the top level —
+one level deep, so it never descends into an event dir's `tests/` subdir.
+`run_tests.sh` runs every `*_test.sh` under `hooks/` root, one-level event dirs, and
+each event dir's `tests/` subdir (`hooks/<event>/tests/*_test.sh`). Run both before a
+PR that touches `hooks/`, `rules/subrules/`, or `agents.yaml`.
 
 `syntax_test.sh` is the parse gate: a hook that does not parse still runs, and bash
 exits 2 on a syntax error — which is the harness's *block* code, so a typo becomes a

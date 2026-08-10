@@ -15,8 +15,9 @@
 # enough — this checks /bin/bash explicitly, which is 3.2 on macOS and is what
 # `#!/usr/bin/env bash` actually resolves to there.
 #
-# Covers *.sh in hooks/ and one-level group dirs; *.py is checked with
-# `python3 -m py_compile` for the same reason.
+# Covers *.sh in hooks/, one-level group dirs, and each group dir's tests/
+# subdir (hooks/<event>/tests/<name>_test.sh — see hooks/AGENTS.md); *.py is
+# checked with `python3 -m py_compile` for the same reason.
 
 set -u
 HERE="$(cd "$(dirname "$0")" && pwd)"
@@ -59,12 +60,12 @@ check_py() {
   fi
 }
 
-for f in "$HERE"/*.sh "$HERE"/*/*.sh; do
+for f in "$HERE"/*.sh "$HERE"/*/*.sh "$HERE"/*/tests/*.sh; do
   [ -e "$f" ] || continue
   check_sh "$f"
 done
 
-for f in "$HERE"/*.py "$HERE"/*/*.py; do
+for f in "$HERE"/*.py "$HERE"/*/*.py "$HERE"/*/tests/*.py; do
   [ -e "$f" ] || continue
   check_py "$f"
 done
