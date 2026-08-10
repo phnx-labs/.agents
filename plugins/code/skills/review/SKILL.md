@@ -262,8 +262,9 @@ that subagent at `agents/code-reviewer.md`; fall back to `"claude"` on a harness
 does not load plugin subagents), `model: "sonnet"`, the brief below. The subagent already
 carries the standing rubric — the hunt classes, the three-kill refutation pass, the
 non-checks list, and the output shape — so the brief supplies only what is specific to
-this PR: context, canonical patterns, and the session goal. Do not restate the rubric in
-the brief. **Team** — cut the diff by surface, one teammate per surface via `agents
+this PR: context, canonical patterns, and the session goal. B5 has both shapes: the short
+brief when the subagent loaded, the full one when it did not. **Team** — cut the diff by
+surface, one teammate per surface via `agents
 teams add ... --mode plan` (read-only); each brief carries only that surface's diff +
 pattern list, plus Mission / Full scope / Your assignment / Boundary contract / Success
 criteria. The orchestrator collects each critique and synthesizes one verdict. Multiple
@@ -299,7 +300,15 @@ innerHTML" — check whether the source is server-controlled. "CVE" — confirm 
 calls the vulnerable path and your version is in the affected range. Report only verified
 findings; end with a **False positives filtered** line so they don't resurface.
 
-### B5. The reviewer brief (drop in verbatim, fill brackets)
+### B5. The reviewer brief (fill brackets)
+
+Two shapes, one source of truth. **When the `code-reviewer` subagent loaded** (the normal
+case), send only the `CONTEXT` and `CANONICAL PATTERNS` blocks below, plus the `GOAL` line
+in Session mode — everything from `WHAT YOU MUST CHECK` down already lives in
+`agents/code-reviewer.md` and restating it is a second home for one rubric. **On a harness
+that cannot load plugin subagents**, drop the whole thing in verbatim: that is what the
+rest of this template is for. Either way the rubric changes in exactly one place — the
+subagent — and this fallback copy tracks it.
 
 ```
 You are reviewing PR #<N> on <owner/repo>. You did NOT write this code.
