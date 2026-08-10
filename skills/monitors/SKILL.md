@@ -77,7 +77,7 @@ agents monitors test ci-red
 |---|---|
 | `--on-change` (default) | the observation differs from last-seen (first observation is a silent baseline) |
 | `--match '<regex>'` | the output matches the pattern (once per distinct match) |
-| `--every` | every tick (opt-in; rate-limited) |
+| `--every` | every tick with a non-empty observation (opt-in; rate-limited) — re-fires while the condition persists, so use it to retry an action that can fail silently |
 | `--dedupe-key '<expr>'` | override what counts as "the same event" (default: hash of the observation) |
 
 The native state store (`~/.agents/.history/monitors/<name>/state.json`) is what keeps a monitor silent until a real change — no hand-rolled memory file needed.

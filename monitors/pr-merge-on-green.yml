@@ -26,13 +26,17 @@ source:
     | tr '\n' ' '
 
 condition:
-  # Fire only when the observation carries a PR number (match), and only when
-  # that set of mergeable PRs CHANGES from the last fire — so a still-open PR is
-  # reported once, not on every 5-minute tick. `[0-9].*` captures the whole
-  # single-line list ("42 17"); an empty observation never matches, so a poll
-  # with no mergeable PR is silent.
-  mode: match
-  match: '[0-9].*'
+  # Fire every 5-minute tick that reports at least one mergeable PR. `mode: every`
+  # skips an empty observation (no mergeable PR -> silent), so this fires only when
+  # the list is non-empty — but unlike `match`, it re-fires while the SAME PR is
+  # still listed. That is the point (RUSH-2488): if a dispatched merge fails
+  # silently (transient gh error, box down, agent crashes before merging), the PR
+  # stays approved+green and shows up again next tick, so the merge is retried
+  # rather than stranded until some other PR incidentally re-triggers. `rateLimit`
+  # below caps the retries. Requires agents-cli >= 1.22.36 (empty-safe `every`,
+  # phnx-labs/agents-cli#2536); on an older CLI `every` would also fire on an empty
+  # poll, so do not enable this before that version is installed.
+  mode: every
 
 action:
   type: run

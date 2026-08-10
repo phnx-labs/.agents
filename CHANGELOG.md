@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Changed
+
+- **`pr-merge-on-green` monitor now retries a silently-failed merge instead of stranding the PR (RUSH-2488).** Its condition was `mode: match` (`[0-9].*`), which only re-fires when the mergeable-PR set *changes* — so if a dispatched merge failed silently (transient `gh` error, box down, agent crashes before merging), the PR stayed approved+green, the next poll's observation was identical, and the merge was never retried until some other PR incidentally re-triggered the monitor. It now uses `mode: every`, which fires every 5-minute tick that reports a non-empty set (empty stays silent) and re-fires while the same PR is still listed, so the merge is retried — bounded by the existing `rateLimit: 6/1h`. This is the "job that can no-op forever after a silent failure" case `unattended-verification` warns about. Requires the empty-safe `every` from agents-cli #2536 (>= 1.22.36); the monitor is opt-in and inert until then. Source: `monitors/pr-merge-on-green.yml`, `monitors/AGENTS.md`, `skills/monitors/SKILL.md`.
+
 ### Added
 
 - **Built-in `pr-merge-on-green` monitor (RUSH-2472).** A system-layer monitor
