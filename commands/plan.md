@@ -322,7 +322,7 @@ reference this step.
    the **`artifacts`** skill. Resolve the repo root and write the Markdown source to
    `.agents/artifacts/yyyy-mm-dd/plan-<slug>.md`, then render:
    ```bash
-   artifacts render .agents/artifacts/yyyy-mm-dd/plan-<slug>.md --format html
+   artifacts render .agents/artifacts/yyyy-mm-dd/plan-<slug>.md
    ```
    This writes the HTML next to the Markdown source. Include the goal, the
    implementation table, existing-primitives-to-reuse, the design questions, and
