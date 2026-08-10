@@ -2,7 +2,33 @@
 
 ## [Unreleased]
 
+### Added
+
+- **Built-in `pr-merge-on-green` monitor (RUSH-2472).** A system-layer monitor
+  that rebase-merges this machine's own pull requests once CI is green and a
+  non-author has approved them. It is opt-in — shipped with no `enabled:` field,
+  so the system layer keeps it DISABLED until `agents monitors enable
+  pr-merge-on-green`, and a `~/.agents/monitors/` copy shadows it. The source is
+  one `gh pr list --author @me` poll every 5 minutes (rate-limit friendly, no
+  per-PR loop) filtered to APPROVED + all-checks-green PRs; the action dispatches
+  `claude` to `gh pr merge <n> --rebase --delete-branch` (never `--admin`, never
+  self-approve). Inert until agents-cli 1.22.36 (the system-monitors layer) ships
+  on the release train — expected, and harmless meanwhile. Source:
+  `monitors/pr-merge-on-green.yml`, `monitors/README.md`, `monitors/AGENTS.md`,
+  the `monitor` row in `AGENTS.md`.
+
 ### Changed
+
+- **Stop hook `verify-work-complete` no longer references the removed `agents pr
+  land` command (RUSH-2466, RUSH-2473).** The durable PR-lander evidence the
+  open-PR and keep-moving gates accept is now solely a native `ScheduleWakeup` /
+  `Monitor` tool_use (the harness re-invoke path that outlives a headless agent).
+  The `DETACH_LAND` string matcher — which cleared the gate on the command
+  STRING regardless of whether the lander actually ran (RUSH-2473) — is deleted;
+  the block messages now point agents at a native `ScheduleWakeup`/`Monitor` or
+  `agents monitors enable pr-merge-on-green` instead of `agents pr land
+  --detach`. Source: `hooks/stop/00-agent-verify-work-complete.sh`,
+  `hooks/stop/tests/00-agent-verify-work-complete_test.sh`.
 
 - **Plan presentation now gates Codex and requires product-faithful behavior evidence (RUSH-2425).** The `plan-presentation` subrule registers its reminder at both native plan-exit and Stop: Codex plan collaboration mode, which never emits `ExitPlanMode`, can no longer bypass the render gate. Plans declare `surface: internal|cli|web|native|api|workflow`; user-visible plans must render a semantic current/proposed comparison whose states are real captures or explicitly labeled faithful mockups. An unrelated architecture SVG no longer clears a CLI/UI plan. Source: `rules/subrules/plan-presentation/`, `skills/plan-render/`, `hooks/README.md`.
 
