@@ -152,10 +152,10 @@ reviewable** page — not a wall of bullets.
 
 | Check | Level | What you see |
 | --- | --- | --- |
-| Live drawn SVG | **error** | `No SVG figure found.` Add a visualization (architecture / before-after / flow) as live inline SVG with drawn children (`rect`/`path`/`text`/…). Empty shells and fenced ```` ```svg ```` blocks do not count. Skills: **plan-render**, **artifacts** (this diagram recipe). |
-| Markdown table | warning | `No table found.` Prefer a files/risks/validation table. |
-| Fenced code | warning | `No fenced code block.` Commands belong in fences, not only inline pills. |
-| `artifact-callout` | warning | `No callout found.` Highlight the one takeaway. |
+| Plan surface | **error** | Declare `surface: internal|cli|web|native|api|workflow`. Internal plans need a live drawn SVG; user-visible plans need a semantic current/proposed `.artifact-behavior` figure with capture-or-mockup evidence. |
+| Markdown table | warning | At least one `| … |` table (files, risks, validation) |
+| Fenced code | warning | At least one fenced code block — commands belong here, not only as inline pills |
+| `artifact-callout` | warning | One load-bearing takeaway for the reviewer |
 
 `artifacts render` **does not write HTML** when any error is present. Fix the
 Markdown source; do not open a partial file.

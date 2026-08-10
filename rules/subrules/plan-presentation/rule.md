@@ -81,21 +81,29 @@ Examples:
 - Create the date directory if missing (`mkdir -p .agents/artifacts/$(date +%F)`).
 - HTML builds land **next to** their Markdown source under the same date dir.
 
-This is mechanically reminded by the bundled `plan-html-reminder` hook (PreToolUse on
-`ExitPlanMode`): it nudges you to render + open before you present. The full LOOK — the
+This is mechanically enforced by the bundled `plan-html-reminder` hook: PreToolUse
+catches native plan-exit tools, while Stop catches Codex and other harnesses whose
+plan mode is collaboration state rather than a tool call. It nudges you to render +
+open before you present. The full LOOK — the
 house structure, the product-brand theming, the light/dark toggle, and the open-on-Mac
 transport — lives in the **`plan-render` skill**. Load it and follow it.
 
 - **Source of truth is Markdown.** Write `.agents/artifacts/yyyy-mm-dd/plan-<slug>.md`
   and compile it with `artifacts render <source>.md`. The HTML is a build output;
   never hand-author a complete `.html` file.
+- **Declare the surface.** Every plan frontmatter sets `surface` to one of
+  `internal`, `cli`, `web`, `native`, `api`, or `workflow`. Internal plans use a
+  real architecture/flow/state figure. Every user-visible surface shows the
+  **current** and **proposed** appearance in one product-faithful behavior figure;
+  each side is a real capture when available or an explicitly labeled mockup.
 - **Structure (fixed).** Hero (kicker · headline · problem statement · metadata chips ·
   **provenance chips — harness · agent · host · session · date, so a rendered plan is never
-  an orphan** · TOC), numbered sections, **≥1 visual figure** (hand-authored inline SVG for timeline / architecture / before-after / charts — never mermaid), callouts, tagged tables, code blocks. **Author the Markdown directly** using the section list above — you do **not** need to run `artifacts new`. At render, `artifacts` auto-fills the provenance chips (project · repo · branch · harness · agent · host · session · date) from git + the agent env for any blank frontmatter field, so your frontmatter needs only `kind` + `title`, and it validates the required sections. (`artifacts new plan` stays available as an optional scaffold.)
-- **Quality is enforced, not suggested.** `artifacts check`/`render` **error** when a plan
-  has no drawn live SVG figure, and they **do not write HTML** on validation failure.
-  The ExitPlanMode hook greps the rendered HTML for `<svg` + a drawn primitive — a
-  prose-only shell no longer clears the gate. Inline `` `code` `` alone is not enough:
+  an orphan** · TOC), numbered sections, **≥1 visual figure** (hand-authored inline SVG for timeline / architecture / before-after / charts — never mermaid), callouts, tagged tables, code blocks. **Author the Markdown directly** using the section list above — you do **not** need to run `artifacts new`. At render, `artifacts` auto-fills the provenance chips (project · repo · branch · harness · agent · host · session · date) from git + the agent env for any blank frontmatter field, so your frontmatter needs only `kind`, `title`, and `surface`, and it validates the required sections. (`artifacts new plan` stays available as an optional scaffold.)
+- **Quality is enforced, not suggested.** `artifacts check`/`render` **error** when
+  surface metadata or required visual evidence is absent, and they **do not write
+  HTML** on validation failure. The hook checks the Markdown surface plus semantic
+  HTML: an architecture SVG cannot clear a CLI/UI plan that lacks current/proposed
+  product views. Inline `` `code` `` alone is not enough:
   put commands in fenced blocks and risks/files in tables.
 - **Theme (adopted).** Skin the plan in the **target product's brand** — probe the repo
   for design tokens, tailwind/CSS vars, logo/manifest colors. Fall back to the dark +

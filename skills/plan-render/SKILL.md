@@ -13,16 +13,21 @@ Every implementation plan should be a beautiful, reviewable HTML page that opens
 ## Non-negotiable quality bar (read this first)
 
 A plan HTML that is **only prose + inline `code` pills** is a failed delivery.
-Both the compiler and the ExitPlanMode gate now enforce this:
+Both the compiler and the cross-harness presentation gate enforce this:
 
 | Must have | Why | Enforced by |
 | --- | --- | --- |
-| ≥1 **live** inline SVG with drawn elements (`rect`/`path`/`text`/…) | Reviewers need a figure, not a wall of bullets | `artifacts check` **error**; plan-html-reminder greps the HTML |
+| `surface` frontmatter | The validator must know whether architecture or product behavior is the review surface | `artifacts check` **error** |
+| Current + proposed product views for non-`internal` plans | Reviewers see the actual behavior change, not a prose approximation | `artifacts check` **error**; plan-html-reminder checks semantic HTML |
+| ≥1 **live** drawn SVG for `internal` plans | Reviewers need a real architecture/flow/state figure | `artifacts check` **error** |
 | ≥1 Markdown **table** (files / risks / validation) | Scanability | `artifacts check` warning |
 | ≥1 **fenced** code block for commands/APIs | Inline `` `code` `` alone has no highlighting surface | `artifacts check` warning |
 | ≥1 `artifact-callout` | Load-bearing takeaway | `artifacts check` warning |
 
-Do **not** present until `artifacts render` exits 0. A missing figure fails with **`No SVG figure found`** (no HTML written) — make the plan pleasant with a real visualization, not an empty SVG shell.
+Do **not** present until `artifacts render` exits 0. User-visible plans show both
+current and proposed product views. Prefer captured screenshots or terminal output;
+when capture is impossible, use a faithful mockup labeled `data-evidence="mockup"`.
+Architecture diagrams do not substitute for behavior views.
 
 **Anti-pattern (what just bit us):** dump issue notes as Markdown bullets, run `artifacts render`, open the HTML. That produces a dark page of monochrome pills with no figures and no code wells — unreadable.
 
@@ -58,6 +63,7 @@ Do **not** present until `artifacts render` exits 0. A missing figure fails with
    ```yaml
    ---
    kind: plan
+   surface: internal | cli | web | native | api | workflow
    title: <plain, factual headline>
    summary: <~3-line problem statement and intended outcome>
    status: draft | implementing | awaiting-go
@@ -95,7 +101,17 @@ Do **not** present until `artifacts render` exits 0. A missing figure fails with
 
    Use normal Markdown for prose, lists, tables, and code. Use inline HTML only for layouts Markdown cannot express (grids, panels, callouts) and **inline SVG for figures**.
 
-4. **Make the figures interactive and beautiful.**
+4. **Show the behavior, then supporting architecture.**
+
+   For `cli`, `web`, `native`, `api`, and `workflow`, include one
+   `.artifact-behavior` figure with `data-state="current"` and
+   `data-state="proposed"`. Give each state `data-evidence="capture"` or
+   `data-evidence="mockup"`. Match the real product layout, components, typography,
+   and output; a conceptual box diagram does not count.
+
+   For `internal`, use a real architecture, flow, timeline, or state figure.
+
+5. **Make supporting figures interactive and beautiful.**
 
    The rendered HTML should look like a polished artifact, not a document. Use inline SVG liberally for:
 
@@ -114,7 +130,7 @@ Do **not** present until `artifacts render` exits 0. A missing figure fails with
 
    Every figure needs a clear reading order, labeled connectors, a caption, and a legend when color or line-style carries meaning. Follow the diagram conventions in `diagram-conventions.md` (this skill dir).
 
-5. **Render to HTML.**
+6. **Render to HTML.**
 
    ```bash
    SOURCE="$ARTIFACTS_DIR/plan-<slug>.md"
@@ -123,7 +139,7 @@ Do **not** present until `artifacts render` exits 0. A missing figure fails with
 
    This writes `plan-<slug>.html` next to the source.
 
-6. **Inspect the output headlessly.**
+7. **Inspect the output headlessly.**
 
    Open the rendered HTML in a headless browser and check:
 
@@ -132,7 +148,7 @@ Do **not** present until `artifacts render` exits 0. A missing figure fails with
    - SVG figures are visible and animated/interactive elements work
    - no browser console errors
 
-7. **Deliver it to the user's machine.**
+8. **Deliver it to the user's machine.**
 
    Resolve the online macOS device from the Host & Fleet context (never hardcode). If already on that machine, open directly; otherwise copy the HTML over:
 
@@ -166,9 +182,10 @@ Do **not** present until `artifacts render` exits 0. A missing figure fails with
 ## Completion contract
 
 - [ ] Markdown source written to `.agents/artifacts/yyyy-mm-dd/plan-<slug>.md` (not `/tmp/scratchpad`)
-- [ ] `artifacts check` reports **no errors** (figure present; required sections present)
+- [ ] `surface` declares the review surface; non-internal plans show current + proposed capture/mockup evidence
+- [ ] `artifacts check` reports **no errors** (surface + required sections present)
 - [ ] HTML rendered next to the source with `artifacts render <source>.md` (exit 0)
-- [ ] Grep the HTML: at least one `<svg` with a drawn primitive; at least one `<pre`/`<table`
+- [ ] Grep the HTML: internal plan has a drawn SVG, or user-visible plan has `.artifact-behavior` plus current/proposed evidence; at least one `<pre`/`<table`
 - [ ] Output inspected headlessly in both themes and at desktop/mobile widths
 - [ ] HTML opened on the user's machine and copied to `~/Downloads`
 - [ ] Source, HTML path, and any warnings reported to the user
