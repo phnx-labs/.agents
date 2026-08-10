@@ -7,7 +7,7 @@
 #
 # The source of truth is Markdown under the repo's dated artifact layout:
 #   `.agents/artifacts/yyyy-mm-dd/<artifact-title>.md`
-# (plans: `.../plan-<slug>.md`). `artifacts render ... --format html` produces the
+# (plans: `.../plan-<slug>.md`). `artifacts render ...` produces the
 # HTML next to the source. The gate detects a fresh rendered plan HTML under
 # `.agents/artifacts/`.
 #
@@ -139,7 +139,7 @@ fi
     echo "    .agents/artifacts/yyyy-mm-dd/plan-<slug>.md"
     echo "  then:"
     echo "    DATE=\$(date +%F)"
-    echo "    artifacts render .agents/artifacts/\$DATE/plan-<slug>.md --format html"
+    echo "    artifacts render .agents/artifacts/\$DATE/plan-<slug>.md"
     echo "  HARD REQUIREMENTS (this gate inspects the HTML, not just the filename):"
     echo "    - ≥1 live inline <svg with drawn elements (rect/path/text/…) — prose alone fails"
     echo "    - fenced code blocks for commands/APIs (not only inline \`code\` pills)"

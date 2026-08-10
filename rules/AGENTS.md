@@ -687,7 +687,7 @@ transport — lives in the **`plan-render` skill**. Load it and follow it.
 - **Structure (fixed).** Hero (kicker · headline · problem statement · metadata chips ·
   **provenance chips — harness · agent · host · session · date, so a rendered plan is never
   an orphan** · TOC), numbered sections, **≥1 visual figure** (hand-authored inline SVG for timeline / architecture / before-after / charts — never mermaid), callouts, tagged tables, code blocks. Follow the
-  `plan` template (`artifacts template plan`) or scaffold with `artifacts new plan`.
+  `plan` template (`artifacts new plan --blank`) or scaffold with `artifacts new plan`.
 - **Quality is enforced, not suggested.** `artifacts check`/`render` **error** when a plan
   has no drawn live SVG figure, and they **do not write HTML** on validation failure.
   The ExitPlanMode hook greps the rendered HTML for `<svg` + a drawn primitive — a

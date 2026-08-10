@@ -151,7 +151,7 @@ Do **not** present until `artifacts render` exits 0. A missing figure fails with
 
 ## Design and theming
 
-- Use `artifacts init design` to create a project-wide `DESIGN.md` if one does not exist.
+- Use `artifacts new design` to create a project-wide `DESIGN.md` if one does not exist.
 - Preserve an existing `DESIGN.md`; it owns both light and dark palettes, typography, density, radius, and layout spacing.
 - Probe the target repo for brand tokens (design-system.css, tailwind config, logo/favicon colors) and reflect them in `DESIGN.md`.
 - The light/dark toggle must be present and default to `prefers-color-scheme`.

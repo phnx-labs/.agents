@@ -133,7 +133,7 @@ The source of truth is **Markdown**; the rendering is handled by `artifacts-cli`
 
 ## Design and theming
 
-- Use `artifacts init design` to create a project-wide `DESIGN.md` if one does not exist.
+- Use `artifacts new design` to create a project-wide `DESIGN.md` if one does not exist.
 - Preserve an existing `DESIGN.md`; it owns both light and dark palettes, typography, density, radius, and layout spacing.
 - Probe the target repo for brand tokens and reflect them in `DESIGN.md`.
 - The light/dark toggle must be present and default to `prefers-color-scheme`.

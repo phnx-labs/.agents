@@ -51,7 +51,7 @@ output format; every kind can compile to HTML and PDF.
    links under `## Tracking` (plans) so the body stays readable without chip
    chrome.
 
-   Follow the section structure for the kind (`artifacts template <kind>` shows
+   Follow the section structure for the kind (`artifacts new <kind> --blank` shows
    it), or scaffold the whole file with `artifacts new <kind> --out <source.md>`.
    Do not repeat provenance in the body. Use normal headings, lists, tables,
    images, and fenced code. Reach for direct HTML only for grids, panels,
@@ -75,9 +75,8 @@ output format; every kind can compile to HTML and PDF.
 3. Render in one step:
 
    ```bash
-   artifacts render <source.md>                          # writes <source>.html next to it
-   artifacts render <source.md> --format html,pdf        # both outputs
-   artifacts render <source.md> --format pdf --layout poster
+   artifacts render <source.md>            # writes <source>.html next to it
+   artifacts render <source.md> --open     # and opens it in the default browser
    ```
 
    Use `document` layout for paginated plans and reports, `poster` for visuals
@@ -87,7 +86,7 @@ output format; every kind can compile to HTML and PDF.
 4. Inspect the actual output headlessly. Verify both themes, desktop and mobile
    widths, image loading, diagram bounds, document overflow, and browser console
    errors. Use the available headless browser or screenshot tooling. Do not run
-   `artifacts preview`, `open`, or another interactive-browser command unless the
+   `--open`, `open`, or another interactive-browser command unless the
    user explicitly asked for the artifact to be opened. Rasterize representative
    PDF pages and look for clipped code, split figures, missing backgrounds, or
    blank media.
@@ -106,11 +105,11 @@ output format; every kind can compile to HTML and PDF.
 
 - `artifacts new <kind> --out <source.md>` — scaffold the frontmatter and
   section skeleton instead of writing it by hand.
-- `artifacts init design` — adopt project-wide branding (`DESIGN.md`). Preserve
+- `artifacts new design` — adopt project-wide branding (`DESIGN.md`). Preserve
   an existing `DESIGN.md`; it owns both light and dark palettes, typography,
   density, radius, layout spacing, content width, and print margins. If exact
   fonts are required but unavailable, add local font files or register a
-  directory with `artifacts setup --fonts-dir <dir>`; otherwise retain and
+  directory to `fonts.dirs` in `~/.artifacts/config.json`; otherwise retain and
   report the emitted fallback-font warning.
 - `artifacts check <source.md>` — validate without rendering.
 - `artifacts estimate <source.md>` — exact `o200k_base` Markdown-versus-rendered

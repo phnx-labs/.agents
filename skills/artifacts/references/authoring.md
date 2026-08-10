@@ -58,8 +58,8 @@ list the same URLs under `## Tracking` as Markdown links so the body is readable
 without relying on the chip row. Keep optional short ids in `tracking`; do not
 add purpose-specific fields (`tickets:`, `prs:`) beside `links`.
 
-Required body sections come from the kind's template (`artifacts template <kind>`
-prints it). Keep them instead of inventing a second schema.
+Required body sections come from the kind's template (`artifacts new <kind>
+--blank` writes it). Keep them instead of inventing a second schema.
 
 ## Design Layout
 
@@ -175,5 +175,6 @@ print. See `examples/showcase.md` for a complete figure.
 ## Generated Files
 
 Do not edit compiled HTML to fix content or layout. It embeds the Markdown source
-for `artifacts decompile`, but decompile is recovery, not the normal authoring
+for `artifacts decompile` (absent from `--help`, still runs), but decompile is
+recovery, not the normal authoring
 path. Make the correction in Markdown or `DESIGN.md` and regenerate all outputs.

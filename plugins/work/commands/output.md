@@ -67,7 +67,7 @@ skill: author a Markdown source under `.agents/artifacts/yyyy-mm-dd/`, render it
 `artifacts-cli`, and produce a self-contained HTML doc (brand-dark + light with an
 in-page `◐` toggle defaulting to the OS scheme, stat cards for the headline
 numbers, a by-machine bar chart, by-agent + all-machines tables, and a short
-**Method + Caveats** footnote). Use `artifacts render ... --format html,pdf` for
+**Method + Caveats** footnote). Use `artifacts render ... --format html` plus `artifacts _pdf` for
 both outputs.
 
 Then copy the rendered HTML/PDF into `~/Downloads` and open the HTML on the user's
