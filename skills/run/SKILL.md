@@ -284,7 +284,7 @@ Use this as the default for "send this to the fleet" unless the task must land o
 For everything else, run `agents run --help`.
 
 `--account <name>` selects a provider account bundle created with `agents
-accounts add`; it overrides `agents accounts set-default`. Accounts are
+accounts add`; it overrides an `agents accounts attach` binding. Accounts are
 independent of agent versions and one provider account may be used by multiple
 compatible harnesses. The execution device resolves the secret locally and
 fails before spawn when it is absent. Copy a provider bundle explicitly with

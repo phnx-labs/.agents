@@ -1,10 +1,10 @@
 # Changelog
 
-- **Account guidance uses positional identity and target arguments (RUSH-2527).** Fleet sync, mint-auth, run, and agents-cli guidance now teach `accounts name <agent@version> <name>`, `attach <account> <target>`, and `sync <account> <device>` while keeping native OAuth material harness-owned.
-
 ## [Unreleased]
 
 ### Fixed
+
+- **Account guidance uses positional identity and target arguments (RUSH-2527).** Fleet sync, mint-auth, run, and agents-cli guidance now teach `accounts name <agent@version> <name>`, `attach <account> <target>`, and `sync <account> <device>` while keeping native OAuth material harness-owned.
 
 - **`plugins/design/skills/design/interface-redesign.md` restored; `design-core.md` §4
   brand-probe now reads `BRAND.md` first (RUSH-2504 post-merge regression).** Two
