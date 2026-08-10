@@ -11,7 +11,7 @@
 #     leftover agent:* label confers no ownership
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
-HOOK="$HERE/03-linear-inject-tasks-context.sh"
+HOOK="$HERE/../03-linear-inject-tasks-context.sh"
 
 SANDBOX="$(mktemp -d)"
 trap 'rm -rf "$SANDBOX"' EXIT
@@ -400,7 +400,7 @@ check_contains "empty team: no projects message"           "$out" "No projects o
 brief_t=$(grep -o -- '--max-time [0-9][0-9]*' "$HOOK" | head -1 | awk '{print $2}')
 sweep_t=$(grep -o -- '--max-time [0-9][0-9]*' "$HOOK" | tail -1 | awk '{print $2}')
 pages=$(grep -c 'for _ in 1 2 3; do' "$HOOK")
-declared=$(awk '/^  linear-tasks:/{f=1} f&&/timeout:/{print $2; exit}' "$HERE/../../agents.yaml" 2>/dev/null)
+declared=$(awk '/^  linear-tasks:/{f=1} f&&/timeout:/{print $2; exit}' "$HERE/../../../agents.yaml" 2>/dev/null)
 declared="${declared:-15}"
 # One brief request plus three sweep pages, each at its own --max-time.
 worst=$(( brief_t + 3 * sweep_t ))

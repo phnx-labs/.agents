@@ -9,7 +9,7 @@
 # footer-guard fail-open regression class.
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
-HOOK="$HERE/large-file-add-guard.sh"
+HOOK="$HERE/../large-file-add-guard.sh"
 # Resolve the interpreter to an ABSOLUTE path once, up front — the "no parser"
 # case below runs it with PATH overridden to a sandbox dir, and a bare `sh`
 # command name would then fail to resolve at all (command not found) rather

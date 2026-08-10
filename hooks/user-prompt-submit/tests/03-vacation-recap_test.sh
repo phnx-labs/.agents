@@ -3,7 +3,7 @@
 set -uo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-HOOK="$HERE/03-vacation-recap.py"
+HOOK="$HERE/../03-vacation-recap.py"
 pass=0; fail=0
 
 check() { # name, expected-substring, actual

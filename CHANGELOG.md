@@ -4,6 +4,19 @@
 
 ### Changed
 
+- **Hook tests moved into a `tests/` subdir of their own event dir (refactor, no
+  behavior change).** `hooks/<event>/<name>_test.sh` is now
+  `hooks/<event>/tests/<name>_test.sh`, so `ls hooks/<event>/` shows only the
+  scripts that actually run on the harness event — the 15 per-hook tests across
+  `pre-tool-use/`, `session-start/`, `stop/`, and `user-prompt-submit/` moved
+  (`git mv`), plus `hooks/lib/git-facts_test.sh` for consistency. Every relative
+  reference inside a moved test (the script under test, sibling helpers, and
+  `agents.yaml`) got one extra `../`. `hooks/run_tests.sh` and
+  `hooks/syntax_test.sh` now discover both the current `tests/` location and the
+  legacy beside-the-script one; `hooks/registration_test.sh` needed no change,
+  since its scan is one level deep and never descended into `tests/` anyway.
+  Source: `hooks/AGENTS.md`, `hooks/README.md`, `AGENTS.md`.
+
 - **Account guidance now matches bundle-backed accounts (RUSH-2470).** The
   `agents-cli` and `run` skills explain that one provider account is one
   prompt-free `agents secrets` bundle, document per-harness defaults and explicit

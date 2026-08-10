@@ -2,7 +2,7 @@
 set -uo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-HOOK="$HERE/02-expand-prompt-bang-commands.sh"
+HOOK="$HERE/../02-expand-prompt-bang-commands.sh"
 pass=0; fail=0
 
 if python3 --version >/dev/null 2>&1; then

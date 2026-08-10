@@ -2,7 +2,7 @@
 set -u
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
-HOOK="$HERE/04-verify-work-state.py"
+HOOK="$HERE/../04-verify-work-state.py"
 SANDBOX="$(mktemp -d)"
 trap 'rm -rf "$SANDBOX"' EXIT
 DB="$SANDBOX/state.db"

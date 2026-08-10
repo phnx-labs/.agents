@@ -4,7 +4,7 @@
 # hook's dedup markers are isolated and cleaned up. No network, no real session.
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
-HOOK="$HERE/10-mq-read-nudge.py"
+HOOK="$HERE/../10-mq-read-nudge.py"
 
 SANDBOX="$(mktemp -d)"
 trap 'rm -rf "$SANDBOX"' EXIT

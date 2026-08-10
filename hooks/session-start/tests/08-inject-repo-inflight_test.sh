@@ -5,7 +5,7 @@
 # (activity/status/pidAlive/lastActivityMs/prLink/ticketId/topic).
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
-HOOK="$HERE/08-inject-repo-inflight.sh"
+HOOK="$HERE/../08-inject-repo-inflight.sh"
 
 SANDBOX="$(mktemp -d)"
 trap 'rm -rf "$SANDBOX"' EXIT
