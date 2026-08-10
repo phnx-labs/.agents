@@ -288,10 +288,11 @@ def _commits_text(repo_path, pr_data):
     if not texts:
         base_ref = _default_base(repo_path)
         base = _run(["git", "merge-base", base_ref, "HEAD"], cwd=repo_path, timeout=5)
-        rev = f"{base}..HEAD" if base else "HEAD~10..HEAD"
-        log = _run(["git", "log", rev, "--pretty=format:%s%n%b"], cwd=repo_path, timeout=5)
-        if log:
-            texts.append(log)
+        rev = f"{base}..HEAD" if base else None
+        if rev:
+            log = _run(["git", "log", rev, "--pretty=format:%s%n%b"], cwd=repo_path, timeout=5)
+            if log:
+                texts.append(log)
     return "\n".join(texts)
 
 
@@ -310,10 +311,11 @@ def _changed_files(repo_path, pr_data):
     if not files:
         base_ref = _default_base(repo_path)
         base = _run(["git", "merge-base", base_ref, "HEAD"], cwd=repo_path, timeout=5)
-        rev = f"{base}..HEAD" if base else "HEAD~10..HEAD"
-        out = _run(["git", "diff", "--name-only", rev], cwd=repo_path, timeout=5)
-        if out:
-            files.update(line.strip() for line in out.splitlines() if line.strip())
+        rev = f"{base}..HEAD" if base else None
+        if rev:
+            out = _run(["git", "diff", "--name-only", rev], cwd=repo_path, timeout=5)
+            if out:
+                files.update(line.strip() for line in out.splitlines() if line.strip())
     return files
 
 

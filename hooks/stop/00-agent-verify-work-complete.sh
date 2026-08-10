@@ -151,18 +151,40 @@ VIEW = re.compile(r'\bgh\s+pr\s+view\b')
 
 def extract_ref(cmd):
     # The ref gh accepts for a state check: prefer a self-contained URL, else a
-    # '#N' / bare positional number (never a --flag's value like --interval 30).
+    # repo-qualified URL synthesized from --repo/-R + a number, else a bare
+    # '#N' / positional number (never a --flag's value like --interval 30).
     m = PR_URL.search(cmd)
     if m:
         return m.group(0)
+    tokens = cmd.split()
+    repo = None
+    number = None
     prev = None
-    for t in cmd.split():
+    i = 0
+    while i < len(tokens):
+        t = tokens[i]
+        if t.startswith('--repo='):
+            repo = t.split('=', 1)[1]
+            i += 1
+            continue
+        if t in ('--repo', '-R'):
+            if i + 1 < len(tokens):
+                repo = tokens[i + 1]
+            i += 2
+            continue
+        if t.startswith('-R') and len(t) > 2:
+            repo = t[2:]
+            i += 1
+            continue
         if t.startswith('#') and t[1:].isdigit():
-            return t[1:]
-        if t.isdigit() and (prev is None or not prev.startswith('-')):
-            return t
+            number = t[1:]
+        elif t.isdigit() and (prev is None or not prev.startswith('-')):
+            number = t
         prev = t
-    return None
+        i += 1
+    if repo and number:
+        return 'https://github.com/{}/pull/{}'.format(repo, number)
+    return number
 
 create_ids = set()
 created = []
