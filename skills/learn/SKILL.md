@@ -184,7 +184,7 @@ gates is never dropped for low leverage, and leverage never lets a lesson skip t
 ## Phase 6 — Verify, then ship
 
 - **Verify.** If the lesson touched an executable artifact (a script, a command), run it end-to-end — that's how you catch the bug in your own fix. For prose edits, re-read them in context to be sure they don't contradict the guidance around them.
-- **Ship, for repo-backed config.** Changes to `~/.agents` or `~/.agents/.system` are real releases: work in a worktree, bump the version + `CHANGELOG`, commit, push, open a PR, and tag on merge (`/code:tag-release` handles the tag). **Present the proposed lessons and diffs to the user before committing** — a human saying "that one's overfit" is the cheapest, best filter you have.
+- **Ship, for repo-backed config.** Changes to `~/.agents` or `~/.agents/.system` are real releases: work in a worktree, bump the version + `CHANGELOG`, commit, push, open a PR, and tag on merge (the `code:release` skill handles the tag as its final step). **Present the proposed lessons and diffs to the user before committing** — a human saying "that one's overfit" is the cheapest, best filter you have.
 
 ## Evidence
 

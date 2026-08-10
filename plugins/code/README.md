@@ -22,7 +22,6 @@ git plumbing and cleanup that belongs next to the coding loop, not in a separate
 | Command | What it does |
 | --- | --- |
 | `/code:prune` | Deletes merged branches and worktrees locally and on `origin`, behind hard data-loss guards: never removes a worktree with uncommitted changes, a stash, unmerged commits, a lock, or a detached HEAD. Uses `git rev-list --count origin/$MAIN..HEAD == 0` as the load-bearing "nothing to lose" check (strictly stricter than `git branch --merged`), shows the plan, and asks before acting. |
-| `/code:tag-release` | Creates an annotated git tag for a release and pushes it to `origin`. Resolves the version from `$ARGUMENTS`, else the newest `CHANGELOG.md` entry, else `package.json`, else a confirmed bump of the last tag. Pure git plumbing — only `git tag -a` and `git push <tag>`, never force, never `--tags`, never deletes or re-points an existing tag. For full package publishing use the `code:release` skill; this is the git-tag slice. |
 | `/code:clean` | Identifies, verifies, and cleans up technical debt — outdated context files, near-duplicates, scattered sources of truth, over-complex patterns, dead code, and naming/organization drift. Executes safe cleanups directly; parks only genuinely ambiguous or risky ones. |
 
 ## The reviewer it spawns
