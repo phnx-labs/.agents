@@ -5,7 +5,10 @@
 Only `kind` and `title` are required. `template` is inferred from `kind`, and
 provenance (project, repository, branch, harness, agent, human, host, session,
 date) auto-fills at render time from the Git checkout and agent environment —
-declared values always win. `artifacts new` scaffolds the full shape:
+declared values always win. The **session** value renders as a deep link
+(`agents://session/<id>`): clicking it in an opened artifact reopens that
+session's terminal in its input bar via `agents open`, which resolves the
+owning host. `artifacts new` scaffolds the full shape:
 
 ```yaml
 ---
