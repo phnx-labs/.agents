@@ -1,17 +1,19 @@
 #!/bin/sh
 # truly-agentic-git-workflow/pr-description-reminder.sh — PreToolUse(Bash) reminder.
 #
-# Nudges once when a `gh pr create` / `gh pr edit` ships an INLINE body that is
-# thin — a bare blob with no structure and no change-type marker. The reviewer
-# reads the body, not the diff, so a wall-of-prose (or one-liner) PR is one they
-# cannot glance. The fix the reminder asks for: lead with a `what + type`
-# (docs-only / bugfix / feature / refactor / test-only), highlight the important
-# parts (a heading, a table, or bullets), and add a before/after when there is a
-# visible or behavioral delta.
+# Nudges (a satisfiable block, exit 2) when a `gh pr create` / `gh pr edit` ships a
+# body with NO proof the agent ran what it built — no screenshot / recording /
+# uploaded asset. The reviewer should see it work, not read code to believe it. The
+# reminder clears the moment the body carries a real run result OR an explicit
+# no-run declaration (release / docs-only / refactor / test-only). A code block, a
+# table, and a bare ticket/plan LINK are context, not proof of a run, and do NOT
+# clear it.
 #
-# SATISFIABLE, not a wall: it clears the moment the body carries any structure or
-# a type marker. It fires ONLY on an inline --body/-b; a --body-file / -F / --fill
-# / --template / --web / editor body is never inspected and always allowed.
+# The body it inspects: an inline --body/-b AND the file behind --body-file/-F
+# (read and inspected — agents route nearly every multi-line body through it). A
+# --fill / --template / --web / editor body it cannot read, and an unreadable or
+# space-containing --body-file path it cannot resolve, FAIL OPEN (allow) — a
+# reminder must never block a legit PR.
 #
 # Multi-harness: reads the tool command from Claude's snake_case
 # .tool_input.command OR Grok/Codex camelCase .toolInput.command, via a
@@ -70,42 +72,61 @@ case "$cmd" in
   *) exit 0 ;;
 esac
 
-# Body comes from a file / commits / editor / browser -> not inspectable, allow.
+# Resolve the inspectable BODY text. Three sources:
+#   - inline --body/-b: the body is already inside the command string.
+#   - --body-file/-F <path>: read that file and inspect its CONTENT (the common
+#     multi-line path — agents route almost every real PR body through it, so it
+#     MUST be inspected, not waved through).
+#   - --fill/--template/--web/editor: the body lives in commits/template/editor we
+#     cannot read here -> fail OPEN (allow), a reminder must never block a legit PR.
+# Any extraction or read failure also fails OPEN.
+body=""
 case "$cmd" in
-  *"--body-file"*|*" -F "*|*"--fill"*|*"--fill-first"*|*"--fill-verbose"*|*"--template"*|*"--web"*) exit 0 ;;
+  *"--body-file"*|*"--body-file="*|*" -F "*|*"-F="*)
+    bf=$(printf '%s\n' "$cmd" | sed -n 's/.*--body-file[ =]*//p')
+    [ -n "$bf" ] || bf=$(printf '%s\n' "$cmd" | sed -n 's/.*-F[ =]*//p')
+    bf=${bf%% *}          # first whitespace-delimited token only
+    bf=${bf#\"}; bf=${bf%\"}; bf=${bf#\'}; bf=${bf%\'}   # strip one layer of quotes
+    if [ -n "$bf" ] && [ -f "$bf" ] && [ -r "$bf" ]; then
+      body=$(cat "$bf" 2>/dev/null) || exit 0
+    else
+      exit 0            # cannot resolve/read the body file -> fail open
+    fi
+    ;;
+  *"--fill"*|*"--fill-first"*|*"--fill-verbose"*|*"--template"*|*"--web"*)
+    exit 0 ;;           # body from commits / template / editor -> not inspectable
+  *"--body"*|*" -b "*|*"-b="*)
+    body="$cmd" ;;      # inline body is carried in the command string itself
+  *)
+    exit 0 ;;           # no body flag -> editor (create) or a non-body edit -> allow
 esac
 
-# No inline body flag at all -> gh opens an editor (create) or it's a non-body
-# edit (e.g. --add-label) -> nothing to inspect, allow.
-case "$cmd" in
-  *"--body"*|*" -b "*) ;;
-  *) exit 0 ;;
-esac
+# Everything we can see about the body: the command flags PLUS the resolved content.
+hay="$cmd
+$body"
 
 # RAN-IT-OR-EXEMPT. An agentic developer runs the feature it builds, looks at the
 # real result, and attaches THAT — a screenshot/recording of the thing running, or
-# the run's output as an uploaded artifact. Source code and hand-authored tables
-# are NOT proof of a run and do NOT clear this. Allow (exit 0) if the command
-# carries ANY signal below (substring match over the whole command, biased to
-# ALLOW to keep false-blocks near zero); otherwise nudge. Exempt: release + docs.
+# the run's output as an uploaded artifact. Source code, hand-authored tables, and a
+# bare ticket/plan LINK are NOT proof of a run and do NOT clear this. Clear (exit 0)
+# only on a real run result OR an explicit no-run declaration; otherwise nudge.
 
 # 1) A real run result — a screenshot / GIF / recording, inline or as an uploaded
 #    asset. This is the proof that the agent ran it and observed the outcome.
-case "$cmd" in
+case "$hay" in
   *"!["*|*".png"*|*".jpg"*|*".jpeg"*|*".gif"*|*".webp"*|\
   *".mp4"*|*".mov"*|*".webm"*|*".svg"*|\
   *"user-attachments/assets"*|*"githubusercontent.com"*|*"/assets/"*) exit 0 ;;
 esac
-# 2) An exemption or attached context (case-insensitive):
-#    - the two PR kinds that need no run: a RELEASE, or a pure DOC edit
-#    - a no-visible-surface / non-behavioral declaration (refactor / test-only)
-#    - a Linear ticket link or a shared plan (.html) link
-lower=$(printf '%s' "$cmd" | tr '[:upper:]' '[:lower:]')
+# 2) An explicit no-run DECLARATION (case-insensitive): the two PR kinds that need no
+#    run (a RELEASE or a pure DOC edit), or a no-visible-surface / non-behavioral
+#    declaration (refactor / test-only). A Linear ticket or plan link is CONTEXT, not
+#    evidence — it does NOT clear the run-result requirement on its own.
+lower=$(printf '%s' "$hay" | tr '[:upper:]' '[:lower:]')
 case "$lower" in
   *"release"*|*"docs-only"*|*"docs only"*|*"docs:"*|\
   *"no behavior change"*|*"no-behavior-change"*|*"no visible surface"*|*"no user-visible"*|\
-  *"refactor"*|*"test-only"*|*"test only"*|*"internal only"*|\
-  *"linear.app/"*|*"getrush.ai/"*|*".html"*) exit 0 ;;
+  *"refactor"*|*"test-only"*|*"test only"*|*"internal only"*) exit 0 ;;
 esac
 
 # No run result and not exempt — nudge once. Satisfiable: run it, capture, attach.
@@ -121,6 +142,7 @@ esac
   echo "  * Link the Linear ticket, and the plan file if a plan was shared."
   echo
   echo "Exempt (say so in the body): a RELEASE PR, or a pure DOC edit — those need no run."
-  echo "A --body-file / --fill body is never nudged."
+  echo "A ticket/plan LINK is context, not run-evidence — it no longer clears this on its own."
+  echo "A --body-file body IS inspected now; a --fill / --template / editor body is not."
 } >&2
 exit 2

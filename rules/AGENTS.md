@@ -278,11 +278,15 @@ The body carries **the actual run result, not a description of it**:
   shared — a **shareable link to the plan file**. The same screenshot/recording also goes
   on the ticket when you close it (see `conventions`).
 
-The bundled `pr-description-reminder` (PreToolUse) is the backstop: it nudges once when a
-`gh pr create`/`edit` inline body shows **no run result** — no image/recording/asset, no
-ticket/plan link, and no release/docs/no-surface declaration. A code block or table does
-**not** clear it. Run it, capture the result, attach, retry. It **fails open** — a
-`--body-file`/`--fill` body is never nudged — and is satisfiable, never a hard wall.
+The bundled `pr-description-reminder` (PreToolUse) is the backstop, and it **reads the body
+you actually ship** — an inline `--body`/`-b` and the file behind `--body-file`/`-F` alike
+(the common multi-line path, and the hole that used to let evidence-free feature PRs through).
+It nudges — a satisfiable block, `exit 2` — when that body shows **no run result** (no
+image / recording / uploaded asset), and it is **not** cleared by a code block, a table, or a
+bare ticket/plan link: those are context, not proof you ran it. It clears on a real run result
+**or** an explicit no-run declaration (`release` / `docs-only` / `refactor` / `test-only`). It
+still **fails open** on a `--fill` / `--template` / editor body it cannot read, and on an
+unreadable `--body-file` — a reminder must never block a legit PR.
 
 ### Attaching evidence on GitHub — the mechanics
 
@@ -596,6 +600,56 @@ for mq blindly.
 in terminal scrollback. Author a Markdown source under the repo's dated artifact
 layout, render it to a self-contained HTML doc with `artifacts-cli`, and open it in
 the user's default browser on the machine they sit at.**
+
+## What every plan must contain — and do before presenting
+
+Built-in plan mode (`/plan`, Shift+Tab, `--mode plan`) only restricts tools and asks
+for an `ExitPlanMode` — it injects **no** methodology, on any harness. This section is
+that methodology. Do all of it before you present a plan, whether you entered plan mode
+by a keystroke, a flag, or just started planning.
+
+**Research first — before you draft:**
+
+1. **Search what previous agents did on this feature.** Run
+   `agents sessions "<feature keywords>"` (and read the latest plan/PR on
+   that surface) before drafting. **Extend** prior work; do not silently revert it —
+   reverting an earlier agent's change is the most common regression on this fleet.
+2. **Find the module's specification.** Locate where this module's spec lives (a
+   `SPEC*.md`, a doc, an OpenSpec change). If none exists, propose writing a short one.
+   Keep specs **succinct and current** — do not pile on rules nobody asked for.
+
+**The plan must contain, in this order:**
+
+3. **Focus for review (at the very top).** 2-5 bullets naming exactly what you want the
+   user to weigh in on. Lead with this — it is the first thing they read.
+4. **Intent.** Restate the user's ask in their own words, so the plan visibly tracks it.
+5. **Current architecture.** How the affected module works **today** — the files
+   involved and how they talk to each other. For an architectural change, show the
+   communication pattern **before and after** as an inline-SVG figure.
+6. **Implementation shown as real code.** For every file that changes, show the actual
+   change as a **diff** — the relevant hunk only (not the whole file), added lines
+   green, removed lines red — via the artifacts-cli `code-diff` component (fall back to
+   a fenced ```` ```diff ```` block until it ships). Name every module that changes.
+   Pick the load-bearing hunks; keep it readable, not exhaustive.
+7. **A rendered to-do list.** Beyond creating the `TaskCreate` checklist (see *A
+   multi-step plan also carries a checklist*, below), **render** it into the plan as a
+   checklist section, so the user sees the steps and their status in the plan itself —
+   not only in the harness's to-do UI.
+
+**Two gates before you present:**
+
+- **Adversarial review.** For any change to an API/CLI surface or the system
+  architecture, get a **non-author** review before presenting — a subagent, or
+  `agents run claude --mode plan "Adversarially review this plan's API surface and
+  adherence to existing architectural conventions. Return file:line evidence."
+  --attach <plan.md>` on harnesses with no subagent tool. It checks the surface is
+  clean and intuitive and follows existing conventions (access centralized in one
+  place, no duplicated surface, cross-cutting change made at the source). Fold its
+  findings in before you present.
+- **Render + open** the HTML (below).
+
+Scale to the change: a trivial, single-file edit with no interface or architectural
+impact skips the architecture figure and the adversarial review.
 
 ## Canonical artifact path (plans, HTML, and related items)
 

@@ -238,6 +238,21 @@ agents sync claude@all system # reconcile this repo's resources into every insta
 agents inspect hooks          # the hook is registered, with its events
 ```
 
+**A plugin change needs a fourth command — the three above do not carry it.**
+`agents sync <agent> system` reports the kinds it reconciled (commands, skills, hooks,
+memory, permissions) and plugins are not among them, so the installed marketplace copy under
+`~/.<agent>/plugins/marketplaces/<repo>/plugins/<name>/` keeps serving the **old** version
+until you run:
+
+```bash
+agents plugins sync <name>    # push the plugin into every installed agent version
+```
+
+Measured 2026-08-09 on yosemite-m1: after `agents sync system` (mirror at the merge commit)
+and `agents sync claude@all system`, the installed copy still read `"version": "0.9.0"` with
+no `agents/` directory. `agents plugins sync code` moved it to `0.10.0` carrying
+`agents/code-reviewer.md`. Verify the **installed** copy's manifest version, not the mirror's.
+
 ## Tests
 
 Hooks carry `<name>_test.sh` beside the script and it must pass before the PR. Test against
