@@ -62,6 +62,29 @@
   worker sync, and distinguish those bundles from harness-native signed-in
   identities whose auth material is never copied.
 
+- **Fleet plugin commands aligned to the bundle-backed account model (RUSH-2509).**
+  Four files updated to match the `agents accounts add`/`sync` model from agents-cli
+  PR #2470 and remove the old `agents secrets create auth --backend file` /
+  `AGENTS_SECRETS_PASSPHRASE` recipe:
+  - **`plugins/fleet/commands/mint-auth.md`**: step 4 now stores the minted
+    setup-token or API key with `agents accounts add <name> --provider <provider>
+    --auth <type> --value-stdin` (or `--from-secrets <bundle>:<key>`); step 5
+    verifies headless via `agents run --account <name>`; new step 6 copies the
+    bundle to worker devices with `agents accounts sync <name> --device <target>`.
+    No `AGENTS_SECRETS_PASSPHRASE`, no reserved `auth` bundle.
+  - **`plugins/fleet/commands/sync.md`**: `agents repos refresh -y` (deprecated)
+    replaced with `agents sync -y`; the version-coverage contradiction resolved —
+    `agents sync -y` covers all agent types but only the default version per agent,
+    while `agents plugins sync` covers all installed versions; new step 4 reports
+    account readiness gaps per device with exact `agents accounts sync <account>
+    --device <device>` remediation commands and never copies credentials
+    automatically.
+  - **`plugins/fleet/commands/onboard.md`**: step 8 now stores credentials via
+    `agents accounts add` / `agents accounts sync`; sanctioned-paths hard line
+    and safety rules clarified.
+  - **`plugins/fleet/README.md`**: command summary rows updated to match the new
+    model.
+
 - **`/plan` Step 6 no longer mandates ASCII mockups for UI changes.** The command
   told agents to draw each screen as an ASCII box (`+---+ | Logo | +---+`), which
   Muqsit's `ui-work-discipline` rule (his personal ruleset layer) forbids and which
