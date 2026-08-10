@@ -77,6 +77,30 @@ filtered.
   does not implement. Read the write path before believing the table.
 - **Fallback band-aids.** A defensive branch added to tolerate bad input instead of
   fixing the source. Every fallback hides a bug; name the bug it hides.
+- **The expedient mechanism where the project already has a proper one.** The change
+  works, and it works by reaching around the surface built for the job. That is what makes
+  it survive review, so look for it deliberately. Two faces:
+  - **Ambient global state instead of declared configuration.** A new environment variable
+    carrying a feature flag, an endpoint, a behavior toggle, or a value handed between
+    processes, when the project has a config file, a CLI flag, or a function argument that
+    already owns that. An env var was never an isolation boundary: every child process
+    inherits the whole environment, on Linux a co-tenant can read another process's via
+    `/proc/<pid>/environ`, values surface in crash dumps and any log line that prints the
+    environment, and anything in the same process tree can silently **override** it. So it
+    is a disclosure surface and a hijack surface at once — and it is invisible to whoever
+    reads the config file expecting to see the behavior in effect. Count the delta and name
+    the surface that should have carried it ("adds 3 env vars; the other 40 settings live
+    in `config.yaml:1`"). A **secret** in an env var is a finding on its own: point at the
+    project's credential store.
+  - **Silencing the signal instead of fixing the cause.** A suppression added where a
+    defect should have been removed: a lint disable, a type ignore, a skipped or
+    quarantined test, a widened `catch`, a retry wrapping a race, a `sleep` standing in for
+    a real wait condition, a commit that bypasses hooks. Ask what the check was telling the
+    author, and whether the diff answers it or just mutes it.
+
+  Both are blocking when the repo states the convention in writing. When it does not, they
+  are still findings — name the durable mechanism the project already has, by file:line,
+  or drop the finding.
 - **Silent success at a boundary.** An unsupported case that returns as if it worked
   instead of raising or skipping with a stated reason.
 - **Duplicate surface, bypassed seam.** A helper that re-implements a primitive already
