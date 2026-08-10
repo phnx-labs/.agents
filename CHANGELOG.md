@@ -1,5 +1,7 @@
 # Changelog
 
+- **Account guidance uses positional identity and target arguments (RUSH-2527).** Fleet sync, mint-auth, run, and agents-cli guidance now teach `accounts name <agent@version> <name>`, `attach <account> <target>`, and `sync <account> <device>` while keeping native OAuth material harness-owned.
+
 ## [Unreleased]
 
 ### Fixed

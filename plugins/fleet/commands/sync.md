@@ -127,15 +127,15 @@ For any account missing on a device, **do not copy credentials** — report the 
 and print the exact remediation command:
 
 ```bash
-agents accounts sync <account-name> --device <device-name>
+agents accounts sync <account-name> <device-name>
 ```
 
 Emit a line per gap, so the user can run each one:
 
 ```
 ACCOUNT GAPS (run each to remediate):
-  agents accounts sync claude-muqsit --device yosemite-m3
-  agents accounts sync claude-muqsit --device yosemite-m4
+  agents accounts sync claude-muqsit yosemite-m3
+  agents accounts sync claude-muqsit yosemite-m4
 ```
 
 Sync does not run these automatically — account provisioning is an explicit,

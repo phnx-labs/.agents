@@ -288,6 +288,8 @@ accounts add`; it overrides `agents accounts set-default`. Accounts are
 independent of agent versions and one provider account may be used by multiple
 compatible harnesses. The execution device resolves the secret locally and
 fails before spawn when it is absent. Copy a provider bundle explicitly with
-`agents accounts sync <name> --device <device>`. Harness-native signed-in
-identities remain in version homes and their auth material is never copied.
+`agents accounts sync <name> <device>`. Harness-native signed-in identities may
+be named with `agents accounts name <agent@version> <name>` and bound with
+`agents accounts attach <name> <target>`; their auth material remains in the
+harness home and is never copied.
 Accounts do not apply to cloud or lease placement.
