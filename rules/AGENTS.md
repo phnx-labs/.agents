@@ -607,7 +607,7 @@ by a keystroke, a flag, or just started planning.
 **Research first — before you draft:**
 
 1. **Search what previous agents did on this feature.** Run
-   `agents sessions --repo <repo> "<feature keywords>"` (and read the latest plan/PR on
+   `agents sessions "<feature keywords>"` (and read the latest plan/PR on
    that surface) before drafting. **Extend** prior work; do not silently revert it —
    reverting an earlier agent's change is the most common regression on this fleet.
 2. **Find the module's specification.** Locate where this module's spec lives (a
@@ -627,9 +627,10 @@ by a keystroke, a flag, or just started planning.
    green, removed lines red — via the artifacts-cli `code-diff` component (fall back to
    a fenced ```` ```diff ```` block until it ships). Name every module that changes.
    Pick the load-bearing hunks; keep it readable, not exhaustive.
-7. **A rendered to-do list.** Create the checklist with `TaskCreate` **and** render it
-   in the plan (a checklist section) so the user sees the steps and their status — not
-   only the harness's own to-do UI.
+7. **A rendered to-do list.** Beyond creating the `TaskCreate` checklist (see *A
+   multi-step plan also carries a checklist*, below), **render** it into the plan as a
+   checklist section, so the user sees the steps and their status in the plan itself —
+   not only in the harness's to-do UI.
 
 **Two gates before you present:**
 
