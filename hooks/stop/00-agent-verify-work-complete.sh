@@ -283,10 +283,12 @@ pat = r'\b(handed off|hand-off|handoff|handing (this|it) off|will babysit|is bab
 # on you' / 'watching' are ordinary PR-abandonment prose — wanting a human review
 # is NOT an external blocker (keep driving it, or hand off via the phrase above).
 blocked = re.search(r'\bblocked on\b', msg)
-# nextstep must name a DURABLE finish path (a native ScheduleWakeup/Monitor
-# re-invoke or the pr-merge-on-green monitor, or a biometric), never an
-# in-process gh pr checks --watch (RUSH-2394).
-nextstep = re.search(r'\b(schedulewakeup|monitor|pr-merge-on-green|will merge on green)\b|\byour (touch ?id|biometric)\b', msg)
+# nextstep must name a DURABLE finish path (a native ScheduleWakeup re-invoke or
+# the pr-merge-on-green monitor, or a biometric), never an in-process
+# gh pr checks --watch (RUSH-2394). This escape is NOT evidence-gated, so the
+# tokens stay specific: bare 'monitor' is ordinary prose ('I'll monitor CI') and
+# must NOT clear the gate here (the tool name 'schedulewakeup' is specific enough).
+nextstep = re.search(r'\b(schedulewakeup|pr-merge-on-green|will merge on green)\b|\byour (touch ?id|biometric)\b', msg)
 # Fix 2 (phrasing): trusted ONLY when a durable ScheduleWakeup/Monitor tool_use
 # exists this session (live_watcher). An in-process background gh pr checks
 # --watch is NOT enough — that child dies with a headless agent (RUSH-2394).
@@ -629,9 +631,10 @@ asking = bool(
 # Escape 2 — plan mode forbids acting (same cue the open-PR gate uses).
 plan_mode = bool(re.search(r'\bplan mode\b', msg)
                  and re.search(r'\b(cannot|can not|forbid|forbids|blocks?|blocked|prevent|no (?:commit|push|merge))\b', msg))
-# Escape 3 — a genuine external blocker + who/what finishes it.
+# Escape 3 — a genuine external blocker + who/what finishes it. Not evidence-
+# gated, so keep the tokens specific: bare 'monitor' is ordinary prose here.
 blocked = re.search(r'\bblocked on\b', msg)
-nextstep = re.search(r'\b(schedulewakeup|monitor|pr-merge-on-green|will merge on green)\b|\byour (touch ?id|biometric)\b', msg)
+nextstep = re.search(r'\b(schedulewakeup|pr-merge-on-green|will merge on green)\b|\byour (touch ?id|biometric)\b', msg)
 # Escape 4 — explicit handoff of the remaining work to a named owner.
 handoff = re.search(r'\b(handed off|hand-off|handoff|handing (this|it) off|will babysit|is babysitting|takes over from here|owns (this|the) (pr|task|work))\b', msg)
 # Escape 5 — a durable ScheduleWakeup/Monitor owns the remaining step (evidence-gated).

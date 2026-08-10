@@ -247,6 +247,13 @@ check "blocked-on + 'awaiting your' still blocks" "$rc" "2"
 rc=$(FAKE_GH_STATE=OPEN run_hook "$T" "Blocked on flaky tests; I'm watching to see if they stabilize." false)
 check "blocked-on + bare 'watching' still blocks" "$rc" "2"
 
+# 4h. Abandonment prose: 'blocked on ...' + bare 'monitor' (no ScheduleWakeup
+#     tool, not the pr-merge-on-green monitor) -> still blocks. 'I'll monitor CI'
+#     is ordinary prose, not a durable finish path; the nextstep tokens stay
+#     specific so this cannot clear the non-evidence-gated blocker escape.
+rc=$(FAKE_GH_STATE=OPEN run_hook "$T" "Blocked on flaky CI; I'll monitor it and merge once it settles." false)
+check "blocked-on + bare 'monitor' prose still blocks" "$rc" "2"
+
 # 5. stop_hook_active -> allow (no loops)
 rc=$(FAKE_GH_STATE=OPEN run_hook "$T" "still waiting" true)
 check "stop_hook_active bypasses gate" "$rc" "0"
