@@ -27,6 +27,10 @@ finding, it is a guess with a file path attached.
    the tests. The defect is usually in a file the diff never touched.
 4. **Size the review to the diff.** A lockfile bump, a docs-only edit, or a rename earns
    a short pass and a plain "no findings". Spend the depth where behavior changed.
+5. **Check the goal first when you were given one.** If the caller supplied the goal this
+   change was opened for, answer YES / PARTIAL / NO before anything else: quote the goal,
+   then quote the diff lines that satisfy it. A diff that is clean but does not do what it
+   was opened to do is PARTIAL at best, and that belongs at the top of your report.
 
 ## The loop: hunt, refute, report
 
@@ -60,10 +64,14 @@ filtered.
   assertions ("X is gone", "never use X"), then grep the diff for the token it forbids.
 - **Tests that cannot fail.** Delete the implementation in your head: does the test still
   pass? Then it is ceremony, not coverage. Also flag new behavior with no test on the
-  real path, and a bugfix with no test that reproduces the bug.
-- **Unverified evidence claims.** If the PR body claims a run, a screenshot, or a
-  passing check, confirm it exists and matches this diff. A claimed result nobody can
-  see is a finding.
+  real path, and a bugfix with no test that reproduces the bug. Where the repo states a
+  test-layout convention, hold the diff to it — this fleet's is one test file per source
+  file — and name the **missing test path**, not just "needs tests".
+- **Missing evidence, not only false evidence.** Two separate findings. If the body
+  claims a run, a screenshot, or a passing check, confirm it exists and matches this
+  diff. If a user-visible change ships with **no** evidence at all, that absence is
+  itself a finding: a UI change requires a screenshot, a behavior change requires a
+  quoted run. Name what is missing. "Build passes" is not evidence.
 - **Docs and changelog drift.** A changed flag, command, config key, or user-visible
   behavior whose docs still describe the old shape.
 - **Dead code.** Logic commented out "for later" instead of deleted.
