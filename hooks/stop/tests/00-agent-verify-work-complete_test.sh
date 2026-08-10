@@ -83,7 +83,7 @@ mk_transcript() {
     echo '{"type":"user","message":{"role":"user","content":"Please implement the widget and open a PR for it"}}'
     echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"Working on it"}]}}'
     case "$1" in
-      create|create+view|create+watch|create+detach|create+monitor)
+      create|create+view|create+watch|create+nativemon|create+monitor)
         echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_create1","name":"Bash","input":{"command":"cd /repo && gh pr create --title widget"}}]}}'
         echo '{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_create1","content":[{"type":"text","text":"https://github.com/acme/widgets/pull/42\n"}]}]}}'
         ;;
@@ -96,10 +96,10 @@ mk_transcript() {
         echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_watch1","name":"Bash","input":{"command":"gh pr checks 42 --watch --fail-fast","run_in_background":true}}]}}'
         echo '{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_watch1","content":[{"type":"text","text":"watching CI in background"}]}]}}'
         ;;
-      create+detach)
-        # Durable lander (RUSH-2394): agents pr land --detach outlives the agent.
-        echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_detach1","name":"Bash","input":{"command":"agents pr land 42 --detach"}}]}}'
-        echo '{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_detach1","content":[{"type":"text","text":"agents pr land detached for 42 (pid=12345)\n  log: ~/.agents/.history/pr-land/42/land.log"}]}]}}'
+      create+nativemon)
+        # Durable native re-invoke: a Monitor tool_use the harness owns; it
+        # outlives the agent (RUSH-2394). Replaces the removed agents pr land.
+        echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_natmon1","name":"Monitor","input":{"source":"gh pr checks 42","condition":"green","action":"merge on green"}}]}}'
         ;;
       create+monitor)
         # A ScheduleWakeup that re-invokes the agent when CI settles.
@@ -218,8 +218,8 @@ rc=$(FAKE_GH_STATE=OPEN run_hook "$T" "The build handoffs are documented; waitin
 check "handoff-substring does not escape the gate" "$rc" "2"
 
 # 4b. Open PR blocked on a genuine external blocker WITH a durable finish path -> allow
-rc=$(FAKE_GH_STATE=OPEN run_hook "$T" "PR #42 is blocked on a GitHub Actions 503 outage failing CI — agents pr land --detach will merge on green when CI recovers." false)
-check "external blocker + durable lander phrasing allows stop" "$rc" "0"
+rc=$(FAKE_GH_STATE=OPEN run_hook "$T" "PR #42 is blocked on a GitHub Actions 503 outage failing CI — a ScheduleWakeup will merge on green when CI recovers." false)
+check "external blocker + durable ScheduleWakeup phrasing allows stop" "$rc" "0"
 
 # 4b2. REGRESSION (RUSH-2394): blocked-on + in-process gh pr checks --watch is NOT durable.
 rc=$(FAKE_GH_STATE=OPEN run_hook "$T" "PR #42 is blocked on CI — watcher: background gh pr checks --watch will finish it." false)
@@ -682,20 +682,21 @@ TW=$(mk_transcript create+watch)
 rc=$(FAKE_GH_STATE=OPEN run_hook "$TW" "Not idling — the live background watcher owns the next step and re-invokes me on green." false)
 check "open PR + in-process gh pr checks --watch still blocks (RUSH-2394)" "$rc" "2"
 
-# W1b. Open PR + durable `agents pr land --detach` tool_use + lander phrasing -> allow.
-TD=$(mk_transcript create+detach)
-rc=$(FAKE_GH_STATE=OPEN run_hook "$TD" "Not idling — agents pr land --detach owns the next step and will merge on green." false)
-check "open PR + agents pr land --detach allows stop" "$rc" "0"
+# W1b. Open PR + durable native `Monitor` tool_use + monitor phrasing -> allow.
+TD=$(mk_transcript create+nativemon)
+rc=$(FAKE_GH_STATE=OPEN run_hook "$TD" "Not idling — a Monitor owns the next step and will merge on green." false)
+check "open PR + native Monitor tool_use allows stop" "$rc" "0"
 
 # W2. Open PR + a ScheduleWakeup monitor tool_use + poller phrasing -> allow.
 TM=$(mk_transcript create+monitor)
 rc=$(FAKE_GH_STATE=OPEN run_hook "$TM" "A ScheduleWakeup is set to re-invoke me when CI settles; the poller owns the merge." false)
 check "open PR + ScheduleWakeup monitor allows stop" "$rc" "0"
 
-# W3. REGRESSION (evidence gate): lander PHRASING but NO real detach tool_use
-#     this session -> still blocks. Phrasing alone must never clear the gate.
+# W3. REGRESSION (RUSH-2473 evidence gate): the removed `agents pr land` command
+#     STRING in the message + NO ScheduleWakeup/Monitor tool_use this session ->
+#     still blocks. Phrasing (even the old lander command) never clears the gate.
 rc=$(FAKE_GH_STATE=OPEN run_hook "$T" "agents pr land --detach owns the next step and will merge on green." false)
-check "detach-lander phrasing WITHOUT a real tool_use still blocks" "$rc" "2"
+check "removed agents-pr-land phrasing WITHOUT a real tool_use still blocks" "$rc" "2"
 
 # --- Fix 3: plan mode / reviewer-down context awareness ---------------------
 # P1. Open PR the session cannot advance because plan mode forbids push/merge.
@@ -795,10 +796,10 @@ mk_tasks() {   # $1 selects checklist state
         echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"tu2","name":"TaskUpdate","input":{"taskId":"2","status":"completed"}}]}}'
         ;;
       watcher-remaining)
-        # one item left AND a durable lander this session owns it (RUSH-2394).
+        # one item left AND a durable native ScheduleWakeup this session owns it
+        # (RUSH-2394). Replaces the removed agents pr land --detach.
         echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"tu1","name":"TaskUpdate","input":{"taskId":"1","status":"completed"}}]}}'
-        echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"tw1","name":"Bash","input":{"command":"agents pr land 42 --detach"}}]}}'
-        echo '{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"tw1","content":[{"type":"text","text":"agents pr land detached for 42 (pid=99)"}]}]}}'
+        echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"tw1","name":"ScheduleWakeup","input":{"delaySeconds":300,"reason":"re-check CI and merge PR 42 on green"}}]}}'
         ;;
     esac
     echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"progress"}]}}'
@@ -831,15 +832,16 @@ check "pending checklist + explicit handoff allows stop" "$rc" "0"
 rc=$(run_hook "$TK" "Parser written. Wiring is blocked on your Touch ID to sign the artifact." false)
 check "pending checklist + named external blocker allows stop" "$rc" "0"
 
-# E6. Pending checklist + a durable lander + lander phrasing -> allow (RUSH-2394).
+# E6. Pending checklist + a durable ScheduleWakeup + watcher phrasing -> allow (RUSH-2394).
 TKW=$(mk_tasks watcher-remaining)
-rc=$(run_hook "$TKW" "agents pr land --detach owns the merge and will merge on green." false)
-check "pending checklist + durable lander owns it allows stop" "$rc" "0"
+rc=$(run_hook "$TKW" "A ScheduleWakeup owns the merge and will merge on green." false)
+check "pending checklist + durable ScheduleWakeup owns it allows stop" "$rc" "0"
 
-# E7. Lander PHRASING but no real detach tool_use this session -> still block
-# (evidence-gated, so the gate can't be talked out of firing).
+# E7. Durable-watcher PHRASING (even the removed agents pr land command) but no
+# real ScheduleWakeup/Monitor tool_use this session -> still block (evidence-
+# gated, so the gate can't be talked out of firing) (RUSH-2473).
 rc=$(run_hook "$TK" "Parser written; agents pr land --detach will merge on green." false)
-check "detach-lander phrasing without a real tool_use still blocks" "$rc" "2"
+check "watcher phrasing without a real tool_use still blocks" "$rc" "2"
 
 # E8. No checklist at all -> the gate never fires.
 TNONE=$(mk_transcript plain)
