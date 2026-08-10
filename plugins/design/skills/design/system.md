@@ -121,7 +121,7 @@ belongs in `DESIGN.md`. If you're documenting "we sound direct, not whimsical" i
 - [ ] All five scales defined: color ramp + semantic aliases, type, spacing, radius, shadow.
 - [ ] `DESIGN.md` covers every token and all three component specs (button, input, card).
 - [ ] `BRAND.md` written only when brand definition was explicitly requested, with all
-      four body sections (who we are, voice, what we are not, references, anti-tells).
+      five body sections (who we are, voice, what we are not, references, anti-tells).
 - [ ] Preview page renders palette swatches, type ramp, spacing scale, and live components.
 - [ ] Contrast ratio stated (not guessed) for every text-on-background token pair; all meet AA.
 - [ ] Checked against the anti-tells catalog (design-core §6); three-or-more-present fixed.

@@ -7,7 +7,7 @@ the continuation — it does not implement anything.
 ## Load design-core first
 
 Read `design-core.md`. Its precise-copy and restraint principles apply to any
-proposed copy in the before/after; the anti-tells catalog (§8) applies to any
+proposed copy in the before/after; the anti-tells catalog (§6) applies to any
 proposed screen text or UI chrome.
 
 ## When to use (vs neighbors)

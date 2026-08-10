@@ -8,7 +8,7 @@ notation; a legend appears whenever color or line-style encodes meaning.
 
 Read `design-core.md`. Everything here inherits its spatial rhythm, color discipline,
 accessibility (contrast + colorblind-safe palettes), brand-probe, precise non-marketing copy,
-and mandatory render/critique verification (§7).
+and mandatory render/critique verification (§9).
 
 ## When to use (vs neighbors)
 
