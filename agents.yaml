@@ -112,15 +112,21 @@ hooks:
     script: pre-tool-use/01-git-require-clean-tree.sh
     timeout: 5
   # Public feature name: promptcuts. The manifest key stays expand-promptcuts.
-  # Enabled by default; users can run `agents hooks disable promptcuts`.
+  # On by default (it always has been). To turn it off, put
+  #   expand-promptcuts: {enabled: false, override: true}
+  # under hooks: in ~/.agents/agents.yaml, then run `agents sync`.
   expand-promptcuts:
     events:
       - UserPromptSubmit
     script: user-prompt-submit/02-expand-prompt-user-shortcuts.sh
     timeout: 5
   # Public feature name: bangcuts. The manifest key stays expand-bang-commands.
-  # Enabled by default; users can run `agents hooks disable bangcuts`.
-  # Bangcuts execute local shell commands, so pasted prompt text should be trusted.
+  # ON by default as of RUSH-2405. This runs `!cmd` blocks found in a prompt
+  # through the local shell, so every prompt source is a command source —
+  # including one injected by a watchdog, a monitor, or another agent. Only
+  # paste text you trust. To turn it off, put
+  #   expand-bang-commands: {enabled: false, override: true}
+  # under hooks: in ~/.agents/agents.yaml, then run `agents sync`.
   expand-bang-commands:
     events:
       - UserPromptSubmit

@@ -163,23 +163,35 @@ hooks:
 ## Enabling and disabling hooks
 
 Hooks change **runtime** behavior (unlike commands/skills/plugins, which are
-tools agents open on demand). Promptcuts and bangcuts are enabled by default.
+tools agents open on demand). Promptcuts and bangcuts are both enabled by
+default.
 
-Use their public feature names to change either default:
+**Turn one off** — same name in the user layer, then `agents sync` so version
+homes pick up the change:
 
-```sh
-agents hooks enable promptcuts
-agents hooks disable promptcuts
-agents hooks enable bangcuts
-agents hooks disable bangcuts
+```yaml
+# ~/.agents/agents.yaml
+hooks:
+  expand-bang-commands:   # bangcuts
+    enabled: false
+    override: true
+  expand-promptcuts:      # promptcuts
+    enabled: false
+    override: true
 ```
 
-The CLI maps `promptcuts` to the internal `expand-promptcuts` manifest key and
-`bangcuts` to `expand-bang-commands`. Those internal keys stay stable for
-existing user-layer YAML.
+`enabled: false` alone is enough to disable it — a disabled hook is deleted from
+the merged map before the registrar ever sees it. `override: true` only silences
+the `User-layer hook '<name>' disables system-shipped hook` warning that a
+user-layer entry shadowing a system one prints otherwise; leave it off if you
+want the reminder.
 
-For hooks without a public feature name, use the internal manifest key. The
-equivalent low-level user-layer YAML remains supported:
+The public feature names are **promptcuts** and **bangcuts**; the manifest keys
+they map to are `expand-promptcuts` and `expand-bang-commands`. Those keys are
+what `enabled:` takes, and they stay stable — existing user-layer YAML keeps
+working.
+
+The same YAML disables any other system-shipped hook:
 
 ```yaml
 # ~/.agents/agents.yaml
@@ -190,9 +202,14 @@ hooks:
     enabled: false
 ```
 
-Then `agents sync` so version homes pick up a manual YAML change. Data-loss
-guards (`git-guard`, `rm-guard`, `large-file-add-guard`) should stay on unless
-you know why you're disabling them.
+An `agents hooks enable|disable <feature>` CLI that takes the public names is
+planned but **not shipped** — `agents hooks` currently has only
+`list|add|remove|view|profile`, so the YAML overlay above is the supported path.
+Do not document the CLI form here until it exists: bangcuts runs shell commands
+on by default, and an off-switch that errors is worse than no off-switch.
+
+Data-loss guards (`git-guard`, `rm-guard`, `large-file-add-guard`) should stay
+on unless you know why you're disabling them.
 
 ## Layering
 
