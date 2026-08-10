@@ -26,8 +26,10 @@ render/critique verification.
    spacing scale. Semantic HTML, real selectable text.
 4. **Style with restraint.** Apply the palette and type scale; one accent; states
    (hover / focus / disabled) with visible focus rings; responsive at a couple of breakpoints.
-5. **Redesign path:** given a screenshot, first name what is wrong against the critique
-   checklist (hierarchy, contrast, density, copy), then rebuild addressing each point.
+5. **Redesign path:** given a screenshot, follow `interface-redesign.md` — audit the
+   current screen, draw the BEFORE diagram, propose 2-3 distinct AFTER options each
+   with a full ASCII layout, fill a comparison table, then STOP and wait for the
+   user's pick before implementing anything.
 6. **Verify** (design-core §9): render, screenshot, run the checklist, fix, re-render.
 
 ## Output & delivery

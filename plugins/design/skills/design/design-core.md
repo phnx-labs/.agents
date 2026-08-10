@@ -43,6 +43,9 @@ generation only when the deliverable is genuinely photographic or painterly. See
 Before rendering, probe the target for a brand and skin the output in it. Fall through in
 order, first hit wins (the same cascade as `plan-render`):
 
+0. **`BRAND.md`** at the repo root — read it directly; it is the authoritative brand
+   source (voice, palette, type, positioning, anti-tells). If it exists, use it and
+   skip the remaining steps unless you need a specific token not covered there.
 1. **Design tokens** — `design-system.css`, `theme.ts/css`, `tokens.json`, a `brand/` dir.
 2. **Framework config** — `tailwind.config.*` theme, CSS custom properties.
 3. **Brand assets** — logo / favicon / `site.webmanifest` `theme_color`; sample the hues.
