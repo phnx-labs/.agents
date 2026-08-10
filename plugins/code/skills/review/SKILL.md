@@ -257,8 +257,13 @@ generic "code style."
 
 ### B4. Spawn the reviewer
 
-**Single-agent** — one `Agent` call, `subagent_type: "claude"`, `model: "sonnet"`, the
-brief below. **Team** — cut the diff by surface, one teammate per surface via `agents
+**Single-agent** — one `Agent` call, `subagent_type: "code-reviewer"` (this plugin ships
+that subagent at `agents/code-reviewer.md`; fall back to `"claude"` on a harness that
+does not load plugin subagents), `model: "sonnet"`, the brief below. The subagent already
+carries the standing rubric — the hunt classes, the three-kill refutation pass, the
+non-checks list, and the output shape — so the brief supplies only what is specific to
+this PR: context, canonical patterns, and the session goal. Do not restate the rubric in
+the brief. **Team** — cut the diff by surface, one teammate per surface via `agents
 teams add ... --mode plan` (read-only); each brief carries only that surface's diff +
 pattern list, plus Mission / Full scope / Your assignment / Boundary contract / Success
 criteria. The orchestrator collects each critique and synthesizes one verdict. Multiple
