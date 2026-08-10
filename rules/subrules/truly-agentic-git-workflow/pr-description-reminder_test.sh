@@ -26,6 +26,8 @@ trap 'rm -rf "$TMP"' EXIT
 printf 'Just a real change with no proof of a run.\n'          > "$TMP/no-evidence.md"
 printf 'Ran it, here is the result: ![out](result.png)\n'     > "$TMP/with-image.md"
 printf 'Pure refactor, no behavior change.\n'                  > "$TMP/refactor.md"
+mkdir -p "$TMP/dir with space"
+printf 'Just a real change, no proof.\n'                       > "$TMP/dir with space/body.md"
 
 # check <want_exit> <field> <description> <command>
 check() {
@@ -53,7 +55,13 @@ check 2 tool_input "table only"           'gh pr create -t x -b "field | shown"'
 check 2 tool_input "linear link only"     'gh pr create -t x -b "closes https://linear.app/trp/issue/RUSH-9"'
 check 2 tool_input "plan html link only"  'gh pr create -t x -b "plan: .agents/artifacts/2026-08-05/plan-foo.html"'
 # A --body-file body is now READ and inspected -> no evidence in the file -> nudge.
-check 2 tool_input "body-file no evidence" "gh pr create -t x --body-file $TMP/no-evidence.md"
+# Cover every flag form the hook branches on: `--body-file <p>`, `--body-file=<p>`,
+# `-F <p>`, `-F=<p>`, and a path followed by a further flag.
+check 2 tool_input "body-file no evidence"    "gh pr create -t x --body-file $TMP/no-evidence.md"
+check 2 tool_input "body-file= equals form"   "gh pr create -t x --body-file=$TMP/no-evidence.md"
+check 2 tool_input "-F space form"            "gh pr create -t x -F $TMP/no-evidence.md"
+check 2 tool_input "-F= equals form"          "gh pr create -t x -F=$TMP/no-evidence.md"
+check 2 tool_input "body-file then flag"      "gh pr create -t x --body-file $TMP/no-evidence.md --draft"
 
 # --- ALLOW (exit 0): a real run result (screenshot / recording / asset) ---
 check 0 tool_input "markdown image"      'gh pr create -t x -b "![result](shot.png)"'
@@ -71,6 +79,10 @@ check 0 tool_input "body-file refactor"  "gh pr create -t x --body-file $TMP/ref
 
 # --- ALLOW (exit 0): body not inspectable / absent -> FAIL OPEN ---
 check 0 tool_input "body-file missing"   "gh pr create -t x --body-file $TMP/does-not-exist.md"
+# A --body-file path CONTAINING A SPACE cannot be extracted from the command string
+# (the token splitter stops at the first space), so it FAILS OPEN. Documented, safe
+# (never over-blocks); agent-generated temp paths do not contain spaces.
+check 0 tool_input "body-file spaced path" "gh pr create -t x --body-file \"$TMP/dir with space/body.md\""
 check 0 tool_input "fill"                'gh pr create --fill'
 check 0 tool_input "template"            'gh pr create -t x --template .github/pull_request_template.md'
 check 0 tool_input "no body (editor)"    'gh pr create -t x'

@@ -1,17 +1,19 @@
 #!/bin/sh
 # truly-agentic-git-workflow/pr-description-reminder.sh — PreToolUse(Bash) reminder.
 #
-# Nudges once when a `gh pr create` / `gh pr edit` ships an INLINE body that is
-# thin — a bare blob with no structure and no change-type marker. The reviewer
-# reads the body, not the diff, so a wall-of-prose (or one-liner) PR is one they
-# cannot glance. The fix the reminder asks for: lead with a `what + type`
-# (docs-only / bugfix / feature / refactor / test-only), highlight the important
-# parts (a heading, a table, or bullets), and add a before/after when there is a
-# visible or behavioral delta.
+# Nudges (a satisfiable block, exit 2) when a `gh pr create` / `gh pr edit` ships a
+# body with NO proof the agent ran what it built — no screenshot / recording /
+# uploaded asset. The reviewer should see it work, not read code to believe it. The
+# reminder clears the moment the body carries a real run result OR an explicit
+# no-run declaration (release / docs-only / refactor / test-only). A code block, a
+# table, and a bare ticket/plan LINK are context, not proof of a run, and do NOT
+# clear it.
 #
-# SATISFIABLE, not a wall: it clears the moment the body carries any structure or
-# a type marker. It fires ONLY on an inline --body/-b; a --body-file / -F / --fill
-# / --template / --web / editor body is never inspected and always allowed.
+# The body it inspects: an inline --body/-b AND the file behind --body-file/-F
+# (read and inspected — agents route nearly every multi-line body through it). A
+# --fill / --template / --web / editor body it cannot read, and an unreadable or
+# space-containing --body-file path it cannot resolve, FAIL OPEN (allow) — a
+# reminder must never block a legit PR.
 #
 # Multi-harness: reads the tool command from Claude's snake_case
 # .tool_input.command OR Grok/Codex camelCase .toolInput.command, via a
