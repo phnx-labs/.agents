@@ -39,6 +39,7 @@
 
 ### Removed
 
+- Removed the 8 daemon-housekeeping routines (usage-refresh, fleet-cache-warm, session-cache-warm, device-probe, auto-dispatch, watchdog, tmux-reconcile, launch-health) — each was a thin `agents __daemon-tick <name>` cron wrapper; their responsibility moves into daemon-owned services (RUSH-2465). Only `check-updates` remains a system-level routine. This PR is the `.system` half and is DRAFT / blocked on RUSH-2465 — merging before the daemon owns these would stop the fleet/session/usage caches, the watchdog, and auto-dispatch fleet-wide.
 - **The `escalate` skill and its `escalate-on-notification` hook.** Reaching the owner when genuinely blocked is now `agents feed post --blocked` (opens a needs-you record + delivers out-of-band) — the escalate ladder was superseded by it and still hard-wired Telegram, which the no-Telegram rule forbids. Deletes `skills/escalate/` (incl. `escalate.sh`, `owner.py`), `hooks/notification/12-escalate-on-notification.{sh,_test.sh}`, and the `escalate-on-notification` entry in `agents.yaml` (hook count 19 → 18); removes the rows from `skills/README.md` and `hooks/README.md`.
 
 ### Added
