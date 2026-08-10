@@ -4,6 +4,17 @@
 
 ### Changed
 
+- **Plan/artifact guidance: author directly, `artifacts new` is optional.** The
+  `plan-presentation` rule and the `artifacts` skill said to scaffold with
+  `artifacts new plan`, which nudged agents (especially weaker models) to run a
+  scaffold step they don't need. `artifacts render` already auto-fills the
+  provenance frontmatter (project · repo · branch · harness · agent · host ·
+  session · date) from git + the agent env for any blank field
+  (`validateMarkdown` → `detectArtifactContext`), so an agent authors the Markdown
+  directly with only `kind` + `title` and render fills the rest + validates
+  sections. Guidance now says so; `artifacts new` stays documented as an optional
+  scaffold. Source: `rules/subrules/plan-presentation/rule.md`, `skills/artifacts/SKILL.md`.
+
 - **Account guidance now matches bundle-backed accounts (RUSH-2470).** The
   `agents-cli` and `run` skills explain that one provider account is one
   prompt-free `agents secrets` bundle, document per-harness defaults and explicit
