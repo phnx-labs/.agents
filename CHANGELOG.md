@@ -4,6 +4,8 @@
 
 ### Changed
 
+- **Plan presentation now gates Codex and requires product-faithful behavior evidence (RUSH-2425).** The `plan-presentation` subrule registers its reminder at both native plan-exit and Stop: Codex plan collaboration mode, which never emits `ExitPlanMode`, can no longer bypass the render gate. Plans declare `surface: internal|cli|web|native|api|workflow`; user-visible plans must render a semantic current/proposed comparison whose states are real captures or explicitly labeled faithful mockups. An unrelated architecture SVG no longer clears a CLI/UI plan. Source: `rules/subrules/plan-presentation/`, `skills/plan-render/`, `hooks/README.md`.
+
 - **Hook tests moved into a `tests/` subdir of their own event dir (refactor, no
   behavior change).** `hooks/<event>/<name>_test.sh` is now
   `hooks/<event>/tests/<name>_test.sh`, so `ls hooks/<event>/` shows only the
@@ -606,8 +608,6 @@ These remain after this tag; tracked for 0.2.1+ / agents-cli companions:
   `hooks/session-start/09-git-pull-forward.sh`, `_test.sh`, `agents.yaml`.
 
 ### Changed
-
-- **Plan presentation now gates Codex and requires product-faithful behavior evidence (RUSH-2425).** The `plan-presentation` subrule registers its reminder at both native plan-exit and Stop: Codex plan collaboration mode, which never emits `ExitPlanMode`, can no longer bypass the render gate. Plans declare `surface: internal|cli|web|native|api|workflow`; user-visible plans must render a semantic current/proposed comparison whose states are real captures or explicitly labeled faithful mockups. An unrelated architecture SVG no longer clears a CLI/UI plan. Source: `rules/subrules/plan-presentation/`, `skills/plan-render/`, `hooks/README.md`.
 
 - **Hooks layout is `hooks/<event-name>/<hook-file>`.** Every system hook lives under
   a kebab-case event dir (`session-start/`, `pre-tool-use/`, `post-tool-use/`,
