@@ -176,8 +176,8 @@ full ID and source machine as input locators, not as this session's identity or 
 Spawn one isolated subagent in read-only/plan mode. Give it only the resolved full
 session ID, the resolved source machine, and the output contract below. The
 subagent, not this receiving agent, must run
-`agents sessions <full-id> --markdown --host <machine>` and
-`agents sessions <full-id> --artifacts --host <machine>`, read the raw transcript,
+`agents sessions <full-id> --markdown --device <machine>` and
+`agents sessions <full-id> --artifacts --device <machine>`, read the raw transcript,
 and return a concise structured summary. It must not edit files, run task work,
 resume or focus the session, contact external systems, or include raw transcript
 passages in its response.

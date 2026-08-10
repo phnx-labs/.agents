@@ -1,7 +1,7 @@
 ---
 name: continue
 description: "Resume previous agent work in this session — load a prior transcript (or a group of them), verify what actually landed, and finish the remaining work here. Reattach only when the session is genuinely still live and interactive. Also covers post-crash multi-session recovery (prefer finishing headlessly over resurrecting terminals). Triggers on: /continue, 'pick up where I left off', 'resume that session', 'continue the auth work', crash recovery that finishes work rather than reopening windows."
-argument-hint: "[session-id | topic | empty] [--device|--host <machine>] [recover]"
+argument-hint: "[session-id | topic | empty] [--device <machine>] [recover]"
 allowed-tools: Bash(agents sessions*), Bash(agents *), Bash(git *), Bash(gh *), Bash(rg *), Bash(fd *), Bash(ls *), Bash(cat *), Bash(jq *), Bash(sysctl *), Bash(uptime *), Read(*), Write(*), Edit(*), Task(*), AskUserQuestion(*)
 user-invocable: true
 ---
@@ -13,7 +13,7 @@ Pick up where a previous session left off and **finish the work in this window**
 Typically invoked as `/continue <session-id>` (UUID or short prefix) — the form the
 `agents sessions` picker emits when resuming across versions. Arguments may also be a
 name, a topic, several ids, empty, or a recover-style crash sweep. A generated
-cross-device handoff may append `--device <machine>` or `--host <machine>`.
+cross-device handoff may append `--device <machine>`.
 
 **Not** `sessions:restore` (that re-opens *other* sessions as Ghostty windows). This skill
 keeps you in the current harness and drives the unfinished work to done.
@@ -31,8 +31,8 @@ mode. Multiple bare ids or a clear multi-session ask → group mode.
 
 ## Parse an optional source machine
 
-Before interpreting the selector, extract at most one trailing `--device <machine>` or
-`--host <machine>` pair from `$ARGUMENTS`. Remove that pair from the selector and retain
+Before interpreting the selector, extract at most one trailing `--device <machine>`
+pair from `$ARGUMENTS`. Remove that pair from the selector and retain
 the machine as the transcript source. Reject a missing machine value, multiple source
 flags, or extra text after the pair rather than guessing.
 
@@ -61,19 +61,19 @@ they want the work continued here.)
 
 1. **Resolve the session id (if one was given).**
    - Id (UUID or short prefix) → use it directly.
-   - Topic / name / keyword → `agents sessions "<query>"` (add `--host <machine>` when a
+   - Topic / name / keyword → `agents sessions "<query>"` (add `--device <machine>` when a
      source machine was supplied). Multiple candidates → most recent, or ask once.
    - Nothing + live-session signal → attach picker in step 2.
    - Nothing + no signal → Step 1: load the most recent prior session and resume here
      (never open a focus picker on bare `/continue` with no live signal).
 
 2. **Try to attach** (only after the live-signal gate).
-   - With id: `agents sessions focus <id> --attach-only` (append `--host <machine>` when
+   - With id: `agents sessions focus <id> --attach-only` (append `--device <machine>` when
      the caller supplied a source machine).
    - No id but live signal: `agents sessions focus --attach-only` (picker; cancel → Step 1).
    - `--attach-only` means "join the live pane/tab or fail"; it never silently opens a new
      copy.
-   - Preserve an explicit `--device` / `--host` scope when the caller supplied one.
+   - Preserve an explicit `--device` scope when the caller supplied one.
 
 3. **Interpret the result.**
    - **Exit 0:** reattached. Tell the user which session, then **cleanly hand off** — do
@@ -91,8 +91,8 @@ Default path whenever you did not reattach.
 | Input | Command |
 |------|---------|
 | Session ID (UUID or displayed 8-character prefix) | `agents sessions preview <id>` |
-| Session ID plus source machine | `agents sessions preview <id> --host <machine>` |
-| Only a topic / name / keyword | `agents sessions "<query>"` → pick id → `agents sessions preview <id>` (+ `--host` when supplied) |
+| Session ID plus source machine | `agents sessions preview <id> --device <machine>` |
+| Only a topic / name / keyword | `agents sessions "<query>"` → pick id → `agents sessions preview <id>` (+ `--device` when supplied) |
 | Nothing | Most recent prior session from `agents sessions`; interactive picker only if you truly need one and have a TTY |
 
 Default render is a concise summary (header, original prompt, tool groupings, final
@@ -183,6 +183,6 @@ here.
 - Do not start coding before verifying prior work is still intact
 - Do not `focus`/attach a rate-limited, crashed, or limit-hit session — read and continue here
 - Do not spawn a new copy when the session is still live in tmux/Ghostty — reattach instead
-- Do not drop a supplied `--device` / `--host` locator then claim the remote transcript is missing
+- Do not drop a supplied `--device` locator then claim the remote transcript is missing
 - Do not hand-traverse `~/.agents/versions/.../projects/` — use `agents sessions`
 - Do not reopen a swarm of Ghostty windows under this skill — that is `sessions:restore`

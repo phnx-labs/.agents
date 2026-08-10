@@ -84,7 +84,7 @@ agents sessions --active           # this machine + every online device
 agents sessions --idle             # idle sessions across the same fleet
 agents sessions --orphan           # orphaned sessions across the same fleet
 agents sessions --active --local   # this machine only (no SSH fan-out)
-agents sessions --active --host zion --host mac-mini   # specific machines
+agents sessions --active --device zion --device mac-mini   # specific machines
 agents sessions --active --json    # merged, machine-tagged, for scripts
 ```
 

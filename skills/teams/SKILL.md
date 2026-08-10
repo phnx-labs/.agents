@@ -71,7 +71,7 @@ agents teams start my-feature --watch
 Place teammates on **different machines** across your fleet (from `agents devices`)
 instead of all on the box running `teams start`. One orchestrator still drives the
 DAG, polls status, and cleans up — teammates just execute over SSH. One vocabulary —
-`--device` / `--devices` (aliases `--host` / `--hosts`); all optional (omit it and
+`--device` / `--devices`; all optional (omit it and
 every teammate runs local, exactly as before).
 
 ```bash
