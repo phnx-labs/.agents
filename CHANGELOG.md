@@ -4,6 +4,12 @@
 
 ### Changed
 
+- **Account guidance now matches bundle-backed accounts (RUSH-2470).** The
+  `agents-cli` and `run` skills explain that one provider account is one
+  prompt-free `agents secrets` bundle, document per-harness defaults and explicit
+  worker sync, and distinguish those bundles from harness-native signed-in
+  identities whose auth material is never copied.
+
 - **`/plan` Step 6 no longer mandates ASCII mockups for UI changes.** The command
   told agents to draw each screen as an ASCII box (`+---+ | Logo | +---+`), which
   Muqsit's `ui-work-discipline` rule (his personal ruleset layer) forbids and which
