@@ -148,7 +148,7 @@ Every edit-mode brief carries the fixed parts — Mission, Full scope, **Owns**,
 
 **Feed/notify** — keep the owner informed, not spammed:
 
-> Post to the feed at IMPORTANT milestones only, never per step. Use a plain `agents feed post` at start and at PR-opened (record-only). On final delivery — PR merged, or the composed work runs end-to-end — add `--level important` so it reaches the owner (`agents notify`). If you hit a real blocker, use `agents feed post --blocked` instead (never combined with `--level`). Do NOT narrate every step.
+> Post to the feed at IMPORTANT milestones only, never per step. Use a plain `agents feed post --title "<short subject>"` at start and at PR-opened (record-only). On final delivery — PR merged, or the composed work runs end-to-end — add `--level important` so it reaches the owner (`agents notify`). If you hit a real blocker, use `agents feed post --blocked` instead (never combined with `--level`). Do NOT narrate every step.
 
 **Completion contract:**
 

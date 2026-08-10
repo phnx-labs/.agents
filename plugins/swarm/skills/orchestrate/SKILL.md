@@ -127,7 +127,7 @@ If A must wait on B's *output to even start*, the cut is wrong — re-slice, or 
 [how this track knows it is done — the real flow, not "tests pass"]
 
 ## Feed/notify (verbatim)
-Post to the feed at IMPORTANT milestones only, never per step. Use a plain agents feed post at start and at PR-opened (record-only). On final delivery — PR merged, or the composed work runs end-to-end — add --level important so it reaches the owner (agents notify). If you hit a real blocker, use agents feed post --blocked instead (never combined with --level). Do NOT narrate every step.
+Post to the feed at IMPORTANT milestones only, never per step. Use a plain agents feed post --title "<short subject>" at start and at PR-opened (record-only). On final delivery — PR merged, or the composed work runs end-to-end — add --level important so it reaches the owner (agents notify). If you hit a real blocker, use agents feed post --blocked instead (never combined with --level). Do NOT narrate every step.
 
 ## Completion contract (edit-mode, verbatim)
 Your task is complete only when your PR is merged, or you have handed it off by naming who/what now owns it. If you are waiting on CI or review, keep waiting with a background watch — do not stop.
