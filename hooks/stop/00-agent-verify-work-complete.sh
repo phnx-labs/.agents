@@ -57,9 +57,15 @@ except Exception:
     data = {}
 print("STATE_DELIVERY_EVIDENCE=" + shlex.quote("yes" if data.get("delivery_evidence") is True else "no"))
 print("STATE_CONTEXT_KIND=" + shlex.quote(str(data.get("context_kind") or "unknown")))
+print("STATE_GOAL_OFFSET=" + shlex.quote(str(data.get("transcript_offset") or 0)))
+print("STATE_OWNED_PRS=" + shlex.quote("\n".join(str(value) for value in data.get("owned_prs", []))))
 failed = bool(data.get("state_error")) or not isinstance(data.get("delivery_evidence"), bool)
 print("STATE_EVAL_FAILED=" + shlex.quote("yes" if failed else "no"))
-' 2>/dev/null || printf '%s\n' 'STATE_DELIVERY_EVIDENCE=no' 'STATE_CONTEXT_KIND=unknown' 'STATE_EVAL_FAILED=yes')"
+' 2>/dev/null || printf '%s\n' 'STATE_DELIVERY_EVIDENCE=no' 'STATE_CONTEXT_KIND=unknown' 'STATE_GOAL_OFFSET=0' 'STATE_OWNED_PRS=' 'STATE_EVAL_FAILED=yes')"
+
+record_gate() { # $1 gate, $2 reason code
+  printf '%s' "$INPUT_JSON" | python3 "$HERE/verify-work-state.py" record-gate "$1" blocked "$2" >/dev/null 2>&1 || true
+}
 
 # --- repeated-gate guidance --------------------------------------------------
 # Repeating the identical block text eventually stops adding information. On a
@@ -163,8 +169,10 @@ created = []
 worked = []
 views = {}
 try:
-    with open(sys.argv[1]) as f:
+    with open(sys.argv[1], 'rb') as f:
+        f.seek(max(0, int(sys.argv[3])))
         for raw in f:
+            raw = raw.decode('utf-8', 'replace')
             raw = raw.strip()
             if not raw:
                 continue
@@ -201,15 +209,16 @@ try:
     for r, n in views.items():
         if n >= 2 and r not in worked:
             worked.append(r)
-    # Union of created (most-recent 3) + worked, deduped, capped.
-    refs = []
+    # Session-owned PRs survive a follow-up prompt; transcript-derived evidence
+    # is restricted to the current goal boundary.
+    refs = [r for r in sys.argv[2].splitlines() if r]
     for r in created[-3:] + worked:
         if r not in refs:
             refs.append(r)
     print('\n'.join(refs[-5:]))
 except Exception:
     pass
-" "$TRANSCRIPT_PATH" 2>/dev/null || true)
+" "$TRANSCRIPT_PATH" "${STATE_OWNED_PRS:-}" "${STATE_GOAL_OFFSET:-0}" 2>/dev/null || true)
 
   if [ -n "$responsible_prs" ]; then
     open_prs=""
@@ -341,6 +350,7 @@ stopping you must do ONE of:
 
 Then finish your final message and stop again.
 PRGATE
+        record_gate open-pr owned-pr-open
         exit 2
       fi
     fi
@@ -446,6 +456,7 @@ Before you can stop, you MUST:
 "All PRs merged" / a table of green checkmarks is a report of merges, not proof
 of a working feature. Go run the composed flow, then report with quoted output.
 SWARMGATE
+    record_gate swarm composed-flow-unverified
     exit 2
   fi
 fi
@@ -545,6 +556,7 @@ Before you can stop, do ONE of:
 
 Then finish your final message and stop again.
 HBGATE
+    record_gate handback runnable-not-executed
     exit 2
   fi
 fi
@@ -687,6 +699,7 @@ the rest. Before stopping, do ONE of:
 
 Do not stop with unfinished items and no owner named.
 TASKGATE
+  record_gate keep-moving unfinished-checklist
   exit 2
 fi
 # --- end task-list keep-moving gate -------------------------------------------
@@ -886,12 +899,13 @@ fi
 # any probe error allows the stop.
 delivery_gate_msg=""
 if [ "$delivery_trigger" = "yes" ]; then
-delivery_gate_msg=$(python3 - "$INPUT_JSON" "$responsible_prs" <<'PY' | python3 "$HERE/verify-delivery-chain.py" 2>/dev/null
+delivery_gate_msg=$(python3 - "$INPUT_JSON" "$responsible_prs" "${STATE_GOAL_OFFSET:-0}" <<'PY' | python3 "$HERE/verify-delivery-chain.py" 2>/dev/null
 import json, sys
 data = json.loads(sys.argv[1])
 refs = [r.strip() for r in sys.argv[2].splitlines() if r.strip()]
 data["responsible_prs"] = refs
 data["delivery_activity"] = True
+data["goal_offset"] = int(sys.argv[3])
 print(json.dumps(data))
 PY
 )
@@ -899,6 +913,7 @@ fi
 
 if [ -n "$delivery_gate_msg" ]; then
   echo "$delivery_gate_msg" >&2
+  record_gate delivery incomplete-delivery-chain
   exit 2
 fi
 # --- end delivery-chain close-the-loop gate -----------------------------------
@@ -1041,4 +1056,5 @@ Only stop when every goal has tangible, verified results, any real follow-ups ar
 filed with context (not dangled or stubbed), loose ends are cleaned up, and — if
 applicable — the session has recapped and cleanly exited itself.
 GATE
+record_gate self-audit completion-unverified
 exit 2

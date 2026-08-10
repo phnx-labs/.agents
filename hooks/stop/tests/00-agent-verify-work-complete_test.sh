@@ -189,8 +189,12 @@ mk_transcript() {
 
 run_hook() {   # $1 transcript, $2 last message, $3 stop_hook_active
   python3 - "$1" "$2" "$3" <<'PY' | bash "$HOOK" >/dev/null 2>"$SANDBOX/stderr"
-import json, sys
+import hashlib, json, sys
+fixture_id = "fixture-" + hashlib.sha256(sys.argv[1].encode()).hexdigest()[:16]
 print(json.dumps({
+    "session_id": fixture_id,
+    "launch_id": fixture_id,
+    "agent": "claude",
     "transcript_path": sys.argv[1],
     "last_assistant_message": sys.argv[2],
     "stop_hook_active": sys.argv[3] == "true",

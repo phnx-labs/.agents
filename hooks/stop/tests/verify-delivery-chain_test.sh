@@ -15,11 +15,11 @@ SCRIPT="$HERE/../verify-delivery-chain.py"
 fail=0
 GC="-c user.email=t@example.com -c user.name=tester"
 
-# run_gate <repo_path> <transcript_path> -> gate stdout
+# run_gate <repo_path> <transcript_path> [goal_offset] -> gate stdout
 run_gate() {
   local injson
   injson="$(mktemp)"
-  printf '{"transcript_path":"%s","responsible_prs":[],"last_assistant_message":"done","repo_path":"%s"}\n' "$2" "$1" > "$injson"
+  printf '{"transcript_path":"%s","responsible_prs":[],"last_assistant_message":"done","repo_path":"%s","goal_offset":%s}\n' "$2" "$1" "${3:-0}" > "$injson"
   python3 "$SCRIPT" < "$injson" 2>/dev/null
   rm -f "$injson"
 }
@@ -99,7 +99,21 @@ else
   echo "FAIL: release-verification gate was silently disabled for a zero-diff release:"; echo "$out4"; fail=1
 fi
 
-rm -rf "$d1" "$d2" "$d3" "$d4" "$bare2" "$bare3" "$bare4" "$tr1" "$tr2" "$tr3" "$tr4" 2>/dev/null
+# --- Test 5: prior goal's feature/ticket evidence does not poison this goal ------
+tr5="$(mktemp)"
+printf '%s\n' '{"role":"user","content":"please add a new command for RUSH-9999"}' > "$tr5"
+printf '%s\n' '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","name":"Bash","input":{"command":"linear update RUSH-9999 --comment done"}}]}}' >> "$tr5"
+printf '%s\n' '{"role":"user","content":"please inspect whether the existing file contents are valid without changing them"}' >> "$tr5"
+offset5=$(wc -c < "$tr5" | tr -d ' ')
+printf '%s\n' '{"role":"assistant","content":"the configuration is valid"}' >> "$tr5"
+out5="$(run_gate "$d2" "$tr5" "$offset5")"
+if [ -z "$out5" ]; then
+  echo "PASS: prior goal feature and ticket evidence is excluded"
+else
+  echo "FAIL: prior goal evidence poisoned the current diagnostic goal:"; echo "$out5"; fail=1
+fi
+
+rm -rf "$d1" "$d2" "$d3" "$d4" "$bare2" "$bare3" "$bare4" "$tr1" "$tr2" "$tr3" "$tr4" "$tr5" 2>/dev/null
 
 if [ "$fail" -ne 0 ]; then
   echo "verify-delivery-chain_test: FAILED"; exit 1
