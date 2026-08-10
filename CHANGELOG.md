@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Changed
+
+- **Agent launch guidance uses durable credential accounts (RUSH-2402).** The `agents-cli` and `run` skills now teach `agents accounts add`, `agents run --account`, and device-local credential installation instead of attaching credentials to harness definitions.
+
 ### Performance
 
 - **Shared short-TTL git-fact cache for PreToolUse guards (RUSH-2293).**
