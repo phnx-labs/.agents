@@ -249,7 +249,7 @@ agents logs <id> -f          # re-attach to a running one and follow
 
 ## Automatic fleet placement
 
-`--device auto` (alias `--host auto`) lets the CLI pick the machine from your registered fleet. It weights 14-day launch affinity by live headroom among online, dispatchable devices and degrades to local if no device is eligible.
+`--device auto` (alias `--host auto`) lets the CLI pick the machine from your registered fleet. It compares live headroom and canonical account eligibility across remote devices and the local machine. Local runs only when it wins that same comparison; if every candidate is ineligible or placement cannot be evaluated, the command fails loud instead of silently changing the request to local.
 
 ```bash
 agents run claude "fix the flaky test" --device auto
