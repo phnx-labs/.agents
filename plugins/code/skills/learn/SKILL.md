@@ -95,7 +95,7 @@ that's fine — not every session has both kinds of lesson.
 **Routing calls that aren't a code:\* skill either:**
 
 - **A tool gotcha** (a CLI, an editor, git behavior) belongs in *that tool's* skill
-  (`computer`, `browser`, the `git` plugin), not stuffed into a `code:*` skill.
+  (`computer`, `browser`), not stuffed into a `code:*` skill.
 - **A hard engineering principle** ("done means end-to-end", "no unverified claims") is a
   rule, not a skill — `rules/subrules/foundations.md` and its siblings.
 - **A new code:\* skill** is justified only when a genuinely missing *verb* in the loop is
