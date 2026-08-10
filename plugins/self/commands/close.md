@@ -1,12 +1,12 @@
 ---
-description: Cleanly self-terminate THIS session — SIGTERM the harness, with an infra-parent guard. The low-level exit primitive; for a recap-then-exit use /done, for the ship gate use /finish.
+description: Cleanly self-terminate THIS session — SIGTERM the harness, with an infra-parent guard. The low-level exit primitive; for a recap first use /recap, to drive the task to delivered use /next.
 ---
 
 Self-close the current session. Optional context: $ARGUMENTS
 
 `/self:close` is the **exit primitive**: it ends *this* agent's own session by signalling
 the harness process, nothing more. It does NOT recap, verify work, or clean up — if you want
-those first, that is `/done` (recap → close) or `/finish` (drive to delivered, no exit).
+those first, that is `/recap` (recap) or `/next` (drive to delivered), then close.
 
 There is no `/exit` tool. The only self-exit is signalling the harness directly: the Bash
 tool's shell has the harness as its parent (`$PPID`), and `SIGTERM` is the clean path — the
@@ -18,7 +18,7 @@ out (unlike `SIGKILL`).
 Emit any final line to the user **now** — once the harness dies, nothing else you say
 reaches them. If `$ARGUMENTS` names a reason, state it in one short line first.
 
-Do not `/self:close` mid-task to dodge work: if the session is unfinished, that is `/finish`,
+Do not `/self:close` mid-task to dodge work: if the session is unfinished, that is `/next`,
 not this. Use `/self:close` only when the work is genuinely wrapped (or you were asked to end
 the session).
 

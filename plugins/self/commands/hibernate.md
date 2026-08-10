@@ -10,7 +10,7 @@ Use this when you are blocked on something slow and external — an approval tha
 
 > **Prerequisite.** macOS, and `agents run claude` must be able to launch non-interactively — it drives the wake and manages claude auth itself. Concrete probe: `agents secrets exec claude.ai -- printenv CLAUDE_CODE_OAUTH_TOKEN` prints a token (same underlying auth `agents run` uses). For a logged-in Rush user it does. If it prompts or is empty, the wake can't authenticate — fix that first.
 
-> **`/self:hibernate` vs `/done` vs `/finish`** — `/done` self-exits because the work is *delivered*. `/finish` refuses to stop and drives to delivery. `/self:hibernate` is for work that is *neither done nor blocked-forever*: it's waiting on wall-clock time. You come back and finish it yourself later — the user doesn't have to remember to ping you.
+> **`/self:hibernate` vs `/next` vs `/self:close`** — `/next` refuses to stop and drives the current task to delivered (then picks up the next one). `/self:close` self-exits when the work is *delivered*. `/self:hibernate` is for work that is *neither done nor blocked-forever*: it's waiting on wall-clock time. You come back and finish it yourself later — the user doesn't have to remember to ping you.
 
 ## Step 0 - Parse the argument
 

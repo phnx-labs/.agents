@@ -31,7 +31,6 @@ bodies) still get the full procedure.
 | --- | --- |
 | `/continue` | `sessions:continue` |
 | `/insights` | `sessions:insights` |
-| `/restore` | `sessions:restore` |
 
 The low-level browse/search skill remains the top-level [`sessions`](../../skills/sessions/SKILL.md)
 skill (`agents sessions` CLI). This plugin does not replace it — it adds lifecycle +

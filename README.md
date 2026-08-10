@@ -89,7 +89,7 @@ to type.
 | Durable **source-of-truth spec** of a capability | `/swarm spec …` | So others do not invent wrong behavior |
 | Debug a non-obvious bug | `/debug` → `swarm:debug` | Blind multi-provider root cause |
 | Resume prior work in **this** window | `/continue` | [`sessions`](plugins/sessions/README.md) |
-| Re-open crash sessions as **windows** | `/restore` | Not the same as `/continue` |
+| Re-open crash sessions as **windows** | `/sessions:restore` | Not the same as `/continue` |
 | Finish many interrupted sessions **headlessly** | `/continue recover` | Mode of sessions continue |
 | How we have been working (analytics) | `/insights` | insights + trends + perf + stats |
 | Publish a package / CLI / extension | `/code:release` | Discovers the repo's real release process |
@@ -111,7 +111,7 @@ to type.
 | "One ticket, not sure if code or web" | `/work:dispatch RUSH-1234` — classifies and routes. |
 | "Board is a mess of maybe-later items" | `/triage` first, then `/loop` or `/code:loop` on what remains. |
 | "Agents keep hitting rate limits / logouts" | Use `/loop` / `/work:loop` (forced load-spread) or `/swarm` with mixed harnesses and `--strategy balanced` — never one long single-account session. |
-| "Machine crashed; windows are gone" | `/restore` for Ghostty/terminal relaunch; `/continue recover` to finish work headlessly. |
+| "Machine crashed; windows are gone" | `/sessions:restore` for Ghostty/terminal relaunch; `/continue recover` to finish work headlessly. |
 | "Pick up where that session left off" | `/continue <id-or-topic>`. |
 | "Is this bug real / where is the root cause?" | `/debug`. |
 | "What should I type for a random ask?" | Prefer a **verb that matches the outcome** (table above). If nothing fits, plain chat is fine — then fold a repeated pattern into a skill later with `/code:learn` or the top-level `learn` skill. |
@@ -181,7 +181,7 @@ agents routines run drain-s0    # foreground test
 ### 5. After a crash
 
 ```text
-/restore             # put windows back
+/sessions:restore    # put windows back
 /continue recover    # finish interrupted work headlessly
 /continue <id>       # resume one thread here
 ```

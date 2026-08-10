@@ -40,6 +40,33 @@
 
 ### Changed
 
+- **Command-surface consolidation — retired the `git` plugin and three top-level commands.**
+  Fewer, sharper primitives (the `distill to the fundamental operation` philosophy). Net:
+  the `git` plugin is gone, `/clean` moved under `code`, `/done` is deleted, `/finish` is
+  folded into `/next`, and the top-level `/restore` alias is dropped. Concretely:
+  - **`git` plugin removed; its commands moved into `code` (plugin `0.11.0` → `0.12.0`).**
+    `/git:prune` → **`/code:prune`** and `/git:tag-release` → **`/code:tag-release`**
+    (`plugins/git/commands/*.md` → `plugins/code/commands/*.md`, bodies unchanged). The
+    `plugins/git/` directory, its `README.md`, its `plugin.json`, and its
+    `.claude-plugin/marketplace.json` entry are deleted.
+  - **`/clean` → `/code:clean`** (`commands/clean.md` → `plugins/code/commands/clean.md`,
+    body unchanged). No top-level `/clean` anymore.
+  - **`/finish` folded into `/next`; `/finish` deleted.** `commands/next.md` gained a
+    **Part A** — the old `/finish` drive-to-delivered ship gate (recover the contract →
+    take the next action → verify end-to-end → docs/commit/PR/release-gate/tracker →
+    no-stalling) — and keeps its next-task selection as **Part B**. `commands/finish.md`
+    is removed.
+  - **`/done` deleted.** Recap-then-exit is now `/recap` then `/self:close` — the exit
+    primitive is unchanged. `commands/done.md` removed.
+  - **Top-level `/restore` alias removed** (`commands/restore.md`). Re-opening crash
+    windows is `/sessions:restore`; the canonical skill in the `sessions` plugin is
+    untouched, and `/continue` / `/insights` aliases are kept.
+  - Cross-references updated: `commands/README.md`, `commands/AGENTS.md`, `plugins/README.md`,
+    `plugins/code/README.md`, `plugins/code/.claude-plugin/plugin.json`, root
+    `.claude-plugin/marketplace.json`, `plugins/self/{README.md,commands/close.md,commands/hibernate.md,.claude-plugin/plugin.json}`,
+    `plugins/sessions/{README.md,.claude-plugin/plugin.json,skills/restore/SKILL.md}`,
+    `skills/sessions/SKILL.md`, `skills/learn/SKILL.md`, `commands/blame.md`, root `README.md`,
+    and the `permissions/groups/12-self.yaml` comment (`permissions/default.yaml` rebuilt).
 - **`verify-work-complete` evaluates the current goal instead of the entire
   session (RUSH-2113).** Each UserPromptSubmit boundary now records the transcript
   byte offset, and Stop classification plus delivery-chain checks read only the
