@@ -109,8 +109,9 @@ Treat the keystrokes below as the map, not gospel.
 ## Other harnesses
 
 - **API-key harnesses** (Codex `OPENAI_API_KEY`, Grok `XAI_API_KEY`): no browser dance —
-  provision the key via `agents accounts add <name> --provider <harness> --auth api-key`.
-  (Confirm the current `--auth` values via `agents accounts add --help`.)
+  provision the key with the provider name the account registry owns:
+  `agents accounts add codex-work --provider openai --auth api-key` or
+  `agents accounts add grok-work --provider xai --auth api-key`.
 - **Device-code harnesses** (Droid, Kimi): drive their device-code flow the same way
   (`agents pty` to start it, read the URL+code, authorize in the logged-in browser).
   These are login-only per-machine — mint/log in on the target, do not copy the file.
