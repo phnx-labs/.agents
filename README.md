@@ -207,6 +207,7 @@ Each directory has a `README.md` for humans (a catalog of everything in it) and 
 | [`permissions/`](permissions/README.md) | Canonical YAML permission rules, translated per agent |
 | [`clis/`](clis/README.md) | Manifests for host CLIs (`mq`, `jq`, `linear`) that agents-cli installs |
 | [`routines/`](routines/README.md) | Scheduled agent runs (cron / one-shot) |
+| [`monitors/`](monitors/README.md) | Event-triggered watchers — poll a source, fire an action on change |
 | [`subagents/`](subagents/README.md) | Named sub-agent definitions |
 | [`webhooks/`](webhooks/README.md) | Inbound webhook handlers |
 
