@@ -18,8 +18,8 @@ in this doc over the live tool.** Your job is to hit the *goal* below using *wha
 the current CLI offers* — so at run time:
 
 - Read the map first: `agents --help`, then `agents <area> --help` for each area you
-  touch (`setup`, `add`, `import`, `repos`, `repo`, `devices`, `secrets`, `profiles`,
-  `doctor`, `inspect`, `view`).
+  touch (`setup`, `add`, `import`, `repos`, `repo`, `devices`, `accounts`, `secrets`,
+  `profiles`, `doctor`, `inspect`, `view`).
 - **`agents doctor` on the target is your ground truth** for what's present vs missing,
   before and after. **`agents setup`** is the interactive first-time bootstrap — prefer
   it when the box is truly bare; fall back to the individual primitives when you need
@@ -36,14 +36,17 @@ only through the sanctioned paths, and only with the user's explicit OK:
 
 - **Agent auth** → **mint it yourself first** with [`/fleet:mint-auth`](mint-auth.md): drive
   the harness's device/OAuth flow (a pty + a logged-in browser via `agents computer` /
-  `agents browser`) to produce a long-lived `setup-token` / API key, stored file-backed.
-  This is the preferred path — "the account isn't logged in" is a false blocker, not a
-  reason to hand off. Other sanctioned paths: `agents secrets` bundles (keychain/file),
-  `agents profiles login <provider>` (API-key providers), the agent's own native login
-  flow, or `agents setup`. Two auth models exist on this fleet — a long-lived
-  setup-token/API-key bundle (preferred; safe to hold + sync) *or* interactive OAuth
-  (per-machine, never copied). (Confirm the current verb via `--help` — there is no bare
-  `agents login`.)
+  `agents browser`) to produce a long-lived `setup-token` / API key. Store it as a
+  named provider account with `agents accounts add <name> --provider <provider>
+  --auth <type>` — account bundles use `policy: never`, so reads are headless and
+  Touch-ID-free on any OS. This is the preferred path — "the account isn't logged in"
+  is a false blocker, not a reason to hand off. Other sanctioned paths: `agents
+  accounts add` (provider accounts), `agents profiles login <provider>` (API-key
+  providers), the agent's own native login flow, or `agents setup`. Two auth models
+  exist on this fleet — a long-lived setup-token/API-key bundle stored via `agents
+  accounts add` (preferred; safe to hold and sync with `agents accounts sync`) *or*
+  interactive OAuth (per-machine, never copied). (Confirm the current verb via
+  `--help` — there is no bare `agents login`.)
 - **Fleet SSH key** (the one shared Ed25519 that unlocks git + node-to-node mesh) →
   installed from its `agents secrets` bundle, **with explicit authorization** each time.
   It is a private key; treat distributing it as the sensitive act it is.
@@ -57,10 +60,11 @@ even then, never improvise a credential-file copy.
 ### 1. Learn the target state (introspect a healthy reference)
 
 Run on the machine you're on (a known-good node): `agents view`, `agents inspect user`
-and `agents inspect system`, `agents repos list`, `agents devices list`, `agents secrets
-list`. Note: which agent CLIs are installed, which repos are registered (system + user +
-extras), which auth model is in use, and that the shared fleet SSH key + the
-non-interactive PATH shim are present. That's the parity target.
+and `agents inspect system`, `agents repos list`, `agents devices list`, `agents
+accounts list`, `agents secrets list`. Note: which agent CLIs are installed, which
+repos are registered (system + user + extras), which accounts and auth model are in
+use, and that the shared fleet SSH key + the non-interactive PATH shim are present.
+That's the parity target.
 
 ### 2. Assess the target — idempotent
 
@@ -89,9 +93,12 @@ so and stop.
    the working nodes carry. (No sudo; only affects new shells.)
 7. **Register the device + sync the registry** — `agents devices add`/`sync` so the
    target appears in the fleet, and re-sync on the orchestrator so it sees the target.
-8. **Agent auth** — provision via the sanctioned path from step 1's hard line, matching
-   the reference node's auth model. Verify the agent can actually run (not just that a
-   file exists).
+8. **Agent auth** — provision a named provider account via `/fleet:mint-auth` (preferred)
+   or another sanctioned path from step 1's hard line, matching the reference node's
+   auth model. Store the credential with `agents accounts add <name> --provider
+   <provider> --auth <type>`, then sync it to the target with `agents accounts sync
+   <name> --device <target>`. Verify the agent can actually run (not just that a
+   file exists): `agents run claude "Reply: OK" --account <name> --mode plan --timeout 2m`.
 
 ### 4. Verify — end to end
 
@@ -101,18 +108,22 @@ so and stop.
 - **Node-to-node reachability both ways:** the target can `agents ssh` a peer *and* a
   peer can `agents ssh` the target (proves the fleet SSH key took — the exact thing that
   was broken before the mesh fix).
+- `agents accounts list` on the target shows the expected accounts.
 - Optionally run `/fleet:sync` scoped to the target to confirm its repos pull.
 
 ### 5. Report
 
-What was already present, what you installed/registered, what you provisioned, what
-(if anything) you handed to the user (a credential you couldn't provision the sanctioned
-way), and the final `agents doctor` verdict.
+What was already present, what you installed/registered, what you provisioned
+(including account names and verified `--account` run output), what (if anything) you
+handed to the user (a credential you couldn't provision the sanctioned way), and the
+final `agents doctor` verdict.
 
 ## Safety rules (non-negotiable)
 
 - **Never copy a credential file host-to-host.** Sanctioned provisioning only; hand off
-  what you can't do that way.
+  what you can't do that way. Provider account bundles are safe to sync via `agents
+  accounts sync`; native auth material (keychain entries, OAuth sessions) is never
+  copied.
 - **Additive + idempotent.** Never overwrite or tear down existing setup on a device
   that's partially/already onboarded — install only what `agents doctor` shows missing.
 - **Discover before you run.** If a command in this doc doesn't match `--help` on the

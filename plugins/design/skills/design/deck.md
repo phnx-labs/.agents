@@ -32,7 +32,7 @@ and mandatory render/critique verification.
    a paragraph dump.
 5. **Charts and data.** Delegate any in-deck chart to `dataviz`; paste the resulting
    inline SVG into the slide. Do not invent a chart in free-form HTML.
-6. **Verify** (design-core §7): render, screenshot the opening slide and at least two
+6. **Verify** (design-core §9): render, screenshot the opening slide and at least two
    body slides, run the critique checklist, fix, re-render.
 
 ## Output & delivery

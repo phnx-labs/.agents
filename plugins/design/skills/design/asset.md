@@ -10,7 +10,7 @@ degrade gracefully when no image backend is configured.
 
 Read `design-core.md`. Everything here inherits its hierarchy, spacing, type,
 color, accessibility (contrast + colorblind-safe), brand-probe, precise copy, and
-mandatory render/critique verification. Pay particular attention to §6 (graceful
+mandatory render/critique verification. Pay particular attention to §8 (graceful
 raster): that rule is in practice here, not just in principle.
 
 ## When to use (vs neighbors)
@@ -42,7 +42,7 @@ raster): that rule is in practice here, not just in principle.
    - If a configured image backend is available (`image` or `higgsfield` skill),
      delegate to it with a complete prompt.
    - If no backend is configured, do not hard-fail. Emit all three of the following
-     and exit successfully (design-core §6):
+     and exit successfully (design-core §8):
        (a) An editable SVG/HTML placeholder at the correct dimensions, with real
            typographic and layout structure so the result is immediately useful.
        (b) A complete generation spec: subject, style, palette, aspect ratio,
@@ -50,7 +50,7 @@ raster): that rule is in practice here, not just in principle.
        (c) One line on how to enable a backend (e.g., "configure the `image` skill
            to generate this with a model").
 
-4. **Verify** (design-core §7): render the output, screenshot it, run the critique
+4. **Verify** (design-core §9): render the output, screenshot it, run the critique
    checklist, fix what fails, re-render. Done only when you have looked at it.
 
 ## Output & delivery

@@ -6,7 +6,7 @@ verification every other mode runs on its own output.
 
 ## Load design-core first
 
-Read `design-core.md`. Its 10-item checklist is the rubric; this mode runs it against the
+Read `design-core.md`. Its 11-item checklist is the rubric; this mode runs it against the
 input rather than against your own render.
 
 ## When to use (vs neighbors)
@@ -18,8 +18,9 @@ input rather than against your own render.
 
 1. **Capture the artifact.** A screenshot (read it), a URL (open + screenshot), or an HTML
    file (render + screenshot). Look at it; never critique from a description.
-2. **Score the 10-item checklist** (design-core): focal point, hierarchy, alignment/rhythm,
-   type, color, contrast, copy, density, consistency, intent. Each is a pass or a specific fix.
+2. **Score the 11-item checklist** (design-core): focal point, hierarchy, alignment/rhythm,
+   type, color, contrast, copy, density, consistency, anti-tells (§6), intent. Each is a
+   pass or a specific fix.
 3. **Prioritize.** Order fixes by impact: correctness and accessibility first (contrast,
    color-alone, intent), then hierarchy and rhythm, then polish.
 4. **Be concrete.** "The h1 and body are the same weight, so there is no focal point; set
