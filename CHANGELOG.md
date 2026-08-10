@@ -2,6 +2,18 @@
 
 ## [Unreleased]
 
+### Changed
+
+- **`/plan` Step 6 no longer mandates ASCII mockups for UI changes.** The command
+  told agents to draw each screen as an ASCII box (`+---+ | Logo | +---+`), which
+  Muqsit's `ui-work-discipline` rule (his personal ruleset layer) forbids and which
+  agents were told is "terrible" —
+  a user cannot judge look-and-feel from pipes and dashes. Step 6 now requires a
+  **real mockup** built with the `artifacts` CLI that reads like the actual product
+  (probe the repo's design tokens), the user flow as a rendered inline-SVG figure
+  (not ASCII), and 2-3 side-by-side variations with one-line tradeoffs for a genuine
+  design choice. Source: `commands/plan.md`.
+
 ### Added
 
 - **A rendered artifact's `session` provenance is now a deep link back into the session.** Documented in the artifacts authoring reference: the session value

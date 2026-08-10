@@ -105,34 +105,24 @@ Only create new primitives when:
 
 After reading code, create concrete artifacts. **No discussion without artifacts.**
 
-### For UI Changes — User Flow + Mockups REQUIRED
+### For UI Changes — User Flow + a REAL Mockup REQUIRED
 
-First, show the user flow:
-```
-[Landing] --click "Sign Up"--> [Registration Form] --submit--> [Email Verification]
-                                      |                              |
-                                      v                              v
-                               [Validation Error]            [Welcome Screen]
-```
+First, show the user flow as a **rendered figure** — a hand-authored inline-SVG
+diagram (the `plan-render` / `artifacts` house style), not an ASCII box. Name each
+screen and the transitions between them.
 
-Then, ASCII mockup for each screen:
-```
-+----------------------------------+
-| Logo                    [Login]  |
-+----------------------------------+
-|                                  |
-|     Create your account          |
-|                                  |
-|  Email:    [                  ]  |
-|  Password: [                  ]  |
-|                                  |
-|        [Create Account]          |
-|                                  |
-|  Already have an account? Login  |
-+----------------------------------+
-```
+Then a **real mockup** of each screen that reads like the actual product — not an
+ASCII wireframe, not a generic box diagram. Probe the repo for its design tokens
+(Tailwind config, CSS variables, brand colors, an existing component) and build the
+mockup with the `artifacts` CLI so it could pass for a screenshot of the real thing.
+When there is a genuine design choice, show **2-3 variations side by side**, each
+labeled with its one-line tradeoff, and treat that review as the design gate — the
+pick is the user's.
 
-Annotate:
+ASCII wireframes are not acceptable for a UI surface: the user judges look-and-feel
+and cannot do that from a box of pipes and dashes.
+
+Annotate each mockup:
 - What each element does
 - Validation rules
 - Error states
