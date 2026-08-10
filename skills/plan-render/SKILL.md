@@ -68,16 +68,30 @@ Do **not** present until `artifacts render` exits 0. A missing figure fails with
    ---
    ```
 
-   Use the section structure required by the `plan` template:
+   Follow the planning contract in the `plan-presentation` rule for the section
+   order and the pre-present gates. On top of the `plan` template's sections, a plan
+   leads with **Focus for review** (what you want weighed in on) and **Intent** (the
+   user's ask restated), and carries a **Current architecture** section (before/after
+   figure for architectural changes):
 
+   - `## Focus for review` — 2-5 bullets, at the very top
+   - `## Intent` — the user's ask in their own words
+   - `## Current architecture` — how the module works today (+ before/after figure)
    - `## Purpose` — what's broken or needed
-   - `## Proposed Changes` — the change, with concrete files and functions
+   - `## Proposed Changes` — the change, with a **per-file diff** of each change
+     (use the `code-diff` component: collapsible, +/- coloured, line numbers — see below)
    - `## Public Interface` — commands, flags, or APIs introduced
+   - `## Plan` — the to-do checklist, mirrored from `TaskCreate` (rendered, with status)
    - `## Validation` — how to verify the change
    - `## Risks` — edge cases and mitigations
    - `## Tracking` — ticket links / next step
 
-   A tagged files table and any other supporting tables can appear inside the relevant section.
+   **Show the implementation as real code, not a file table.** For each file that
+   changes, render the actual change as a diff — the relevant hunk only, added lines
+   green, removed lines red — with the `code-diff` component. Until artifacts-cli ships
+   it, fall back to a fenced ```` ```diff ```` block (do not put fenced code inside
+   `<details>` — artifacts-cli drops it). Render the to-do list with the `checklist`
+   component (fall back to a `- [ ]` task list).
 
    Use normal Markdown for prose, lists, tables, and code. Use inline HTML only for layouts Markdown cannot express (grids, panels, callouts) and **inline SVG for figures**.
 

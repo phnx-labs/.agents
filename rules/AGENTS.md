@@ -601,6 +601,55 @@ in terminal scrollback. Author a Markdown source under the repo's dated artifact
 layout, render it to a self-contained HTML doc with `artifacts-cli`, and open it in
 the user's default browser on the machine they sit at.**
 
+## What every plan must contain — and do before presenting
+
+Built-in plan mode (`/plan`, Shift+Tab, `--mode plan`) only restricts tools and asks
+for an `ExitPlanMode` — it injects **no** methodology, on any harness. This section is
+that methodology. Do all of it before you present a plan, whether you entered plan mode
+by a keystroke, a flag, or just started planning.
+
+**Research first — before you draft:**
+
+1. **Search what previous agents did on this feature.** Run
+   `agents sessions --repo <repo> "<feature keywords>"` (and read the latest plan/PR on
+   that surface) before drafting. **Extend** prior work; do not silently revert it —
+   reverting an earlier agent's change is the most common regression on this fleet.
+2. **Find the module's specification.** Locate where this module's spec lives (a
+   `SPEC*.md`, a doc, an OpenSpec change). If none exists, propose writing a short one.
+   Keep specs **succinct and current** — do not pile on rules nobody asked for.
+
+**The plan must contain, in this order:**
+
+3. **Focus for review (at the very top).** 2-5 bullets naming exactly what you want the
+   user to weigh in on. Lead with this — it is the first thing they read.
+4. **Intent.** Restate the user's ask in their own words, so the plan visibly tracks it.
+5. **Current architecture.** How the affected module works **today** — the files
+   involved and how they talk to each other. For an architectural change, show the
+   communication pattern **before and after** as an inline-SVG figure.
+6. **Implementation shown as real code.** For every file that changes, show the actual
+   change as a **diff** — the relevant hunk only (not the whole file), added lines
+   green, removed lines red — via the artifacts-cli `code-diff` component (fall back to
+   a fenced ```` ```diff ```` block until it ships). Name every module that changes.
+   Pick the load-bearing hunks; keep it readable, not exhaustive.
+7. **A rendered to-do list.** Create the checklist with `TaskCreate` **and** render it
+   in the plan (a checklist section) so the user sees the steps and their status — not
+   only the harness's own to-do UI.
+
+**Two gates before you present:**
+
+- **Adversarial review.** For any change to an API/CLI surface or the system
+  architecture, get a **non-author** review before presenting — a subagent, or
+  `agents run claude --mode plan "Adversarially review this plan's API surface and
+  adherence to existing architectural conventions. Return file:line evidence."
+  --attach <plan.md>` on harnesses with no subagent tool. It checks the surface is
+  clean and intuitive and follows existing conventions (access centralized in one
+  place, no duplicated surface, cross-cutting change made at the source). Fold its
+  findings in before you present.
+- **Render + open** the HTML (below).
+
+Scale to the change: a trivial, single-file edit with no interface or architectural
+impact skips the architecture figure and the adversarial review.
+
 ## Canonical artifact path (plans, HTML, and related items)
 
 All agent-produced durable artifacts — **plans, rendered HTML, visuals, reports,

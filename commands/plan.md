@@ -7,9 +7,10 @@ You are planning: $ARGUMENTS
 ## CRITICAL: Ground the Plan in Reality
 
 Plans fail when they're based on assumptions instead of evidence. Before proposing anything:
+0. **Search what previous agents did on this feature** — `agents sessions --repo <repo> "<feature keywords>"`, then read the latest plan/PR on that surface. Extend it; do not silently revert it (the most common regression).
 1. Research current best practices and APIs
 2. Read the actual code that will change
-3. Create concrete artifacts (mockups, diagrams)
+3. Create concrete artifacts (mockups, diagrams, and a per-file diff of the change)
 4. For medium+ work, get independent plans from a vendor-varied panel and adjudicate one
    merged plan against the code (Step 7)
 
@@ -254,6 +255,11 @@ Collect every planner's design plus your own and synthesize **ONE** plan:
   missed.
 - Where designs differ on a genuine *trade-off* (not a factual error), surface it as a design
   question via `AskUserQuestion` rather than picking silently.
+- **For any API/CLI-surface or architectural change, the panel must judge two things
+  explicitly:** (1) is the proposed surface clean, minimal, and intuitive; (2) does it follow
+  the repo's **existing architectural conventions** — access centralized in one place, no
+  duplicated surface, cross-cutting change made at the source, not scattered into consumers.
+  A surface that fragments or over-extends is rejected for that point.
 
 You are the adjudicator, not an averager — the merged plan is the strongest grounded design,
 not the union of all of them.
