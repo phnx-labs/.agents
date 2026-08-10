@@ -152,7 +152,7 @@ if devices:
         )
 
     # Operator config for this machine (newer CLIs only): caps and notes set via
-    # `agents devices configure` / `agents devices note`.
+    # `agents devices config` (the retired `configure`/`note` verbs forward there).
     self_cfg = next((d.get("config") for d in devices if d.get("name") == self_host), None) or {}
     cfg_bits = []
     cap = self_cfg.get("maxAgents")
