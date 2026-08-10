@@ -1,0 +1,50 @@
+name: pr-merge-on-green
+# Opt-in built-in: no `enabled:` field, so the system layer keeps it DISABLED
+# until `agents monitors enable pr-merge-on-green`. A user copy under
+# ~/.agents/monitors/ shadows this file and can turn it on per box.
+description: >-
+  Rebase-merge this machine's own pull requests once CI is green and a
+  non-author has approved them. Polls every 5 minutes for your open PRs that
+  are both CI-green and APPROVED, then dispatches an agent to merge each.
+
+source:
+  type: poll
+  interval: 5m
+  # One `gh pr list` per poll (no per-PR loop, so it stays rate-limit friendly):
+  # list your open PRs with their review decision + check rollup, keep only the
+  # APPROVED ones whose every check is SUCCESS/NEUTRAL/SKIPPED, and print their
+  # numbers on one line. reviewDecision is APPROVED only when a NON-author has
+  # approved (GitHub never lets you approve your own PR). Empty output (no
+  # mergeable PR) never matches the condition below, so nothing fires.
+  command: >-
+    gh pr list --author @me --state open --limit 50
+    --json number,reviewDecision,statusCheckRollup
+    --jq '.[] | select(.reviewDecision == "APPROVED")
+    | select(all(.statusCheckRollup[]?;
+    (.conclusion // .state // .status // "") | ascii_upcase
+    | . == "SUCCESS" or . == "NEUTRAL" or . == "SKIPPED")) | .number'
+    | tr '\n' ' '
+
+condition:
+  # Fire only when the observation carries a PR number (match), and only when
+  # that set of mergeable PRs CHANGES from the last fire — so a still-open PR is
+  # reported once, not on every 5-minute tick. `[0-9].*` captures the whole
+  # single-line list ("42 17"); an empty observation never matches, so a poll
+  # with no mergeable PR is silent.
+  mode: match
+  match: '[0-9].*'
+
+action:
+  type: run
+  agent: claude
+  mode: auto
+  prompt: >-
+    These PRs are CI-green and non-author-approved: {event}. Rebase-merge each
+    with `gh pr merge <n> --rebase --delete-branch`. Never use `--admin`, never
+    self-approve. If a merge conflicts or CI flipped red, stop and report.
+
+# Firehose guard: if a PR keeps churning (CI flaps, a conflict the agent can't
+# resolve), auto-pause rather than dispatch a merge agent on a loop.
+rateLimit:
+  max: 6
+  per: 1h
