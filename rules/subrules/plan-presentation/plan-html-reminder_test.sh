@@ -66,6 +66,23 @@ HTML
   write_source "$1" cli
 }
 
+# The shape artifacts-cli ACTUALLY renders. It carries no `artifact-behavior`
+# class -- that class is rejected outright by artifacts-cli 0.3.0 and no HTML is
+# written -- but it carries the same current/proposed + capture/mockup semantics.
+# Requiring the class made this gate unsatisfiable for every cli/web/native plan
+# (RUSH-2491), so the check is on the attributes.
+write_renderable_behavior_html() {
+  cat > "$1" <<'HTML'
+<!doctype html><html><body>
+<div class="artifact-grid artifact-grid-2">
+  <div class="artifact-panel" data-state="current" data-evidence="capture"><pre>current output</pre></div>
+  <div class="artifact-panel" data-state="proposed" data-evidence="mockup"><pre>proposed output</pre></div>
+</div>
+</body></html>
+HTML
+  write_source "$1" cli
+}
+
 # 2. ExitPlanMode after a fresh plan HTML WITH a drawn SVG -> ALLOW (exit 0).
 write_figure_html "$SCAN/plan-my-feature.html"
 run 0 "ExitPlanMode, canonical plan-<slug>.html with SVG figure -> allow" "$EPM"
@@ -234,6 +251,39 @@ rm -f "$SCAN"/*.html 2>/dev/null || true
 mkfile_cl
 run 2 "multi-step plan, checklist ok but no HTML -> block" \
   '{"tool_name":"ExitPlanMode","tool_input":{"plan":"'"$MULTI"'"},"transcript_path":"'"$TX"'"}'
+
+# ── RUSH-2491: the gate must accept what artifacts-cli can actually render ────
+rm -f "$SCAN"/plan-*.html "$SCAN"/plan-*.md
+write_renderable_behavior_html "$SCAN/plan-renderable.html"
+run 0 "cli plan using artifact-grid/panel (the shape that renders) -> allow" "$EPM"
+
+# The old artifact-behavior markup must keep working, so a first-class component
+# added to artifacts-cli later satisfies this unchanged.
+rm -f "$SCAN"/plan-*.html "$SCAN"/plan-*.md
+write_behavior_html "$SCAN/plan-legacy-class.html"
+run 0 "cli plan using artifact-behavior class -> still allow" "$EPM"
+
+# Semantics still enforced: the container alone proves nothing.
+rm -f "$SCAN"/plan-*.html "$SCAN"/plan-*.md
+cat > "$SCAN/plan-no-states.html" <<'HTML'
+<!doctype html><html><body>
+<div class="artifact-grid artifact-grid-2">
+  <div class="artifact-panel"><pre>just a panel</pre></div>
+</div>
+</body></html>
+HTML
+write_source "$SCAN/plan-no-states.html" cli
+run 2 "cli plan with panels but no current/proposed states -> block" "$EPM"
+
+# A current state without its proposed counterpart is still incomplete.
+rm -f "$SCAN"/plan-*.html "$SCAN"/plan-*.md
+cat > "$SCAN/plan-half.html" <<'HTML'
+<!doctype html><html><body>
+<div class="artifact-panel" data-state="current" data-evidence="capture"><pre>only current</pre></div>
+</body></html>
+HTML
+write_source "$SCAN/plan-half.html" cli
+run 2 "cli plan with current but no proposed -> block" "$EPM"
 
 echo "----"
 echo "pass=$pass fail=$fail"

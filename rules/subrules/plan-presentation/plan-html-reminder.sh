@@ -106,10 +106,21 @@ if [ -n "${PLAN_HTML_SCAN_ROOT:-}" ]; then
 else
   repo_root=$(git rev-parse --show-toplevel 2>/dev/null || true)
   if [ -n "$repo_root" ]; then
-    scan_roots="$repo_root/.agents/artifacts"
+    # The canonical path FIRST, then /tmp. Inside a repo this used to accept the
+    # canonical path only, which deadlocked against two other rules that are
+    # each correct on their own: `.agents/artifacts/` is committed, and
+    # main-branch-guard denies writing a committed path on the default branch —
+    # while plan mode forbids creating the worktree that would make the write
+    # legal. A plan FOR THE REPO YOU ARE PLANNING IN could therefore never be
+    # rendered anywhere this gate would look (RUSH-2491, observed on agents-cli).
+    #
+    # Scanning /tmp too costs nothing — the mtime window, the plan-*.html name,
+    # and the paired-Markdown `surface` check all still apply, so a stray file
+    # cannot clear the gate. The rule text still asks for the canonical dated
+    # path, and a plan rendered to scratch is expected to move there with the
+    # implementation worktree.
+    scan_roots="$repo_root/.agents/artifacts /tmp"
   else
-    # Legacy fallback: /tmp only when we are not inside a git repo. Inside a repo
-    # the canonical artifact path is the only accepted location.
     scan_roots="/tmp"
   fi
 fi
@@ -140,8 +151,27 @@ for scan_root in $scan_roots; do
         fi
         ;;
       cli|web|native|api|workflow)
-        if grep -Eqi 'class=["'\''][^"'\'']*\bartifact-behavior\b' "$candidate" 2>/dev/null \
-          && grep -Eqi 'data-state=["'\'']current["'\''][^>]*data-evidence=["'\''](capture|mockup)["'\'']|data-evidence=["'\''](capture|mockup)["'\''][^>]*data-state=["'\'']current["'\'']' "$candidate" 2>/dev/null \
+        # The requirement is a current/proposed pair, each labelled capture or
+        # mockup. That signal lives in the data-* attributes, NOT in a wrapper
+        # class name — and requiring `artifact-behavior` made this gate
+        # UNSATISFIABLE, because artifacts-cli (0.3.0, the only published
+        # version) rejects that class outright:
+        #
+        #   error:120 Unsupported embedded HTML class "artifact-behavior";
+        #             use a documented artifact-* class.
+        #
+        # and writes no HTML at all on a validation error. So every cli / web /
+        # native / api / workflow plan hit a wall: render refuses the markup the
+        # gate demands, and the gate refuses the markup that renders. Observed
+        # blocking a real plan (RUSH-2491); the agent's escape was to mislabel
+        # the plan `surface: internal`, defeating the field entirely.
+        #
+        # Checking the attributes accepts any container artifacts-cli actually
+        # supports (`artifact-grid` + `artifact-panel` is the shape that renders
+        # today) while enforcing the same semantics. If a first-class
+        # `artifact-behavior` component is added to artifacts-cli later, it
+        # satisfies this unchanged.
+        if grep -Eqi 'data-state=["'\'']current["'\''][^>]*data-evidence=["'\''](capture|mockup)["'\'']|data-evidence=["'\''](capture|mockup)["'\''][^>]*data-state=["'\'']current["'\'']' "$candidate" 2>/dev/null \
           && grep -Eqi 'data-state=["'\'']proposed["'\''][^>]*data-evidence=["'\''](capture|mockup)["'\'']|data-evidence=["'\''](capture|mockup)["'\''][^>]*data-state=["'\'']proposed["'\'']' "$candidate" 2>/dev/null; then
           html_ok=1
         fi
