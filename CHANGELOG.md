@@ -22,6 +22,8 @@
 
 ### Fixed
 
+- **`pr-description-reminder` now inspects the body an agent actually ships — the `--body-file` hole is closed.** The PreToolUse backstop that requires a run-evidence screenshot only ever looked at an inline `--body`/`-b`; a `--body-file`/`-F` body (the path agents route nearly every multi-line PR through) was waved through unread, so evidence-free feature PRs landed unreviewable (real case: agents-cli PR #2460, a `feat(cli)` with no screenshot — replaying its exact body through the old hook via `--body-file` returns exit 0, the new hook returns exit 2). The hook now reads the referenced file and inspects its content, and a bare Linear ticket / plan-`.html` link no longer clears the requirement on its own — clearing needs a real run result (image/recording/asset) or an explicit no-run declaration (`release`/`docs-only`/`refactor`/`test-only`). It still fails open on a `--fill`/`--template`/editor body it cannot read and on an unreadable `--body-file`. Source: `rules/subrules/truly-agentic-git-workflow/pr-description-reminder.sh` (+ `_test.sh`, 26 cases), rule text in `rule.md` (regenerated into `rules/AGENTS.md`).
+
 - **Guard denials now return the safe next command, not just a block (RUSH-2295).** `git-guard`, `rm-guard`, and `large-file-add-guard` print a structured stderr block on every deny:
   ```
   blocked_op: git.reset
