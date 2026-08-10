@@ -30,27 +30,28 @@ plugins/<name>/
   .claude-plugin/plugin.json     # required — the plugin manifest
   commands/<command>.md          # becomes /<name>:<command>
   skills/<skill>/SKILL.md        # skills the commands load
-  agents/<subagent>.md           # a subagent the plugin's skills spawn
 ```
 
 A plugin command follows the same rules as a top-level
 [command](../commands/AGENTS.md): `description` frontmatter, `$ARGUMENTS` consumed. A plugin
 skill follows [`skills/AGENTS.md`](../skills/AGENTS.md).
 
-## Packaged subagents
+## A cross-harness subagent does NOT go in a plugin
 
-A plugin ships a subagent as a **flat** `agents/<name>.md` — one file, `name:` +
-`description:` frontmatter (`model:` and `color:` optional), discovered by
-`discoverPluginAgentDefs` in `apps/cli/src/lib/plugins.ts`. That is a different layout
-from the top-level [`subagents/`](../subagents/README.md) layer, which is a directory per
-subagent; do not copy one shape into the other.
+A plugin *can* carry `agents/<name>.md` (the Claude plugin format, discovered by
+`discoverPluginAgentDefs` in `apps/cli/src/lib/plugins.ts`), and `agents-cli` copies the
+whole plugin dir into each harness home. But only a harness that parses plugin agent
+definitions ever registers one. The path each harness actually reads is its **native**
+subagent dir (`~/.claude/agents/`, `~/.grok/agents/`, `~/.kimi-code/agents/`,
+`~/.factory/droids/`, `~/.cursor/agents/`, ...), and those are written from the top-level
+[`subagents/`](../subagents/README.md) layer through `SUBAGENT_TARGETS` — never from a
+plugin.
 
-Ship one only when a skill in this plugin spawns it — a subagent nobody invokes is dead
-weight in every install. Name it for the role, spawn it by that name from the skill, and
-keep the standing rubric in the subagent so the skill's brief carries only per-run
-context. The name collides with a same-named user-layer `~/.agents/subagents/<name>/`,
-and the user layer wins, so a packaged subagent supersedes rather than merges: say so in
-the plugin README and the CHANGELOG entry.
+Measured 2026-08-09 on yosemite-m1: the `code` plugin was installed with
+`agents/code-reviewer.md` present on disk, and every native path above was **empty**. So a
+subagent a plugin's skills spawn belongs in `subagents/`, where one definition reaches every
+subagents-capable harness. Reference it from the plugin's README; do not copy it in. Two
+copies of one rubric is the drift the reviewer itself is built to catch.
 
 ## The canonical definition lives in the plugin
 

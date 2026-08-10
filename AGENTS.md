@@ -78,7 +78,7 @@ or the resource exists on disk and is invisible or dead:
 | hook | `hooks/<NN>-<name>.{sh,py}` **and** the `hooks:` entry in `agents.yaml` | the table in `hooks/README.md`; ship a `_test.sh` beside it |
 | permission | a fragment in `permissions/groups/` | run `permissions/build.sh` to regenerate `default.yaml` |
 | plugin | `plugins/<name>/` with its own `README.md` | the table in `plugins/README.md` |
-| plugin subagent | `plugins/<name>/agents/<subagent>.md` with `name:` + `description:` frontmatter | the Subagents table in `plugins/<name>/README.md`, **and** the skill that spawns it — a subagent nothing spawns is dead weight in every install |
+| subagent | `subagents/<name>/AGENT.md` with `name:` + `description:` frontmatter | the table in `subagents/README.md`, **and** the skill that spawns it — a subagent nothing spawns is dead weight in every install. Do **not** put it in a plugin's `agents/` dir: that reaches only plugin-format harnesses, while `subagents/` reaches every subagents-capable one |
 | rule | `rules/subrules/<name>.md` | the `default` preset in `rules/rules.yaml`, then regenerate `rules/AGENTS.md` |
 | CLI manifest | `cli/<tool>.yaml` | the table in `cli/README.md` |
 | routine | `routines/<name>.yml` | the table in `routines/README.md` |

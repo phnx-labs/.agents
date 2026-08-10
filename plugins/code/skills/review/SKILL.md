@@ -276,8 +276,9 @@ generic "code style."
 ### B4. Spawn the reviewer
 
 **Single-agent** — one `Agent` call, `subagent_type: "code-reviewer"` (this plugin ships
-that subagent at `agents/code-reviewer.md`; fall back to `"claude"` on a harness that
-does not load plugin subagents), `model: "sonnet"`, the brief below. The subagent already
+the repo ships that
+subagent at `subagents/code-reviewer/AGENT.md`, materialized into every subagents-capable
+harness; fall back to `"claude"` on a harness without subagent support), `model: "sonnet"`, the brief below. The subagent already
 carries the standing rubric — the hunt classes, the three-kill refutation pass, the
 non-checks list, and the output shape — so the brief supplies only what is specific to
 this PR: context, canonical patterns, and the session goal. B5 has both shapes: the short
@@ -307,6 +308,14 @@ Skip it only for a diff that touches none of those (a docs edit, a pure rename) 
 in one line rather than silently dropping it. For a security-heavy diff, widen to one
 read-only `Explore` agent per relevant vulnerability class, all in one message.
 
+**Hand off to a dedicated security skill when one is installed.** If the box has a
+`security` or `audit` skill, invoke it scoped to this PR's changed-file list instead of
+restating its rubric here — it owns the class taxonomy, the advisory cross-check, and the
+false-positive catalogue, and two copies of that knowledge will drift. The table below is
+the **self-contained fallback**: the system layer must work on a fresh install with nothing
+else configured, so `code:review` never hard-depends on a skill that may be absent. Check
+first, route if present, fall back if not.
+
 | Class | Run when | Grep for |
 |---|---|---|
 | **SECRETS** | Always | `sk_live`, `ghp_`, `xoxb-`, `BEGIN PRIVATE KEY`, newly-tracked `.env*` |
@@ -331,8 +340,8 @@ findings; end with a **False positives filtered** line so they don't resurface.
 Two shapes, one source of truth. **When the `code-reviewer` subagent loaded** (the normal
 case), send only the `CONTEXT` and `CANONICAL PATTERNS` blocks below, plus the `GOAL` line
 in Session mode — everything from `WHAT YOU MUST CHECK` down already lives in
-`agents/code-reviewer.md` and restating it is a second home for one rubric. **On a harness
-that cannot load plugin subagents**, drop the whole thing in verbatim: that is what the
+`subagents/code-reviewer/AGENT.md` and restating it is a second home for one rubric. **On a
+harness without subagent support**, drop the whole thing in verbatim: that is what the
 rest of this template is for. Either way the rubric changes in exactly one place — the
 subagent — and this fallback copy tracks it.
 
