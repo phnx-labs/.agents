@@ -28,7 +28,7 @@ product is actually trying to do right now. Before judging a single ticket:
 
 ## Step 1: Find the tracker
 
-Same detection order as `/tickets` Step 1 — don't re-derive it: skill-level integration →
+Same detection order as the `tickets` skill's Step 1 — don't re-derive it: skill-level integration →
 installed CLI (`linear`, `gh`, `jira`, `glab`) → repo-level signal → ask once. Reuse the
 skill's exact commands if one is loaded.
 

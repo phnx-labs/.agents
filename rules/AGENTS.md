@@ -81,6 +81,7 @@ registry says. **Demonstrate it** — open the delivered surface on the machine 
 user sits at and drive it (before ship to catch problems, and again *after* against
 the live version); show the result, don't narrate it.
 
+- **Diagnose against live code, not a stale checkout.** Your local HEAD goes stale the moment another agent pushes; a verification against a stale tree is not a verification. `git fetch origin` and check how far behind you are (`git rev-list --count HEAD..origin/<default>`) before you call something a bug, claim a regression, or open a "fix" — a fix built on stale code is itself the regression (a real miss: a merged PR "restored" what a newer commit had deliberately superseded). See `research-discipline` (current-code anchoring) and `truly-agentic-git-workflow`.
 - **Swarm work is blind to the seam between tracks.** "Every track's PR merged green" is not "the composed feature runs where one track calls another" — each teammate's tests and reviewer only saw its own half. Trigger the cross-track flow end-to-end and quote its real output before calling it done; never per-track green.
 - **A gap is a problem to solve, not to report.** Your first move on a ⚠️ / "hung" / "skipped" / untriggered hop is to drive it to done yourself — fix it, work around it (reduce scope, override config, run the command directly), or reach the outcome another way. "Call it unverified" is the last resort after you've genuinely exhausted those; even then, quote the gap and never write "confirmed."
 - **Docs + CHANGELOG are part of done**, not a follow-up the user must request: when a change touches a user-visible surface (a flag, command, API, config, behavior), update the docs that already cover it and add a CHANGELOG line under the next version, in the *same* delivery. Exempt (say so): pure bug fixes, internal refactors, test-only changes, self-evident renames.
@@ -122,6 +123,7 @@ governs *every* factual claim along the way.)
 
 - **No unverified claims.** Every factual claim — code, counts, sizes, API capabilities — needs proof: a file path, a line number, code quoted from this conversation. "I think there are 26 files" is a violation. Run the tool, then report. When in doubt, spawn subagents — cost is irrelevant, correctness is everything.
 - **No lazy debugging.** Read every file in the data path. If data flows A → B → C → D, read all four and present file:line quotes from each.
+- **Current-code anchoring.** Your local checkout goes stale the moment another agent pushes — on this fleet, constantly. Before you diagnose a codebase, call something a bug/regression, or open a "fix" PR, `git fetch origin` and check how far behind you are (`git rev-list --count HEAD..origin/<default>`); read the *latest* code, not your working-tree HEAD. A real miss: an architecture diagnosed against a checkout 39 commits / ~90 min stale produced confident-but-false claims and a merged PR that "restored" code a newer commit had deliberately superseded — the fix *was* the regression. The git analog of current-date anchoring below.
 - **Current date anchoring.** Your weights are stale. The real date is in the system prompt under `currentDate`. Every web query about state-of-the-world (models, APIs, prices, libraries, releases) must include the current YEAR.
 - **Web-search first for time-sensitive claims.** WebSearch before answering, not "if the user asks." Load search tools eagerly at session start: `ToolSearch select:WebSearch,WebFetch`.
 - **Investigation briefs demand evidence.** Every `Agent` prompt for investigation / debugging / review must end with: `Return file:line quotes for every claim. Do NOT paraphrase. If you can't quote it, don't claim it.`
@@ -178,6 +180,17 @@ session commands are never blocked.
 
 If you catch yourself about to edit a file in a checkout that's on `main`, stop
 and make a worktree first (recipe below).
+
+**Diagnose on the latest code, not your working-tree HEAD.** Before you read a
+codebase to call something a bug, claim a regression, or open a "fix" PR,
+`git fetch origin` and check how far behind you are
+(`git rev-list --count HEAD..origin/<default>`). Your local checkout goes stale
+the moment another agent pushes — on this fleet, constantly — and a fix built on
+stale code is itself the regression (a real miss: a merged PR "restored" a routine
+a newer commit had deliberately superseded, because the diagnosis ran against a
+tree ~90 min / 39 commits behind). This is the same fetch-first discipline the
+worktree recipe enforces for *writing*, applied to *reading*. See
+`research-discipline` (current-code anchoring).
 
 ## Allowed vs off-limits git ops
 
@@ -278,11 +291,15 @@ The body carries **the actual run result, not a description of it**:
   shared — a **shareable link to the plan file**. The same screenshot/recording also goes
   on the ticket when you close it (see `conventions`).
 
-The bundled `pr-description-reminder` (PreToolUse) is the backstop: it nudges once when a
-`gh pr create`/`edit` inline body shows **no run result** — no image/recording/asset, no
-ticket/plan link, and no release/docs/no-surface declaration. A code block or table does
-**not** clear it. Run it, capture the result, attach, retry. It **fails open** — a
-`--body-file`/`--fill` body is never nudged — and is satisfiable, never a hard wall.
+The bundled `pr-description-reminder` (PreToolUse) is the backstop, and it **reads the body
+you actually ship** — an inline `--body`/`-b` and the file behind `--body-file`/`-F` alike
+(the common multi-line path, and the hole that used to let evidence-free feature PRs through).
+It nudges — a satisfiable block, `exit 2` — when that body shows **no run result** (no
+image / recording / uploaded asset), and it is **not** cleared by a code block, a table, or a
+bare ticket/plan link: those are context, not proof you ran it. It clears on a real run result
+**or** an explicit no-run declaration (`release` / `docs-only` / `refactor` / `test-only`). It
+still **fails open** on a `--fill` / `--template` / editor body it cannot read, and on an
+unreadable `--body-file` — a reminder must never block a legit PR.
 
 ### Attaching evidence on GitHub — the mechanics
 
@@ -432,7 +449,7 @@ Enforced by the bundled `footer-guard.sh` (PreToolUse): a `gh`/`git commit` comm
 - **Waiting: echo/sleep only, never `Monitor` / `ScheduleWakeup` / `until` loops** (they fail silently). Short waits (<2 min): `cmd && sleep N && check && echo "result: …"`. Long waits (2+ min): `run_in_background: true` with a trailing finish-echo so you know the next action when it fires. Never say "I'll check back later" — the echo keeps you in the loop.
 - **No emojis** in code, comments, commits, or user-facing output — unless explicitly asked.
 - **No credentials in env vars or config.** Use `agents secrets` (OS keychain-backed).
-- **Env vars are not a secure boundary — treat anything in them as visible, not private.** Every child process inherits the full parent environment; on Linux any co-tenant process can read another's via `/proc/<pid>/environ`; values routinely leak into crash dumps, log lines that dump `os.Environ()`/`process.env`, and error reports; and anything else running in the same shell or process tree can read — or silently override — whatever you set. That holds whether the value is a secret or an ordinary config toggle: an env var was never an isolation mechanism, just ambient global state anything nearby can read and hijack.
+- **Env vars are not a secure boundary — treat anything in them as visible, not private.** A child process inherits the full parent environment by default; on Linux another process **running as the same user** can read it from `/proc/<pid>/environ` (mode 400 — a different user cannot, but on this fleet every agent runs as the same uid); values routinely leak into crash dumps, log lines that dump `os.Environ()`/`process.env`, and error reports; and any ancestor silently sets what everything it spawns will see. That holds whether the value is a secret or an ordinary config toggle: an env var was never an isolation mechanism, just ambient global state anything nearby can read and hijack.
 - **Configuration belongs in real config, not env var overrides.** Feature flags, endpoints, and behavior toggles go in `agents.yaml` / project config / the resource files this repo defines — not an env var that silently shadows what the config file says. Someone reading the config should see the actual behavior in effect; an env var override makes that invisible and lets the running behavior drift from what's documented without anyone noticing.
 - **Don't create env vars you don't need.** Before reaching for a new one, ask whether a config entry, a CLI flag, or a function argument would do the job. Each ad-hoc env var is a hidden, undocumented configuration surface — global state nobody reading the code or the config file expects to find. Proliferating them (one per override, per session) is itself the failure, not a shortcut.
 - **No locally built CLIs.** Install globally (`npm i -g`, `cargo install`); don't invoke `./bin/foo`.
@@ -447,8 +464,8 @@ Enforced by the bundled `footer-guard.sh` (PreToolUse): a `gh`/`git commit` comm
 # Conventions
 
 - **Memory file:** `AGENTS.md` is canonical. `CLAUDE.md` and `GEMINI.md` are symlinks (or synced copies).
-- **Tickets — check first, open if missing, close on delivery.** Linear context is auto-injected at session start by the linear hook; read it before starting. `/tickets` takes any explicit action across Linear/GitHub/Jira.
-  - **Check first.** Before substantive work, check whether an open ticket already covers it (the injected context, or `/tickets` / `gh issue list`). If one exists, claim it (move it to In Progress).
+- **Tickets — check first, open if missing, close on delivery.** Linear context is auto-injected at session start by the linear hook; read it before starting. the `tickets` skill takes any explicit action across Linear/GitHub/Jira.
+  - **Check first.** Before substantive work, check whether an open ticket already covers it (the injected context, or the `tickets` skill / `gh issue list`). If one exists, claim it (move it to In Progress).
   - **Open if missing.** No ticket and a tracker is configured? Open one scoped to the task (title + short description) before you start. No tracker set up? Skip this and describe the work in the PR. One ticket per unit of delivery, not per file; skip it for a trivial fix or a plain question.
   - **Close on delivery, with proof.** When the task ships, post a closing update (what changed, the PR link, a screenshot or short screen recording of the outcome) and move the ticket to Done. Close only with proof.
 - **Parallel work:** Multi-surface changes use `agents teams` — see `parallel-teams`.
@@ -494,7 +511,28 @@ agents teams add my-feature codex  "Owns: src/ui/*. Not: src/auth/*. ..." --name
 agents teams start my-feature --watch
 ```
 
-Every brief includes Mission, Full scope, Owns, Must NOT touch, concrete code pattern, success criteria, and ends with the evidence line from `research-discipline`. The `/teams` command is the long-form playbook.
+Every brief includes Mission, Full scope, Owns, Must NOT touch, concrete code pattern, success criteria, the feed/notify line (below), and ends with the evidence line from `research-discipline`. The `/teams` command is the long-form playbook.
+
+## Keep the owner informed, not spammed (every brief)
+
+The feed/notify instruction is part of the mandatory brief contract, next to Owns / Must NOT touch / the completion contract. Every teammate brief must carry it verbatim:
+
+> Post to the feed at IMPORTANT milestones only, never per step. Use a plain `agents feed post` at start and at PR-opened (record-only). On final delivery — PR merged, or the composed work runs end-to-end — add `--level important` so it reaches the owner (`agents notify`). If you hit a real blocker, use `agents feed post --blocked` instead (never combined with `--level`). Do NOT narrate every step.
+
+The orchestrator itself posts one feed line on `teams start` and on team completion, and reaches the owner only at delivery (`agents feed post --level important` / `agents notify`) or when a teammate is blocked (`--blocked`). This is the record-vs-deliver split — see [`feed-status-posts.md`](feed-status-posts.md): plain posts stay in the activity stream, `--level important` reaches the phone, `--blocked` opens a needs-you record. A milestone is a boundary, never a keystroke.
+
+## Confirm a remote teammate's box can do the work BEFORE you spawn it
+
+A teammate pinned to another box inherits that box's capabilities, and a box that cannot
+run the work still accepts the dispatch and **exits 0**. Edit-mode teammates write —
+worktree, edits, commits, a PR — so probe the box with a real write (`git fetch` +
+`git worktree add`), not a read-only ping, and confirm the harness is signed in there.
+Codex in particular cannot write anywhere on this fleet today; send write-heavy
+teammates to a harness/box confirmed by a write probe. Full detail:
+`remote-fleet-dispatch`, `unattended-verification`.
+
+A teammate that silently produced nothing is worse than one that failed loudly: the
+orchestrator counts it as a green track and composes on top of work that does not exist.
 
 ## Completion contract (every edit-mode brief)
 
@@ -523,12 +561,12 @@ Mechanical backstop: for a session that ran an edit-mode swarm, the `verify-work
 | Task | Tool |
 | --- | --- |
 | Read a large file (200+ lines) or map an unfamiliar dir | `mq` — probe structure (`.tree`), then extract only the section you need. Works on **code (ts/py/go/…), docs (md/html/pdf), data (json/yaml/csv), Office** — not just docs. See `context-query-mq`. |
-| Issue tracker (Linear/GitHub/Jira) | `/tickets` command — auto-detects |
+| Issue tracker (Linear/GitHub/Jira) | `tickets` skill — auto-detects |
 | Browser automation | `browser` skill (a.k.a. `agents browser`) |
 | Interactive terminal (REPLs, TUIs) | `agents pty` — see `agents pty --help` |
 | Parallel coding agents | `agents teams` — see `parallel-teams` |
 | Credentials | `agents secrets` — OS keychain-backed |
-| Release/publish | `release` skill |
+| Release/publish | `/code:release` (the `code:release` skill) |
 | See what's already in flight (open PRs, live sessions) before taking work | auto-injected at session start (`inject-repo-inflight` hook); on demand: `gh pr list`, `agents sessions --active` |
 
 ## Charts in rendered artifacts
@@ -597,6 +635,56 @@ in terminal scrollback. Author a Markdown source under the repo's dated artifact
 layout, render it to a self-contained HTML doc with `artifacts-cli`, and open it in
 the user's default browser on the machine they sit at.**
 
+## What every plan must contain — and do before presenting
+
+Built-in plan mode (`/plan`, Shift+Tab, `--mode plan`) only restricts tools and asks
+for an `ExitPlanMode` — it injects **no** methodology, on any harness. This section is
+that methodology. Do all of it before you present a plan, whether you entered plan mode
+by a keystroke, a flag, or just started planning.
+
+**Research first — before you draft:**
+
+1. **Search what previous agents did on this feature.** Run
+   `agents sessions "<feature keywords>"` (and read the latest plan/PR on
+   that surface) before drafting. **Extend** prior work; do not silently revert it —
+   reverting an earlier agent's change is the most common regression on this fleet.
+2. **Find the module's specification.** Locate where this module's spec lives (a
+   `SPEC*.md`, a doc, an OpenSpec change). If none exists, propose writing a short one.
+   Keep specs **succinct and current** — do not pile on rules nobody asked for.
+
+**The plan must contain, in this order:**
+
+3. **Focus for review (at the very top).** 2-5 bullets naming exactly what you want the
+   user to weigh in on. Lead with this — it is the first thing they read.
+4. **Intent.** Restate the user's ask in their own words, so the plan visibly tracks it.
+5. **Current architecture.** How the affected module works **today** — the files
+   involved and how they talk to each other. For an architectural change, show the
+   communication pattern **before and after** as an inline-SVG figure.
+6. **Implementation shown as real code.** For every file that changes, show the actual
+   change as a **diff** — the relevant hunk only (not the whole file), added lines
+   green, removed lines red — via the artifacts-cli `code-diff` component (fall back to
+   a fenced ```` ```diff ```` block until it ships). Name every module that changes.
+   Pick the load-bearing hunks; keep it readable, not exhaustive.
+7. **A rendered to-do list.** Beyond creating the `TaskCreate` checklist (see *A
+   multi-step plan also carries a checklist*, below), **render** it into the plan as a
+   checklist section, so the user sees the steps and their status in the plan itself —
+   not only in the harness's to-do UI.
+
+**Two gates before you present:**
+
+- **Adversarial review.** For any change to an API/CLI surface or the system
+  architecture, get a **non-author** review before presenting — a subagent, or
+  `agents run claude --mode plan "Adversarially review this plan's API surface and
+  adherence to existing architectural conventions. Return file:line evidence."
+  --attach <plan.md>` on harnesses with no subagent tool. It checks the surface is
+  clean and intuitive and follows existing conventions (access centralized in one
+  place, no duplicated surface, cross-cutting change made at the source). Fold its
+  findings in before you present.
+- **Render + open** the HTML (below).
+
+Scale to the change: a trivial, single-file edit with no interface or architectural
+impact skips the architecture figure and the adversarial review.
+
 ## Canonical artifact path (plans, HTML, and related items)
 
 All agent-produced durable artifacts — **plans, rendered HTML, visuals, reports,
@@ -622,22 +710,29 @@ Examples:
 - Create the date directory if missing (`mkdir -p .agents/artifacts/$(date +%F)`).
 - HTML builds land **next to** their Markdown source under the same date dir.
 
-This is mechanically reminded by the bundled `plan-html-reminder` hook (PreToolUse on
-`ExitPlanMode`): it nudges you to render + open before you present. The full LOOK — the
+This is mechanically enforced by the bundled `plan-html-reminder` hook: PreToolUse
+catches native plan-exit tools, while Stop catches Codex and other harnesses whose
+plan mode is collaboration state rather than a tool call. It nudges you to render +
+open before you present. The full LOOK — the
 house structure, the product-brand theming, the light/dark toggle, and the open-on-Mac
 transport — lives in the **`plan-render` skill**. Load it and follow it.
 
 - **Source of truth is Markdown.** Write `.agents/artifacts/yyyy-mm-dd/plan-<slug>.md`
-  and compile it with `artifacts render ... --format html`. The HTML is a build output;
+  and compile it with `artifacts render <source>.md`. The HTML is a build output;
   never hand-author a complete `.html` file.
+- **Declare the surface.** Every plan frontmatter sets `surface` to one of
+  `internal`, `cli`, `web`, `native`, `api`, or `workflow`. Internal plans use a
+  real architecture/flow/state figure. Every user-visible surface shows the
+  **current** and **proposed** appearance in one product-faithful behavior figure;
+  each side is a real capture when available or an explicitly labeled mockup.
 - **Structure (fixed).** Hero (kicker · headline · problem statement · metadata chips ·
   **provenance chips — harness · agent · host · session · date, so a rendered plan is never
-  an orphan** · TOC), numbered sections, **≥1 visual figure** (hand-authored inline SVG for timeline / architecture / before-after / charts — never mermaid), callouts, tagged tables, code blocks. Follow the
-  `plan` template (`artifacts template plan`) or scaffold with `artifacts new plan`.
-- **Quality is enforced, not suggested.** `artifacts check`/`render` **error** when a plan
-  has no drawn live SVG figure, and they **do not write HTML** on validation failure.
-  The ExitPlanMode hook greps the rendered HTML for `<svg` + a drawn primitive — a
-  prose-only shell no longer clears the gate. Inline `` `code` `` alone is not enough:
+  an orphan** · TOC), numbered sections, **≥1 visual figure** (hand-authored inline SVG for timeline / architecture / before-after / charts — never mermaid), callouts, tagged tables, code blocks. **Author the Markdown directly** using the section list above — you do **not** need to run `artifacts new`. At render, `artifacts` auto-fills the provenance chips (project · repo · branch · harness · agent · host · session · date) from git + the agent env for any blank frontmatter field, so your frontmatter needs only `kind`, `title`, and `surface`, and it validates the required sections. (`artifacts new plan` stays available as an optional scaffold.)
+- **Quality is enforced, not suggested.** `artifacts check`/`render` **error** when
+  surface metadata or required visual evidence is absent, and they **do not write
+  HTML** on validation failure. The hook checks the Markdown surface plus semantic
+  HTML: an architecture SVG cannot clear a CLI/UI plan that lacks current/proposed
+  product views. Inline `` `code` `` alone is not enough:
   put commands in fenced blocks and risks/files in tables.
 - **Theme (adopted).** Skin the plan in the **target product's brand** — probe the repo
   for design tokens, tailwind/CSS vars, logo/manifest colors. Fall back to the dark +
@@ -687,7 +782,7 @@ what you are stuck on instead of guessing.
 A floating checklist is half the value. Bind it:
 
 - **Pair a ticket.** If a tracker is connected (this stack uses Linear via the
-  `linear` CLI / `/tickets`) and no ticket is paired with the work, create or claim
+  `linear` CLI / the `tickets` skill) and no ticket is paired with the work, create or claim
   one at the right moment — once the task is real and scoped, not for a passing
   question. Move it to In Progress when you start.
 - **Stamp each item** with the ticket via `TaskCreate` `metadata` (e.g.
@@ -723,6 +818,24 @@ and makes it eligible for owner delivery. Use it sparingly for completed work or
 another successful boundary the owner needs to see while away. Do not use it for
 routine edits, test runs, or synchronous work the user is watching.
 
+## Teams
+
+Teams are the easiest way to flood the phone, so the boundaries are strict. Only
+two milestones matter for owner delivery:
+
+1. **Team spawned** — one plain post on `agents teams start` ("spawned team
+   `<name>` — N teammates on `<tickets>`"). Record-only; do not `--level important`.
+2. **A teammate/agent finished & delivered** — its PR merged, or the composed
+   cross-track work runs end-to-end. This is genuinely phone-worthy: mark it
+   `--level important` (or `agents notify` the owner). A **blocked** teammate is the
+   other delivery-worthy event — use `--blocked`.
+
+Everything between those — each edit, each test run, each PR opened — is
+record-vs-deliver: a plain `agents feed post` at most, never a phone notification.
+Both the `/teams` playbook and [`parallel-teams.md`](parallel-teams.md) instruct
+every teammate brief to follow this split, so N teammates don't become N×steps of
+phone spam.
+
 Session, agent, host, runtime, and process identity resolve automatically from
 the launch and activity indexes. Do not stop or ask the user because
 `AGENT_SESSION_ID` is empty. If automatic resolution still fails, retry with the
@@ -755,8 +868,8 @@ bills the whole transcript back to you.
 agents run <agent> "<prompt>" --device <box> --remote-cwd <ABS repo path> --mode <mode> --name <handle>
 ```
 
-- `--device` and `--host` are the same flag (`--device` is an alias of `--host`) and work on both `agents run` and `agents teams`.
-- `--device auto` / `--host auto` lets the CLI pick from your registered, online, dispatchable fleet by 14-day affinity + live headroom. Use this as the default for "send to the fleet"; use a named `--device <box>` only when the task must land on a specific machine.
+- `--device` is the flag for fleet routing and works on both `agents run` and `agents teams`.
+- `--device auto` lets the CLI pick from your registered, online, dispatchable fleet by 14-day affinity + live headroom. Use this as the default for "send to the fleet"; use a named `--device <box>` only when the task must land on a specific machine.
 - **NEVER** `ssh <box> 'agents run <agent> "<prompt>"'`. That leaks stdin: the remote agent (e.g. `codex exec`) blocks forever reading a stdin that never hits EOF, because the ssh channel stays open. The native `--device` path launches the remote process **detached** (`nohup bash -lc … >/dev/null 2>&1 &`), which is what prevents the hang — it survives a dropped connection and follows via an offset-tail of a remote log + `.exit` file.
 
 ## Fleet/SSH devices are NOT cloud devices — different venue
@@ -782,21 +895,80 @@ Dispatch whichever harness (codex / grok / droid / antigravity / claude) is conf
 working on the target box, not a default clone of your own type. Spreading the load
 across harnesses is the point of the fleet.
 
-## Ping-test the harness on the box BEFORE the real dispatch
+## Probe the box with the OPERATION YOU WILL ACTUALLY PERFORM
 
-Fire a trivial headless prompt to confirm the harness is installed, logged in, and
-functional there:
+A trivial prompt confirms the harness is installed and logged in:
 
 ```bash
 agents run <h> "Reply with exactly PINGOK" --device <box> --remote-cwd <repo> --mode plan
 ```
 
-If it returns the token, it's ready. **Known trap:** codex `--mode auto` uses a
-bubblewrap sandbox that fails on namespace-restricted fleet boxes
-(`bwrap: setting up uid map: Permission denied`), so codex-auto can't run there at all
-— the ping catches it. Fall back to another harness (or a box where it works). Do **not**
-silently escalate to `--mode skip` / `--dangerously-bypass-approvals-and-sandbox` to
-dodge the sandbox — that's the same security escalation as any sandbox-off flag.
+**That is ALL it confirms. A passing ping does not mean the box can do your job.**
+Capability on these boxes is gated per operation class, so a probe that skips the
+operation under test certifies nothing:
+
+| Probe | What it actually exercises | What it says about writes |
+|---|---|---|
+| `--mode plan` ping | no sandbox at all | nothing |
+| `--mode edit` running `uname -a` | no **write** sandbox (read-only cmd) | nothing |
+| `--mode edit` running `git fetch` + `git worktree add` | the real write path | this is the answer |
+
+Measured 2026-08-06: `--mode plan` and `--mode edit`+`uname -a` both returned OK on
+yosemite-m2 and yosemite-m4; the same boxes then failed every real write with
+`bwrap: setting up uid map: Permission denied`. Five dispatches were burned "verifying"
+boxes that could not run the job. **If the work writes, probe with a write.** If it
+opens a PR, probe a commit. If it needs a credential, probe an authenticated request.
+
+**Known trap — codex cannot write anywhere on this fleet.** Its sandbox fails on Linux
+(`bwrap: setting up uid map: Permission denied`, m2 and m4 alike, with healthy
+`max_user_namespaces` — not a resource limit) and on macOS (mac-mini reaches
+`sandbox: workspace-write` and then dies on `cannot open '.git/FETCH_HEAD': Operation
+not permitted`). The dispatch still **exits 0**, so the job looks successful and
+produced nothing. For write-heavy work (worktree, edits, PR) dispatch **claude** to a
+box where it is signed in, confirmed by a real write probe. Codex remains fine for
+read-only/analysis dispatch.
+
+Do **not** silently escalate to `--mode skip` / `--dangerously-bypass-approvals-and-sandbox`
+to dodge a sandbox failure — that's the same security escalation as any sandbox-off flag.
+Move to a harness/box that genuinely works, and say in your report that the box changed
+(measurements taken before and after a box change are not comparable).
+
+## A detached (`--no-follow`) run's status is only true through `agents hosts ps`
+
+`agents run --device … --no-follow` returns immediately and leaves the agent running on
+the remote box — the right primitive when you want to start work and do something else
+(see `unattended-verification` for why hand-rolled `nohup … &` does not work from inside
+an agent's tool call).
+
+Because nobody is tailing it, the on-disk dispatch record at
+`~/.agents/.cache/hosts/<id>.json` **stays `"status": "running"` after the agent has
+exited**, until something reconciles it. `agents hosts ps` does that reconciliation — it
+reads the run's **remote `.exit` file** and writes the real outcome back. Verified on
+zion: two finished runs read `running` in the raw JSON, and after `agents hosts ps` both
+read `completed`.
+
+**But reconciliation only works if the remote `.exit` was written.** A run whose process
+was killed, or whose box rebooted, never writes one — and then *no command rescues it*.
+Verified on yosemite-s1: four records (`273148b7`, `4663ce92`, `a281c096`, `8450cd2c`)
+still report `running` with PIDs confirmed dead by `ssh <host> 'ps -p <pid>'`, and
+`273148b7` has no `.exit` on either side. `agents hosts ps` leaves all four `running`.
+
+So:
+
+- Poll `agents hosts ps --json` (match the `name` you passed to `--name`), never the raw
+  cache file — the file is stale until `ps` reconciles it.
+- Harvest with `agents hosts logs <id>` once status leaves `running`.
+- **Always bound the wait — `ps` is not a liveness check.** Pick a concrete ceiling from
+  the job's own expected runtime (2x it, or a stated cap) and treat anything past it as
+  dead, not slow: `agents hosts stop <id>`, then proceed. Without a ceiling, one
+  abnormally-killed run leaves a permanent `running` record that blocks every future
+  dispatch guarded on it. If you need certainty rather than a timeout, probe the pid
+  directly (`ssh <host> 'ps -p <pid>'`).
+
+**Dispatch records are local to the box that dispatched.** `~/.agents/.cache/hosts/`
+holds only the runs *this* machine launched, so a record for a run started from another
+box is not missing — it lives in that box's cache. Check there before concluding a
+dispatch never happened.
 
 ## Monitor at the service level — never tail full logs
 
@@ -808,3 +980,110 @@ tokens, for no benefit. Use:
 
 Pull the raw remote log (`agents hosts logs <name>`) ONLY to `grep` the single error
 line when the brief shows `failed`. Never `cat`/tail the whole transcript.
+
+# Unattended Work Fails Silently — Assert the Outcome, Not the Exit Code
+
+The reliability rule for anything that runs while nobody is watching: routines, cron,
+`work:loop` / `code:loop` drains, detached `--device` dispatches, teams teammates.
+This is **F3 ("done = the user-visible outcome, verified") applied to work with no
+human in the loop**, and it exists because of a measured failure pattern, not a theory.
+
+**Every failure mode observed in a real routine build was a *silent success*.** Not one
+announced itself. Building one hourly routine surfaced seven, and each reported success
+while doing nothing:
+
+| What reported success | What was actually true |
+|---|---|
+| dispatch `exit 0` | the agent never got a shell (sandbox died); zero work done |
+| `agents notify` → `ok:true` | nothing delivered — the credential is unreadable headless |
+| dispatch record `"status": "running"` | process long dead, box idle |
+| capability probe passed | it exercised a different operation class than the job |
+| a result file read as current | it was the previous run's leftover output |
+| `routines add` accepted the YAML | it silently dropped the `devices:` pin |
+| ticket queries "working" | shared API quota exhausted fleet-wide |
+
+Loud failures get noticed and fixed. **Silent ones are the only kind that matter at
+3 AM**, because nobody reads a green log. So the discipline is not retries or timeouts
+— it is making an unattended run *prove* it did the thing.
+
+## Exit code 0 is not evidence
+
+An agent that hits a wall, explains the wall politely, and exits is a **zero exit with
+no work done**. That is the single most common unattended failure. Never treat process
+success as task success.
+
+Close every unattended unit of work by asserting a **postcondition you can check
+mechanically**, and report *that*:
+
+- Opened a PR → query the PR and confirm it exists and is in the expected state.
+- Merged → confirm the change is on `origin/<default>`, not just that merge returned 0.
+- Wrote a file / benchmark → confirm the path exists with expected content.
+- Commented a ticket → confirm the comment is on the ticket.
+- Sent a message → confirm the send result says delivered, not just that the CLI returned.
+
+If the postcondition fails, say **unverified** and name the gap. Never round up to
+"done". A run honestly reporting "dispatched, still running, will harvest next cycle"
+is healthy; a run claiming a result it did not observe is the failure this rule exists
+to prevent.
+
+## Probe with the operation you will actually perform
+
+A probe that skips the operation under test certifies nothing. Read-only probes pass on
+machines that cannot write; unauthenticated paths pass where credentials are missing;
+a dry-run passes where real delivery fails. Concretely: `--mode plan` needs no sandbox
+and `uname -a` needs no *write* sandbox, so both pass on a box where `git fetch` dies
+(see `remote-fleet-dispatch`). If the job writes, probe a write. If it needs a
+credential, fire a real authenticated request and check for 401. If it must deliver a
+message, check the send result — a `--dry-run` only proves the address resolved.
+
+## Read status through the command surface — and still bound the wait
+
+Cache and state files under `~/.agents/.cache/` are written by whichever process last
+touched them, so they go stale without any error. Ask the CLI (`agents hosts ps`,
+`agents sessions`, `gh pr view`), which reconciles on demand. A guard or loop built on a
+raw cache file inherits that staleness and can wedge permanently.
+
+**Reconciliation is not a liveness check, so a status query alone is never enough.** It
+works by reading an artifact the finished process left behind, and a process that was
+killed — or whose box rebooted — leaves nothing to read. That record then reports
+`running` forever, and no amount of re-querying changes it (see `remote-fleet-dispatch`
+for the measured case). Every wait therefore carries a concrete ceiling derived from the
+job's expected runtime, after which the thing is treated as dead rather than slow. When
+you need certainty instead of a timeout, probe the process directly.
+
+## Cross-run state: namespace it, and never read it without a completion marker
+
+State that survives between runs is how a loop makes progress — and how it reports
+confident nonsense. A leftover output file from the previous run, read before the
+current run had written anything, produced a detailed and entirely wrong failure
+diagnosis.
+
+- Key every artifact to **this** run (a unique handle/id), and match on that key.
+- Clear or ignore prior artifacts at the start; treat clearing as a correctness step.
+- Never read a result until its completion marker exists. Absent or partial output is
+  not a result — do not describe what the other side "did".
+
+## Budget shared, rate-limited resources
+
+An hourly job is 24 runs/day against quotas shared by the whole fleet on one token.
+Linear (2500 req/hr) was exhausted in practice, taking down ticket reads for every
+agent. GitHub meters two separate budgets per token (REST requests/hr and GraphQL
+points/hr) and they drain independently, so a full REST budget says nothing about
+GraphQL; check both with `gh api rate_limit` before a looping pass.
+
+- Fetch a list **once** per run and work from that response; never re-query per item.
+- Write only when something actually changed (keep a verified/seen record).
+- On a rate-limit error: **stop touching that API for the run**, say so, let the next
+  cycle pick it up. Never retry in a loop.
+
+## Fail loud to the owner — but only when it is real
+
+Unattended work must be able to raise its hand. Reach the owner (`agents notify`,
+`agents feed post --blocked`) when a run is genuinely blocked or a postcondition failed
+repeatedly — not on every cycle. A job that pings hourly trains the owner to ignore it,
+and then the one that mattered is ignored too. Silence on a healthy run, one clear
+message on a real change or a real block.
+
+Corollary worth wiring in: if a job can no-op forever without anyone noticing, that is a
+defect in the job. Track consecutive runs with no successful postcondition and escalate
+on a drought.

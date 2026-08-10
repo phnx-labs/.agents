@@ -43,9 +43,12 @@ agents devices show <name>        # full profile for one device
 # target is user@host or host; platform is windows | linux | macos
 agents devices add <name> <target> --platform linux
 
-# Update fields on an existing device.
-agents devices set <name> --user muqsit --platform macos
-agents devices set <name> --auth password --bundle <secrets-bundle>
+# Update fields on an existing device — one config surface (key-value; bare
+# name opens a settings menu on a TTY). Values sync via the user repo.
+agents devices config <name> ssh.user muqsit
+agents devices config <name> platform macos
+agents devices config <name> ssh.auth password
+agents devices config <name> ssh.bundle <secrets-bundle>
 
 agents devices rm <name>          # remove from the registry (alias: remove)
 ```
@@ -81,7 +84,7 @@ agents sessions --active           # this machine + every online device
 agents sessions --idle             # idle sessions across the same fleet
 agents sessions --orphan           # orphaned sessions across the same fleet
 agents sessions --active --local   # this machine only (no SSH fan-out)
-agents sessions --active --host zion --host mac-mini   # specific machines
+agents sessions --active --device zion --device mac-mini   # specific machines
 agents sessions --active --json    # merged, machine-tagged, for scripts
 ```
 
@@ -95,5 +98,5 @@ filters. Cross-device collection is already the default; `--local` opts out.
 - Reachability in `list` is a snapshot from the last `sync`; rerun `sync` to
   refresh it.
 - iOS/tablet nodes can't run the CLI and are skipped by the `--active` fan-out.
-- A device with password auth needs a bundle: `agents devices set <name>
-  --auth password --bundle <name>`.
+- A device with password auth needs a bundle: `agents devices config <name>
+  ssh.auth password` + `agents devices config <name> ssh.bundle <name>`.

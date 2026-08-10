@@ -6,6 +6,39 @@ This repo is the **system layer** of agents-cli: the npm-shipped defaults that l
 `~/.agents/.system/` on every machine and get merged under the user's own `~/.agents/`.
 Everything here ships to every agent on every box, so a broken file here breaks the fleet.
 
+## North star — every change here buys agents more *safe* autonomy
+
+The hooks, rules, permissions, and commands in this repo exist for one purpose: to let an
+agent act on the user's behalf with **more autonomy, safely** — reliably, predictably, and
+manageably, without a human babysitting each step. Judge every change you make here against
+that goal. The pull is always toward *more* the agent can do on its own; the discipline is
+that it stays trustworthy while doing it.
+
+- **The guardrails counter agent laziness — they don't just forbid.** A hook fires on an
+  event nobody asked for, which is what turns "the agent should have…" into "the agent
+  always does." Prefer a guardrail that makes the safe path the automatic one over a rule
+  that merely asks an agent to remember. The point is to *enable* reliable action, not to
+  cage it.
+- **Cross-harness by default.** A capability must work on every harness the fleet runs —
+  Claude Code, Codex, and the rest — not just the one you tested in. Skills are near-
+  universal; commands and plugins are not (see the coverage table under "Authoring a new
+  capability"). Ship the behavior in the portable layer, then add the accelerator on top.
+- **Cross-platform and cross-device by default.** macOS, Linux, and Windows; the user's
+  laptop and every worker box. A hook or script that assumes one shell, one path style, or
+  one bash version silently breaks the others — bash 3.2 on macOS is the usual tripwire (see
+  the hooks contract). Autonomy that works on only one machine is not autonomy.
+- **Predictable beats clever.** Creativity is welcome; unpredictability is not. An agent and
+  the user must both be able to reason about what a change will do *before* it runs. Fail
+  closed, make the safe action the easy one, and never trade manageability for a one-off win.
+- **Protect what can't be undone.** Autonomy stops at irreversible loss. An agent may remove
+  its own worktree freely, but it must **never delete a branch that could still hold unmerged
+  work**. The git-guard denies the dangerous forms — local `git branch -d/-D` and remote
+  `git push --delete` / `git push <remote> :<branch>` — because they can drop commits that
+  never landed. Deleting an *already-merged* PR branch loses nothing, so
+  `gh pr merge --delete-branch` stays allowed. Never add a permission or guardrail exception
+  that re-enables the dangerous forms, and when you weigh a new capability, ask what it
+  destroys if it fires wrongly.
+
 ## The two-file convention
 
 This section is **this repo's instance** of the general rule. The rule itself — including
@@ -42,12 +75,14 @@ or the resource exists on disk and is invisible or dead:
 |---|---|---|
 | command | `commands/<name>.md` with `description:` frontmatter | the table in `commands/README.md` |
 | skill | `skills/<name>/SKILL.md` with `name:` + `description:` | the table in `skills/README.md` |
-| hook | `hooks/<NN>-<name>.{sh,py}` **and** the `hooks:` entry in `agents.yaml` | the table in `hooks/README.md`; ship a `_test.sh` beside it |
+| hook | `hooks/<NN>-<name>.{sh,py}` **and** the `hooks:` entry in `agents.yaml` | the table in `hooks/README.md`; ship a `_test.sh` in that event dir's `tests/` subdir (`hooks/<event>/tests/<name>_test.sh`) |
 | permission | a fragment in `permissions/groups/` | run `permissions/build.sh` to regenerate `default.yaml` |
 | plugin | `plugins/<name>/` with its own `README.md` | the table in `plugins/README.md` |
+| subagent | `subagents/<name>/AGENT.md` with `name:` + `description:` frontmatter | the table in `subagents/README.md`, **and** the skill that spawns it — a subagent nothing spawns is dead weight in every install. Do **not** put it in a plugin's `agents/` dir: that reaches only plugin-format harnesses, while `subagents/` reaches every subagents-capable one |
 | rule | `rules/subrules/<name>.md` | the `default` preset in `rules/rules.yaml`, then regenerate `rules/AGENTS.md` |
 | CLI manifest | `cli/<tool>.yaml` | the table in `cli/README.md` |
 | routine | `routines/<name>.yml` | the table in `routines/README.md` |
+| monitor | `monitors/<name>.yml` | the table in `monitors/README.md` |
 
 A hook is the sharpest edge: the script alone does nothing. Registration is the
 `hooks:` entry in `agents.yaml`, and an unregistered script is dead code.
@@ -67,7 +102,7 @@ the model decides its `description` matches; a command fires when the user types
 Those are different doors, and a skill with no command can only be reached by asking the
 agent nicely. Add `commands/<name>.md` (or `plugins/<p>/commands/<name>.md`) that routes
 to the skill — the command stays thin, the behavior stays in the skill, and they never
-fork (see the `/commit` → `/code:commit` alias pattern).
+fork (see the `/continue` → `/sessions:continue` alias pattern).
 
 **But the command is an accelerator, never the only door.** Commands are not universal
 across harnesses, and skills very nearly are. From the capability table
@@ -84,6 +119,37 @@ Write the skill so it is complete on its own, then add the command as the fast p
 Never move logic out of the skill and into the command. When a plugin is the right
 grouping but a target harness has no plugin support, say so in the plugin's README
 rather than silently shipping something a third of the fleet cannot load.
+
+## What earns a command or skill — distill to the fundamental operation
+
+The command/skill surface is not a feature list; it is the set of **fundamental operations
+an agent needs to get work done**. Every addition is measured against that, and the default
+answer to "should this be a new command?" is **no — extend an existing one**. This is the
+philosophy behind keeping the surface small: fewer, sharper primitives an agent actually
+reaches for beat a long menu nobody remembers.
+
+- **A primitive, not a variant.** Add a capability only when it names a *fundamental
+  operation* the fleet doesn't already have — a distinct verb of getting work done. A new
+  flavor of something that exists (a second "review", a per-project "loop", a per-tracker
+  "tickets") is a **mode or argument of the existing one**, never a new command. When two
+  cover the same job, merge them. The surface shrinks by consolidation, not by never adding.
+- **All work, not just code.** The fleet does engineering, but also research, outreach,
+  content, browser/computer tasks, tickets, and session lifecycle. A capability earns its
+  place by being a primitive *across* those domains, not a code-only convenience. Prefer the
+  general verb (`tickets` works on any tracker; `loop` drains any kind of work; `blame`
+  traces any regression; `work:*` covers any unit of work) over one narrow command per case.
+- **General-purpose, yet concrete enough for a weak model.** Two opposite failure modes.
+  Too narrow → the bloat we trim. Too vague → a prompt only a frontier model can interpret,
+  which silently fails on the cheaper/smaller models the fleet also runs. Aim for the
+  middle: one command per fundamental operation, written as **explicit, ordered steps** with
+  the exact commands to run, the expectation to check, and the failure to avoid named
+  outright. The bar is that an agent on a *weak* model can follow it and still land the
+  result — if it only works because a strong model filled in the unstated, it is
+  underspecified. Write for the weakest model that must run it, not the strongest.
+
+Before you add anything here, answer three questions: **Is this a fundamental operation, or a
+variant of one that exists? Does it generalize past code? Could a weak model execute it from
+the text alone?** If any answer is no, extend, generalize, or rewrite — don't add.
 
 ## Common mistakes in this repo — check yourself against these first
 
@@ -173,8 +239,25 @@ agents sync claude@all system # reconcile this repo's resources into every insta
 agents inspect hooks          # the hook is registered, with its events
 ```
 
+**A plugin change needs a fourth command — the three above do not carry it.**
+`agents sync <agent> system` reports the kinds it reconciled (commands, skills, hooks,
+memory, permissions) and plugins are not among them, so the installed marketplace copy under
+`~/.<agent>/plugins/marketplaces/<repo>/plugins/<name>/` keeps serving the **old** version
+until you run:
+
+```bash
+agents plugins sync <name>    # push the plugin into every installed agent version
+```
+
+Measured 2026-08-09 on yosemite-m1: after `agents sync system` (mirror at the merge commit)
+and `agents sync claude@all system`, the installed copy still read `"version": "0.9.0"` with
+no `agents/` directory. `agents plugins sync code` moved it to `0.10.0` carrying
+`agents/code-reviewer.md`. Verify the **installed** copy's manifest version, not the mirror's.
+
 ## Tests
 
-Hooks carry `<name>_test.sh` beside the script and it must pass before the PR. Test against
-the real critical path — no mocking. A guard hook additionally needs a fixture proving it
-**fails closed**: the blocked input is refused when its JSON parser is absent.
+Hooks carry `<name>_test.sh` in a `tests/` subdir of their event dir
+(`hooks/<event>/tests/<name>_test.sh`, not beside the script — see `hooks/AGENTS.md`)
+and it must pass before the PR. Test against the real critical path — no mocking. A
+guard hook additionally needs a fixture proving it **fails closed**: the blocked
+input is refused when its JSON parser is absent.

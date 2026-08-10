@@ -124,7 +124,7 @@ landed in the registry, not just that the script exited 0.
 
 **Tracker.** Update the issue tracker only with proof: commit, PR, deploy URL, test output, or
 health-check response. For work that is proven-remaining (a deferred slice with a complete shippable
-slice already delivered), create a follow-up ticket via the project's `/tickets` skill with a clear
+slice already delivered), create a follow-up ticket via the `tickets` skill with a clear
 title, the session context, and acceptance criteria — rather than silently dropping it.
 
 Do not create summary `.md` files unless the task or project workflow requires them.

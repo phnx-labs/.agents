@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Plan · Reconcile local bookkeeping for remote --host runs</title>
+<title>Plan · Reconcile local bookkeeping for remote --device runs</title>
 <style>
   :root{
     --bg:#0a0a0a; --panel:#111312; --panel2:#161a18; --ink:#e7ece8; --dim:#8b938c;
@@ -98,7 +98,7 @@
 
 <header class="hero">
   <p class="kicker">agents-cli · remote-run bookkeeping · plan</p>
-  <h1>Reconcile local bookkeeping for<br><span class="accent">remote <code style="font-size:.7em">--host</code> runs</span></h1>
+  <h1>Reconcile local bookkeeping for<br><span class="accent">remote <code style="font-size:.7em">--device</code> runs</span></h1>
   <p class="sub">A remote agent survives a dropped connection, but today the <em>local</em> record doesn't
   track that. Three status bugs leave tasks frozen or falsely failed. This plan makes the local view
   reconcile itself against remote ground truth, with no daemon and no new connection to hold open.</p>
@@ -219,7 +219,7 @@ The <b>local task record</b> is where reality slips.</p>
   <!-- laptop -->
   <rect x="20" y="70" width="150" height="70" rx="10" fill="#111312" stroke="#26302a"/>
   <text x="95" y="100" fill="#e7ece8" font-size="13" text-anchor="middle" font-family="var(--mono)">agents run</text>
-  <text x="95" y="119" fill="#8b938c" font-size="11" text-anchor="middle" font-family="var(--mono)">--host zion</text>
+  <text x="95" y="119" fill="#8b938c" font-size="11" text-anchor="middle" font-family="var(--mono)">--device zion</text>
 
   <!-- ssh kick -->
   <path d="M170 92 L360 92" stroke="#a3e635" fill="none" marker-end="url(#c)"/>

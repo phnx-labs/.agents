@@ -129,11 +129,15 @@ The body carries **the actual run result, not a description of it**:
   shared — a **shareable link to the plan file**. The same screenshot/recording also goes
   on the ticket when you close it (see `conventions`).
 
-The bundled `pr-description-reminder` (PreToolUse) is the backstop: it nudges once when a
-`gh pr create`/`edit` inline body shows **no run result** — no image/recording/asset, no
-ticket/plan link, and no release/docs/no-surface declaration. A code block or table does
-**not** clear it. Run it, capture the result, attach, retry. It **fails open** — a
-`--body-file`/`--fill` body is never nudged — and is satisfiable, never a hard wall.
+The bundled `pr-description-reminder` (PreToolUse) is the backstop, and it **reads the body
+you actually ship** — an inline `--body`/`-b` and the file behind `--body-file`/`-F` alike
+(the common multi-line path, and the hole that used to let evidence-free feature PRs through).
+It nudges — a satisfiable block, `exit 2` — when that body shows **no run result** (no
+image / recording / uploaded asset), and it is **not** cleared by a code block, a table, or a
+bare ticket/plan link: those are context, not proof you ran it. It clears on a real run result
+**or** an explicit no-run declaration (`release` / `docs-only` / `refactor` / `test-only`). It
+still **fails open** on a `--fill` / `--template` / editor body it cannot read, and on an
+unreadable `--body-file` — a reminder must never block a legit PR.
 
 ### Attaching evidence on GitHub — the mechanics
 

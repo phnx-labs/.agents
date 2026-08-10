@@ -38,6 +38,13 @@ hooks:
       - Stop
     script: stop/00-agent-verify-work-complete.sh
     timeout: 20
+  verify-work-goal-boundary:
+    # Persists only a SHA-256 prompt fingerprint + session/launch identity in
+    # verify-work-complete's hook-owned SQLite DB. No prompt text is retained.
+    events:
+      - UserPromptSubmit
+    script: user-prompt-submit/04-verify-work-state.py
+    timeout: 2
   inject-repo-inflight:
     events:
       - SessionStart
@@ -57,14 +64,6 @@ hooks:
       - UserPromptSubmit
     script: notification/06-attention-sentinel.sh
     timeout: 5
-  escalate-on-notification:
-    # Opt-in (owner.md `auto_escalate: true`): reach the user out-of-band per
-    # their owner profile when an agent raises a needs-you Notification. Inert
-    # until the owner turns it on, so it is safe to ship.
-    events:
-      - Notification
-    script: notification/12-escalate-on-notification.sh
-    timeout: 10
   inject-device-topology:
     events:
       - SessionStart

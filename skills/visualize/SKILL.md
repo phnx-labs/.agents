@@ -100,7 +100,7 @@ The source of truth is **Markdown**; the rendering is handled by `artifacts-cli`
 
    ```bash
    SOURCE="$ARTIFACTS_DIR/<slug>.md"
-   artifacts render "$SOURCE" --format html
+   artifacts render "$SOURCE"
    ```
 
    This writes `<slug>.html` next to the source.
@@ -133,7 +133,7 @@ The source of truth is **Markdown**; the rendering is handled by `artifacts-cli`
 
 ## Design and theming
 
-- Use `artifacts init design` to create a project-wide `DESIGN.md` if one does not exist.
+- Use `artifacts new design` to create a project-wide `DESIGN.md` if one does not exist.
 - Preserve an existing `DESIGN.md`; it owns both light and dark palettes, typography, density, radius, and layout spacing.
 - Probe the target repo for brand tokens and reflect them in `DESIGN.md`.
 - The light/dark toggle must be present and default to `prefers-color-scheme`.
@@ -147,7 +147,7 @@ The source of truth is **Markdown**; the rendering is handled by `artifacts-cli`
 ## Completion contract
 
 - [ ] Markdown source written to `.agents/artifacts/yyyy-mm-dd/<slug>.md`
-- [ ] HTML rendered next to the source with `artifacts render ... --format html`
+- [ ] HTML rendered next to the source with `artifacts render <source>.md`
 - [ ] Output inspected headlessly in both themes and at desktop/mobile widths
 - [ ] ≥1 inline SVG figure; interactive/animated elements verified
 - [ ] HTML opened on the user's machine and copied to `~/Downloads`

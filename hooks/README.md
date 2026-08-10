@@ -39,10 +39,16 @@ Scripts live under a **one-level event directory** (kebab-case of the harness ev
 ```
 hooks/
   session-start/          SessionStart
+    tests/                  its *_test.sh files
   pre-tool-use/           PreToolUse
+    tests/                  its *_test.sh files
   user-prompt-submit/     UserPromptSubmit
+    tests/                  its *_test.sh files
   stop/                   Stop
+    tests/                  its *_test.sh files
   notification/           Notification (+ multi-event hooks that start there)
+  lib/                    shared helpers sourced by hooks (not event scripts)
+    tests/                  its *_test.sh files
   promptcuts.yaml         data for promptcuts (internal hook: expand-promptcuts)
   registration_test.sh    integrity gate (top-level)
   syntax_test.sh          parse gate — every hook script, incl. under bash 3.2
@@ -52,6 +58,12 @@ hooks/
 agents-cli discovers scripts one level under group dirs; the install name is the
 **file basename** so version homes stay flat. `agents.yaml` `script:` is relative
 to `hooks/` (e.g. `session-start/04-session-identity.sh`).
+
+**Tests live in a `tests/` subdir of their own event dir**, one level deeper than
+the hook script they cover — `hooks/<event-name>/tests/<name>_test.sh`, not
+beside the script. This keeps `ls hooks/<event-name>/` limited to the scripts
+that actually run on the harness event. See [`AGENTS.md`](./AGENTS.md) for the
+path-reference rule a moved test must follow.
 
 Rule-bundled guards do **not** live here — they ship with the subrule under
 `rules/subrules/<rule>/` via that dir's `hooks.yaml` (absolute script paths at
@@ -88,12 +100,14 @@ register time). See [§Subrule hooks](#subrule-hooks-rules-not-this-tree).
 | [`02-expand-prompt-user-shortcuts.sh`](./user-prompt-submit/02-expand-prompt-user-shortcuts.sh) | **promptcuts** — expands shortcut tokens from `promptcuts.yaml` |
 | [`02-expand-prompt-bang-commands.sh`](./user-prompt-submit/02-expand-prompt-bang-commands.sh) | **bangcuts** — runs inline `` `!cmd` `` blocks concurrently and injects their output |
 | [`03-vacation-recap.py`](./user-prompt-submit/03-vacation-recap.py) | On a long gap since the session's last prompt, reminds the agent to open with a back-from-vacation recap |
+| [`04-verify-work-state.py`](./user-prompt-submit/04-verify-work-state.py) | Records a hashed goal boundary in `verify-work-complete`'s session-keyed hook database; never stores prompt text |
 
 ### `stop/` — Stop
 
 | Hook | What it does |
 |---|---|
 | [`00-agent-verify-work-complete.sh`](./stop/00-agent-verify-work-complete.sh) | Blocks a stop that claims "done" without verification / open PR with no handoff |
+| [`verify-work-state.py`](./stop/verify-work-state.py) | Hook-owned SQLite state and positive-evidence classifier used by `verify-work-complete` |
 | [`verify-delivery-chain.py`](./stop/verify-delivery-chain.py) | Invoked by the Stop gate (not registered alone) |
 
 ### `notification/` — Notification
@@ -101,7 +115,6 @@ register time). See [§Subrule hooks](#subrule-hooks-rules-not-this-tree).
 | Hook | What it does |
 |---|---|
 | [`06-attention-sentinel.sh`](./notification/06-attention-sentinel.sh) | Per-session attention state (also fires on Stop + UserPromptSubmit) |
-| [`12-escalate-on-notification.sh`](./notification/12-escalate-on-notification.sh) | Escalation ladder when the agent needs the user |
 
 ## Subrule hooks (rules, not this tree)
 
@@ -123,7 +136,7 @@ dir and namespaces the manifest key as `<rule>__<hook>`. Do not copy these into
 |---|---|---|
 | `gh-merge-guard` | `merge-guard` | PreToolUse (Bash) |
 | `no-pr-footer` | `footer-guard` | PreToolUse (Bash) |
-| `plan-presentation` | `plan-html-reminder` | PreToolUse (ExitPlanMode) |
+| `plan-presentation` | `plan-html-reminder`, `plan-html-stop-reminder` | PreToolUse (ExitPlanMode), Stop (cross-harness backstop) |
 | `truly-agentic-git-workflow` | `main-branch-guard`, `pr-description-reminder` | PreToolUse |
 
 ## Manifest schema (`hooks:` in `../agents.yaml`)

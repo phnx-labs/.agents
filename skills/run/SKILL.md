@@ -122,8 +122,11 @@ Controls which installed version/account gets the work.
 agents run claude "..." --strategy balanced
 agents run claude "..." -b                  # shortcut for --strategy balanced
 
-# Pin a logical identity label instead of rotating across accounts
+# Select a durable provider credential
 agents run claude "..." --account work
+
+# Set the provider account used when --account is omitted
+agents accounts set-default claude work
 ```
 
 Strategy is ignored when `@version` is pinned, a profile is used, or `--fallback` is set.
@@ -229,31 +232,31 @@ Scale past local capacity, dispatch async with `--no-follow`, and manage tasks w
 
 ## Run on another machine (SSH)
 
-A different axis from cloud: `agents run --host <name>` runs the agent on one of your **own** registered machines over SSH (no daemon). It follows live by default; `--no-follow` detaches.
+A different axis from cloud: `agents run --device <name>` runs the agent on one of your **own** registered machines over SSH (no daemon). It follows live by default; `--no-follow` detaches.
 
 ```bash
-agents run claude "profile this build" --host gpu-box   # run there, follow live
-agents run claude "..." --host gpu-box --no-follow        # detach
+agents run claude "profile this build" --device gpu-box   # run there, follow live
+agents run claude "..." --device gpu-box --no-follow        # detach
 
 agents hosts ps              # list dispatched runs
-agents logs --host gpu-box   # pick a run on that host and view its log
+agents logs --device gpu-box   # pick a run on that host and view its log
 agents logs <id> -f          # re-attach to a running one and follow
 ```
 
-`agents logs [id]` is the unified viewer over host-dispatch runs and local session transcripts; `agents hosts logs <id>` is the host-only equivalent. See the `devices` skill.
+`agents logs [id]` is the unified viewer over device-dispatch runs and local session transcripts; `agents hosts logs <id>` is the host-only equivalent. See the `devices` skill.
 
 **`--remote-cwd <dir>` — the working directory on the host, used verbatim.** It is an `agents run` flag **only**: `agents teams add` rejects it with a hard error (a teammate's directory is `--worktree <role>` or `--cwd <dir>` instead — see the `teams` skill). Resolve the path **on the remote**: a bare `~`/`$HOME` expands on your local box (`/Users/you`) and silently targets a path that doesn't exist on the remote (`/home/you`), so pass a valid remote absolute path or single-quote so `$HOME` expands there. For codex, point it at a real git repo on the target box (it refuses to start outside a trusted git dir).
 
 ## Automatic fleet placement
 
-`--device auto` (alias `--host auto`) lets the CLI pick the machine from your registered fleet. It weights 14-day launch affinity by live headroom among online, dispatchable devices and degrades to local if no device is eligible.
+`--device auto` lets the CLI pick the machine from your registered fleet. It weights 14-day launch affinity by live headroom among online, dispatchable devices and degrades to local if no device is eligible.
 
 ```bash
 agents run claude "fix the flaky test" --device auto
 agents run claude "summarize logs" --device auto --no-follow
 ```
 
-Use this as the default for "send this to the fleet" unless the task must land on a specific box. Mark preferred machines with `agents devices prefer <name>`; exclude a box with `agents devices disable <name>`.
+Use this as the default for "send this to the fleet" unless the task must land on a specific box. Mark preferred machines with `agents devices config <name> auto-launch.preferred on`; exclude a box with `agents devices config <name> auto-launch.enabled off`.
 
 ## Quick reference
 
@@ -274,13 +277,17 @@ Use this as the default for "send this to the fleet" unless the task must land o
 | `--fallback codex,antigravity` | Rate-limit fallback chain |
 | `-b, --balanced` | Shortcut for `--strategy balanced` |
 | `--strategy pinned\|available\|balanced` | Version selection |
-| `--host <name>`, `--device <name>` | Run on a specific registered host/device |
-| `--host auto`, `--device auto` | Let the CLI pick a reachable fleet box |
+| `--device <name>` | Run on a specific registered host/device |
+| `--device auto` | Let the CLI pick a reachable fleet box |
 | `--acp` | Route via Agent Client Protocol |
 
 For everything else, run `agents run --help`.
 
-`--account <label>` selects a healthy installed version whose live provider
-identity matches a name created with `agents accounts name`. It never falls
-back to another account. There are no version bindings and local account names
-do not apply to cloud or lease placement.
+`--account <name>` selects a provider account bundle created with `agents
+accounts add`; it overrides `agents accounts set-default`. Accounts are
+independent of agent versions and one provider account may be used by multiple
+compatible harnesses. The execution device resolves the secret locally and
+fails before spawn when it is absent. Copy a provider bundle explicitly with
+`agents accounts sync <name> --device <device>`. Harness-native signed-in
+identities remain in version homes and their auth material is never copied.
+Accounts do not apply to cloud or lease placement.

@@ -11,6 +11,7 @@ the fleet holds browser + computer + secrets.
 | --- | --- |
 | `/work:loop` | **Unattended drain** of many items across projects. Spreads load (`agents teams` + balanced accounts + worker hosts). Uses browser/computer when the task needs it. **No review/merge gate** — finish agent-doable work, open PRs for the human to review later. Top-level alias: `/loop`. |
 | `/work:dispatch` | **ONE** unit of work — ticket, described task, or "next on `<project>`". Classify coding vs non-coding, file clean if needed, route to the right executor, drive to done. Single-target; not a board sweep. |
+| `/work:output` | **Fleet-wide token-burn + output report** — runs `agents output` across every device, folds in relay-only machines, renders an HTML dashboard, drops a PDF in Downloads, and opens it. Was the top-level `/output`. |
 
 ## Skills
 

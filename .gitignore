@@ -95,3 +95,5 @@ linear.json
 /.worktrees/
 # plan-render / artifacts-cli write rendered plans here (per-box outputs, not source).
 .agents/artifacts/
+# Mid-process scratch (PR bodies, screenshots) that skills write per-box, never source.
+.agents/scratch/

@@ -381,6 +381,33 @@ shortcuts:
     STOP and do the rigorous thing instead.
     ================================================================
 
+  # Anti-slop enforcement
+  "#noslop": |
+    No-slop mode. Say the precise, thorough, accurate thing — or say nothing. Slop is any word that lets you avoid committing to a claim you would otherwise have to verify. Vagueness is not a style; it is a way to be wrong without being caught. This is `code-quality` ("Write prose precisely; don't market") turned up to a hard gate for THIS turn.
+
+    ---------------- THE RULE ----------------------------------------
+    Every noun names the actual thing. Every verb names the actual mechanism. Every number is the real number. If you cannot name it precisely, that is a signal you have not looked yet — go look (read the file, run the command, count it), then name it. Reaching for a vague word instead of doing the lookup is the exact laziness this bans.
+
+    ---------------- BANNED WORDS (and why each is slop) -------------
+    Do not emit these. Each one is a placeholder for a fact you are dodging:
+
+    - APPROXIMATION HEDGES that dodge a real figure or claim: "directionally", "roughly", "approximately" (when the exact value is knowable), "basically", "essentially", "more or less", "kind of", "sort of", "-ish", "ballpark", "give or take". → State the exact value, or say "I have not measured it" and measure it.
+    - VAGUE PLACEHOLDER NOUNS that stand in for named things: "things", "stuff", "surfaces" (unless it is the literal technical term), "aspects", "elements", "various", "several", "a number of", "a bunch of", "some parts". → Enumerate them. If there are three, name the three.
+    - EMPTY VERBS that hide what actually happens: "gate", "handle", "manage", "process", "deal with", "leverage", "utilize", "facilitate", "orchestrate" (when it just means "call"), "wire up" (when you can name the call). → Name the concrete operation: what calls what, with what input, producing what.
+    - MARKETING ADJECTIVES that assert quality without evidence: "seamless", "powerful", "robust", "smart", "intelligent", "elegant", "clean", "simply", "just", "cutting-edge", "production-grade". → Delete them, or replace with the measured property ("handles 10k rows in 40ms", not "powerful").
+    - FALSE-CONFIDENCE CONNECTIVES: "clearly", "obviously", "of course", "as expected", "needless to say". → If it were clear you would not need to say so; state the evidence instead.
+    - DRAMA HEADERS: "Critically:", "Notably:", "Importantly:", "It's worth noting". → Cut the label; lead with the fact.
+
+    ---------------- WRITE THIS INSTEAD ------------------------------
+    - Name the file, function, flag, error string, count, or byte size — the concrete referent, not a category word for it.
+    - When you would summarize with an approximation, give the exact thing and its source (file:line, command output, a search result with the year).
+    - Prefer one specific sentence over three vague ones. "The retry loop in `fetch.ts:88` gives up after 3 attempts" beats "it handles retries robustly".
+    - Describe the topic at full resolution: the edge cases, the exceptions, the parts that do NOT fit the tidy summary. Oversimplifying by omitting the messy detail is slop even when every word is precise.
+    - If you do not know, write "I don't know — here is how I'd find out" and then find out. That is thorough. A confident vague sentence is not.
+
+    ---------------- PRE-SEND SELF-CHECK -----------------------------
+    Before you emit the response, reread it and, for each banned word above, either delete it or replace it with the specific fact it was standing in for. If a sentence survives only because of a vague word, the sentence is not yet true enough to send — rewrite it against the evidence. Apply this to chat, plans, PR/commit messages, code comments, and tickets equally.
+
   # Handoff / continuity
   "#userecap": |
     Produce a recap of the current state of work for handoff or continuity.

@@ -19,7 +19,7 @@ It is the opposite failure mode that makes this hard. The lazy output is to enco
 - **No argument, a session id, or a free topic → reflection mode.** Reflect on the session you just finished (or the one named) and write its lessons forward. This is everything from **Phase 0** down — the default.
 - **The argument names an installed skill, plugin, command, or a workflow → target-audit mode.** The user wants to know where *that one thing* keeps going wrong across all the times they've used it, and fix it. Run **Target audit** below instead, then return to Phase 4 to apply the approved fixes.
 
-Decide which the argument is before doing anything: `agents inspect user --json` and `agents inspect system --json` list the installed skills/commands/plugins. If `$ARGUMENTS` matches one of those names (e.g. `rush:design`, `code:loop`, `/commit`), or is clearly the name of a recurring workflow the user runs, it's a **target** — go to Target audit. If it's a hex session id or a loose theme to reflect across, it's reflection mode.
+Decide which the argument is before doing anything: `agents inspect user --json` and `agents inspect system --json` list the installed skills/commands/plugins. If `$ARGUMENTS` matches one of those names (e.g. `rush:design`, `code:loop`, `/code:commit`), or is clearly the name of a recurring workflow the user runs, it's a **target** — go to Target audit. If it's a hex session id or a loose theme to reflect across, it's reflection mode.
 
 ## Target audit — `/learn <target>`
 

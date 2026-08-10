@@ -31,7 +31,7 @@ task in front of you (not a full session wrap):
   stubbed. `git diff` / `git status` clean or intentionally staged.
 - **Tests.** Run whatever covers the critical path you touched. "It compiles" is
   not "it's tested."
-- **Tracker.** If a ticket was open for this, close it via `/tickets` **with
+- **Tracker.** If a ticket was open for this, close it via the `tickets` skill **with
   proof** (PR link, commit, screenshot, metric) — not just a status flip.
 
 If any of this isn't true, finish it first. `/next` assumes done; it does not
@@ -59,10 +59,10 @@ anything). Read that before running any discovery command; it's usually already
 answered.
 
 Only when nothing's injected, or the project uses a tracker this session hasn't
-surfaced yet, fall back to `/tickets` Step 1 (tracker detection: skill → CLI →
+surfaced yet, fall back to the `tickets` skill (Step 1 tracker detection: skill → CLI →
 repo signal → ask). Do not assume Linear, GitHub, or Jira — detect, every time.
-`/tickets` is the right primitive for **actions** (claim, close, comment) even
-when discovery came from injected context, not from `/tickets` itself.
+The `tickets` skill is the right primitive for **actions** (claim, close, comment) even
+when discovery came from injected context.
 
 Once you have the board, prefer in this order:
 
@@ -102,7 +102,7 @@ job, not this step's. Check the candidate, decide, move.
 
 ## Step 5: Pick up (or surface, don't guess)
 
-- **Clear winner:** claim it via `/tickets` ("pick up X" — moves to In Progress,
+- **Clear winner:** claim it via the `tickets` skill ("pick up X" — moves to In Progress,
   assigns to you), announce what you picked up and why, then start: read the
   relevant code, plan briefly, execute.
 - **Not clear** (several plausible candidates, or the top item needs a
@@ -137,8 +137,8 @@ worth doing about it, without doing the deep analysis in the main thread.
 
 ## Anti-patterns
 
-- **Hardcoding a tracker.** Check injected context first, fall back to `/tickets`
-  detection, never assume Linear specifically — this is the exact reason the
+- **Hardcoding a tracker.** Check injected context first, fall back to the `tickets` skill
+  for detection, never assume Linear specifically — this is the exact reason the
   original `/next` was removed.
 - **Reimplementing `/work:dispatch`'s resolution logic.** If the pick belongs to a
   different executor (non-coding, or should run on another machine/agent), hand it

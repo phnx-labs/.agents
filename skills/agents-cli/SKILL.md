@@ -35,11 +35,15 @@ The key insight: sessions are your memory. Before starting a task, search for pr
 
 `agents run <agent> "prompt"` executes an agent headlessly and returns when done. You can set the reasoning effort, working directory, mode (plan/edit/full), and inject secrets or env vars. You can also resume a previous Claude session by session ID.
 
-After the harness's normal login, use `agents accounts` to discover signed-in
-provider accounts and `agents accounts name <label>` to name one. Matching
-installed versions are found automatically. `agents run <agent> --account
-<label>` selects a healthy match. Labels store fingerprints, not credentials,
-and explicit selection fails instead of using another account.
+`agents accounts` lists harness-native signed-in identities and provider accounts.
+A provider account is one `agents secrets` bundle: create it with `agents
+accounts add <name> --provider <provider> --auth <type>`, optionally importing
+an existing value with `--from-secrets <bundle>:<key>`. Account bundles use
+policy `never`, so agent launches read them without Touch ID. Use `agents accounts
+set-default <agent> <name>` for a harness default, `--account <name>` for a
+one-run override, and `agents accounts sync <name> --device <device>` to copy that
+provider bundle explicitly to a worker. Harness-native auth material remains
+owned by the harness and is never copied by account sync.
 
 Use this when you want to delegate a bounded task to another agent and capture its output, rather than spawning a full team.
 
@@ -50,16 +54,16 @@ Run an agent on another machine over SSH. The local CLI is just transport; tmux 
 
 ```bash
 # Interactive TTY session on the remote (no prompt required)
-agents run claude --host yosemite-s0
+agents run claude --device yosemite-s0
 
 # Headless task on the remote (still requires a prompt)
-agents run claude "refactor auth" --host yosemite-s0
+agents run claude "refactor auth" --device yosemite-s0
 
 # Forward --mode, --model, --name, passthrough args after --, and --no-tmux
-agents run claude --host yosemite-s0 --mode edit --model sonnet --name auth-refactor -- --no-tmux
+agents run claude --device yosemite-s0 --mode edit --model sonnet --name auth-refactor -- --no-tmux
 ```
 
-- Omitting the prompt with `--host` takes the interactive path and forwards your local TTY.
+- Omitting the prompt with `--device` takes the interactive path and forwards your local TTY.
 - `--no-follow` is rejected for interactive host runs.
 - `--interactive` and `--headless` are mutually exclusive.
 - The remote machine must already have agents-cli installed and reachable; if not, enroll it with `agents hosts add <name>`.

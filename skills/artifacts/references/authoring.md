@@ -5,7 +5,10 @@
 Only `kind` and `title` are required. `template` is inferred from `kind`, and
 provenance (project, repository, branch, harness, agent, human, host, session,
 date) auto-fills at render time from the Git checkout and agent environment —
-declared values always win. `artifacts new` scaffolds the full shape:
+declared values always win. The **session** value renders as a deep link
+(`agents://session/<id>`): clicking it in an opened artifact reopens that
+session's terminal in its input bar via `agents open`, which resolves the
+owning host. `artifacts new` scaffolds the full shape:
 
 ```yaml
 ---
@@ -52,14 +55,25 @@ omitted, the chip text is derived:
 | Explicit `label` | that label |
 | Otherwise | last path segment or host |
 
+Chip icons: known hosts (GitHub, Linear, Jira/Atlassian, Notion, GitLab,
+Bitbucket, Asana, Trello, Slack, Figma) get an offline brand mark. Any other
+host tries a remote favicon at view time and removes it if load fails.
+
+### Header chrome (render)
+
+At render time the hero is work-first: `status` becomes a kicker badge; freeform
+`facts` are a quiet monoline; `links` sit under **Related** as chips; provenance
+is one unlabeled line. Harness + model combine into a single display name
+(e.g. Grok 4.5). Optional `tracking` appears in that provenance line.
+
 Seed every related URL you already have when authoring. If you create tickets
 during the session, append them to `links` and re-render before presenting. Also
 list the same URLs under `## Tracking` as Markdown links so the body is readable
 without relying on the chip row. Keep optional short ids in `tracking`; do not
 add purpose-specific fields (`tickets:`, `prs:`) beside `links`.
 
-Required body sections come from the kind's template (`artifacts template <kind>`
-prints it). Keep them instead of inventing a second schema.
+Required body sections come from the kind's template (`artifacts new <kind>
+--blank` writes it). Keep them instead of inventing a second schema.
 
 ## Design Layout
 
@@ -133,19 +147,18 @@ Example:
 
 ## Plan quality gate
 
-For `kind: plan`, validation is not optional chrome:
+For `kind: plan`, validation is not optional chrome. The goal is a **pleasant,
+reviewable** page — not a wall of bullets.
 
-| Check | Level | Rule |
+| Check | Level | What you see |
 | --- | --- | --- |
-| Live drawn SVG | **error** | `No SVG figure found.` Add a visualization as live inline SVG. Skills: **plan-render**, **artifacts**. |
+| Plan surface | **error** | Declare `surface: internal|cli|web|native|api|workflow`. Internal plans need a live drawn SVG; user-visible plans need a semantic current/proposed `.artifact-behavior` figure with capture-or-mockup evidence. |
 | Markdown table | warning | At least one `| … |` table (files, risks, validation) |
 | Fenced code | warning | At least one fenced code block — commands belong here, not only as inline pills |
 | `artifact-callout` | warning | One load-bearing takeaway for the reviewer |
 
 `artifacts render` **does not write HTML** when any error is present. Fix the
 Markdown source; do not open a partial file.
-
-Empty SVG shells (template placeholders with only a comment) do **not** pass.
 
 ## Diagram Recipe
 
