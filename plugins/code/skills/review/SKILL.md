@@ -468,10 +468,15 @@ jq -n --arg body "$(cat <synthesized>.md)" --arg sha "$(gh pr view $PR --json he
   | gh api repos/{owner}/{repo}/pulls/$PR/reviews --input -
 ```
 
-Each element of `<inline-comments>.json` is `{"path": "...", "line": <n>, "side": "RIGHT",
-"body": "**BLOCKER** — <one line>\n\n<why, and the fix>"}`; use `start_line` with `line`
-for a range. Keep the inline body short — the defect and the fix. The review body carries
-the verdict, the non-anchorable findings, and the `Filtered:` line.
+`<inline-comments>.json` is a **single JSON array** — `$c[0]` takes that array, so a JSONL
+file would silently post only its first line. Each element is `{"path": "...", "line": <n>,
+"side": "RIGHT", "body": "**BLOCKER** — <one line>\n\n<why, and the fix>"}`; use
+`start_line` with `line` for a range. Keep the inline body short — the defect and the fix.
+The review body carries the verdict, the non-anchorable findings, and the `Filtered:` line.
+
+When **nothing** is anchorable — a docs-only diff, or every finding sits outside the
+hunks — skip the `comments` key entirely rather than sending `[]`, or just post the body
+with `gh pr comment`. An empty array is a review with no content attached to it.
 
 `event: "COMMENT"` deliberately: `REQUEST_CHANGES` blocks the PR and pages the author, so
 reserve it for `$ARGUMENTS` containing `formal-review`. Never `APPROVE` your own work.

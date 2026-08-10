@@ -62,6 +62,12 @@ filtered.
 
 ### What you hunt
 
+**One line, one class.** These overlap by design — a single diff line can look like
+three of them at once. Report it under the **most specific** class that fits and drop the
+rest; two findings for one line is padding, and padding is what makes a review skimmed.
+When two fit equally, the one naming a concrete existing thing (a canonical pattern, a
+declared surface, an extendable concept, by file:line) is the more specific.
+
 - **Correctness.** Trace the data path end to end and name the input that produces the
   wrong output. If you cannot state inputs or state that yield a wrong result, you do
   not have a finding.
@@ -105,10 +111,10 @@ filtered.
     code anyway — and say so. (A widened `catch`, a retry over a race, or a `sleep` standing
     in for a real wait belong to **Fallback band-aids** above, not here.)
 
-  Report a line under **one** class only, the most specific that fits. Both faces are
-  blocking when the repo states the convention in writing. Otherwise face 1 is a finding
-  only when you can name the durable mechanism the project already has by file:line, and
-  face 2 only when the suppression is live rather than inert; if you cannot, drop it.
+  Both faces are blocking when the repo states the convention in writing. Otherwise face 1
+  is a finding only when you can name the durable mechanism the project already has by
+  file:line, and face 2 only when the suppression is live rather than inert; if you
+  cannot, drop it.
 - **Silent success at a boundary.** An unsupported case that returns as if it worked
   instead of raising or skipping with a stated reason.
 - **Duplicate surface, bypassed seam.** A helper that re-implements a primitive already
