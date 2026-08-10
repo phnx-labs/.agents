@@ -67,18 +67,19 @@ shortcuts:
     - Cite each finding to its teammate + file:line.
 
     DO NOT IMPLEMENT after rethinking. Present findings. Wait for direction.
-      "#debugit": |
-        Root-cause mode. NO guessing. NO fix until the cause is proven with evidence.
-  
-        Execution plan (follow in order):
-        1. Load the `debug` skill — it encodes the project's debugging workflow.
-        2. Trace the full data path end-to-end. If data flows A → B → C → D, open A, B, C, AND D. Quote file:line from each. Skipping files in the middle is how you misdiagnose (research-discipline: NO LAZY DEBUGGING).
-        3. Spawn parallel agents for independent verification (parallelize — fleet-delegation: parallelize from message one):
-           - Codex agent via `agents teams` — reproduce the bug from scratch       - Antigravity agent via `agents teams` — cross-check the data flow independently
-       - Opus Agent subagent — deep review of the suspected module
-       Every agent prompt MUST end with the exact line:
-       `Return file:line quotes for every claim. Do NOT paraphrase. If you can't quote it, don't claim it.`
-       NEVER pass model="haiku". NEVER omit the model field. (fleet-delegation; research-discipline)
+  "#debugit": |
+    Root-cause mode. NO guessing. NO fix until the cause is proven with evidence.
+
+    Execution plan (follow in order):
+    1. Load the `debug` skill — it encodes the project's debugging workflow.
+    2. Trace the full data path end-to-end. If data flows A → B → C → D, open A, B, C, AND D. Quote file:line from each. Skipping files in the middle is how you misdiagnose (research-discipline: NO LAZY DEBUGGING).
+    3. Spawn parallel agents for independent verification (parallelize — fleet-delegation: parallelize from message one):
+      - Codex agent via `agents teams` — reproduce the bug from scratch
+      - Antigravity agent via `agents teams` — cross-check the data flow independently
+      - Opus Agent subagent — deep review of the suspected module
+      Every agent prompt MUST end with the exact line:
+      `Return file:line quotes for every claim. Do NOT paraphrase. If you can't quote it, don't claim it.`
+      NEVER pass model="haiku". NEVER omit the model field. (fleet-delegation; research-discipline)
     4. Synthesize: do the agents AGREE on the cause? Where do they DIVERGE? Divergence = you do not understand the bug yet — investigate more, do NOT patch.
     5. Present: bug description, full evidence chain with file:line quotes from every file on the path, root cause, proposed fix (sorted by scope). NO fix ships until the user confirms the diagnosis.
 
@@ -128,9 +129,10 @@ shortcuts:
 
     4. ABSTRACTION BLOAT — too many small wrappers, adapters, layers each doing 10% of a job. If there are 5 abstractions for one concern, propose a SINGLE cleaner abstraction that subsumes 3-4 of them. Fewer concepts > more concepts, when the shape is right.
 
-          5. SCATTERED TRUTH — the same constant, config value, or decision expressed in multiple places. Unify at the source. No shadow copies. (code-quality: CROSS-CUTTING CHANGES GO TO THE SOURCE.)
-    
-          WHAT YOU PROPOSE:    - A NEW, simpler abstraction — with name, shape, responsibilities.
+    5. SCATTERED TRUTH — the same constant, config value, or decision expressed in multiple places. Unify at the source. No shadow copies. (code-quality: CROSS-CUTTING CHANGES GO TO THE SOURCE.)
+
+    WHAT YOU PROPOSE:
+    - A NEW, simpler abstraction — with name, shape, responsibilities.
     - Which existing abstractions it REPLACES (list them by file:line).
     - Which call sites change, and how.
     - What becomes easier after the consolidation.

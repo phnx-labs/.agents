@@ -4,6 +4,8 @@
 
 ### Fixed
 
+- **`hooks/promptcuts.yaml` #275: `#debugit` is no longer swallowed into `#rethink`'s block scalar.** The shortcut key was mis-indented 6 spaces, so YAML parsed it as part of `#rethink`'s value, making `#debugit` / `!!debugit` a no-op and gluing the debug root-cause block onto every `#rethink` expansion. Re-indented `#debugit` to the canonical 2-space key + 4-space body and fixed the same mid-block drift in `#simplifyit`. Added `hooks/tests/promptcuts_test.sh` to assert the expected shortcut key set on every load so a swallowed cut fails loudly. Source: `hooks/promptcuts.yaml`, `hooks/tests/promptcuts_test.sh`.
+
 - **Account guidance uses positional identity and target arguments (RUSH-2527).** Fleet sync, mint-auth, run, and agents-cli guidance now teach `accounts name <agent@version> <name>`, `attach <account> <target>`, and `sync <account> <device>` while keeping native OAuth material harness-owned.
 
 - **`plugins/design/skills/design/interface-redesign.md` restored; `design-core.md` §4
