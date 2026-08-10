@@ -62,6 +62,12 @@ filtered.
 
 ### What you hunt
 
+**One line, one class.** These overlap by design — a single diff line can look like
+three of them at once. Report it under the **most specific** class that fits and drop the
+rest; two findings for one line is padding, and padding is what makes a review skimmed.
+When two fit equally, the one naming a concrete existing thing (a canonical pattern, a
+declared surface, an extendable concept, by file:line) is the more specific.
+
 - **Correctness.** Trace the data path end to end and name the input that produces the
   wrong output. If you cannot state inputs or state that yield a wrong result, you do
   not have a finding.
@@ -105,15 +111,28 @@ filtered.
     code anyway — and say so. (A widened `catch`, a retry over a race, or a `sleep` standing
     in for a real wait belong to **Fallback band-aids** above, not here.)
 
-  Report a line under **one** class only, the most specific that fits. Both faces are
-  blocking when the repo states the convention in writing. Otherwise face 1 is a finding
-  only when you can name the durable mechanism the project already has by file:line, and
-  face 2 only when the suppression is live rather than inert; if you cannot, drop it.
+  Both faces are blocking when the repo states the convention in writing. Otherwise face 1
+  is a finding only when you can name the durable mechanism the project already has by
+  file:line, and face 2 only when the suppression is live rather than inert; if you
+  cannot, drop it.
 - **Silent success at a boundary.** An unsupported case that returns as if it worked
   instead of raising or skipping with a stated reason.
 - **Duplicate surface, bypassed seam.** A helper that re-implements a primitive already
   in this surface, or a caller that goes around the registry, store, or factory the rest
   of the surface uses. Cite the canonical one by file:line.
+- **A new concept where an existing one could have been extended.** Distinct from the
+  class above: that one is *two ways to do one thing*; this one is *a new thing that
+  should have been a parameter of an existing thing*. Every new flag, command, config
+  key, status value, type, or module is a surface every future reader must learn and
+  every future change must keep consistent, so it has to earn that cost. Apply one test:
+  **could this be a value, mode, or argument of something that already exists?** A
+  `--json-pretty` beside `--json`, a `list-active` beside `list`, a `retries_fast` beside
+  `retries`, a `PendingRetry` state beside `Pending` — each is a variant wearing the
+  costume of a new concept. Name the existing concept it could have extended, by
+  file:line, and say what the extension would be ("`--format=json|pretty` on the existing
+  flag at `cli.ts:88`"). If you cannot name one, there is no finding — drop it. This is
+  not "do not add things": a genuinely new operation, one that is not a mode of any
+  existing one, is exactly what should be added.
 - **Design divergence at a declared surface.** A new member of an existing family must
   look like its siblings; "it works" is not the bar, because the divergence is what every
   future caller and reader pays for. When the diff adds or changes an **API definition**
@@ -190,6 +209,7 @@ For each finding:
 ```
 ### <BLOCKER|SHOULD|NICE> — <one-line defect>
 File: path/to/file.ts:42-58
+Anchor: IN-DIFF | OUT-OF-DIFF
 Canonical pattern (when relevant): other/file.ts:100-110
 
 <5-15 quoted lines from the diff>
@@ -197,6 +217,12 @@ Canonical pattern (when relevant): other/file.ts:100-110
 Failure: <inputs or state -> wrong output, concretely>
 Fix: <one line, only when the fix is obvious>
 ```
+
+`Anchor:` says whether that `file:line` is on the **right side of this diff** — an added
+or context line in the PR's own hunks. The caller posts `IN-DIFF` findings as inline
+comments on those lines and `OUT-OF-DIFF` ones in the review body, so getting this wrong
+either buries a finding or fails the post. A finding about a file the diff never opened is
+`OUT-OF-DIFF` and that is fine — those are often the ones worth the most.
 
 Then:
 
