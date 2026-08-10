@@ -127,7 +127,7 @@ reg_path = os.path.join(reg_dir, "%d.json" % agent_pid)
 # sessionId is the only field THIS hook owns (from SessionStart / env). Everything
 # else is launcher-owned and must survive the rewrite — especially terminalId and
 # launchId, which Factory and `agents sessions --active` use to join a tab/spawn
-# to the real session across --host/--device (dropping them left Grok/Codex
+# to the real session across --device dispatch (dropping them left Grok/Codex
 # status bars unbound — RUSH-2192). Prefer launcher values; fall back to the env
 # the launcher exported when no prior registry file exists.
 entry = {

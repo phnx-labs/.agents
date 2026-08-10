@@ -80,16 +80,16 @@ agents secrets view production --reveal
 
 Browse and *use* the bundles that live on another machine, over SSH. Hosts
 resolve through the `agents hosts` registry, an ssh-config alias, or `user@host`.
-Use `--host` for one host and `--hosts` for a comma-separated list.
+Use `--device` for one host and `--devices` for a comma-separated list.
 
 ```bash
 # Browse bundles on one host, or several at once (grouped by host)
-agents secrets list  --host yosemite-s1
-agents secrets list  --hosts yosemite-s0,yosemite-s1
-agents secrets view  --host yosemite-s1 r2.backups --reveal --plaintext
+agents secrets list  --device yosemite-s1
+agents secrets list  --devices yosemite-s0,yosemite-s1
+agents secrets view  --device yosemite-s1 r2.backups --reveal --plaintext
 
 # Use a remote bundle ephemerally — values are injected, never stored locally
-agents secrets exec  --host yosemite-s1 r2.backups -- ./deploy.sh
+agents secrets exec  --device yosemite-s1 r2.backups -- ./deploy.sh
 agents run claude "ship it" --secrets r2.backups@yosemite-s1   # bundle@host
 ```
 
@@ -103,14 +103,14 @@ agents run claude "ship it" --secrets r2.backups@yosemite-s1   # bundle@host
   remote `file` bundle, an unlocked remote secrets-agent, or run `view --reveal`
   from an interactive terminal (it forces an SSH TTY so the prompt can surface).
 
-### Push a bundle to another machine (`export --host`) — incl. Windows
+### Push a bundle to another machine (`export --device`) — incl. Windows
 
 ```bash
 # Push a bundle over SSH; it lands in the remote's native store. Works to
 # macOS, Linux AND Windows targets (Windows lands in Credential Manager, or the
 # headless file store when there's no logon session).
-agents secrets export linear.app --host win-mini --force
-agents secrets export r2.backups --host yosemite-s0 --host yosemite-s1
+agents secrets export linear.app --device win-mini --force
+agents secrets export r2.backups --device yosemite-s0 --device yosemite-s1
 ```
 
 You don't do anything different for a Windows host — the push detects the
@@ -118,20 +118,20 @@ remote's platform and drives its `agents secrets import` under PowerShell instea
 of `bash`. (Over a relayed link the push can take ~30-40s; that's the link, not a
 hang.) `--remote-backend file` is POSIX-only and is refused cleanly on Windows.
 
-### Unlock a remote Mac's bundle from the road (`unlock --host`)
+### Unlock a remote Mac's bundle from the road (`unlock --device`)
 
 ```bash
 # Away from the Mac Mini: unlock its FILE-backed bundle by typing the passphrase
 # into YOUR terminal — the prompt surfaces over the ssh -tt session.
-agents secrets unlock linear.app --host mac-mini
+agents secrets unlock linear.app --device mac-mini
 ```
 
-`unlock --host <machine> <bundle>` runs the unlock on the remote over `ssh -tt`,
+`unlock --device <machine> <bundle>` runs the unlock on the remote over `ssh -tt`,
 so the remote's passphrase prompt appears on your terminal. Only **file-backed**
 bundles work this way (their passphrase is a CLI prompt held in the remote's
 secrets-agent, default 7d); a keychain/biometry bundle would pop a **local**
-Touch-ID/passcode sheet on the remote's screen, which can't cross SSH. `--host`
-here is single-valued, so put the bundle name first: `unlock <bundle> --host <machine>`.
+Touch-ID/passcode sheet on the remote's screen, which can't cross SSH. `--device`
+here is single-valued, so put the bundle name first: `unlock <bundle> --device <machine>`.
 Type the password interactively — it can't be piped.
 
 ## Multiple Accounts on One Website

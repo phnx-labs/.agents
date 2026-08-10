@@ -33,8 +33,8 @@ Open the new session in a real terminal tab, in the program the user actually wo
   `--terminal` (no value) detects the user's terminal from `agents sessions --active` and opens a tab there.
 
 - **Remote — the user connected from another box** (`$SSH_CONNECTION` is set): run
-  `agents sessions resume <new-id> --host <source-machine>` from the terminal where
-  the user is working. Here `--host` scopes identity lookup to the machine that owns
+  `agents sessions resume <new-id> --device <source-machine>` from the terminal where
+  the user is working. Here `--device` scopes identity lookup to the machine that owns
   the fork; the CLI attaches a live pane or routes native resume there. Do not choose
   the harness, version, or tmux target in this command.
 
@@ -48,5 +48,5 @@ Tell the user which session you forked and where it opened (`Forked <src> -> <ne
 
 - Don't re-run or re-summarize the conversation to "seed" the fork — `agents sessions fork` copies the transcript natively; that's the whole point.
 - Don't open the fork on the agent's own box when the user is connected from elsewhere — resolve `$SSH_CONNECTION` and open on THEIR machine.
-- Don't pass `--host` to `agents run --terminal`; use the canonical `agents sessions resume <id> --host <source-machine>` lifecycle path.
+- Don't pass `--device` to `agents run --terminal`; use the canonical `agents sessions resume <id> --device <source-machine>` lifecycle path.
 - Don't silently succeed on a non-forkable harness — say a native copy isn't supported and take the `/continue` branch explicitly.

@@ -36,7 +36,7 @@ over hand-rolling resume flags.
 ```bash
 # Resume — reopen the SAME conversation by canonical id (from any device)
 agents sessions resume 019fd114                 # reopen one, full context
-agents sessions resume 019fd114 --host zion     # scope identity to the owning device
+agents sessions resume 019fd114 --device zion   # scope identity to the owning device
 agents sessions resume                          # picker: multi-select into tabs/splits
 
 # Fork — copy a session under a NEW id so the two diverge (original untouched)
@@ -46,7 +46,7 @@ agents sessions resume <new-id>                  # then continue the fork
 ```
 
 - **resume vs fork:** `resume` continues the *same* thread; `fork` copies it under a new id so the two branches diverge without touching the original. Fork is a file copy of the transcript — no re-run, no tokens; the new session carries full context natively.
-- **Resume a remote session on its owning device** — pass `--host <machine>` so identity resolves on the box that owns the session instead of being masked as an unknown command locally.
+- **Resume a remote session on its owning device** — pass `--device <machine>` so identity resolves on the box that owns the session instead of being masked as an unknown command locally.
 - **Native fork supports claude today.** For other harnesses, branch by starting a fresh agent and seeding it with `/continue <id>` — the source stays put.
 
 ## Filters
@@ -75,7 +75,7 @@ lifecycle-failure rows.
 
 The interactive listing and live-state filters already fold in every registered
 online device. Use `--local` to opt out. Non-interactive historical queries
-stay local unless given `--host`/`--device`. `--all` does not control
+stay local unless given `--device`. `--all` does not control
 devices; it widens historical directory and time scope.
 
 ## Reading Sessions
@@ -138,8 +138,8 @@ agents sessions import --from-host yosemite-s0 --from-host mac-mini   # repeatab
 agents sessions tail <session-id>
 # Press Ctrl+C to stop
 
-# Or the unified viewer: resolves a session id OR a host-dispatch run (from
-# `agents run --host`), and -f follows either
+# Or the unified viewer: resolves a session id OR a device-dispatch run (from
+# `agents run --device`), and -f follows either
 agents logs <id>          # show the transcript / run log
 agents logs <id> -f       # follow a live one
 ```
