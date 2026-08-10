@@ -42,8 +42,8 @@ an existing value with `--from-secrets <bundle>:<key>`. Account bundles use
 policy `never`, so agent launches read them without Touch ID. Use `agents accounts
 set-default <agent> <name>` for a harness default, `--account <name>` for a
 one-run override, and `agents accounts sync <name> --device <device>` to copy that
-provider bundle explicitly to a worker. Native OAuth auth files remain owned by
-the harness and are never copied by account sync.
+provider bundle explicitly to a worker. Harness-native auth material remains
+owned by the harness and is never copied by account sync.
 
 Use this when you want to delegate a bounded task to another agent and capture its output, rather than spawning a full team.
 
