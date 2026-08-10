@@ -2,6 +2,24 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- **`plugins/design/skills/design/interface-redesign.md` restored; `design-core.md` §4
+  brand-probe now reads `BRAND.md` first (RUSH-2504 post-merge regression).** Two
+  regressions introduced when PR #289 consolidated design: (1) The redesign options-gate
+  — draw BEFORE, propose 2-3 distinct AFTER options with full ASCII layouts, fill a
+  comparison table, then STOP and wait for the user's pick — was reduced to a single
+  prose sentence in `interface.md` step 5, dropping the mandatory workflow. Restored as
+  a companion file `interface-redesign.md` (ported from the deleted
+  `create:design/design-redesign.md`), with `interface.md` step 5 routing to it.
+  (2) The brand-probe cascade in `design-core.md` §4 listed 5 fall-through steps but
+  never read `BRAND.md`, so a repo that defines its brand there fell straight to the
+  house fallback. Added step 0: read `BRAND.md` at the repo root first, as the
+  authoritative brand source. Source:
+  `plugins/design/skills/design/interface-redesign.md` (new),
+  `plugins/design/skills/design/interface.md` (step 5),
+  `plugins/design/skills/design/design-core.md` (§4).
+
 ### Added
 
 - **Bangcuts are on by default; promptcuts and bangcuts get stable public names (RUSH-2405).** `promptcuts` expands saved prompt shortcuts; `bangcuts` executes explicit backticked bang commands. Only `bangcuts` changes state here — it shipped `enabled: false` ("paste of untrusted text with a bang block is local RCE") and that line is now removed, so a prompt containing `` `!cmd` `` runs that command in the local shell on every machine, including a prompt injected by a watchdog, monitor, or another agent. `promptcuts` had no `enabled: false` on `main` and was already on; only its comments change. Turn either off from the user layer with `expand-bang-commands: {enabled: false}` / `expand-promptcuts: {enabled: false}` in `~/.agents/agents.yaml` plus `agents sync` — verified against `dist/lib/hooks.js:1562-1565`, which deletes a disabled hook before the registrar sees it. The `agents hooks enable|disable <feature>` CLI that would take the public names is **not shipped** (`agents hooks` has only `list|add|remove|view|profile`), so it is not documented as the off-switch. The internal manifest keys remain `expand-promptcuts` and `expand-bang-commands` so existing user-layer YAML keeps working. Source: `agents.yaml`, `hooks/README.md`, `hooks/promptcuts.yaml`, `hooks/registration_test.sh`.
