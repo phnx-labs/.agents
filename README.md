@@ -227,20 +227,23 @@ hooks:
   linear-tasks:
     enabled: false          # no Linear board inject at SessionStart
   expand-bang-commands:
-    enabled: false          # already default-off in v0.2.0
+    enabled: false          # bangcuts — see below
 ```
 
-**Re-enable opt-in hooks** (e.g. `` `! cmd` `` expansion — **shell from the prompt**; only
-turn on if you accept that risk):
+**Turn bangcuts off** (`` `!cmd` `` expansion — **shell from the prompt**). It is **on by
+default** as of RUSH-2405, so any prompt carrying a bang block runs that command locally,
+including a prompt injected by a watchdog, a monitor, or another agent. Disable it with the
+same YAML as any other hook:
 
 ```yaml
+# ~/.agents/agents.yaml
 hooks:
   expand-bang-commands:
-    override: true
-    events: [UserPromptSubmit]
-    script: user-prompt-submit/02-expand-prompt-bang-commands.py
-    timeout: 10
+    enabled: false
+    override: true          # optional — only silences the shadow warning
 ```
+
+Then `agents sync`. See [`hooks/README.md`](./hooks/README.md#enabling-and-disabling-hooks).
 
 Details and the full hook catalog: [`hooks/README.md`](hooks/README.md). A first-class
 `agents hooks enable|disable` CLI is planned; YAML overlay is the supported path today.

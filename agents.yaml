@@ -112,25 +112,23 @@ hooks:
     matcher: Bash
     script: pre-tool-use/01-git-require-clean-tree.sh
     timeout: 5
-  # Restored: accidentally deleted by 606db6e (May 13 2026), a commit whose subject
-  # was the pre-commit validator and which dropped 27 unrelated lines from this file.
-  # All three scripts were verified working before re-registration.
+  # Public feature name: promptcuts. The manifest key stays expand-promptcuts.
+  # On by default (it always has been). To turn it off, put
+  #   expand-promptcuts: {enabled: false, override: true}
+  # under hooks: in ~/.agents/agents.yaml, then run `agents sync`.
   expand-promptcuts:
     events:
       - UserPromptSubmit
     script: user-prompt-submit/02-expand-prompt-user-shortcuts.sh
     timeout: 5
-  # Opt-in: expands `! cmd` / `!cmd` in the user prompt by running them in a
-  # shell (UserPromptSubmit). Default OFF — paste of untrusted text with a
-  # bang block is local RCE. Re-enable in the user layer:
-  #   hooks:
-  #     expand-bang-commands:
-  #       override: true
-  #       events: [UserPromptSubmit]
-  #       script: user-prompt-submit/02-expand-prompt-bang-commands.sh
-  #       timeout: 10
+  # Public feature name: bangcuts. The manifest key stays expand-bang-commands.
+  # ON by default as of RUSH-2405. This runs `!cmd` blocks found in a prompt
+  # through the local shell, so every prompt source is a command source —
+  # including one injected by a watchdog, a monitor, or another agent. Only
+  # paste text you trust. To turn it off, put
+  #   expand-bang-commands: {enabled: false, override: true}
+  # under hooks: in ~/.agents/agents.yaml, then run `agents sync`.
   expand-bang-commands:
-    enabled: false
     events:
       - UserPromptSubmit
     script: user-prompt-submit/02-expand-prompt-bang-commands.sh
