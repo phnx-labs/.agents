@@ -15,6 +15,12 @@
   Source: `hooks/stop/00-agent-verify-work-complete.sh`,
   `hooks/stop/verify-delivery-chain.py`,
   `hooks/stop/tests/00-agent-verify-work-complete_test.sh`.
+- **`parallel-teams` brief feed line now matches the canonical `--title` form
+  (#211).** `rules/subrules/parallel-teams.md`, `skills/teams/SKILL.md`, and
+  `plugins/swarm/skills/orchestrate/SKILL.md` all carried the verbatim teammate
+  brief line as a plain `agents feed post`, while `feed-status-posts.md` and the
+  orchestrator examples require `agents feed post --title "<short subject>"`.
+  The brief line now includes `--title`, and `rules/AGENTS.md` is regenerated.
 
 - **Account guidance uses positional identity and target arguments (RUSH-2527).** Fleet sync, mint-auth, run, and agents-cli guidance now teach `accounts name <agent@version> <name>`, `attach <account> <target>`, and `sync <account> <device>` while keeping native OAuth material harness-owned.
 
