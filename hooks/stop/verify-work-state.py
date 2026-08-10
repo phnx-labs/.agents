@@ -7,9 +7,10 @@ migrations, retention, and interpretation. The shared convention is only:
   durable: ~/.agents/.history/hooks/<stable-hook-id>/state.db
   cache:   ~/.agents/.cache/state/hooks/<stable-hook-id>/
 
-UserPromptSubmit records a privacy-preserving goal boundary. Stop folds positive
-evidence from the transcript, materializes the current session state, and records
-the decision. No raw prompts, transcript text, commands, or tool output are stored.
+UserPromptSubmit records a privacy-preserving goal boundary and transcript offset.
+Stop folds positive evidence from that goal's transcript suffix, maintains a
+session-owned entity ledger, and records the decision and gate outcome. No raw
+prompts, transcript text, commands, or tool output are stored.
 """
 
 from __future__ import annotations
@@ -26,10 +27,11 @@ from typing import Any, Iterable
 
 
 HOOK_ID = "system.verify-work-complete"
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 RETENTION_DAYS = 30
 BUSY_TIMEOUT_MS = 100
 PR_URL = re.compile(r"https://github\.com/[\w.-]+/[\w.-]+/pull/\d+")
+TICKET_ID = re.compile(r"\bRUSH-\d+\b", re.IGNORECASE)
 REPO_WRITE_TOOLS = {
     "write", "edit", "multiedit", "notebookedit", "apply_patch", "applypatch",
 }
@@ -80,6 +82,7 @@ def _connect(path: Path) -> sqlite3.Connection:
           session_key TEXT NOT NULL,
           ordinal INTEGER NOT NULL,
           prompt_sha256 TEXT NOT NULL,
+          transcript_offset INTEGER NOT NULL DEFAULT 0,
           created_at_ms INTEGER NOT NULL,
           PRIMARY KEY(session_key, ordinal)
         );
@@ -104,13 +107,38 @@ def _connect(path: Path) -> sqlite3.Connection:
         );
         CREATE INDEX IF NOT EXISTS idx_decisions_session
           ON decisions(session_key, created_at_ms);
+        CREATE TABLE IF NOT EXISTS owned_entities (
+          session_key TEXT NOT NULL,
+          entity_type TEXT NOT NULL,
+          entity_id TEXT NOT NULL,
+          acquired_goal_ordinal INTEGER NOT NULL,
+          updated_at_ms INTEGER NOT NULL,
+          PRIMARY KEY(session_key, entity_type, entity_id)
+        );
+        CREATE TABLE IF NOT EXISTS gate_events (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          session_key TEXT NOT NULL,
+          goal_ordinal INTEGER NOT NULL,
+          gate_name TEXT NOT NULL,
+          outcome TEXT NOT NULL,
+          reason_code TEXT NOT NULL,
+          created_at_ms INTEGER NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_gate_events_session
+          ON gate_events(session_key, created_at_ms);
         """
     )
     row = db.execute("SELECT value FROM meta WHERE key='schema_version'").fetchone()
     if row is None:
         db.execute("INSERT INTO meta(key,value) VALUES('schema_version',?)", (str(SCHEMA_VERSION),))
+    elif int(row[0]) == 1:
+        columns = {str(value[1]) for value in db.execute("PRAGMA table_info(goal_boundaries)")}
+        if "transcript_offset" not in columns:
+            db.execute("ALTER TABLE goal_boundaries ADD COLUMN transcript_offset INTEGER NOT NULL DEFAULT 0")
+        db.execute("UPDATE meta SET value=? WHERE key='schema_version'", (str(SCHEMA_VERSION),))
     elif int(row[0]) != SCHEMA_VERSION:
         raise RuntimeError(f"unsupported schema version {row[0]}")
+    db.commit()
     try:
         os.chmod(path, 0o600)
     except OSError:
@@ -195,7 +223,7 @@ def _command_is_repo_write(command: str) -> bool:
     return any(re.search(pattern, command) for pattern in patterns)
 
 
-def extract_evidence(transcript_path: str) -> dict[str, Any]:
+def extract_evidence(transcript_path: str, start_offset: int = 0) -> dict[str, Any]:
     evidence: dict[str, Any] = {
         "repo_mutated": False,
         "browser_acted": False,
@@ -207,19 +235,25 @@ def extract_evidence(transcript_path: str) -> dict[str, Any]:
         "prs_authored": [],
         "prs_operated": [],
         "prs_observed": [],
+        "tickets_created": [],
+        "tickets_observed": [],
     }
-    create_ids: set[str] = set()
+    create_ids: dict[str, str] = {}
     path = Path(transcript_path)
     if not transcript_path or not path.is_file():
         return evidence
     try:
-        lines = path.open(encoding="utf-8", errors="replace")
+        lines = path.open("rb")
     except OSError:
         return evidence
     with lines:
+        size = path.stat().st_size
+        if start_offset < 0 or start_offset > size:
+            return evidence
+        lines.seek(start_offset)
         for raw in lines:
             try:
-                record = json.loads(raw)
+                record = json.loads(raw.decode("utf-8", "replace"))
             except Exception:
                 continue
             for block in _blocks(record):
@@ -228,9 +262,15 @@ def extract_evidence(transcript_path: str) -> dict[str, Any]:
                     call_id = str(block.get("tool_use_id") or block.get("call_id") or "")
                     if call_id in create_ids:
                         text = json.dumps(block.get("content") or block.get("output") or "")
-                        for match in PR_URL.findall(text):
-                            if match not in evidence["prs_authored"]:
-                                evidence["prs_authored"].append(match)
+                        if create_ids[call_id] == "pr":
+                            for match in PR_URL.findall(text):
+                                if match not in evidence["prs_authored"]:
+                                    evidence["prs_authored"].append(match)
+                        elif create_ids[call_id] == "ticket":
+                            for match in TICKET_ID.findall(text):
+                                ticket_id = match.upper()
+                                if ticket_id not in evidence["tickets_created"]:
+                                    evidence["tickets_created"].append(ticket_id)
                     continue
                 if block_type not in {"tool_use", "function_call", "custom_tool_call"}:
                     continue
@@ -247,7 +287,7 @@ def extract_evidence(transcript_path: str) -> dict[str, Any]:
                 lowered = f"{name} {command}".lower()
                 if "gh pr create" in lowered:
                     if call_id:
-                        create_ids.add(call_id)
+                        create_ids[call_id] = "pr"
                     evidence["repo_mutated"] = True
                 if re.search(r"\bgh\s+pr\s+(?:merge|ready|rebase|close|reopen|edit)\b", command):
                     evidence["repo_mutated"] = True
@@ -262,6 +302,13 @@ def extract_evidence(transcript_path: str) -> dict[str, Any]:
                     evidence["review_submitted"] = True
                 if re.search(r"\b(?:linear\s+create|gh\s+issue\s+create)\b", command):
                     evidence["ticket_created"] = True
+                    if call_id:
+                        create_ids[call_id] = "ticket"
+                if re.search(r"\blinear\s+tasks\s+RUSH-\d+\b", command, re.IGNORECASE):
+                    for match in TICKET_ID.findall(command):
+                        ticket_id = match.upper()
+                        if ticket_id not in evidence["tickets_observed"]:
+                            evidence["tickets_observed"].append(ticket_id)
                 if re.search(r"\b(?:deploy|release|publish)\b", command) and not re.search(r"\b(?:grep|rg|cat|read)\b", command):
                     evidence["deployment_started"] = True
                 if "browser" in name or re.search(r"\bagents\s+browser\s+(?:open|click|type|screenshot|snapshot|done)\b", command):
@@ -275,6 +322,8 @@ def extract_evidence(transcript_path: str) -> dict[str, Any]:
     evidence["prs_authored"].sort()
     evidence["prs_operated"].sort()
     evidence["prs_observed"].sort()
+    evidence["tickets_created"].sort()
+    evidence["tickets_observed"].sort()
     return evidence
 
 
@@ -316,6 +365,14 @@ def _reconcile_aliases(db: sqlite3.Connection, session_key: str, native: str, la
             provisional = str(previous[0])
             db.execute("UPDATE OR IGNORE goal_boundaries SET session_key=? WHERE session_key=?", (session_key, provisional))
             db.execute("UPDATE OR IGNORE decisions SET session_key=? WHERE session_key=?", (session_key, provisional))
+            db.execute(
+                """INSERT OR IGNORE INTO owned_entities
+                   SELECT ?, entity_type, entity_id, acquired_goal_ordinal, updated_at_ms
+                   FROM owned_entities WHERE session_key=?""",
+                (session_key, provisional),
+            )
+            db.execute("DELETE FROM owned_entities WHERE session_key=?", (provisional,))
+            db.execute("UPDATE gate_events SET session_key=? WHERE session_key=?", (session_key, provisional))
             db.execute("DELETE FROM session_state WHERE session_key=?", (provisional,))
             db.execute("UPDATE session_aliases SET session_key=? WHERE session_key=?", (session_key, provisional))
         elif previous and not native:
@@ -342,6 +399,8 @@ def _prune(db: sqlite3.Connection) -> None:
     db.execute("DELETE FROM goal_boundaries WHERE created_at_ms < ?", (cutoff,))
     db.execute("DELETE FROM session_state WHERE updated_at_ms < ?", (cutoff,))
     db.execute("DELETE FROM session_aliases WHERE updated_at_ms < ?", (cutoff,))
+    db.execute("DELETE FROM owned_entities WHERE updated_at_ms < ?", (cutoff,))
+    db.execute("DELETE FROM gate_events WHERE created_at_ms < ?", (cutoff,))
     db.execute(
         "INSERT INTO meta(key,value) VALUES('last_pruned_ms',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
         (str(_now_ms()),),
@@ -356,20 +415,33 @@ def record_prompt(payload: dict[str, Any], db_path: Path) -> dict[str, Any]:
         return {"recorded": False, "reason": "missing session identity"}
     prompt = str(payload.get("prompt") or payload.get("user_prompt") or payload.get("userPrompt") or "")
     digest = hashlib.sha256(prompt.encode("utf-8", "replace")).hexdigest()
+    transcript = str(payload.get("transcript_path") or payload.get("transcriptPath") or "")
+    try:
+        transcript_offset = Path(transcript).stat().st_size if transcript else 0
+    except OSError:
+        transcript_offset = 0
     with _connect_recovering(db_path) as db:
         session_key = _reconcile_aliases(db, session_key, native, launch)
         ordinal = int(db.execute("SELECT COALESCE(MAX(ordinal),0)+1 FROM goal_boundaries WHERE session_key=?", (session_key,)).fetchone()[0])
-        db.execute("INSERT INTO goal_boundaries VALUES(?,?,?,?)", (session_key, ordinal, digest, _now_ms()))
+        db.execute(
+            "INSERT INTO goal_boundaries(session_key,ordinal,prompt_sha256,transcript_offset,created_at_ms) VALUES(?,?,?,?,?)",
+            (session_key, ordinal, digest, transcript_offset, _now_ms()),
+        )
         _prune(db)
-    return {"recorded": True, "session_key": session_key, "goal_ordinal": ordinal}
+    return {
+        "recorded": True,
+        "session_key": session_key,
+        "goal_ordinal": ordinal,
+        "transcript_offset": transcript_offset,
+    }
 
 
 def evaluate(payload: dict[str, Any], db_path: Path) -> dict[str, Any]:
     session_key, harness, native, launch = _identity(payload)
     transcript = str(payload.get("transcript_path") or payload.get("transcriptPath") or "")
-    evidence = extract_evidence(transcript)
-    context, delivery, reason = classify(evidence)
     if not session_key:
+        evidence = extract_evidence(transcript)
+        context, delivery, reason = classify(evidence)
         return {
             "recorded": False,
             "context_kind": context,
@@ -377,13 +449,43 @@ def evaluate(payload: dict[str, Any], db_path: Path) -> dict[str, Any]:
             "reason": reason,
             "evidence": evidence,
         }
-    evidence_json = json.dumps(evidence, sort_keys=True, separators=(",", ":"))
-    evidence_hash = hashlib.sha256(evidence_json.encode()).hexdigest()
-    decision = "run-delivery-gate" if delivery else "skip-delivery-gate"
     with _connect_recovering(db_path) as db:
         session_key = _reconcile_aliases(db, session_key, native, launch)
-        goal_row = db.execute("SELECT COALESCE(MAX(ordinal),0) FROM goal_boundaries WHERE session_key=?", (session_key,)).fetchone()
-        goal_ordinal = int(goal_row[0])
+        goal_row = db.execute(
+            "SELECT ordinal,transcript_offset FROM goal_boundaries WHERE session_key=? ORDER BY ordinal DESC LIMIT 1",
+            (session_key,),
+        ).fetchone()
+        goal_ordinal = int(goal_row[0]) if goal_row else 0
+        transcript_offset = int(goal_row[1]) if goal_row else 0
+        evidence = extract_evidence(transcript, transcript_offset)
+        context, delivery, reason = classify(evidence)
+        evidence_json = json.dumps(evidence, sort_keys=True, separators=(",", ":"))
+        evidence_hash = hashlib.sha256(evidence_json.encode()).hexdigest()
+        decision = "run-delivery-gate" if delivery else "skip-delivery-gate"
+        now = _now_ms()
+        for entity_type, values in (
+            ("pr", evidence["prs_authored"] + evidence["prs_operated"]),
+            ("ticket", evidence["tickets_created"]),
+        ):
+            for entity_id in values:
+                db.execute(
+                    """INSERT INTO owned_entities VALUES(?,?,?,?,?)
+                       ON CONFLICT(session_key,entity_type,entity_id) DO UPDATE SET
+                         updated_at_ms=excluded.updated_at_ms""",
+                    (session_key, entity_type, entity_id, goal_ordinal, now),
+                )
+        owned_prs = [
+            str(row[0]) for row in db.execute(
+                "SELECT entity_id FROM owned_entities WHERE session_key=? AND entity_type='pr' ORDER BY updated_at_ms,entity_id",
+                (session_key,),
+            )
+        ]
+        owned_tickets = [
+            str(row[0]) for row in db.execute(
+                "SELECT entity_id FROM owned_entities WHERE session_key=? AND entity_type='ticket' ORDER BY updated_at_ms,entity_id",
+                (session_key,),
+            )
+        ]
         db.execute(
             """INSERT INTO session_state VALUES(?,?,?,?,?,?,?,?)
                ON CONFLICT(session_key) DO UPDATE SET
@@ -402,11 +504,39 @@ def evaluate(payload: dict[str, Any], db_path: Path) -> dict[str, Any]:
         "recorded": True,
         "session_key": session_key,
         "goal_ordinal": goal_ordinal,
+        "transcript_offset": transcript_offset,
         "context_kind": context,
         "delivery_evidence": delivery,
         "reason": reason,
         "evidence": evidence,
+        "owned_prs": owned_prs,
+        "owned_tickets": owned_tickets,
     }
+
+
+def record_gate(payload: dict[str, Any], db_path: Path, gate_name: str, outcome: str, reason_code: str) -> dict[str, Any]:
+    session_key, _harness_name, native, launch = _identity(payload)
+    if not session_key:
+        return {"recorded": False, "reason": "missing session identity"}
+    if not re.fullmatch(r"[a-z][a-z0-9-]{0,39}", gate_name):
+        raise ValueError("invalid gate name")
+    if outcome not in {"blocked", "passed", "skipped"}:
+        raise ValueError("invalid gate outcome")
+    if not re.fullmatch(r"[a-z][a-z0-9-]{0,63}", reason_code):
+        raise ValueError("invalid reason code")
+    with _connect_recovering(db_path) as db:
+        session_key = _reconcile_aliases(db, session_key, native, launch)
+        row = db.execute(
+            "SELECT COALESCE(MAX(ordinal),0) FROM goal_boundaries WHERE session_key=?",
+            (session_key,),
+        ).fetchone()
+        goal_ordinal = int(row[0])
+        db.execute(
+            "INSERT INTO gate_events(session_key,goal_ordinal,gate_name,outcome,reason_code,created_at_ms) VALUES(?,?,?,?,?,?)",
+            (session_key, goal_ordinal, gate_name, outcome, reason_code, _now_ms()),
+        )
+        _prune(db)
+    return {"recorded": True, "gate_name": gate_name, "outcome": outcome}
 
 
 def _load_payload() -> dict[str, Any]:
@@ -425,6 +555,10 @@ def main() -> int:
             result = record_prompt(payload, default_db_path())
         elif action == "evaluate":
             result = evaluate(payload, default_db_path())
+        elif action == "record-gate":
+            if len(sys.argv) != 5:
+                raise ValueError("record-gate requires gate, outcome, and reason")
+            result = record_gate(payload, default_db_path(), sys.argv[2], sys.argv[3], sys.argv[4])
         else:
             raise ValueError(f"unknown action: {action}")
     except (OSError, sqlite3.Error, RuntimeError, ValueError) as exc:

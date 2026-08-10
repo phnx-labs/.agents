@@ -100,15 +100,15 @@ register time). See [§Subrule hooks](#subrule-hooks-rules-not-this-tree).
 | [`02-expand-prompt-user-shortcuts.sh`](./user-prompt-submit/02-expand-prompt-user-shortcuts.sh) | Expands `#shortcut` tokens from `promptcuts.yaml` |
 | [`02-expand-prompt-bang-commands.sh`](./user-prompt-submit/02-expand-prompt-bang-commands.sh) | Runs inline `` `!cmd` `` blocks concurrently and injects their output |
 | [`03-vacation-recap.py`](./user-prompt-submit/03-vacation-recap.py) | On a long gap since the session's last prompt, reminds the agent to open with a back-from-vacation recap |
-| [`04-verify-work-state.py`](./user-prompt-submit/04-verify-work-state.py) | Records a hashed goal boundary in `verify-work-complete`'s session-keyed hook database; never stores prompt text |
+| [`04-verify-work-state.py`](./user-prompt-submit/04-verify-work-state.py) | Records a hashed goal boundary plus transcript byte offset in `verify-work-complete`'s session-keyed hook database; never stores prompt text |
 
 ### `stop/` — Stop
 
 | Hook | What it does |
 |---|---|
 | [`00-agent-verify-work-complete.sh`](./stop/00-agent-verify-work-complete.sh) | Blocks a stop that claims "done" without verification / open PR with no handoff |
-| [`verify-work-state.py`](./stop/verify-work-state.py) | Hook-owned SQLite state and positive-evidence classifier used by `verify-work-complete` |
-| [`verify-delivery-chain.py`](./stop/verify-delivery-chain.py) | Invoked by the Stop gate (not registered alone) |
+| [`verify-work-state.py`](./stop/verify-work-state.py) | Goal-scoped positive-evidence classifier, session-owned entity ledger, and structured gate telemetry used by `verify-work-complete` |
+| [`verify-delivery-chain.py`](./stop/verify-delivery-chain.py) | Goal-scoped delivery-chain verifier invoked by the Stop gate (not registered alone) |
 
 ### `notification/` — Notification
 

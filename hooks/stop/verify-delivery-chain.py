@@ -60,37 +60,42 @@ def _run(cmd, cwd=None, timeout=8):
         return ""
 
 
-def _tool_commands(transcript_path):
-    """Yield shell commands from tool_use blocks."""
+def _records(transcript_path, start_offset=0, end_offset=None):
     try:
-        with open(transcript_path) as f:
-            for raw in f:
-                raw = raw.strip()
+        with open(transcript_path, "rb") as handle:
+            handle.seek(max(0, int(start_offset)))
+            while end_offset is None or handle.tell() < end_offset:
+                raw = handle.readline()
                 if not raw:
-                    continue
+                    break
                 try:
-                    rec = json.loads(raw)
+                    yield json.loads(raw.decode("utf-8", "replace"))
                 except Exception:
                     continue
-                msg = rec.get("message") if isinstance(rec.get("message"), dict) else rec
-                content = msg.get("content") if isinstance(msg, dict) else None
-                if not isinstance(content, list):
-                    continue
-                for block in content:
-                    if isinstance(block, dict) and block.get("type") == "tool_use":
-                        yield str((block.get("input") or {}).get("command", ""))
     except Exception:
         return
 
 
-def _find_repo_path(transcript_path, responsible_prs, hint):
+def _tool_commands(transcript_path, start_offset=0):
+    """Yield shell commands from tool_use blocks."""
+    for rec in _records(transcript_path, start_offset):
+        msg = rec.get("message") if isinstance(rec.get("message"), dict) else rec
+        content = msg.get("content") if isinstance(msg, dict) else None
+        if not isinstance(content, list):
+            continue
+        for block in content:
+            if isinstance(block, dict) and block.get("type") == "tool_use":
+                yield str((block.get("input") or {}).get("command", ""))
+
+
+def _find_repo_path(transcript_path, responsible_prs, hint, start_offset=0):
     """Best-effort repo path from hint, transcript commands, or cwd."""
     if hint and Path(hint).is_dir() and Path(hint, ".git").exists():
         return str(Path(hint).resolve())
 
     # Scan transcript for directory hints in git/gh commands.
     candidates = []
-    for cmd in _tool_commands(transcript_path):
+    for cmd in _tool_commands(transcript_path, start_offset):
         # cd /some/path && gh pr create
         for m in re.finditer(r"(?:^|&&|;)\s*cd\s+(\S+)", cmd):
             p = m.group(1).strip("\"'")
@@ -111,37 +116,26 @@ def _find_repo_path(transcript_path, responsible_prs, hint):
     return ""
 
 
-def _extract_text_from_transcript(transcript_path):
+def _extract_text_from_transcript(transcript_path, start_offset=0):
     """Yield strings of text content found in the transcript."""
-    try:
-        with open(transcript_path) as f:
-            for raw in f:
-                raw = raw.strip()
-                if not raw:
-                    continue
-                try:
-                    rec = json.loads(raw)
-                except Exception:
-                    continue
-                msg = rec.get("message") if isinstance(rec.get("message"), dict) else rec
-                content = msg.get("content") if isinstance(msg, dict) else None
-                if isinstance(content, str):
-                    yield content
-                elif isinstance(content, list):
-                    for block in content:
-                        if isinstance(block, dict):
-                            if block.get("type") == "text":
-                                yield block.get("text", "")
-                            elif block.get("type") == "tool_use":
-                                yield str((block.get("input") or {}).get("command", ""))
-                            elif block.get("type") == "tool_result":
-                                yield json.dumps(block.get("content", "") or "")
-    except Exception:
-        pass
+    for rec in _records(transcript_path, start_offset):
+        msg = rec.get("message") if isinstance(rec.get("message"), dict) else rec
+        content = msg.get("content") if isinstance(msg, dict) else None
+        if isinstance(content, str):
+            yield content
+        elif isinstance(content, list):
+            for block in content:
+                if isinstance(block, dict):
+                    if block.get("type") == "text":
+                        yield block.get("text", "")
+                    elif block.get("type") == "tool_use":
+                        yield str((block.get("input") or {}).get("command", ""))
+                    elif block.get("type") == "tool_result":
+                        yield json.dumps(block.get("content", "") or "")
 
 
-def _first_user_message(transcript_path):
-    """Return the first genuine user prose message."""
+def _first_user_message(transcript_path, goal_offset=0):
+    """Return the current goal's user prose immediately before its boundary."""
     NOISE = re.compile(
         r"^\s*<(/?)(bash-(input|stdout|stderr)|command-(name|message|args|contents)|"
         r"local-command-(stdout|stderr)|system-reminder|task-notification)>"
@@ -150,38 +144,34 @@ def _first_user_message(transcript_path):
     INTERRUPT = re.compile(r"^\s*\[Request interrupted")
     SKILL = re.compile(r"^\s*Base directory for this skill:")
     HOOKFB = re.compile(r"^\s*[A-Za-z]+ hook feedback:")
+    selected = ""
     try:
-        with open(transcript_path) as f:
-            for raw in f:
-                raw = raw.strip()
-                if not raw:
+        records = _records(transcript_path, 0, goal_offset or None)
+        for rec in records:
+            msg = rec.get("message") if isinstance(rec.get("message"), dict) else rec
+            if (rec.get("role") or msg.get("role")) != "user":
+                continue
+            content = rec.get("content", "") or msg.get("content", "")
+            if isinstance(content, list):
+                if any(isinstance(c, dict) and c.get("type") == "tool_result" for c in content):
                     continue
-                try:
-                    rec = json.loads(raw)
-                except Exception:
-                    continue
-                msg = rec.get("message") if isinstance(rec.get("message"), dict) else rec
-                if (rec.get("role") or msg.get("role")) != "user":
-                    continue
-                content = rec.get("content", "") or msg.get("content", "")
-                if isinstance(content, list):
-                    if any(isinstance(c, dict) and c.get("type") == "tool_result" for c in content):
-                        continue
-                    content = " ".join(
-                        c.get("text", "") for c in content
-                        if isinstance(c, dict) and c.get("type") == "text"
-                    )
-                content = (content or "").strip()
-                if len(content) <= 20:
-                    continue
-                if (NOISE.search(content) or CAVEAT.search(content)
-                        or INTERRUPT.search(content) or SKILL.search(content)
-                        or HOOKFB.search(content)):
-                    continue
+                content = " ".join(
+                    c.get("text", "") for c in content
+                    if isinstance(c, dict) and c.get("type") == "text"
+                )
+            content = (content or "").strip()
+            if len(content) <= 20:
+                continue
+            if (NOISE.search(content) or CAVEAT.search(content)
+                    or INTERRUPT.search(content) or SKILL.search(content)
+                    or HOOKFB.search(content)):
+                continue
+            if not goal_offset:
                 return content
+            selected = content
     except Exception:
         pass
-    return ""
+    return selected
 
 
 def _ticket_ids(text):
@@ -200,7 +190,7 @@ def _ticket_ids(text):
     return out
 
 
-def _all_ticket_ids(transcript_path, pr_data, branch_name, commits_text, first_user_msg):
+def _all_ticket_ids(transcript_path, pr_data, branch_name, commits_text, first_user_msg, start_offset=0):
     """Collect ticket IDs from every evidence source."""
     ids = []
     sources = [
@@ -226,7 +216,7 @@ def _all_ticket_ids(transcript_path, pr_data, branch_name, commits_text, first_u
     # researching something else gets permanently blocked from stopping for
     # the rest of its transcript, because this scan is transcript-wide and the
     # ticket's live state may never reach a DONE_STATE.
-    for cmd in _tool_commands(transcript_path):
+    for cmd in _tool_commands(transcript_path, start_offset):
         for m in re.finditer(r"\blinear\s+update\s+(RUSH-\d+)\b", cmd, flags=re.IGNORECASE):
             ids.append(m.group(1).upper())
 
@@ -384,13 +374,13 @@ def _is_shippable_repo(repo_path):
     return False
 
 
-def _release_status(repo_path, pr_data, transcript_path, last_assistant_message):
+def _release_status(repo_path, pr_data, transcript_path, last_assistant_message, start_offset=0):
     """Return (release_ran, verified_live) from concrete transcript/repo evidence."""
     release_ran = False
     verified_live = False
 
     text_chunks = [last_assistant_message or ""]
-    text_chunks.extend(_extract_text_from_transcript(transcript_path))
+    text_chunks.extend(_extract_text_from_transcript(transcript_path, start_offset))
     for pr in pr_data:
         text_chunks.append(pr.get("body", ""))
 
@@ -486,10 +476,10 @@ def _looks_shippable(pr_data, first_user_msg):
     return any(kw in text for kw in SHIP_KEYWORDS)
 
 
-def _has_outcome_evidence(pr_data, transcript_path, last_assistant_message):
+def _has_outcome_evidence(pr_data, transcript_path, last_assistant_message, start_offset=0):
     """Look for screenshot, URL, metric, test, or version evidence."""
     chunks = [last_assistant_message or ""]
-    chunks.extend(_extract_text_from_transcript(transcript_path))
+    chunks.extend(_extract_text_from_transcript(transcript_path, start_offset))
     for pr in pr_data:
         chunks.append(pr.get("body", ""))
     text = "\n".join(chunks)
@@ -525,19 +515,20 @@ def main():
     transcript_path = data.get("transcript_path", "")
     responsible_prs = data.get("responsible_prs", [])
     last_msg = (data.get("last_assistant_message", "") or "").lower()
+    goal_offset = max(0, int(data.get("goal_offset", 0) or 0))
 
     if not transcript_path or not Path(transcript_path).exists():
         return
 
-    repo_path = _find_repo_path(transcript_path, responsible_prs, data.get("repo_path", ""))
+    repo_path = _find_repo_path(transcript_path, responsible_prs, data.get("repo_path", ""), goal_offset)
     pr_data = _fetch_pr_data(repo_path, responsible_prs) if repo_path else []
     if _fetched_pr_data_failed(repo_path, responsible_prs, pr_data):
         return
     branch_name = _current_branch(repo_path) if repo_path else ""
     commits_text = _commits_text(repo_path, pr_data) if repo_path else ""
-    first_user_msg = _first_user_message(transcript_path)
+    first_user_msg = _first_user_message(transcript_path, goal_offset)
 
-    ticket_ids = _all_ticket_ids(transcript_path, pr_data, branch_name, commits_text, first_user_msg)
+    ticket_ids = _all_ticket_ids(transcript_path, pr_data, branch_name, commits_text, first_user_msg, goal_offset)
     related_ids = _related_ticket_ids(pr_data, commits_text)
 
     open_tickets = []
@@ -576,9 +567,11 @@ def main():
     docs_ok, changelog_ok = _docs_changelog_status(repo_path, pr_data) if repo_path else (True, True)
     shippable = _is_shippable_repo(repo_path) and _looks_shippable(pr_data, first_user_msg)
     release_ran, release_verified = (
-        _release_status(repo_path, pr_data, transcript_path, last_msg) if shippable else (True, True)
+        _release_status(repo_path, pr_data, transcript_path, last_msg, goal_offset) if shippable else (True, True)
     )
-    evidence_ok = _has_outcome_evidence(pr_data, transcript_path, data.get("last_assistant_message", ""))
+    evidence_ok = _has_outcome_evidence(
+        pr_data, transcript_path, data.get("last_assistant_message", ""), goal_offset
+    )
 
     issues = []
     if open_tickets:

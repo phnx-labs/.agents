@@ -112,6 +112,13 @@ state command or interpret hook schemas. Use this layout consistently:
   permissions, a short busy timeout, bounded retention, and fail without exposing
   raw database errors to the harness.
 - Never persist raw prompts, transcripts, commands, tool output, or credentials.
+- Record a transcript byte offset with each goal boundary, then derive evidence
+  only from that goal's suffix. Keep session-owned entities in a separate ledger
+  so responsibility survives follow-up prompts without making old activity look
+  like evidence for the new goal.
+- Record gate outcomes as compact structured events (gate + outcome + reason),
+  not copied hook messages. This makes effectiveness measurable without retaining
+  conversation content.
 
 Do not add one generic database per hook invocation or put non-derivable hook state
 only in `sessions.db`; that database is a rebuildable session index. A hook may have

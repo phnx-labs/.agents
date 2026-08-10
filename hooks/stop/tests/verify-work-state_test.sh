@@ -73,6 +73,34 @@ tmpwrite=$(mk_transcript tmpwrite '{"type":"assistant","message":{"role":"assist
 out=$(eval_payload "{\"session_id\":\"tmp-1\",\"agent\":\"claude\",\"transcript_path\":\"$tmpwrite\"}")
 check "temporary script is not repository delivery" "$(printf '%s' "$out" | python3 -c 'import json,sys; print(json.load(sys.stdin)["delivery_evidence"])')" "False"
 
+# A new prompt boundary excludes every prior goal's delivery evidence.
+scoped="$SANDBOX/scoped.jsonl"
+printf '%s\n' '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","name":"Edit","input":{"file_path":"/repo/old.ts"}}]}}' > "$scoped"
+printf '{"session_id":"scoped-1","agent":"claude","prompt":"now inspect the browser","transcript_path":"%s"}' "$scoped" | python3 "$STATE" record-prompt >/dev/null
+printf '%s\n' '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","name":"Bash","input":{"command":"agents browser screenshot"}}]}}' >> "$scoped"
+out=$(eval_payload "{\"session_id\":\"scoped-1\",\"agent\":\"claude\",\"transcript_path\":\"$scoped\"}")
+check "new goal excludes prior repository mutation" "$(printf '%s' "$out" | python3 -c 'import json,sys; print(json.load(sys.stdin)["delivery_evidence"])')" "False"
+check "new goal keeps its own browser evidence" "$(printf '%s' "$out" | python3 -c 'import json,sys; print(json.load(sys.stdin)["context_kind"])')" "browser-external"
+
+# PR ownership is durable across prompts even though classification is scoped.
+owned="$SANDBOX/owned.jsonl"
+: > "$owned"
+printf '{"session_id":"owned-1","agent":"claude","prompt":"open the PR","transcript_path":"%s"}' "$owned" | python3 "$STATE" record-prompt >/dev/null
+printf '%s\n' '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"create-1","name":"Bash","input":{"command":"gh pr create --title widget"}}]}}' >> "$owned"
+printf '%s\n' '{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"create-1","content":"https://github.com/acme/repo/pull/12"}]}}' >> "$owned"
+out=$(eval_payload "{\"session_id\":\"owned-1\",\"agent\":\"claude\",\"transcript_path\":\"$owned\"}")
+check "created PR enters ownership ledger" "$(printf '%s' "$out" | python3 -c 'import json,sys; print(json.load(sys.stdin)["owned_prs"][0])')" "https://github.com/acme/repo/pull/12"
+printf '{"session_id":"owned-1","agent":"claude","prompt":"check one fact","transcript_path":"%s"}' "$owned" | python3 "$STATE" record-prompt >/dev/null
+printf '%s\n' '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","name":"Read","input":{"file_path":"/repo/a.ts"}}]}}' >> "$owned"
+out=$(eval_payload "{\"session_id\":\"owned-1\",\"agent\":\"claude\",\"transcript_path\":\"$owned\"}")
+check "follow-up goal does not inherit delivery classification" "$(printf '%s' "$out" | python3 -c 'import json,sys; print(json.load(sys.stdin)["context_kind"])')" "research-diagnostic"
+check "follow-up goal retains owned PR" "$(printf '%s' "$out" | python3 -c 'import json,sys; print(json.load(sys.stdin)["owned_prs"][0])')" "https://github.com/acme/repo/pull/12"
+
+# Structured telemetry makes every harness's gate fires observable without
+# depending on transcript feedback persistence.
+printf '%s' '{"session_id":"owned-1","agent":"claude"}' | python3 "$STATE" record-gate delivery blocked incomplete-delivery-chain >/dev/null
+check "gate telemetry records structured event" "$(sqlite3 "$DB" "select gate_name||':'||outcome||':'||reason_code from gate_events where session_key='claude:owned-1';")" "delivery:blocked:incomplete-delivery-chain"
+
 # A launch-only boundary is reconciled into the native session when SessionStart
 # later supplies both identities.
 printf '%s' '{"launch_id":"launch-late","agent":"codex","prompt":"first"}' | python3 "$STATE" record-prompt >/dev/null
@@ -97,6 +125,14 @@ done
 wait
 parallel=$(sqlite3 "$DB" "select count(*) from goal_boundaries where session_key like 'claude:parallel-%';")
 check "concurrent hook processes preserve all writes" "$parallel" "8"
+
+# Existing v1 databases migrate in place without losing goal history.
+V1="$SANDBOX/v1.db"
+sqlite3 "$V1" "create table meta(key text primary key,value text not null); insert into meta values('schema_version','1'); create table goal_boundaries(session_key text not null,ordinal integer not null,prompt_sha256 text not null,created_at_ms integer not null,primary key(session_key,ordinal)); insert into goal_boundaries values('claude:legacy',1,'abc',9999999999999);"
+out=$(VERIFY_WORK_STATE_DB="$V1" eval_payload "{\"session_id\":\"legacy\",\"agent\":\"claude\",\"transcript_path\":\"$research\"}")
+check "v1 database migrates to schema two" "$(sqlite3 "$V1" "select value from meta where key='schema_version';")" "2"
+check "v1 migration preserves goal row" "$(sqlite3 "$V1" "select count(*) from goal_boundaries where session_key='claude:legacy';")" "1"
+check "v1 migration adds transcript offset" "$(sqlite3 "$V1" "select transcript_offset from goal_boundaries where session_key='claude:legacy';")" "0"
 
 # An unknown schema version is bounded and fail-open; the hook never guesses a
 # migration for state it does not understand.
