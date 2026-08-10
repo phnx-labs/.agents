@@ -10,7 +10,7 @@ degrade gracefully when no image backend is configured.
 
 Read `design-core.md`. Everything here inherits its hierarchy, spacing, type,
 color, accessibility (contrast + colorblind-safe), brand-probe, precise copy, and
-mandatory render/critique verification. Pay particular attention to §6 (graceful
+mandatory render/critique verification. Pay particular attention to §8 (graceful
 raster): that rule is in practice here, not just in principle.
 
 ## When to use (vs neighbors)
