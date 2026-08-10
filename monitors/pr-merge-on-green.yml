@@ -15,7 +15,8 @@ source:
   # APPROVED ones whose every check is SUCCESS/NEUTRAL/SKIPPED, and print their
   # numbers on one line. reviewDecision is APPROVED only when a NON-author has
   # approved (GitHub never lets you approve your own PR). Empty output (no
-  # mergeable PR) never matches the condition below, so nothing fires.
+  # mergeable PR) is a silent observation under the `mode: every` condition
+  # below, so nothing fires.
   command: >-
     gh pr list --author @me --state open --limit 50
     --json number,reviewDecision,statusCheckRollup
