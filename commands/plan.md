@@ -7,7 +7,7 @@ You are planning: $ARGUMENTS
 ## CRITICAL: Ground the Plan in Reality
 
 Plans fail when they're based on assumptions instead of evidence. Before proposing anything:
-0. **Search what previous agents did on this feature** — `agents sessions --repo <repo> "<feature keywords>"`, then read the latest plan/PR on that surface. Extend it; do not silently revert it (the most common regression).
+0. **Search what previous agents did on this feature** — `agents sessions "<feature keywords>"`, then read the latest plan/PR on that surface. Extend it; do not silently revert it (the most common regression).
 1. Research current best practices and APIs
 2. Read the actual code that will change
 3. Create concrete artifacts (mockups, diagrams, and a per-file diff of the change)
@@ -292,10 +292,9 @@ Components, hooks, utilities, patterns to reuse. What each provides.
 **Artifacts:**
 [Mockups, API specs, state diagrams — MANDATORY]
 
-**Implementation:**
-- File: path/to/file.ts
-  - Function: existingFunction() — modify to add X
-  - New function: newFunction() — does Y
+**Implementation:** For each file that changes, show a per-file **diff** of the relevant
+hunk (added lines green, removed red) via the `code-diff` component — not a bare
+File/Function list. Name every module touched.
 
 **Design Questions:** (only if genuinely ambiguous)
 
