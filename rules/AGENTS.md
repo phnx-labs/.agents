@@ -517,7 +517,7 @@ Every brief includes Mission, Full scope, Owns, Must NOT touch, concrete code pa
 
 The feed/notify instruction is part of the mandatory brief contract, next to Owns / Must NOT touch / the completion contract. Every teammate brief must carry it verbatim:
 
-> Post to the feed at IMPORTANT milestones only, never per step. Use a plain `agents feed post` at start and at PR-opened (record-only). On final delivery — PR merged, or the composed work runs end-to-end — add `--level important` so it reaches the owner (`agents notify`). If you hit a real blocker, use `agents feed post --blocked` instead (never combined with `--level`). Do NOT narrate every step.
+> Post to the feed at IMPORTANT milestones only, never per step. Use a plain `agents feed post --title "<short subject>"` at start and at PR-opened (record-only). On final delivery — PR merged, or the composed work runs end-to-end — add `--level important` so it reaches the owner (`agents notify`). If you hit a real blocker, use `agents feed post --blocked` instead (never combined with `--level`). Do NOT narrate every step.
 
 The orchestrator itself posts one feed line on `teams start` and on team completion, and reaches the owner only at delivery (`agents feed post --level important` / `agents notify`) or when a teammate is blocked (`--blocked`). This is the record-vs-deliver split — see [`feed-status-posts.md`](feed-status-posts.md): plain posts stay in the activity stream, `--level important` reaches the phone, `--blocked` opens a needs-you record. A milestone is a boundary, never a keystroke.
 
