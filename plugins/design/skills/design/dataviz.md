@@ -35,7 +35,7 @@ render/critique verification.
    Never encode meaning by red-vs-green alone; pair color with shape or position.
 5. **Delete chartjunk.** No 3-D, no gradients, no drop-shadows, no heavy gridlines,
    no rainbow/jet colormap. Remove until it breaks, then stop.
-6. **Verify** (design-core §7): render via the `visualize` engine, screenshot, run the
+6. **Verify** (design-core §9): render via the `visualize` engine, screenshot, run the
    critique checklist, fix, re-render. The chart is not done until you have looked at it.
 
 ## Output & delivery
