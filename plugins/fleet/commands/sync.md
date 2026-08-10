@@ -81,28 +81,11 @@ AFTER=$(git -C "$R" rev-parse --short HEAD)
 #   RC == 0 && BEFORE == AFTER -> up-to-date
 ```
 
-Then **once per device, after all its repos**: `agents sync -y` — reconciles the
-pulled skills/commands/plugins into every installed agent type on the box (claude,
-codex, gemini, grok, opencode, …). The `-y` skips the interactive preview so an
-unattended run never blocks on a prompt. Note: `agents sync -y` covers every installed
-agent **type** (all harnesses) but only the **default version** of each. A device
-running multiple versions of the same agent — e.g. several Claude versions, one signed
-in to each account (a real setup: 2.1.207/2.1.187/2.1.181/2.1.170 side by side) —
-leaves the **non-default** version homes unsynced until the next step.
-
-**Then propagate plugins to EVERY installed version** —
-`agents plugins sync <name>` per newly-added/updated plugin (no agent arg = all
-agents + all versions). This is the step that covers non-default version homes:
-`agents sync -y` reaches only the default version per agent; a box with multiple
-Claude versions needs this pass to make plugins like `fleet` appear in every version
-home. The tell: `agents plugins list` shows the plugin as `N of M installs` instead
-of `everywhere`. Fix it in the sync:
-
-```bash
-# after sync, propagate any plugin that isn't 'everywhere' to all installed versions
-agents plugins list 2>/dev/null | awk 'NR>1 && $0 !~ /everywhere/ {print $1}' \
-  | while read -r p; do [ -n "$p" ] && agents plugins sync "$p" >/dev/null 2>&1; done
-```
+Then **once per device, after all its repos**: `agents sync --yes --local` —
+reconciles the pulled skills/commands/plugins into every installed version of every
+agent type on the box (claude, codex, gemini, grok, opencode, …). `--local` skips a
+second repo fetch; `--yes` selects the unattended path, which deliberately syncs all
+installed versions rather than only each agent's default.
 
 Commands load at **agent startup**, so a version that was already running when it got
 the plugin needs a **restart of that session** before the new command appears — call
@@ -116,10 +99,8 @@ that bites (learned the hard way): use `Set-Location` then **plain `git`** (not
 Set-Location $env:USERPROFILE\.agents\.system; git remote set-head origin --auto 2>$null; $def=(git symbolic-ref --short refs/remotes/origin/HEAD) -replace '^origin/',''; if (-not $def) { $def='main' }; git fetch origin; git merge --ff-only "origin/$def"; $rc=$LASTEXITCODE
 ```
 Classify on `$rc` exactly as POSIX (`$rc -ne 0` → blocked). Repeat per repo path; then
-`agents sync -y` (all agent types, default version, unattended), then the same
-`agents plugins sync` pass for any plugin not `everywhere` (all installed versions —
-Windows boxes run multiple agent versions too). (Detect the default branch here too —
-don't hardcode `main`.)
+`agents sync --yes --local` (all agent types and all installed versions, unattended).
+(Detect the default branch here too — don't hardcode `main`.)
 
 ### 3. Gotchas — bake these in, don't rediscover them
 
@@ -186,8 +167,8 @@ remediation.
 - Never auto-commit or push a device's local changes in `sync` (that's `--push`, out
   of scope).
 - A repo that won't fast-forward is **reported, not forced**.
-- After repo pull: `agents sync -y` (all agent types, default version per agent), then
-  `agents plugins sync <name>` for any plugin not `everywhere` (all installed versions).
+- After repo pull, run `agents sync --yes --local` once per device to reconcile every
+  installed version of every agent type.
 - Account gaps are **reported with exact remediation commands** — never automatically
   copied. Credential provisioning is always explicit.
 - Offline/unreachable device → report it, never block the rest of the fleet.

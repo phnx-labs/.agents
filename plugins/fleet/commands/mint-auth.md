@@ -60,7 +60,6 @@ Treat the keystrokes below as the map, not gospel.
    ```
    agents pty write "$SID" "<code>#<state>\r"
    sleep 6 && agents pty screen "$SID"           # prints: sk-ant-oat01-...  (valid ~1 year)
-   TOKEN=$(agents pty read "$SID" | grep 'sk-ant-oat01-' | tr -d '[:space:]')
    agents pty stop "$SID"
    ```
 
@@ -69,17 +68,17 @@ Treat the keystrokes below as the map, not gospel.
    without Touch ID on any OS. Pick a name that identifies the account (e.g. the
    email slug):
    ```
-   ACCOUNT_NAME="claude-muqsit"      # or whatever identifies this account
-   printf '%s' "$TOKEN" | agents accounts add "$ACCOUNT_NAME" \
-       --provider claude \
-       --auth setup-token \
-       --value-stdin
+   agents accounts add claude-muqsit \
+       --provider anthropic \
+       --auth setup-token
    ```
+   Enter the setup token at the command's secret prompt. Do not put it in an
+   environment variable, command argument, or shell history.
    If you already stored the token in an intermediate bundle with `agents secrets add`,
    import it instead of re-entering:
    ```
    agents accounts add "$ACCOUNT_NAME" \
-       --provider claude \
+       --provider anthropic \
        --auth setup-token \
        --from-secrets <bundle>:<key>
    ```

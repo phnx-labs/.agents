@@ -67,15 +67,14 @@
   PR #2470 and remove the old `agents secrets create auth --backend file` /
   `AGENTS_SECRETS_PASSPHRASE` recipe:
   - **`plugins/fleet/commands/mint-auth.md`**: step 4 now stores the minted
-    setup-token or API key with `agents accounts add <name> --provider <provider>
-    --auth <type> --value-stdin` (or `--from-secrets <bundle>:<key>`); step 5
+    setup-token or API key with interactive `agents accounts add <name> --provider
+    <provider> --auth <type>` (or `--from-secrets <bundle>:<key>`); step 5
     verifies headless via `agents run --account <name>`; new step 6 copies the
     bundle to worker devices with `agents accounts sync <name> --device <target>`.
     No `AGENTS_SECRETS_PASSPHRASE`, no reserved `auth` bundle.
   - **`plugins/fleet/commands/sync.md`**: `agents repos refresh -y` (deprecated)
-    replaced with `agents sync -y`; the version-coverage contradiction resolved —
-    `agents sync -y` covers all agent types but only the default version per agent,
-    while `agents plugins sync` covers all installed versions; new step 4 reports
+    replaced with `agents sync --yes --local`; its unattended path covers every
+    installed version of every agent type. New step 4 reports
     account readiness gaps per device with exact `agents accounts sync <account>
     --device <device>` remediation commands and never copies credentials
     automatically.
