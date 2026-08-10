@@ -1,21 +1,22 @@
-# Built-in routine: keep agents-cli + the shared .system config repo current.
+# Built-in routine: keep agents-cli + the shared .system config repo current,
+# then reconcile resources into every installed agent version home.
 #
 # Shipped in the system repo (gh:phnx-labs/.agents-system), so every install that
-# runs `agents repo pull system` receives it, and the daemon fires it. Users
-# override it with a same-named routine in ~/.agents/routines/, or disable it with
+# pulls system receives it, and the daemon fires it. Users override it with a
+# same-named routine in ~/.agents/routines/, or disable it with
 # `agents routines disable check-updates` — this file is never mutated in place.
 #
 # Runs as a `command:` (plain shell) routine, NOT an LLM agent: this work is
-# deterministic (version compare + npm install + git fast-forward + notify), so it
-# must not depend on a logged-in agent, burn tokens, or gamble on account rotation
-# (an agent-mode run failed on a logged-out version: "Not logged in · /login").
-# Requires agents-cli with command-mode routines (the release adding JobConfig.command).
+# deterministic (version compare + npm install + git sync + reconcile + notify),
+# so it must not depend on a logged-in agent, burn tokens, or gamble on account
+# rotation. Requires agents-cli with command-mode routines and
+# `agents repo sync` (1.22.36+).
 #
 # Design: EACH box self-updates independently (no `devices:` restriction, no SSH
 # fan-out, no designated "primary"), so a single laptop and a large fleet are both
 # covered. Fail-soft: one failing step never aborts the rest.
 name: check-updates
-schedule: 0 9 * * 1        # Mondays 09:00 (daemon-local time)
+schedule: 0 9 * * *        # daily 09:00 (daemon-local time)
 enabled: true
 timeout: 15m
 command: |
@@ -43,27 +44,43 @@ command: |
       ;;
   esac
 
-  # --- .system config repo: fast-forward to origin/main ---
-  # Direct git ff (not `agents repo pull system`, which currently reports
-  # "N available" without fast-forwarding).
+  # --- .system config repo: git-level sync (pull-only mirror) ---
+  # Prefer `agents repo sync system` over raw git so dirty-tree fast-forward
+  # rules apply. Fall back to ff-only merge if the verb is unavailable.
   sys_changed=""
   sys="$HOME/.agents/.system"
-  if [ -d "$sys/.git" ] && git -C "$sys" fetch -q origin 2>/dev/null; then
+  if [ -d "$sys/.git" ]; then
     before=$(git -C "$sys" rev-parse HEAD 2>/dev/null)
-    git -C "$sys" merge --ff-only origin/main >/dev/null 2>&1 || true
+    if agents repo sync system >/dev/null 2>&1; then
+      :
+    else
+      git -C "$sys" fetch -q origin 2>/dev/null || true
+      git -C "$sys" merge --ff-only origin/main >/dev/null 2>&1 || true
+    fi
     after=$(git -C "$sys" rev-parse HEAD 2>/dev/null)
-    if [ "$before" != "$after" ]; then
+    if [ -n "$before" ] && [ -n "$after" ] && [ "$before" != "$after" ]; then
       sys_changed=1
-      echo ".system: pulled new commits"
+      echo ".system: pulled new commits ($before -> $after)"
     else
       echo ".system: up to date"
     fi
   else
-    echo ".system: not a git repo / fetch failed (skipped)"
+    echo ".system: not a git repo (skipped)"
+  fi
+
+  # --- reconcile into every installed agent@version when .system moved ---
+  sync_changed=""
+  if [ -n "$sys_changed" ]; then
+    if agents sync --local -y >/dev/null 2>&1; then
+      sync_changed=1
+      echo "reconcile: agents sync --local -y ok"
+    else
+      echo "reconcile: agents sync --local -y failed (continuing)"
+    fi
   fi
 
   # --- notify only when something actually changed (best-effort) ---
-  if [ -n "$cli_changed" ] || [ -n "$sys_changed" ]; then
+  if [ -n "$cli_changed" ] || [ -n "$sys_changed" ] || [ -n "$sync_changed" ]; then
     msg="agents-cli updated on $(hostname -s 2>/dev/null || hostname)"
     if [ "$(uname)" = "Darwin" ]; then
       osascript -e "display notification \"$msg\" with title \"agents-cli: updates applied\"" 2>/dev/null || true
