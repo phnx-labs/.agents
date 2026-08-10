@@ -239,10 +239,10 @@ agents inspect hooks          # the hook is registered, with its events
 ```
 
 **A plugin change needs a fourth command — the three above do not carry it.**
-`agents sync <agent> system` reconciles commands, skills, hooks, memory, and permissions;
-plugins are a separate resource kind with their own verb, so the installed marketplace copy
-under `~/.<agent>/plugins/marketplaces/<repo>/plugins/<name>/` keeps serving the **old**
-version until you run:
+`agents sync <agent> system` reports the kinds it reconciled (commands, skills, hooks,
+memory, permissions) and plugins are not among them, so the installed marketplace copy under
+`~/.<agent>/plugins/marketplaces/<repo>/plugins/<name>/` keeps serving the **old** version
+until you run:
 
 ```bash
 agents plugins sync <name>    # push the plugin into every installed agent version
