@@ -139,6 +139,13 @@ mk_transcript() {
         echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_obs2","name":"Bash","input":{"command":"gh pr review https://github.com/acme/widgets/pull/42 --request-changes -b nit"}}]}}'
         echo '{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_obs2","content":[{"type":"text","text":"requested changes"}]}]}}'
         ;;
+      inherited-repo-scope)
+        # The session drives an inherited PR using a repo-scoped bare number.
+        # extract_ref must synthesize a URL from --repo so the state check hits
+        # the right repository instead of re-resolving the bare number against cwd.
+        echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_rs1","name":"Bash","input":{"command":"gh pr merge 42 --repo acme/widgets --rebase --delete-branch"}}]}}'
+        echo '{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_rs1","content":[{"type":"text","text":"merge attempted"}]}]}}'
+        ;;
     esac
     case "$1" in
       swarm)
@@ -422,6 +429,15 @@ check "incidental single view of an unrelated PR does not block" "$rc" "0"
 TOB=$(mk_transcript inherited-observer)
 rc=$(FAKE_GH_STATE=OPEN run_hook "$TOB" "Reviewed pull/42 and left change requests for the author." false)
 check "inherited PR only observed (checks/review) allows stop" "$rc" "0"
+
+# A6. A repo-scoped bare-number PR ref must not collapse into a same-numbered PR
+#     in the session cwd repo. extract_ref should synthesize a URL from --repo so
+#     the state check hits the right repository instead of re-resolving the bare
+#     number against cwd.
+TRS=$(mk_transcript inherited-repo-scope)
+rc=$(FAKE_GH_STATE=OPEN run_hook "$TRS" "Merged the PR in acme/widgets." false)
+check "repo-scoped inherited PR still OPEN blocks" "$rc" "2"
+grep -q "acme/widgets/pull/42" "$SANDBOX/stderr" && echo "ok   - repo-scoped gate names the qualified PR URL" || { echo "FAIL - gate did not name qualified PR URL"; fail=1; }
 
 # --- parking / offer-instead-of-do done-gate (Fix B) ------------------------
 # A session that PARKS the obvious next step behind the user ('want me to…',
