@@ -35,11 +35,12 @@ The key insight: sessions are your memory. Before starting a task, search for pr
 
 `agents run <agent> "prompt"` executes an agent headlessly and returns when done. You can set the reasoning effort, working directory, mode (plan/edit/full), and inject secrets or env vars. You can also resume a previous Claude session by session ID.
 
-After the harness's normal login, use `agents accounts` to discover signed-in
-provider accounts and `agents accounts name <label>` to name one. Matching
-installed versions are found automatically. `agents run <agent> --account
-<label>` selects a healthy match. Labels store fingerprints, not credentials,
-and explicit selection fails instead of using another account.
+Use `agents accounts add <name> --provider <provider> --auth <type>` to store a
+durable API key, Claude setup token, or bearer token. Import an existing secret
+with `--from-secrets <bundle>:<key>`. `agents run <agent> --account <name>`
+injects that credential through the provider adapter and fails before launch
+when the provider cannot authenticate the harness or the secret is absent on
+the execution device. Native OAuth login remains owned by the harness.
 
 Use this when you want to delegate a bounded task to another agent and capture its output, rather than spawning a full team.
 
