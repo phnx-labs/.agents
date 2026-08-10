@@ -3,9 +3,24 @@
 Named sub-agent definitions. One directory per subagent, written once here and materialized
 into every subagents-capable agent's home in that agent's native format.
 
-**This directory is empty in the system layer.** Subagents are personal by nature, so they
-live in your user layer at `~/.agents/subagents/<name>/`, not in the shipped defaults. The
-slot exists so `agents-cli` resolves the path consistently across all four layers.
+Most subagents are personal and belong in your user layer at `~/.agents/subagents/<name>/`,
+not in the shipped defaults. The bar for shipping one here is that it is genuinely universal
+across repos and harnesses.
+
+## What ships here
+
+| Subagent | Use when |
+| --- | --- |
+| [`code-reviewer`](./code-reviewer/AGENT.md) | A diff, branch, or PR needs an independent verdict. Adversarial twice over: it hunts the input that breaks the change, then tries to kill each of its own candidate findings (guard elsewhere / unreachable / sanctioned by the repo) and reports only survivors plus a count of what it filtered. Reads the ticket or plan for the requirement first, bounds what it reports to the diff and what the diff broke, and never edits, pushes, or merges. `code:review` spawns it by name. |
+
+**Why this one is not packaged inside the `code` plugin.** A plugin's `agents/<name>.md` is
+the Claude plugin format: `agents-cli` copies the plugin dir into each harness home, but only
+a harness that parses plugin agent definitions registers it. The **native** subagent path each
+harness actually reads (`~/.claude/agents/`, `~/.grok/agents/`, `~/.kimi-code/agents/`,
+`~/.factory/droids/`, `~/.cursor/agents/`, …) is written from **this** directory via
+`SUBAGENT_TARGETS`. Measured 2026-08-09 on yosemite-m1: with the plugin installed and its
+`agents/code-reviewer.md` present on disk, every one of those native paths was empty. A
+subagent that must work on Codex, Grok, Kimi, Cursor, and Droid lives here, not in a plugin.
 
 ## Adding one
 

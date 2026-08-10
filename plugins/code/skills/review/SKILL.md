@@ -223,6 +223,24 @@ spend a sub-agent. Multiple targets resolve independently and review in parallel
 ordering dependency unless one target's base is another target's head (treat that as a
 stack: see Mode A's dependency-graph handling).
 
+### B1b. Load the requirement — the ticket and the plan, before any reviewer spawns
+
+A reviewer with no requirement can only grade the code against itself. Resolve what this
+change was *supposed* to do and pass it into the brief:
+
+```bash
+# Ticket: from the branch name, PR title, or PR body (e.g. RUSH-2462, #412)
+TICKET=$(grep -oE '[A-Z]{2,}-[0-9]+' <<<"$BRANCH $TITLE $BODY" | head -1)
+[ -n "$TICKET" ] && linear tasks "$TICKET" 2>/dev/null   # or: gh issue view <n>
+# Plan: committed alongside the code, or under the dated artifact layout
+ls .agents/plans/plan-*.html .agents/artifacts/*/plan-*.md 2>/dev/null | tail -5
+```
+
+Quote the **acceptance criteria** verbatim into the brief (not a paraphrase, and not the
+whole ticket). The reviewer answers conformance per criterion before it reviews anything
+else. If no ticket and no plan exist, say so in one line and pass the PR body as the
+requirement — never spawn a reviewer with nothing to review against.
+
 ### B2. Pick the dispatch shape
 
 Auto-classify when no flag is set. Bias toward cheap.
@@ -257,9 +275,10 @@ generic "code style."
 
 ### B4. Spawn the reviewer
 
-**Single-agent** — one `Agent` call, `subagent_type: "code-reviewer"` (this plugin ships
-that subagent at `agents/code-reviewer.md`; fall back to `"claude"` on a harness that
-does not load plugin subagents), `model: "sonnet"`, the brief below. The subagent already
+**Single-agent** — one `Agent` call, `subagent_type: "code-reviewer"` (the repo ships that
+subagent at `subagents/code-reviewer/AGENT.md`, materialized into every subagents-capable
+harness; fall back to `"claude"` on a harness without subagent support), `model: "sonnet"`,
+the brief below. The subagent already
 carries the standing rubric — the hunt classes, the three-kill refutation pass, the
 non-checks list, and the output shape — so the brief supplies only what is specific to
 this PR: context, canonical patterns, and the session goal. B5 has both shapes: the short
@@ -270,16 +289,32 @@ pattern list, plus Mission / Full scope / Your assignment / Boundary contract / 
 criteria. The orchestrator collects each critique and synthesizes one verdict. Multiple
 PR targets each get their own single-agent-or-team dispatch, all in one message.
 
-### B4b. Security pass (risk surface touched, or `--security`)
+### B4b. Security pass — its own agent, spawned alongside the reviewer
 
-Run when changed files touch: HTTP/API routes, controllers, middleware · auth / sessions /
-billing / IAM · DB queries, ORM raw SQL, query builders · HTML rendering, share/preview
-pages · shell exec, `child_process`, `exec.Command`, `osascript` · native/IPC boundaries
-(Electron main↔renderer, extension content scripts) · infra (Terraform, CDN/worker config,
-Dockerfile, K8s) · dependency/lockfile bumps · anything that could carry a leaked secret.
-Fold into the single reviewer's brief as check #6 for a small diff; for a security-heavy
-diff, escalate to one read-only `Explore` agent per relevant vulnerability class, parallel,
-one message.
+**Spawn it as a separate agent in the same message as the reviewer, not as a check folded
+into that reviewer's brief.** Two reasons: it runs concurrently so it costs wall-clock
+nothing, and a reviewer working a long correctness rubric reliably gives the security tail
+the least attention. One cheap Sonnet agent whose only job is "does user input reach a
+sink" finds more than check #6 of seven ever did.
+
+Run it whenever changed files touch: HTTP/API routes, controllers, middleware · auth /
+sessions / billing / IAM · DB queries, ORM raw SQL, query builders · HTML rendering,
+share/preview pages · shell exec, `child_process`, `exec.Command`, `osascript` ·
+native/IPC boundaries (Electron main↔renderer, extension content scripts) · infra
+(Terraform, CDN/worker config, Dockerfile, K8s) · dependency/lockfile bumps · anything
+that could carry a leaked secret. Also whenever `--security` is passed.
+
+Skip it only for a diff that touches none of those (a docs edit, a pure rename) — say so
+in one line rather than silently dropping it. For a security-heavy diff, widen to one
+read-only `Explore` agent per relevant vulnerability class, all in one message.
+
+**Hand off to a dedicated security skill when one is installed.** If the box has a
+`security` or `audit` skill, invoke it scoped to this PR's changed-file list instead of
+restating its rubric here — it owns the class taxonomy, the advisory cross-check, and the
+false-positive catalogue, and two copies of that knowledge will drift. The table below is
+the **self-contained fallback**: the system layer must work on a fresh install with nothing
+else configured, so `code:review` never hard-depends on a skill that may be absent. Check
+first, route if present, fall back if not.
 
 | Class | Run when | Grep for |
 |---|---|---|
@@ -305,8 +340,8 @@ findings; end with a **False positives filtered** line so they don't resurface.
 Two shapes, one source of truth. **When the `code-reviewer` subagent loaded** (the normal
 case), send only the `CONTEXT` and `CANONICAL PATTERNS` blocks below, plus the `GOAL` line
 in Session mode — everything from `WHAT YOU MUST CHECK` down already lives in
-`agents/code-reviewer.md` and restating it is a second home for one rubric. **On a harness
-that cannot load plugin subagents**, drop the whole thing in verbatim: that is what the
+`subagents/code-reviewer/AGENT.md` and restating it is a second home for one rubric. **On a
+harness without subagent support**, drop the whole thing in verbatim: that is what the
 rest of this template is for. Either way the rubric changes in exactly one place — the
 subagent — and this fallback copy tracks it.
 

@@ -14,20 +14,18 @@ better documented than you found it.
 | `code:commit` | Split changes into the maximum number of small logical commits (one concept per commit) and push in the background. |
 | `code:release` | Publish a package/CLI/app to its registry — discover the repo's real release process, run tests, changelog, publish, tag, verify live. Invoked via `/code:release`. |
 
-## Subagents
+## The reviewer it spawns
 
-Installing this plugin also installs the reviewer it spawns, so a repo whose automated
-code reviewer is missing, paused, or down still has a non-author review available with no
-per-repo setup.
+`code:review` spawns `subagent_type: "code-reviewer"`. That definition does **not** live in
+this plugin — it ships from the repo's top-level
+[`subagents/code-reviewer/`](../../subagents/code-reviewer/AGENT.md), which is the only path
+that reaches every subagents-capable harness (Claude, Codex, Grok, Kimi, Cursor, Droid,
+OpenCode, Copilot, Kiro, Goose, Antigravity, OpenClaw) through `SUBAGENT_TARGETS`. A plugin's
+own `agents/` dir is the Claude plugin format and lands nowhere those harnesses read — see
+[`plugins/AGENTS.md`](../AGENTS.md) for the measurement.
 
-| Subagent | Use when |
-| --- | --- |
-| [`code-reviewer`](./agents/code-reviewer.md) | A diff, branch, or PR needs an independent verdict. Adversarial twice over: it hunts the input that breaks the change, then tries to kill each of its own candidate findings (guard elsewhere / unreachable / sanctioned by the repo) and reports only the survivors plus a count of what it filtered. Every finding carries a `file:line` quote and a concrete failure scenario. It reviews and reports — it never edits, pushes, or merges. |
-
-`code:review` spawns it as `subagent_type: "code-reviewer"`; a harness that does not load
-plugin subagents falls back to a generic agent carrying the same brief. The standing rubric
-lives in the subagent, so the skill's per-PR brief only supplies context and canonical
-patterns — change the rubric in one place.
+The standing rubric lives in the subagent, so this skill's per-PR brief carries only the
+requirement, the context, and the canonical patterns. Change the rubric in one place.
 
 ## Where verify/ship/quality went
 

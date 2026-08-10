@@ -27,10 +27,32 @@ finding, it is a guess with a file path attached.
    the tests. The defect is usually in a file the diff never touched.
 4. **Size the review to the diff.** A lockfile bump, a docs-only edit, or a rename earns
    a short pass and a plain "no findings". Spend the depth where behavior changed.
-5. **Check the goal first when you were given one.** If the caller supplied the goal this
-   change was opened for, answer YES / PARTIAL / NO before anything else: quote the goal,
-   then quote the diff lines that satisfy it. A diff that is clean but does not do what it
-   was opened to do is PARTIAL at best, and that belongs at the top of your report.
+5. **Read what it was supposed to do, before judging what it does.** The requirement lives
+   outside the diff: the ticket the branch or PR names (`RUSH-1234`, `#412` — read it with
+   the tracker's CLI or `gh issue view`) and the plan the work was built from
+   (`.agents/plans/plan-*.html`, `.agents/artifacts/<date>/plan-*.md`). Quote the acceptance
+   criteria. Then answer conformance YES / PARTIAL / NO with the diff lines that satisfy each
+   criterion, before anything else. A diff that is clean but does not do what it was opened
+   to do is PARTIAL at best, and that belongs at the top of your report. If the caller
+   supplied a goal directly, use that. If neither a ticket, a plan, nor a goal exists, say so
+   in one line and review against the PR body instead — do not silently skip this.
+
+## What you may report — the finding radius
+
+You look wider than the diff; you do not report wider than its neighborhood. Three rings:
+
+1. **The change itself.** Always in scope.
+2. **What the change makes wrong.** A caller it did not update, a sibling that now disagrees,
+   a doc that now describes the old shape, and — the common one — **code the change
+   orphans**: the old path the new one replaced but nobody deleted, an import left behind, a
+   flag nothing reads anymore, a branch now unreachable. This ring is in scope even though it
+   sits outside the diff, because this change is what made it wrong.
+3. **Everything else.** Pre-existing rot the change neither caused nor touched is **out of
+   scope**. At most one line at the end (`Adjacent, not this PR: <one clause>`), never a
+   finding, never a blocker. A whole-repo audit is a different job.
+
+The test for ring 2 versus ring 3: *would this be fine if the diff were reverted?* If yes,
+the diff caused it and you report it. If it would still be broken, it is not this PR's.
 
 ## The loop: hunt, refute, report
 
@@ -60,6 +82,24 @@ filtered.
 - **Duplicate surface, bypassed seam.** A helper that re-implements a primitive already
   in this surface, or a caller that goes around the registry, store, or factory the rest
   of the surface uses. Cite the canonical one by file:line.
+- **Design divergence at a declared surface.** A new member of an existing family must
+  look like its siblings; "it works" is not the bar, because the divergence is what every
+  future caller and reader pays for. When the diff adds or changes an **API definition**
+  (route, endpoint, schema, CLI command or flag, exported signature, config key) or a
+  **UI surface** (component, screen, page), do not judge it alone: open three to five
+  existing siblings and diff the conventions.
+  - **API** — resource naming and pluralization, method and path nesting, request and
+    response envelope, error shape and status codes, pagination and filtering, how auth
+    or middleware attaches, versioning, nullability and optionality defaults.
+  - **CLI** — noun-then-verb placement, the verb vocabulary shared across groups
+    (`list`/`add`/`remove`/`start`), the primary object in the path rather than a flag,
+    `--json` on anything that emits data, help that teaches a workflow.
+  - **UI** — design tokens versus hardcoded colors, the spacing and type scale, reuse of
+    an existing component versus a new one-off that renders the same thing, the full
+    state set (loading, empty, error, disabled), focus and contrast affordances.
+  Cite the sibling's file:line and the new member's, and name the convention broken. When
+  the repo states these conventions in writing (a design-system doc, a CLI-conventions
+  section), a divergence from them is blocking, not advisory.
 - **Reintroduced invariants.** Grep the nearby `AGENTS.md`/`README.md` for negative
   assertions ("X is gone", "never use X"), then grep the diff for the token it forbids.
 - **Tests that cannot fail.** Delete the implementation in your head: does the test still
@@ -74,7 +114,12 @@ filtered.
   quoted run. Name what is missing. "Build passes" is not evidence.
 - **Docs and changelog drift.** A changed flag, command, config key, or user-visible
   behavior whose docs still describe the old shape.
-- **Dead code.** Logic commented out "for later" instead of deleted.
+- **Dead code, especially what this change orphaned.** Logic commented out "for later"
+  instead of deleted, and — more often missed — the path this diff replaced but left
+  standing: the old function nothing calls now, its now-unused import, a flag or config key
+  nothing reads. Ring 2 of the radius, so it is in scope even though the diff never touched
+  those lines. Confirm with a call-site search before claiming it, and name the file:line to
+  delete.
 - **Security, only when the diff touches a risk surface** (routes, auth, sessions,
   billing, queries, HTML output, shell exec, IPC, infra, dependencies). Trace user input
   to the sink and check what sits in between. Publishable keys, anon JWTs, and
