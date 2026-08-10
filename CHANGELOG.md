@@ -44,10 +44,11 @@
   Fewer, sharper primitives (the `distill to the fundamental operation` philosophy). Net:
   the `git` plugin is gone, `/clean` moved under `code`, `/done` is deleted, `/finish` is
   folded into `/next`, and the top-level `/restore` alias is dropped. Concretely:
-  - **`git` plugin removed; its commands moved into `code` (plugin `0.11.0` → `0.12.0`).**
-    `/git:prune` → **`/code:prune`** and `/git:tag-release` → **`/code:tag-release`**
-    (`plugins/git/commands/*.md` → `plugins/code/commands/*.md`, bodies unchanged). The
-    `plugins/git/` directory, its `README.md`, its `plugin.json`, and its
+  - **`git` plugin removed (plugin `0.11.0` → `0.12.1`).** `/git:prune` → **`/code:prune`**
+    (`plugins/git/commands/prune.md` → `plugins/code/commands/prune.md`, body unchanged).
+    `/git:tag-release` was **retired, not moved** — it duplicated the `code:release` skill,
+    which already cuts and pushes the tag as its final step (`plugins/code/skills/release/SKILL.md`).
+    The `plugins/git/` directory, its `README.md`, its `plugin.json`, and its
     `.claude-plugin/marketplace.json` entry are deleted.
   - **`/clean` → `/code:clean`** (`commands/clean.md` → `plugins/code/commands/clean.md`,
     body unchanged). No top-level `/clean` anymore.
