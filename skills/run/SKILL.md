@@ -122,7 +122,7 @@ Controls which installed version/account gets the work.
 agents run claude "..." --strategy balanced
 agents run claude "..." -b                  # shortcut for --strategy balanced
 
-# Pin a logical identity label instead of rotating across accounts
+# Select a durable provider credential
 agents run claude "..." --account work
 ```
 
@@ -280,7 +280,8 @@ Use this as the default for "send this to the fleet" unless the task must land o
 
 For everything else, run `agents run --help`.
 
-`--account <label>` selects a healthy installed version whose live provider
-identity matches a name created with `agents accounts name`. It never falls
-back to another account. There are no version bindings and local account names
+`--account <name>` selects a durable credential created with `agents accounts
+add`. Accounts are independent of agent versions; one provider account may be
+used by multiple compatible harnesses. The execution device resolves the
+secret locally and fails before spawn when it is absent. Device-local accounts
 do not apply to cloud or lease placement.
