@@ -32,14 +32,19 @@
   gradient-glow buttons, lucide-card grids, and the rest), with the working
   alternative for each — every mode now checks its render against it before
   calling it done. Added design-core §5: browse the live web via the `browser`
-  skill for current inspiration instead of relying on frozen example files, and
-  removed the plugin's stale hardcoded `examples/` (frozen product screenshots
-  that go stale the moment they're written). Brand identity (`BRAND.md` — voice,
-  positioning, references, anti-tells) now lives as part of the `system` mode,
-  not a separate `brand` mode. Source: `plugins/design/skills/design/{design-core,system,anticipate,SKILL}.md`,
-  `plugins/design/README.md`, `plugins/design/.claude-plugin/plugin.json`
-  (0.1.0 → 0.2.0). The duplicate `create:design` skill/command are removed from
-  the user layer (`~/.agents/plugins/create/`), tracked separately.
+  skill for current inspiration instead of relying on frozen example files —
+  this plugin never carried an `examples/` directory itself, but the older
+  user-layer skill's hardcoded `examples/` (frozen product screenshots that go
+  stale the moment they're written) were dropped rather than ported, in the
+  companion PR below. Brand identity (`BRAND.md` — voice, positioning,
+  references, anti-tells) now lives as part of the `system` mode, not a
+  separate `brand` mode. `marketplace.json`'s design entry updated to match.
+  Source: `plugins/design/skills/design/{design-core,system,anticipate,SKILL,
+  asset,dataviz,deck,diagram,interface,critique}.md`, `plugins/design/README.md`,
+  `plugins/design/commands/design.md`, `plugins/design/.claude-plugin/plugin.json`
+  (0.1.0 → 0.2.0), `.claude-plugin/marketplace.json`. The duplicate
+  `create:design` skill/command are removed from the user layer
+  (`~/.agents/plugins/create/`), tracked separately.
 
 - **Stop hook `verify-work-complete` no longer references the removed `agents pr
   land` command (RUSH-2466, RUSH-2473).** The durable PR-lander evidence the
