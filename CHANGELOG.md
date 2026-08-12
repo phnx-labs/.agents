@@ -4,33 +4,46 @@
 
 ### Added
 
-- **`code:clean` is a skill now, not a one-shot command prompt — it measures agent-cost
-  instead of guessing at debt.** `/code:clean` was 113 lines of "search for cleanup
-  opportunities in this priority order" with no way to tell a costly defect from a
-  cosmetic one. The skill replaces the guess with three measurements and an execution
-  contract. `exposure.ts` joins git churn, file size, and — the signal nothing else
-  used — **how many times agents actually `Read`/`Edit`ed each file**, pulled from the
-  fleet session index (`sessions.db`, `tool_calls`). It folds `.agents/worktrees/<slug>/`
-  paths back to repo-relative, without which every agent *edit* is dropped as untracked:
-  on `agents-cli` that fold moved 1,385 edits into the ranking and put
-  `commands/inspect.ts` (24 commits, 52 agent edits) in the top 6, where churn alone
-  ranked it ~30th. `surface.ts` walks a CLI's `--help` tree (or lists exports) and grades
-  every entry documented/tested/referenced; on `agents-cli` it found 297 command paths,
-  45 top-level, 21 undocumented, 58 untested, 4 orphan candidates, and 19
-  self-referential paths where a command re-offers its own siblings. The skill reads the
-  repo's docs as **checkable claims** and verifies each against the code before touching
-  anything, classifies findings into six defect classes named for what they cost an agent
-  (lying context, two homes for one concept, no obvious home, a file you can't hold, dead
-  weight that looks live, N ways to do one thing), ranks by `harm x exposure`, and lands
-  behavior-preserving PRs one concept at a time. Every run writes a scorecard so the
-  legibility trend is visible as the codebase grows. Three fix biases are load-bearing and
-  two are counterintuitive: consistency beats DRY (deduplicate *concepts*, not lines),
-  deletion beats abstraction (a five-rung ladder where "extract a new abstraction" is
-  last), fewer surfaces beat better docs. It calls `code:review` Mode C for the
-  file-level passes rather than growing a second copy of them. Source:
-  `plugins/code/skills/clean/SKILL.md`, `plugins/code/skills/clean/exposure.ts`,
-  `plugins/code/skills/clean/surface.ts`, `plugins/code/commands/clean.md`,
-  `plugins/code/README.md`.
+- **`/code:clean` becomes `code:refactor` — the architectural restructuring a product
+  needs as it grows, not file-level tidying.** The old command was 113 lines of "search for
+  cleanup opportunities in this priority order," which ranked by taste and never rose above
+  single-file issues. The skill does the work a principal engineer does continuously: merge
+  redundant concepts, extract the horizontal layer four modules each reimplemented, draw a
+  module boundary that was never drawn, lift a cohesive core out into its own package/SDK so
+  it is testable and reusable, reorganize the tree so it matches the architecture, and shrink
+  an overgrown public surface. Hygiene (dead code, doc drift, oversized files) is explicitly
+  the byproduct tier, ~20% of a plan; a plan that is mostly dead-code deletion means the wrong
+  job got done.
+  Three scripts supply the evidence. `modules.ts` builds a file-level import graph, folds it to
+  modules, and derives god modules, module-level cycles (Tarjan SCCs), package-extraction
+  candidates (high cohesion, low outbound coupling, small de-facto public API), and upward
+  imports; on `agents-cli` it found `lib` at 193 files / 88,644 LOC with fan-in 1095 and 84% of
+  its files imported from outside, **38 of 44 modules inside a single dependency cycle**,
+  `lib/startup -> commands` 82 times, and `lib/terminal` as a clean extraction candidate
+  (cohesion 0.84, 6 of 17 files forming its API, 3 outbound deps). `exposure.ts` joins git churn,
+  file size, and real agent `Read`/`Edit` traffic from the fleet session index (`sessions.db`,
+  `tool_calls`), folding `.agents/worktrees/<slug>/` paths back to repo-relative — without that
+  fold every agent *edit* is dropped as untracked (1,385 recovered on `agents-cli`, moving
+  `commands/inspect.ts` from ~30th on churn alone into the top 6). `surface.ts` walks a CLI's
+  `--help` tree and grades each entry documented/tested/referenced: 297 command paths, 45
+  top-level, 21 undocumented, 58 untested, 4 orphan candidates, 19 self-referential paths.
+  Moves are ranked `harm x exposure` and then **sequenced**, because architectural work has a
+  dependency order: break cycles first (nothing extracts out of an SCC), merge concepts before
+  drawing boundaries, extract the layer before the package, move the tree last. Every structural
+  move ships a **before/after figure rendered with artifacts-cli** under a precision contract —
+  every box is a real module at its real path with its real file/LOC count, every arrow is a real
+  edge with its real import count, BEFORE and AFTER share node positions so the eye reads the
+  difference, and numbers in the prose, the figure, and the graph JSON must be the same value.
+  A figure that misstates the architecture is lying context, the exact defect the skill removes.
+  Three biases decide the calls, two counterintuitive: consistency beats DRY (deduplicate
+  *concepts*, not lines — two blocks are duplicates only when changing one is a bug if the other
+  doesn't change), deletion beats abstraction (five-rung ladder; extracting a layer or package is
+  rung 5 and legitimate only on evidence the concept already repeats with one meaning), fewer
+  surfaces beat better docs. It calls `code:review` Mode C for file-level passes instead of
+  growing a second copy. Source: `plugins/code/skills/refactor/SKILL.md`,
+  `plugins/code/skills/refactor/{modules,exposure,surface}.ts`,
+  `plugins/code/commands/refactor.md`, `plugins/code/README.md`, `plugins/README.md`,
+  `commands/README.md`, `commands/AGENTS.md`.
 
 ### Fixed
 

@@ -27,7 +27,8 @@ commands are often thin wrappers that only invoke a skill (harness-friendly).
 
 Multi-agent plan/spec/debug live under `/swarm …` and `/swarm:plan` / `/swarm:spec` /
 `/swarm:debug` (see [`plugins/swarm`](../plugins/swarm/README.md)). Cleaning up technical
-debt moved into the code plugin as [`/code:clean`](../plugins/code/README.md).
+debt moved into the code plugin, and became architectural restructuring there:
+[`/code:refactor`](../plugins/code/README.md).
 
 ## Ship and review
 
@@ -79,7 +80,7 @@ The fleet token-burn / output report moved to [`/work:output`](../plugins/work/R
 ## Related
 
 Several commands escalate to `agents teams` when the scope is wide: `/debug`, `/plan`,
-`/recap`, `/dispatch` (and `/code:clean`).
+`/recap`, `/dispatch` (and `/code:refactor`, for independent moves in its landing phase).
 
 Capabilities like `/secrets`, `/sessions`, and `/browser` are **skills**, not commands —
 see [`skills/`](../skills/README.md). They are invoked the same way but carry their own
