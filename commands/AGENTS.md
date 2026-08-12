@@ -50,6 +50,6 @@ set only.
 ## Do not gate on the user
 
 Commands that ask for permission before acting on their own verdict violate F1 of the
-ruleset. `/code:review` merges on green; `/code:clean` executes its cleanup; `/next` drives the current task to delivered.
+ruleset. `/code:review` merges on green; `/code:refactor` lands its reversible tier without asking; `/next` drives the current task to delivered.
 Reserve a question for genuine scope ambiguity. This has been fixed repo-wide once already —
 do not reintroduce it.
