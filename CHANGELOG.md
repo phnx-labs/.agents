@@ -25,8 +25,13 @@
   `tool_calls`), folding `.agents/worktrees/<slug>/` paths back to repo-relative — without that
   fold every agent *edit* is dropped as untracked (1,385 recovered on `agents-cli`, moving
   `commands/inspect.ts` from ~30th on churn alone into the top 6). `surface.ts` walks a CLI's
-  `--help` tree and grades each entry documented/tested/referenced: 297 command paths, 45
-  top-level, 21 undocumented, 58 untested, 4 orphan candidates, 19 self-referential paths.
+  `--help` tree and grades each entry documented/tested/referenced: 337 command paths, 45
+  top-level, 27 undocumented, 74 untested, 7 orphan candidates, 19 self-referential paths.
+  Its two recursion guards are ancestry-scoped, never global — a global "seen this child set
+  before?" check is wrong on exactly the CLIs this skill targets, because a well-shaped surface
+  reuses one verb vocabulary across groups on purpose (`skills`, `permissions`, and `subagents`
+  all offer add/list/remove/view), and a global check drops two of the three real groups. That
+  bug cost 40 real commands in the first census.
   Moves are ranked `harm x exposure` and then **sequenced**, because architectural work has a
   dependency order: break cycles first (nothing extracts out of an SCC), merge concepts before
   drawing boundaries, extract the layer before the package, move the tree last. Every structural

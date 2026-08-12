@@ -145,20 +145,29 @@ if (cli) {
   // `profile glm glm`, `profile kimi glm`, … Two guards stop it, and the fact that
   // they are NEEDED is itself a finding worth reporting — an agent searching that
   // help is walking the same combinatorial tree.
-  const seenChildSets = new Set<string>();
-  const queue: string[][] = [[]];
+  //
+  // Both guards are ANCESTRY-scoped, never global. A global "have I seen this child
+  // set before?" is wrong on exactly the CLIs this skill is built for: a well-shaped
+  // surface reuses one verb vocabulary across groups on purpose, so `skills`,
+  // `permissions`, and `subagents` all offer {add,list,remove,view} — and a global
+  // check silently drops two of the three real groups, undercounting the census that
+  // the shrink-the-surface move ranks on. A repeat only means recursion when it
+  // repeats on the path from the root to THIS node.
+  interface Node { path: string[]; ancestorSigs: Set<string> }
+  const queue: Node[] = [{ path: [], ancestorSigs: new Set() }];
   let nodes = 0;
   let cycles = 0;
   while (queue.length) {
     const batch = queue.splice(0, 8);
     const results = await Promise.all(
-      batch.map(async (path) => ({ path, help: await helpOf(path) })),
+      batch.map(async (node) => ({ node, help: await helpOf(node.path) })),
     );
-    for (const { path, help } of results) {
+    for (const { node, help } of results) {
+      const { path, ancestorSigs } = node;
       const children = parseCommands(help);
       const sig = children.slice().sort().join(",");
-      if (path.length > 0 && sig && seenChildSets.has(sig)) { cycles++; continue; }
-      if (sig) seenChildSets.add(sig);
+      if (path.length > 0 && sig && ancestorSigs.has(sig)) { cycles++; continue; }
+      const childSigs = sig ? new Set([...ancestorSigs, sig]) : ancestorSigs;
       for (const child of children) {
         if (path.includes(child)) { cycles++; continue; }
         if (nodes >= maxNodes) { queue.length = 0; break; }
@@ -189,7 +198,7 @@ if (cli) {
           last_touched: file ? lastTouched(file) : null,
           orphan_candidate: !documented && !tested && refs <= 1,
         });
-        if (full.length < maxDepth) queue.push(full);
+        if (full.length < maxDepth) queue.push({ path: full, ancestorSigs: childSigs });
       }
     }
   }

@@ -122,10 +122,17 @@ Write `$RUN_DIR/claims.json`: `{id, claim, source_file, source_line, kind, check
 Three scripts plus one reused skill. Run concurrently.
 
 ```bash
-SKILL_DIR=<this skill's directory>
+# Bind everything the passes need. SCOPE/DEPTH/DAYS come from $ARGUMENTS (Phase 0
+# defaults: the repo, 2, 90). BIN is the repo's own CLI when it ships one — resolve it
+# from package.json `bin`, a Makefile install target, or the README's install line;
+# when the repo ships no CLI, skip surface.ts's --cli mode and run --exports instead.
+SKILL_DIR="$HOME/.agents/plugins/code/skills/refactor"
+[ -d "$SKILL_DIR" ] || SKILL_DIR="$HOME/.agents/.system/plugins/code/skills/refactor"
+SCOPE="${SCOPE:-.}"; DEPTH="${DEPTH:-2}"; DAYS="${DAYS:-90}"
+
 bun "$SKILL_DIR/modules.ts"  "$RUN_DIR" --scope "$SCOPE" --depth "$DEPTH" > "$RUN_DIR/modules.json" &
 bun "$SKILL_DIR/exposure.ts" "$RUN_DIR" --days "$DAYS" --scope "$SCOPE"   > "$RUN_DIR/exposure.json" &
-bun "$SKILL_DIR/surface.ts"  "$RUN_DIR" --cli "$BIN"                      > "$RUN_DIR/surface.json" &
+bun "$SKILL_DIR/surface.ts"  "$RUN_DIR" ${BIN:+--cli "$BIN"} ${BIN:---exports} > "$RUN_DIR/surface.json" &
 wait
 # then, for the file-level defect passes — reuse, never reimplement:
 #   /code:review <scope>     (Mode C → findings.json)
