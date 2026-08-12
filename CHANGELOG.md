@@ -18,8 +18,8 @@
   `arms` (the hand-branches that would collapse), whether a contract and a registry exist
   with `file:line` for each, the provider directory and its coverage, capability holes, and
   a verdict. On `agents-cli` (`--scope apps/cli/src`) it reports 101 families:
-  3 exemplar, 9 **bypassed**, 44 partial,
-  45 missing, **2,750 collapsible arms**. The headline case is
+  7 exemplar, 10 **bypassed**, 44 partial,
+  40 missing, **1,907 collapsible arms**. The headline case is
   `agent` — 20 variants, **287 hand-branches**
   (14.3 per variant), while the contract (`apps/cli/src/lib/session/types.ts:11`) and a real
   registry (`apps/cli/src/lib/add-dir.ts:32`) already exist and are simply routed around. That is what
@@ -27,10 +27,15 @@
   design decision — just moving call sites onto a table that already exists, which is exactly
   the behavior-preserving change this skill lands.
   `lib/terminal` is the closest thing to a model in this repo — contract and registry at
-  `apps/cli/src/lib/terminal/backends/index.ts:19` with one file per backend — and the detector still grades it
-  **bypassed**, because it carries 61 hand-branches of its own. The skill says
-  to cite the shape, not the verdict, and to prefer an in-repo model over any textbook
-  pattern: "look like that one" is a change an agent can make by pattern-matching.
+  `apps/cli/src/lib/terminal/backends/index.ts:19` with one file per backend. It is graded **bypassed**, but read
+  that number carefully: the `backend` row carries 61 arms in total and only
+  **9** of them are in `lib/terminal` — the rest belong to an unrelated secrets `backend`
+  that collides on the variable name (`arms_by_area` now shows the split: commands 27,
+  lib/secrets 22, lib/terminal 9). That collision is why `patterns.ts` emits `arms_by_area`
+  and `area_concentration` at all: a merged row read as one family overstates it, which is a
+  mistake this entry made twice before the data made it visible. The skill says to cite the
+  shape, not the verdict, and to prefer an in-repo model over any textbook pattern: "look like
+  that one" is a change an agent can make by pattern-matching.
   Two rules come with it. **A feature of the family belongs in the contract, not beside it** —
   multiplexing sitting next to the terminal backends, retry next to the transports, caching
   next to the stores is a capability of the abstraction that never got declared; fold it in

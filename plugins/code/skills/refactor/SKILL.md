@@ -227,13 +227,13 @@ behavior-preserving change this skill lands.
 **Prefer the in-repo exemplar over any textbook pattern.** When one family is healthy and
 another is not, the fix for the second is "look like the first" — same file layout, same
 naming, same registration point. Note that the closest model in a repo is often itself
-graded `bypassed` rather than `exemplar`: on `agents-cli`, `lib/terminal` has the full
-shape (contract + registry at `backends/index.ts:19`, one file per backend) and *still*
-carries 61 hand-branches. Cite the shape, not the verdict — and read `top_sites` before
-trusting a family, because rows are keyed by variable name and two unrelated concepts that
-share one (a terminal `backend` and a secrets `backend`) merge into a single polluted row. That is a change an agent can make by pattern-matching,
-which is the whole point (bias 1). Proposing an abstraction the codebase has never used is
-rung 5 with no evidence.
+graded `bypassed` rather than `exemplar`, and that a row can merge two concepts: on
+`agents-cli`, `lib/terminal` has the full shape (contract + registry at
+`apps/cli/src/lib/terminal/backends/index.ts:19`, one file per backend) yet the `backend` row shows 61 arms — of
+which only 9 are in `lib/terminal`; the rest are an unrelated secrets `backend` sharing the
+variable name. **Read `arms_by_area` and `area_concentration` before quoting a family's
+numbers.** A concentration well below 1.0 means the row is two concepts, not one, and the
+member list is polluted. Cite the shape, not the verdict.
 
 **A feature of the family belongs in the contract, not beside it.** When something that
 modifies or extends every variant lives as a *sibling* module — multiplexing next to the
