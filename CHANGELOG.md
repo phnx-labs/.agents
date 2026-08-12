@@ -2,6 +2,36 @@
 
 ## [Unreleased]
 
+### Added
+
+- **`code:clean` is a skill now, not a one-shot command prompt — it measures agent-cost
+  instead of guessing at debt.** `/code:clean` was 113 lines of "search for cleanup
+  opportunities in this priority order" with no way to tell a costly defect from a
+  cosmetic one. The skill replaces the guess with three measurements and an execution
+  contract. `exposure.ts` joins git churn, file size, and — the signal nothing else
+  used — **how many times agents actually `Read`/`Edit`ed each file**, pulled from the
+  fleet session index (`sessions.db`, `tool_calls`). It folds `.agents/worktrees/<slug>/`
+  paths back to repo-relative, without which every agent *edit* is dropped as untracked:
+  on `agents-cli` that fold moved 1,385 edits into the ranking and put
+  `commands/inspect.ts` (24 commits, 52 agent edits) in the top 6, where churn alone
+  ranked it ~30th. `surface.ts` walks a CLI's `--help` tree (or lists exports) and grades
+  every entry documented/tested/referenced; on `agents-cli` it found 297 command paths,
+  45 top-level, 21 undocumented, 58 untested, 4 orphan candidates, and 19
+  self-referential paths where a command re-offers its own siblings. The skill reads the
+  repo's docs as **checkable claims** and verifies each against the code before touching
+  anything, classifies findings into six defect classes named for what they cost an agent
+  (lying context, two homes for one concept, no obvious home, a file you can't hold, dead
+  weight that looks live, N ways to do one thing), ranks by `harm x exposure`, and lands
+  behavior-preserving PRs one concept at a time. Every run writes a scorecard so the
+  legibility trend is visible as the codebase grows. Three fix biases are load-bearing and
+  two are counterintuitive: consistency beats DRY (deduplicate *concepts*, not lines),
+  deletion beats abstraction (a five-rung ladder where "extract a new abstraction" is
+  last), fewer surfaces beat better docs. It calls `code:review` Mode C for the
+  file-level passes rather than growing a second copy of them. Source:
+  `plugins/code/skills/clean/SKILL.md`, `plugins/code/skills/clean/exposure.ts`,
+  `plugins/code/skills/clean/surface.ts`, `plugins/code/commands/clean.md`,
+  `plugins/code/README.md`.
+
 ### Fixed
 
 - **`hooks/promptcuts.yaml` #275: `#debugit` is no longer swallowed into `#rethink`'s block scalar.** The shortcut key was mis-indented 6 spaces, so YAML parsed it as part of `#rethink`'s value, making `#debugit` / `!!debugit` a no-op and gluing the debug root-cause block onto every `#rethink` expansion. Re-indented `#debugit` to the canonical 2-space key + 4-space body and fixed the same mid-block drift in `#simplifyit`. Added `hooks/tests/promptcuts_test.sh` to assert the expected shortcut key set on every load so a swallowed cut fails loudly. Source: `hooks/promptcuts.yaml`, `hooks/tests/promptcuts_test.sh`.
