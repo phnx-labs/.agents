@@ -60,7 +60,7 @@ Outbound from `lib/terminal`: `lib` x4, `lib/session` x4, `lib/tmux` x1.
       <text fill="currentColor" x="30" y="71" font-size="9" opacity="0.7">127 files</text>
       <rect x="270" y="40" width="130" height="38" rx="4" fill="none" stroke="currentColor"/>
       <text fill="currentColor" x="280" y="58" font-size="10">lib/watchdog</text>
-      <text fill="currentColor" x="280" y="71" font-size="9" opacity="0.7">fan-in 3</text>
+      <text fill="currentColor" x="280" y="71" font-size="9" opacity="0.7">9 files · 2,547 LOC</text>
       <rect x="130" y="130" width="150" height="44" rx="4" fill="none" stroke="currentColor" stroke-width="2"/>
       <text fill="currentColor" x="140" y="149" font-size="10" font-weight="600">lib/terminal</text>
       <text fill="currentColor" x="140" y="163" font-size="9" opacity="0.7">17 files · 1,636 LOC</text>
@@ -89,7 +89,7 @@ Outbound from `lib/terminal`: `lib` x4, `lib/session` x4, `lib/tmux` x1.
       <text fill="currentColor" x="30" y="71" font-size="9" opacity="0.7">127 files</text>
       <rect x="270" y="40" width="130" height="38" rx="4" fill="none" stroke="currentColor"/>
       <text fill="currentColor" x="280" y="58" font-size="10">lib/watchdog</text>
-      <text fill="currentColor" x="280" y="71" font-size="9" opacity="0.7">fan-in 3</text>
+      <text fill="currentColor" x="280" y="71" font-size="9" opacity="0.7">9 files · 2,547 LOC</text>
       <rect x="120" y="120" width="170" height="64" rx="4" fill="none" stroke="currentColor" stroke-width="2"/>
       <text fill="currentColor" x="130" y="139" font-size="10" font-weight="600">packages/terminal</text>
       <text fill="currentColor" x="130" y="153" font-size="9" opacity="0.7">17 files · 1,636 LOC</text>
