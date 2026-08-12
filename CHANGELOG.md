@@ -18,8 +18,8 @@
   `arms` (the hand-branches that would collapse), whether a contract and a registry exist
   with `file:line` for each, the provider directory and its coverage, capability holes, and
   a verdict. On `agents-cli` (`--scope apps/cli/src`) it reports 101 families:
-  7 exemplar, 10 **bypassed**, 44 partial,
-  40 missing, **1,907 collapsible arms**. The headline case is
+  2 exemplar, 10 **bypassed**, 49 partial,
+  40 missing, **1,906 collapsible arms**. The headline case is
   `agent` — 20 variants, **287 hand-branches**
   (14.3 per variant), while the contract (`apps/cli/src/lib/session/types.ts:11`) and a real
   registry (`apps/cli/src/lib/add-dir.ts:32`) already exist and are simply routed around. That is what
