@@ -16,18 +16,21 @@
   instead of a reviewer noticing that three of eleven call sites were never updated.
   New `patterns.ts` finds these mechanically — per discriminator family it reports members,
   `arms` (the hand-branches that would collapse), whether a contract and a registry exist
-  with `file:line` for each, the provider directory, capability holes across implementations,
-  and a verdict. On `agents-cli` it found 94 families: 3 exemplars, 13 **bypassed**, 40
-  missing, **1,623 collapsible arms**. The headline case is `agent` — 21 variants, **291
-  hand-branches** (13.9 per variant), while the contract (`lib/session/types.ts:11`) and a
-  real registry (`lib/add-dir.ts:32`, `ADD_DIR_STRATEGY: Record<AgentId, AddDirStrategy>`)
-  already exist and are simply routed around. That is what the new `bypassed` verdict is for,
-  and it is the most valuable of the four because it needs no design decision — just moving
-  call sites onto a table that already exists, which is exactly the behavior-preserving
-  change this skill lands. `lib/terminal` is the in-repo `exemplar`
-  (`backends/index.ts:19` + one file per backend), and the skill now says explicitly:
-  **prefer the in-repo exemplar over any textbook pattern**, because "look like that one" is
-  a change an agent can make by pattern-matching.
+  with `file:line` for each, the provider directory and its coverage, capability holes, and
+  a verdict. On `agents-cli` (`--scope apps/cli/src`) it reports 101 families:
+  3 exemplar, 9 **bypassed**, 44 partial,
+  45 missing, **2,750 collapsible arms**. The headline case is
+  `agent` — 20 variants, **287 hand-branches**
+  (14.3 per variant), while the contract (`apps/cli/src/lib/session/types.ts:11`) and a real
+  registry (`apps/cli/src/lib/add-dir.ts:32`) already exist and are simply routed around. That is what
+  the `bypassed` verdict is for, and it is the most valuable of the four because it needs no
+  design decision — just moving call sites onto a table that already exists, which is exactly
+  the behavior-preserving change this skill lands.
+  `lib/terminal` is the closest thing to a model in this repo — contract and registry at
+  `apps/cli/src/lib/terminal/backends/index.ts:19` with one file per backend — and the detector still grades it
+  **bypassed**, because it carries 61 hand-branches of its own. The skill says
+  to cite the shape, not the verdict, and to prefer an in-repo model over any textbook
+  pattern: "look like that one" is a change an agent can make by pattern-matching.
   Two rules come with it. **A feature of the family belongs in the contract, not beside it** —
   multiplexing sitting next to the terminal backends, retry next to the transports, caching
   next to the stores is a capability of the abstraction that never got declared; fold it in
@@ -39,12 +42,16 @@
   contract exports its internals as its API) and the harm table now scores a missing contract
   with the worst — it is the defect an agent is most likely to make *worse* by hand, adding a
   twenty-second branch because twenty-one already existed.
-  The detector was rewritten once after its first run graded every family `exemplar` by
-  falling back to "the first interface in the first file" (it cited an unrelated
-  `interface NpmPackageMetadata`); both checks now require the members themselves or a type
-  name that echoes the discriminator, and the run went from 82s to 6s. Source:
-  `plugins/code/skills/refactor/patterns.ts`, `plugins/code/skills/refactor/SKILL.md`,
-  `plugins/code/commands/refactor.md`, `plugins/code/README.md`.
+  The detector went through two correction rounds against its own output, both caught by
+  review: it first graded every family `exemplar` by falling back to "the first interface in
+  the first file" (citing an unrelated `interface NpmPackageMetadata`), and then, once
+  precise, it exposed that `bypassed` did not match its own documented definition, that
+  `typeof x === 'string'` guards were inventing members, that `nameRelates` accepted
+  `"headroom" ⊃ "head"`, and that optional-`export` matching reported local `const`s as
+  missing capabilities. All fixed; every number above is read from the tool's output rather
+  than asserted. Source: `plugins/code/skills/refactor/patterns.ts`,
+  `plugins/code/skills/refactor/SKILL.md`, `plugins/code/commands/refactor.md`,
+  `plugins/code/README.md`.
 
 - **`/code:clean` becomes `code:refactor` — the architectural restructuring a product
   needs as it grows, not file-level tidying.** The old command was 113 lines of "search for

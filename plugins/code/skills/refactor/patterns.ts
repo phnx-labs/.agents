@@ -105,8 +105,14 @@ const bump = (disc: string, member: string, file: string) => {
   fam.arms++;
 };
 
+const TYPEOF_GUARD = /\btypeof\s/;
 for (const [f, text] of texts) {
-  for (const m of text.matchAll(EQ)) bump(m[1], m[2], f);
+  for (const m of text.matchAll(EQ)) {
+    // `typeof p.head === 'string'` is a type guard, not a variant dispatch. Left in, it
+    // invents a member ('string') and can manufacture a whole family.
+    if (TYPEOF_GUARD.test(text.slice(Math.max(0, m.index! - 12), m.index!))) continue;
+    bump(m[1], m[2], f);
+  }
   for (const m of text.matchAll(EQ_REV)) bump(m[2], m[1], f);
 
   let current = "";
@@ -128,7 +134,13 @@ for (const [f, text] of texts) {
 const nameRelates = (name: string, disc: string) => {
   const a = name.toLowerCase().replace(/[_-]/g, "");
   const b = disc.toLowerCase().replace(/[_-]/g, "");
-  return a.includes(b) || b.includes(a);
+  if (a === b) return true;
+  // A bare substring test is far too loose: "headroom".includes("head") once made an
+  // unrelated Record<Headroom, …> read as the `head` family's registry. Require the
+  // shorter name to be most of the longer one, and to sit at a boundary.
+  const [short, long] = a.length <= b.length ? [a, b] : [b, a];
+  if (short.length < 4 || short.length / long.length < 0.6) return false;
+  return long.startsWith(short) || long.endsWith(short);
 };
 
 const quoted = (m: string) => [`'${m}'`, `"${m}"`, `\`${m}\``];
@@ -164,6 +176,7 @@ const contractFor = (disc: string, members: Set<string>) => {
 const registryFor = (disc: string, members: Set<string>) => {
   const list = [...members];
   const need = Math.max(2, Math.ceil(list.length * 0.5));
+  let best: { ref: string; keys: number; of: number } | null = null;
   for (const [f, text] of texts) {
     const lines = text.split("\n");
     for (let i = 0; i < lines.length; i++) {
@@ -174,9 +187,10 @@ const registryFor = (disc: string, members: Set<string>) => {
         const re = new RegExp(`^\\s*(?:['"\`])?${m.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?:['"\`])?\\s*:`);
         if (window.some((l) => re.test(l))) keyHits++;
       }
-      if (keyHits >= need) return { ref: `${f}:${i + 1}`, keys: keyHits, of: list.length };
+      if (keyHits >= need && keyHits > (best?.keys ?? 0)) best = { ref: `${f}:${i + 1}`, keys: keyHits, of: list.length };
     }
   }
+  if (best) return best;
   // Only if no real table enumerates the members: fall back to a `Record<Type, …>`
   // ANNOTATION. Citing an annotation when a table exists sends the agent to a type
   // declaration instead of the dispatch table it is supposed to route call sites
@@ -211,7 +225,10 @@ const providerDirFor = (members: Set<string>) => {
 // Capability holes: for a provider dir, which exported names do siblings have that a
 // member lacks. This is the "wired up three variants and silently skipped the rest"
 // defect, made visible as a matrix instead of found by a reviewer.
-const EXPORTED = /^\s*(?:export\s+)?(?:async\s+)?(?:function|const|class)\s+([A-Za-z_$][\w$]*)|^\s*func\s+(?:\([^)]*\)\s*)?([A-Z][\w]*)\s*\(|^\s*def\s+([a-z_][\w]*)/gm;
+// `export` is REQUIRED for TS/JS. Optional, it swept up every local `const` inside a
+// function body and reported names like `result`, `parsed`, `raw` as missing
+// capabilities — noise that drowned the real parity gaps.
+const EXPORTED = /^\s*export\s+(?:async\s+)?(?:function|const|class)\s+([A-Za-z_$][\w$]*)|^\s*func\s+(?:\([^)]*\)\s*)?([A-Z][\w]*)\s*\(|^\s*def\s+([a-z_][\w]*)/gm;
 const capabilityMatrix = (dir: string, covered: string[]) => {
   const perMember = new Map<string, Set<string>>();
   for (const m of covered) {
@@ -237,8 +254,17 @@ const capabilityMatrix = (dir: string, covered: string[]) => {
 // ------------------------------------------------------------------------- assemble
 const NOISE = /^(type|kind|mode|status|state|name|key|id|value|event|level|action|op|cmd|format|target|source|dir)$/;
 
+// A generic discriminator name (`kind`, `mode`, `type`) is usually noise — but not
+// always: `p.kind === 'local'` was a real dispatch that an outright exclusion dropped on
+// the floor. Hold generic names to a higher bar rather than discarding them, and mark
+// them so a reader knows the name alone did not earn the row.
 const rows = [...families.values()]
-  .filter((f) => f.members.size >= minMembers && f.arms >= minArms && !NOISE.test(f.discriminator))
+  .filter((f) => {
+    const generic = NOISE.test(f.discriminator);
+    const memberBar = generic ? minMembers + 2 : minMembers;
+    const armBar = generic ? minArms * 2 : minArms;
+    return f.members.size >= memberBar && f.arms >= armBar;
+  })
   .map((f) => {
     const contract = contractFor(f.discriminator, f.members);
     const registry = registryFor(f.discriminator, f.members);
@@ -250,14 +276,15 @@ const rows = [...families.values()]
     const armsPerMember = f.arms / f.members.size;
     const verdict =
       !contract && !registry
-        ? "missing"                                   // no contract at all — introduce one
-        : armsPerMember > 3
-          ? "bypassed"                                // the pattern exists; call sites ignore it
+        ? "missing"                                   // nothing to route through — introduce it
+        : contract && registry && armsPerMember > 3
+          ? "bypassed"                                // BOTH exist and call sites ignore them
           : contract && registry && provider
             ? "exemplar"                              // the shape this repo already chose
-            : "partial";
+            : "partial";                              // one of the pair is missing — complete it
     return {
       discriminator: f.discriminator,
+      generic_name: NOISE.test(f.discriminator),
       members: [...f.members].sort(),
       member_count: f.members.size,
       arms: f.arms,
@@ -270,6 +297,7 @@ const rows = [...families.values()]
       registry_ref: registry?.ref ?? null,
       provider_dir: provider?.dir ?? null,
       provider_covered: provider?.covered ?? null,
+      provider_coverage: provider ? Number((provider.covered.length / f.members.size).toFixed(2)) : null,
       capability_holes: matrix?.holes ?? null,
       arms_per_member: Number((f.arms / f.members.size).toFixed(1)),
       same_contract: null, // requires judgement — set by the skill, never by this script
@@ -301,6 +329,9 @@ console.log(
           "CANDIDATES, not verdicts. A family whose variants genuinely diverge in contract is not a provider family; `same_contract` stays null until an agent or human judges it.",
           "Detection is textual: a discriminator reached only through a helper (`isClaude(x)`) or a table lookup is invisible here.",
           "An `exemplar` in this repo is the pattern the codebase already chose — prefer it over any external pattern when proposing a fix.",
+          "Families are keyed by VARIABLE NAME, so two unrelated concepts that share one (a terminal `backend` and a secrets `backend`) merge into a single polluted row. Check `top_sites` before trusting a member list.",
+          "`capability_holes` compares exported names only; a capability reached through a shared base class, or one whose implementation differs in name, is invisible. Treat holes as candidates.",
+          "`generic_name: true` marks a discriminator whose name alone (kind/mode/type) is weak evidence — it cleared a higher member and arm bar to appear at all.",
         ],
       },
       families: rows,

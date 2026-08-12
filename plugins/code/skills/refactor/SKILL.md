@@ -215,8 +215,8 @@ exist — what collapses), `has_contract` + `contract_ref`, `has_registry` + `re
 | Verdict | Meaning | The move |
 |---|---|---|
 | `exemplar` | contract + registry + one file per variant, few raw arms | **Cite it.** This is the shape this repo already chose. |
-| `bypassed` | the contract and table exist, but call sites branch by hand anyway (high arms-per-member) | Route the arms through the table that already exists — cheap, mechanical, no new abstraction |
-| `partial` | one of contract or registry, not both | Complete the pair |
+| `bypassed` | contract **and** registry both exist, and call sites branch by hand anyway (>3 arms per variant) | Route the arms through the table that already exists — cheap, mechanical, no new abstraction |
+| `partial` | only one of the pair exists (or both exist and the arms are few) | Complete the pair |
 | `missing` | neither, and many arms | Introduce the contract first, then migrate arms |
 
 **`bypassed` is usually the most valuable finding and the one a binary present/absent
@@ -226,7 +226,12 @@ behavior-preserving change this skill lands.
 
 **Prefer the in-repo exemplar over any textbook pattern.** When one family is healthy and
 another is not, the fix for the second is "look like the first" — same file layout, same
-naming, same registration point. That is a change an agent can make by pattern-matching,
+naming, same registration point. Note that the closest model in a repo is often itself
+graded `bypassed` rather than `exemplar`: on `agents-cli`, `lib/terminal` has the full
+shape (contract + registry at `backends/index.ts:19`, one file per backend) and *still*
+carries 61 hand-branches. Cite the shape, not the verdict — and read `top_sites` before
+trusting a family, because rows are keyed by variable name and two unrelated concepts that
+share one (a terminal `backend` and a secrets `backend`) merge into a single polluted row. That is a change an agent can make by pattern-matching,
 which is the whole point (bias 1). Proposing an abstraction the codebase has never used is
 rung 5 with no evidence.
 
@@ -399,7 +404,7 @@ Then, per move, drawn from `modules.json` — not from memory, not from vibes:
   edges the move changes, never by what draws nicely.
 
 Also render, once for the run: a **system map** (all modules, sized by LOC, with the
-cycle(s) marked) so the reader sees the whole before they see the six moves.
+cycle(s) marked) so the reader sees the whole before they see the moves.
 
 **Then look at it.** Render, open the HTML, and actually read the figure at full size before
 you present it — labels legible in both themes, no overlapping text, every number matching
@@ -424,7 +429,7 @@ already-wrong doc is the banned stop:
 | Tier | Contents | Action |
 |---|---|---|
 | **Reversible** | doc-drift fixes, dead weight with proven zero callers, a one-caller indirection inlined, finishing an idiom migration already at ~90% | **Land it.** No gate. |
-| **Structural** | every one of the six architectural moves | **Present the figures, get the pick**, then land. |
+| **Structural** | every one of the seven architectural moves | **Present the figures, get the pick**, then land. |
 
 The structural gate is a genuine scope choice — which parts of the system get restructured
 is the user's call (F1's design-choice exemption), and a package extraction against a
