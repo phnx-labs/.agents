@@ -1,6 +1,9 @@
 ---
 name: refactor
-description: "Restructure a codebase the way a principal engineer does as a product grows — merge redundant concepts, extract the horizontal layer four modules reimplemented, draw real module boundaries, lift a cohesive core out into its own package/SDK so it is testable and reusable, reorganize the tree so it matches the architecture, and shrink an overgrown public surface. Evidence-first: a module dependency graph (god modules, cycles, extraction candidates, upward imports), measured agent traffic per file, and a surface census — then before/after architecture figures rendered with artifacts-cli, then behavior-preserving PRs. Triggers on: 'refactor this codebase', 'clean up the architecture', 'the codebase has gotten messy', 'agents keep getting lost in this repo', 'merge these duplicate concepts', 'extract an SDK', 'split this package', 'module boundaries', 'reorganize the file tree', 'circular dependencies', 'god module', 'too many commands', 'does the code match the docs'."
+description: "Restructure a codebase the way a principal engineer does as a product grows — merge redundant concepts, extract the horizontal layer four modules reimplemented, draw real module boundaries, lift a cohesive core out into its own package/SDK so it is testable and reusable, reorganize the tree so it matches the architecture, shrink an overgrown public surface, and give a
+  concept the contract its job calls for — the provider pattern (Go interface, TS interface, Python
+  Protocol, Rust trait) with one implementation per variant in a registry, instead of the same
+  if/else-by-name chain repeated across twenty files. Evidence-first: a module dependency graph (god modules, cycles, extraction candidates, upward imports), measured agent traffic per file, and a surface census — then before/after architecture figures rendered with artifacts-cli, then behavior-preserving PRs. Triggers on: 'refactor this codebase', 'clean up the architecture', 'the codebase has gotten messy', 'agents keep getting lost in this repo', 'merge these duplicate concepts', 'extract an SDK', 'split this package', 'module boundaries', 'reorganize the file tree', 'circular dependencies', 'god module', 'too many commands', 'does the code match the docs', 'provider pattern', 'should this be an interface', 'if/else chain on a name', 'plugin architecture', 'strategy pattern'."
 argument-hint: "[empty = this repo | <path> | --scan-only | --top N | --days N | --depth N | --execute]"
 allowed-tools: Bash(agents *), Bash(artifacts *), Bash(git *), Bash(gh *), Bash(rg *), Bash(fd *), Bash(ls *), Bash(cat *), Bash(jq *), Bash(sqlite3 *), Bash(bun *), Bash(wc *), Bash(sort *), Bash(uniq *), Read(*), Write(*), Edit(*), Task(*)
 user-invocable: true
@@ -12,8 +15,9 @@ You are the principal engineer on a codebase that has outgrown its own structure
 linter, not a tidier. The work is the restructuring a product needs continuously as it
 grows: **two concepts that should be one, a horizontal layer four modules each
 reimplemented, a module boundary that was never drawn, a cohesive core that should be its
-own package, a directory tree that no longer tells you where anything goes, and a public
-surface that grew past the point where anyone can find things in it.**
+own package, a directory tree that no longer tells you where anything goes, a public
+surface that grew past the point where anyone can find things in it, and a concept that
+never got the shape its job actually calls for.**
 
 Why it is urgent now, and not merely tasteful: **an agent's throughput is bounded by how
 few things it must read, and how few decisions it must guess at, to make a correct
@@ -30,7 +34,7 @@ before/after figure a human can check.
 
 | Tier | What it is | Weight |
 |---|---|---|
-| **Architectural** (the job) | redundant concepts · missing horizontal layer · undrawn module boundary · package/SDK extraction · tree that contradicts the architecture · overgrown surface | ~80% of the plan |
+| **Architectural** (the job) | redundant concepts · missing horizontal layer · undrawn module boundary · package/SDK extraction · tree that contradicts the architecture · overgrown surface · a concept with no contract (provider pattern) | ~80% of the plan |
 | **Hygiene** (only where it blocks the above) | dead code, doc drift, a file too big to hold, N idioms for one operation | ~20%, and only when it obstructs an architectural move or is what a claim-check turned up |
 
 If the plan you produce is mostly dead-code deletion and doc fixes, **you have done the
@@ -119,7 +123,7 @@ Write `$RUN_DIR/claims.json`: `{id, claim, source_file, source_line, kind, check
 
 ## Phase 1 — Measure
 
-Three scripts plus one reused skill. Run concurrently.
+Four scripts plus one reused skill. Run concurrently.
 
 ```bash
 # Bind everything the passes need. SCOPE/DEPTH/DAYS come from $ARGUMENTS (Phase 0
@@ -135,6 +139,7 @@ if [ -n "$BIN" ]; then SURFACE_ARGS=(--cli "$BIN"); else SURFACE_ARGS=(--exports
 bun "$SKILL_DIR/modules.ts"  "$RUN_DIR" --scope "$SCOPE" --depth "$DEPTH" > "$RUN_DIR/modules.json" &
 bun "$SKILL_DIR/exposure.ts" "$RUN_DIR" --days "$DAYS" --scope "$SCOPE"   > "$RUN_DIR/exposure.json" &
 bun "$SKILL_DIR/surface.ts"  "$RUN_DIR" "${SURFACE_ARGS[@]}"             > "$RUN_DIR/surface.json" &
+bun "$SKILL_DIR/patterns.ts" "$RUN_DIR" --scope "$SCOPE"                 > "$RUN_DIR/patterns.json" &
 wait
 # then, for the file-level defect passes — reuse, never reimplement:
 #   /code:review <scope>     (Mode C → findings.json)
@@ -181,7 +186,69 @@ referenced, with cycle guards for a command that re-offers its own siblings. Sur
 is architectural: once "which command does this?" is a search problem, nesting under the
 owning noun and deleting orphans is the highest-value move available.
 
-### 1d. Concept census — the one thing no script can do alone
+### 1d. `patterns.ts` — is the concept in the shape its job calls for?
+
+The other passes ask where code *lives*. This one asks whether a concept has the *form*
+it needs. The recurring case: a family of variants the code dispatches on by name —
+`if (agent === 'claude') … else if (agent === 'codex') …` — where the job actually
+calls for **one declared contract plus one implementation per variant, registered in a
+table.** Every language spells the contract differently; the shape and the payoff do not
+change:
+
+| Language | The contract | The registry |
+|---|---|---|
+| Go | `interface` | `map[Kind]Impl` |
+| TypeScript | `interface` + a discriminated union of ids | `Record<Id, Impl>` |
+| Python | `Protocol` / `ABC` | a dict, or entry points |
+| Rust | `trait` | `HashMap<Kind, Box<dyn Trait>>` |
+| Java / C# | `interface` | a map, or DI registration |
+| Swift | `protocol` | a dictionary |
+
+The payoff is what matters for agent throughput: **adding a variant becomes one new file
+plus one table entry, and the type system names what is missing** — instead of a reviewer
+noticing that three of eleven call sites were never updated.
+
+`patterns.ts` emits, per discriminator family: `members`, `arms` (how many hand-branches
+exist — what collapses), `has_contract` + `contract_ref`, `has_registry` + `registry_ref`,
+`provider_dir`, `capability_holes`, and a verdict:
+
+| Verdict | Meaning | The move |
+|---|---|---|
+| `exemplar` | contract + registry + one file per variant, few raw arms | **Cite it.** This is the shape this repo already chose. |
+| `bypassed` | the contract and table exist, but call sites branch by hand anyway (high arms-per-member) | Route the arms through the table that already exists — cheap, mechanical, no new abstraction |
+| `partial` | one of contract or registry, not both | Complete the pair |
+| `missing` | neither, and many arms | Introduce the contract first, then migrate arms |
+
+**`bypassed` is usually the most valuable finding and the one a binary present/absent
+check hides.** A codebase that already has the pattern and routes around it does not need
+a design decision — it needs its call sites moved, which is exactly the kind of
+behavior-preserving change this skill lands.
+
+**Prefer the in-repo exemplar over any textbook pattern.** When one family is healthy and
+another is not, the fix for the second is "look like the first" — same file layout, same
+naming, same registration point. That is a change an agent can make by pattern-matching,
+which is the whole point (bias 1). Proposing an abstraction the codebase has never used is
+rung 5 with no evidence.
+
+**A feature of the family belongs in the contract, not beside it.** When something that
+modifies or extends every variant lives as a *sibling* module — multiplexing next to the
+terminal backends, retry next to the transports, caching next to the stores — it is a
+capability of the abstraction that never got declared. Fold it in as a contract method or
+an explicit capability flag the registry carries, so a variant either supports it or
+declares it does not, and `capability_holes` can see the gap. A sibling module that
+special-cases three of eleven variants is the same defect as the dispatch chain, one level
+up.
+
+**Two judgement calls this script cannot make**, and the skill must make explicitly:
+
+1. **Do the variants share a contract at all?** A family that genuinely diverges is not a
+   provider family; forcing an interface onto it produces the eight-boolean `doThing(opts)`
+   that bias 1 exists to prevent. `patterns.ts` leaves `same_contract: null` on purpose.
+2. **Is the dispatch itself legitimate?** One switch at the boundary that *builds* the
+   provider is correct and should stay. It is the second, fifth, and twentieth switch on
+   the same discriminator, scattered across modules, that is the defect.
+
+### 1e. Concept census — the one thing no script can do alone
 
 Grep-and-judge, because two names for one concept is a semantic call. Method:
 
@@ -220,7 +287,7 @@ an architectural move. Treat it as both.
 
 ## Phase 3 — Classify the moves
 
-Six architectural classes. Each finding names the move, not the mess.
+Seven architectural classes. Each finding names the move, not the mess.
 
 | # | Move | Trigger in the evidence | What it costs an agent today |
 |---|---|---|---|
@@ -230,6 +297,7 @@ Six architectural classes. Each finding names the move, not the mess.
 | 4 | **Lift a package / SDK out** | `extraction_candidates` — cohesive core, small API, few outbound deps | The reusable core cannot be tested alone or consumed by a second client |
 | 5 | **Reorganize the tree to match the architecture** | flat dirs of 100+ siblings, `utils/`-style buckets, tests far from source, kind-based instead of domain grouping | "Where does this go?" has no inferable answer, so every agent guesses differently |
 | 6 | **Shrink the public surface** | `surface.ts`: undocumented, untested, orphan, self-referential paths | "Which command does this?" is a search problem |
+| 7 | **Give the concept a contract** (provider pattern) | `patterns.ts`: a family the code branches on by name, with high arms-per-member, no contract or a contract everything bypasses | To add or change one variant it must find and edit N scattered branches, and nothing tells it which ones it missed |
 
 Hygiene tier, only where it blocks a move above or a claim-check surfaced it: lying
 context · dead weight that looks live · a file too big to hold · N idioms for one operation.
@@ -242,8 +310,13 @@ behavior is unchanged. **Drop anything you cannot quote.**
 
 `score = harm × exposure`, where exposure is the module's aggregated `agent_cost`.
 
-Harm: cycle in the graph 5 · redundant concept 5 · missing layer 4 · undrawn boundary 4 ·
-tree mismatch 3 · surface sprawl 3 · package extraction 3 · hygiene 1-2.
+Harm: cycle in the graph 5 · redundant concept 5 · **missing contract 5 · bypassed
+contract 4** · missing layer 4 · undrawn boundary 4 · tree mismatch 3 · surface sprawl 3 ·
+package extraction 3 · hygiene 1-2.
+
+A missing contract scores with the worst because it is the defect that makes every
+*future* change to that family expensive, and it is the one an agent is most likely to
+make worse by hand — adding a twenty-second branch because twenty-one already existed.
 
 **Then sequence, because architectural moves have a dependency order and the wrong order
 wastes all of it:**
@@ -251,9 +324,11 @@ wastes all of it:**
 1. **Break cycles first.** Nothing can be extracted out of an SCC.
 2. **Merge concepts before drawing boundaries** — otherwise you draw a boundary around a
    duplicate and enshrine it.
-3. **Extract the layer before the package** — a package that still reimplements the shared
+3. **Give the family its contract before extracting its package** — a package with no
+   declared contract exports its internals as its API, and then the boundary is fiction.
+4. **Extract the layer before the package** — a package that still reimplements the shared
    layer just moves the duplication behind a version number.
-4. **Move the tree last.** A rename during earlier moves conflicts with every branch in
+5. **Move the tree last.** A rename during earlier moves conflicts with every branch in
    flight.
 
 Keep the top N (default 6) and **discard the rest without ceremony**, saying how many you
@@ -392,14 +467,16 @@ Re-run all three scripts after the merges; write `$RUN_DIR/scorecard.json`:
 { "date": "…", "scope": "…", "commit": "…",
   "modules": 44, "module_edges": 196, "cycles": 1, "largest_cycle": 38,
   "god_modules": 3, "max_fan_in": 1095, "extraction_candidates": 4, "upward_imports": 7,
-  "surface_count": 297, "orphan_surfaces": 4,
+  "surface_count": 337, "orphan_surfaces": 7,
+  "families": 94, "contract_exemplars": 3, "contract_bypassed": 13, "contract_missing": 40,
+  "collapsible_arms": 1623,
   "claims_checked": 34, "claims_drifted": 9,
   "files_over_1500_loc": 41, "top_file_loc": 6142 }
 ```
 
 Diff against the newest prior `scorecard.json` under `.agents/artifacts/*/refactor-*/` and
 report the delta in one line: `cycles 1→0 · largest cycle 38→0 · max fan-in 1095→420 ·
-surface 297→266 · drifted claims 9→2`.
+collapsible arms 1623→410 · surface 337→266 · drifted claims 9→2`.
 
 **The trend is the product.** One run tells you what is wrong; the series tells you whether
 the structure is outrunning the decay as the product grows — which is the only measure of
@@ -413,17 +490,21 @@ whether this work is working.
    is lying context.
 4. **Never propose an extraction out of a cycle.** Break the cycle first; anything else is
    a package that drags the whole SCC with it.
-5. **Never "refactor" by adding a layer nothing repeats yet.** Rung 5 needs the evidence
+5. **Never force a contract onto variants that do not share one.** `same_contract` is a
+   judgement the script refuses to make; make it explicitly, with the divergent method
+   quoted, before proposing move 7. Forcing it produces the eight-boolean `doThing(opts)`
+   that bias 1 exists to prevent.
+6. **Never "refactor" by adding a layer nothing repeats yet.** Rung 5 needs the evidence
    that the concept is already repeated N times with one meaning.
-6. **Never bulk-rename or reformat.** Unreviewable, and it destroys `git blame`.
-7. **Never mass-delete "dead" code found only by static reachability** in a language with
+7. **Never bulk-rename or reformat.** Unreviewable, and it destroys `git blame`.
+8. **Never mass-delete "dead" code found only by static reachability** in a language with
    dynamic dispatch, reflection, string-keyed registries, or CLI-name lookup. Here commands
    resolve by *name* — "no import" means nothing. Grep the string.
-8. **Never present a degraded measurement as a full one.** Missing session index, truncated
+9. **Never present a degraded measurement as a full one.** Missing session index, truncated
    `--help` walk, sub-1.0 graph coverage, skipped tool — name it and say what it does to the
    ranking.
-9. **Never touch the default branch.** Worktree per move (F5).
-10. **Never let the plan exceed what will actually land.** Six merged moves beat sixty
+10. **Never touch the default branch.** Worktree per move (F5).
+11. **Never let the plan exceed what will actually land.** Six merged moves beat sixty
     proposed ones.
 
 ## Don'ts
