@@ -94,16 +94,13 @@ interface Family {
 }
 const families = new Map<string, Family>();
 
-const TYPEOF_PRIMITIVES = new Set([
-  "string", "number", "boolean", "object", "function", "undefined", "symbol", "bigint",
-]);
 const bump = (disc: string, member: string, file: string) => {
   // strip a receiver: `opts.agent` and `agent` are the same discriminator
   const key = disc.split(".").pop()!;
   if (key.length < 3) return;
-  // `typeof x === 'string'` is a type guard, never a variant dispatch. A lookback misses
-  // casts and the reversed form, so reject the member values themselves.
-  if (TYPEOF_PRIMITIVES.has(member)) return;
+  // typeof rejection happens at the call site, where the line is available — a value
+  // blocklist here would also discard legitimate variants (a CDP wait-condition union
+  // really does have a `function` member).
   let fam = families.get(key);
   if (!fam) families.set(key, (fam = { discriminator: key, members: new Set(), sites: new Map(), arms: 0 }));
   fam.members.add(member);
@@ -111,15 +108,23 @@ const bump = (disc: string, member: string, file: string) => {
   fam.arms++;
 };
 
-const TYPEOF_GUARD = /\btypeof\s/;
 for (const [f, text] of texts) {
+  // `typeof p.head === 'string'` is a type guard, not a variant dispatch: left in, it
+  // invents a member ('string') and can manufacture a whole family. Scan back to the line
+  // start rather than a fixed width, so a cast between `typeof` and the comparison — and
+  // the reversed form — are both covered.
+  const guarded = (idx: number) => {
+    const lineStart = text.lastIndexOf("\n", idx) + 1;
+    return /\btypeof\b/.test(text.slice(lineStart, idx));
+  };
   for (const m of text.matchAll(EQ)) {
-    // `typeof p.head === 'string'` is a type guard, not a variant dispatch. Left in, it
-    // invents a member ('string') and can manufacture a whole family.
-    if (TYPEOF_GUARD.test(text.slice(Math.max(0, m.index! - 12), m.index!))) continue;
+    if (guarded(m.index!)) continue;
     bump(m[1], m[2], f);
   }
-  for (const m of text.matchAll(EQ_REV)) bump(m[2], m[1], f);
+  for (const m of text.matchAll(EQ_REV)) {
+    if (guarded(m.index!)) continue;
+    bump(m[2], m[1], f);
+  }
 
   let current = "";
   for (const line of text.split("\n")) {
@@ -289,7 +294,12 @@ const rows = [...families.values()]
         ? "missing"                                   // nothing to route through — introduce it
         : contract && registry && armsPerMember > 3
           ? "bypassed"                                // BOTH exist and call sites ignore them
-          : contract && registry && provider
+          // Threshold read off the data, not guessed: on a real codebase the genuine
+          // provider families cluster at 0.31-0.50 provider coverage (context .50,
+          // platform .40, backend .36, agentType .33, detected .31) and the generic
+          // grab-bags sit an order below (kind .12, action .11, mode .09, type .07).
+          // 0.3 + a non-generic name separates them cleanly.
+          : contract && registry && provider && (provider.covered.length / f.members.size) >= 0.3 && !NOISE.test(f.discriminator)
             ? "exemplar"                              // the shape this repo already chose
             : "partial";                              // one of the pair is missing — complete it
     return {
