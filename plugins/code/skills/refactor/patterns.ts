@@ -94,10 +94,16 @@ interface Family {
 }
 const families = new Map<string, Family>();
 
+const TYPEOF_PRIMITIVES = new Set([
+  "string", "number", "boolean", "object", "function", "undefined", "symbol", "bigint",
+]);
 const bump = (disc: string, member: string, file: string) => {
   // strip a receiver: `opts.agent` and `agent` are the same discriminator
   const key = disc.split(".").pop()!;
   if (key.length < 3) return;
+  // `typeof x === 'string'` is a type guard, never a variant dispatch. A lookback misses
+  // casts and the reversed form, so reject the member values themselves.
+  if (TYPEOF_PRIMITIVES.has(member)) return;
   let fam = families.get(key);
   if (!fam) families.set(key, (fam = { discriminator: key, members: new Set(), sites: new Map(), arms: 0 }));
   fam.members.add(member);
@@ -132,15 +138,19 @@ for (const [f, text] of texts) {
 // themselves, or a type name that echoes the discriminator. No blind fallback.
 
 const nameRelates = (name: string, disc: string) => {
-  const a = name.toLowerCase().replace(/[_-]/g, "");
-  const b = disc.toLowerCase().replace(/[_-]/g, "");
-  if (a === b) return true;
-  // A bare substring test is far too loose: "headroom".includes("head") once made an
-  // unrelated Record<Headroom, …> read as the `head` family's registry. Require the
-  // shorter name to be most of the longer one, and to sit at a boundary.
-  const [short, long] = a.length <= b.length ? [a, b] : [b, a];
-  if (short.length < 4 || short.length / long.length < 0.6) return false;
-  return long.startsWith(short) || long.endsWith(short);
+  if (name.toLowerCase() === disc.toLowerCase()) return true;
+  if (disc.length < 3) return false;
+  // The real test is a CASE BOUNDARY in the original identifier, not a length ratio:
+  // `TerminalBackend` ~ `backend` and `AgentId` ~ `agent` are compounds; `headroom` ~
+  // `head` is one word that merely starts with another. A ratio gate got this backwards,
+  // rejecting TerminalBackend while a bare substring test accepted headroom.
+  const Cap = disc[0].toUpperCase() + disc.slice(1).toLowerCase();
+  if (name.endsWith(Cap)) return true;                       // TerminalBackend / Backend
+  if (name.startsWith(Cap)) {                                 // AgentId, AgentType
+    const next = name[Cap.length];
+    return next === undefined || next === next.toUpperCase();
+  }
+  return false;
 };
 
 const quoted = (m: string) => [`'${m}'`, `"${m}"`, `\`${m}\``];
@@ -290,6 +300,26 @@ const rows = [...families.values()]
       arms: f.arms,
       files: f.sites.size,
       top_sites: [...f.sites].sort((a, b) => b[1] - a[1]).slice(0, 8).map(([file, arms]) => ({ file, arms })),
+      arms_by_area: (() => {
+        // Arms grouped by their top two path segments. A family whose arms are spread
+        // across unrelated areas is probably TWO concepts sharing a variable name — the
+        // terminal `backend` and the secrets `backend` merge into one row otherwise.
+        const areas = new Map<string, number>();
+        for (const [file, arms] of f.sites) {
+          const area = file.split("/").slice(0, -1).join("/");
+          areas.set(area, (areas.get(area) ?? 0) + arms);
+        }
+        return [...areas].sort((a, b) => b[1] - a[1]).slice(0, 5).map(([area, arms]) => ({ area, arms }));
+      })(),
+      area_concentration: (() => {
+        const areas = new Map<string, number>();
+        for (const [file, arms] of f.sites) {
+          const area = file.split("/").slice(0, -1).join("/");
+          areas.set(area, (areas.get(area) ?? 0) + arms);
+        }
+        const top = Math.max(0, ...areas.values());
+        return f.arms ? Number((top / f.arms).toFixed(2)) : 0;
+      })(),
       has_contract: !!contract,
       contract_ref: contract?.ref ?? null,
       contract_kind: contract?.kind ?? null,
