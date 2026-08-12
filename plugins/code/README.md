@@ -11,18 +11,19 @@ better documented than you found it.
 | `code:loop` | A queue of work — one ticket, many tickets, a label, a markdown checklist, repo TODOs, or a single branch/PR to land — needs taking end-to-end: plan, code, test, review, rebase, fix CI, merge (and route to `/code:release`, for distributables). The top-level engineering loop; composes the skills below, the `agents` CLI primitives, and `/code:release` instead of reimplementing them. |
 | `code:review` | Three modes on one skill. Default (no args): recap the session's goal, discover every PR it opened, review each with a sub-agent and act on the verdicts (merge / request-changes / close). Given PR number(s): a deep cold review of just those, with file:line grounding, an architecture rubric (reuse of primitives, cross-cutting at the source, no duplicate surfaces, doc-asserted invariants), and a security pass on risk-touching diffs. Given `repo` / a path / `--since`: a read-only whole-repo architecture-and-quality diagnostic — HTML report, ranked findings, never a merge verdict. |
 | `code:learn` | A coding session just finished, or you need to learn a codebase cold. Learns the structure, entry points, architecture, and non-obvious invariants, then writes what a future agent would otherwise re-derive into the project's own `AGENTS.md` — the primary durable output. Secondarily routes a genuinely durable coding-*workflow* lesson (about the loop itself, not the project) to the right `code:*` skill. |
+| `code:clean` | The codebase itself has become the bottleneck — agents get lost in it, put things in the wrong place, or act on docs that stopped being true. Reads the repo's docs as checkable claims and verifies each against the code, measures which files agents actually read and edit (fleet session index, not just git churn), censuses the user-facing surface for undocumented/untested/orphan entries, and ranks six defect classes by agent-cost. Lands behavior-preserving PRs, one concept each, and records a scorecard so the legibility trend is visible run over run. Calls `code:review` Mode C for the file-level passes instead of duplicating them. |
 | `code:commit` | Split changes into the maximum number of small logical commits (one concept per commit) and push in the background. |
 | `code:release` | Publish a package/CLI/app to its registry — discover the repo's real release process, run tests, changelog, publish, tag, verify live. Invoked via `/code:release`. |
 
 ## Self-contained commands
 
-These are full command prompts, not skill invokers (same shape as `/code:commit`) —
-git plumbing and cleanup that belongs next to the coding loop, not in a separate plugin.
+A full command prompt, not a skill invoker (same shape as `/code:commit`) — git
+plumbing that belongs next to the coding loop, not in a separate plugin. (`/code:clean`
+used to live here; it is a skill now — see the table above.)
 
 | Command | What it does |
 | --- | --- |
 | `/code:prune` | Deletes merged branches and worktrees locally and on `origin`, behind hard data-loss guards: never removes a worktree with uncommitted changes, a stash, unmerged commits, a lock, or a detached HEAD. Uses `git rev-list --count origin/$MAIN..HEAD == 0` as the load-bearing "nothing to lose" check (strictly stricter than `git branch --merged`), shows the plan, and asks before acting. |
-| `/code:clean` | Identifies, verifies, and cleans up technical debt — outdated context files, near-duplicates, scattered sources of truth, over-complex patterns, dead code, and naming/organization drift. Executes safe cleanups directly; parks only genuinely ambiguous or risky ones. |
 
 ## The reviewer it spawns
 
