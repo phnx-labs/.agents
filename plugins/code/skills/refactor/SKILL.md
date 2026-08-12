@@ -130,9 +130,11 @@ SKILL_DIR="$HOME/.agents/plugins/code/skills/refactor"
 [ -d "$SKILL_DIR" ] || SKILL_DIR="$HOME/.agents/.system/plugins/code/skills/refactor"
 SCOPE="${SCOPE:-.}"; DEPTH="${DEPTH:-2}"; DAYS="${DAYS:-90}"
 
+if [ -n "$BIN" ]; then SURFACE_ARGS=(--cli "$BIN"); else SURFACE_ARGS=(--exports); fi
+
 bun "$SKILL_DIR/modules.ts"  "$RUN_DIR" --scope "$SCOPE" --depth "$DEPTH" > "$RUN_DIR/modules.json" &
 bun "$SKILL_DIR/exposure.ts" "$RUN_DIR" --days "$DAYS" --scope "$SCOPE"   > "$RUN_DIR/exposure.json" &
-bun "$SKILL_DIR/surface.ts"  "$RUN_DIR" ${BIN:+--cli "$BIN"} ${BIN:---exports} > "$RUN_DIR/surface.json" &
+bun "$SKILL_DIR/surface.ts"  "$RUN_DIR" "${SURFACE_ARGS[@]}"             > "$RUN_DIR/surface.json" &
 wait
 # then, for the file-level defect passes — reuse, never reimplement:
 #   /code:review <scope>     (Mode C → findings.json)
