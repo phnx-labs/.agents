@@ -4,6 +4,48 @@
 
 ### Added
 
+- **`code:refactor` gains a seventh move: give the concept the contract its job calls for.**
+  The six existing moves all ask where code *lives*; none asked whether a concept has the
+  *shape* its job needs. The recurring miss: a family of variants dispatched on by name
+  (`if (agent === 'claude') … else if (agent === 'codex') …`) where the job actually calls
+  for the provider pattern — one declared contract plus one implementation per variant in a
+  registry. The skill now carries the language-agnostic table (Go `interface`, TS
+  `interface` + discriminated union, Python `Protocol`/`ABC`, Rust `trait`, Java/C#
+  `interface`, Swift `protocol`) and the payoff that matters for agent throughput: adding a
+  variant becomes one file plus one table entry, and the type system names what is missing
+  instead of a reviewer noticing that three of eleven call sites were never updated.
+  New `patterns.ts` finds these mechanically — per discriminator family it reports members,
+  `arms` (the hand-branches that would collapse), whether a contract and a registry exist
+  with `file:line` for each, the provider directory, capability holes across implementations,
+  and a verdict. On `agents-cli` it found 94 families: 3 exemplars, 13 **bypassed**, 40
+  missing, **1,623 collapsible arms**. The headline case is `agent` — 21 variants, **291
+  hand-branches** (13.9 per variant), while the contract (`lib/session/types.ts:11`) and a
+  real registry (`lib/add-dir.ts:32`, `ADD_DIR_STRATEGY: Record<AgentId, AddDirStrategy>`)
+  already exist and are simply routed around. That is what the new `bypassed` verdict is for,
+  and it is the most valuable of the four because it needs no design decision — just moving
+  call sites onto a table that already exists, which is exactly the behavior-preserving
+  change this skill lands. `lib/terminal` is the in-repo `exemplar`
+  (`backends/index.ts:19` + one file per backend), and the skill now says explicitly:
+  **prefer the in-repo exemplar over any textbook pattern**, because "look like that one" is
+  a change an agent can make by pattern-matching.
+  Two rules come with it. **A feature of the family belongs in the contract, not beside it** —
+  multiplexing sitting next to the terminal backends, retry next to the transports, caching
+  next to the stores is a capability of the abstraction that never got declared; fold it in
+  so a variant either supports it or says it does not, and `capability_holes` can see the gap.
+  And a new hard line: **never force a contract onto variants that do not share one** —
+  `patterns.ts` leaves `same_contract: null` on purpose, because forcing it produces the
+  eight-boolean `doThing(opts)` that the consistency-beats-DRY bias exists to prevent.
+  Sequencing gained a step (contract before package extraction: a package with no declared
+  contract exports its internals as its API) and the harm table now scores a missing contract
+  with the worst — it is the defect an agent is most likely to make *worse* by hand, adding a
+  twenty-second branch because twenty-one already existed.
+  The detector was rewritten once after its first run graded every family `exemplar` by
+  falling back to "the first interface in the first file" (it cited an unrelated
+  `interface NpmPackageMetadata`); both checks now require the members themselves or a type
+  name that echoes the discriminator, and the run went from 82s to 6s. Source:
+  `plugins/code/skills/refactor/patterns.ts`, `plugins/code/skills/refactor/SKILL.md`,
+  `plugins/code/commands/refactor.md`, `plugins/code/README.md`.
+
 - **`/code:clean` becomes `code:refactor` — the architectural restructuring a product
   needs as it grows, not file-level tidying.** The old command was 113 lines of "search for
   cleanup opportunities in this priority order," which ranked by taste and never rose above
