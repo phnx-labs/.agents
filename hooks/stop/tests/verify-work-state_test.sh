@@ -209,7 +209,11 @@ check "migration creates gate_outcomes" \
   "gate_outcomes"
 
 # an outcome row orphaned from its gate_event must not survive a prune
-sqlite3 "$V2" "insert into gate_outcomes(gate_event_id,derived_at_ms) values(999999,1);"
+# derived_at_ms must be RECENT. With an epoch-1970 value this row is removed by the
+# age-based delete instead, and the assertion below then passes even if the
+# orphan-by-id sweep is deleted outright — a test that survives a broken build.
+NOW_MS=$(python3 -c 'import time;print(int(time.time()*1000))')
+sqlite3 "$V2" "insert into gate_outcomes(gate_event_id,derived_at_ms) values(999999,$NOW_MS);"
 check "orphan row is present before prune" \
   "$(sqlite3 "$V2" "select count(*) from gate_outcomes where gate_event_id not in (select id from gate_events);")" "1"
 sqlite3 "$V2" "update meta set value='0' where key='last_pruned_ms';"
