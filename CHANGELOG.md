@@ -2,6 +2,24 @@
 
 ## [Unreleased]
 
+### Changed
+
+- **`/recap` closes the loop before it writes, and writes a back-from-vacation summary.**
+  Two changes to `commands/recap.md`. First, a mandatory ordered step before any output:
+  close every ticket the session delivered (with proof), file every follow-up it was about
+  to *suggest* as a real ticket under its project, then send the owner one short
+  `agents notify` update — the harness notifies the agent when a turn ends and never
+  notifies the owner, so a recap that lives only in the session window reaches nobody.
+  Second, the output shape. It was an engineering status report (Situation / In Progress /
+  Hypotheses / Recommended Next Steps) written for someone who had watched the session;
+  it is now the back-from-vacation summary F4 asks for — Project, What you asked for, What
+  landed, What did not land, Still open, Needs you — written for a reader with zero
+  context. The existing filters (HARD RULE 1/2, no wastebasket bullets, decide-or-delegate)
+  carry over onto "Needs you", and the ticket-closing bullet that used to sit in the
+  "execute first" examples is gone now that it is a required step. Historical-session mode
+  is explicitly exempt: it transfers context and must not close another session's tickets
+  or notify the owner about work it did not do.
+
 ### Fixed
 
 - **Stop hook: the command-handback gate stops false-firing on paste-into-a-form and
