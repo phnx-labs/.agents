@@ -499,12 +499,12 @@ fi
 #   (1) this session WROTE a runnable script to a temp path — a Write/Edit tool
 #       to /tmp|/var/folders ...(.sh/.bash/.zsh/.command), or a shell
 #       redirect/heredoc/tee/cp that lands such a script there, AND
-#   (2) the final message DIRECTS the user to run/paste/execute a COMMAND — the
-#       run/paste directive must carry a command cue (a script path, .sh, or a
-#       shell/terminal/script/command word). A bare 'paste it' into a form or a
-#       'hit send' on an email is NOT a runnable-command handback and must not
-#       fire (the observed false positives: 'paste that blurb into the
-#       application', 'you just paste it and hit send').
+#   (2) the final message DIRECTS the user to run/paste/execute it, EXCLUDING two
+#       shapes that are NOT running a command: pasting/typing text INTO a UI
+#       form/field/composer (data entry, e.g. 'paste that blurb into the
+#       application'), and sending a message/email/reply under the user's own
+#       identity ('hit send'). A plain 'just run it when you're ready' after a
+#       temp-script write still fires — that is the canonical handback.
 # Exempts a genuine user-only gate — a biometric / interactive login, or sending
 # a message/email under the user's own identity — those are legitimate handoffs
 # the agent cannot perform. stop_hook_active (top of file)
@@ -556,26 +556,28 @@ RUN = re.compile(
     r'|\b(?:go ahead and|then|just|please|now) (?:run|paste|execute)\b'
     r'|\brun (?:it|this) (?:when|once|after)\b'
     r'|\bpaste (?:it|this|the following|the command)\b')
-# The handoff must be about running a COMMAND/SCRIPT — not pasting text into a
-# form/field or sending a message. Without this, ordinary prose false-fired the
-# gate: 'paste that blurb into the application', 'you just paste it and hit send'
-# (an email the user must send), 'build/run it, like you said' — none hand over a
-# runnable command. A genuine handback ('run /tmp/release.sh', 'paste it into your
-# shell') always carries a command cue; a paste-into-a-UI / send-a-message
-# directive does not. RUN alone is too broad (pronoun objects 'it/this/that' and
-# 'you ... paste' match any paste), so require this cue as well.
-CMDCUE = re.compile(
-    r'\.(?:sh|bash|zsh|command)\b|/(?:tmp|var/folders)/'
-    r'|\b(?:script|command|one-?shot|terminal|shell|chmod|bash)\b')
-# Genuine user-only ACTIONS the agent CANNOT perform — legitimate handoffs, no
-# nag: a biometric / interactive login, AND sending a message/email/reply under
-# the user's OWN identity ('hit send', 'send the email/reply/message'), which is
-# theirs to do just like a fingerprint.
+# The false positives are specific SHAPES, not 'lacks a command cue'. Excluding
+# them by pattern keeps recall: a genuine handback often names no cue word yet
+# must still fire ('just run it when you're ready' after writing /tmp/release.sh
+# is the canonical failure). Requiring a positive cue instead silently dropped
+# that case, so exclude the two shapes that are NOT running-a-command:
+#   FORM_PASTE — pasting/typing text INTO a UI field/form/composer is data entry,
+#     not execution ('paste that blurb into the application', 'type it into the
+#     field'). It needs a paste/type verb AND 'into <a form-ish target>'.
+FORM_PASTE = re.compile(
+    r'\b(?:paste|type|enter|drop|put)\b[^.]{0,40}?\binto\b[^.]{0,30}?'
+    r'\b(?:application|form|field|composer|profile|box|reply|message|email|thread|'
+    r'website|site|page|dashboard|settings|calendar|browser|inbox|compose)\b')
+#   EXEMPT — genuine user-only ACTIONS the agent CANNOT perform: a biometric /
+#     interactive login, AND sending a message/email/reply under the user's OWN
+#     identity ('hit send', 'send the email/reply'), theirs to do like a
+#     fingerprint. RUN is broad by design (pronoun objects), so these exclusions
+#     do the discriminating.
 EXEMPT = re.compile(
     r'\b(?:biometric|touch ?id|face ?id|interactive login|sign in|log in|your password|'
     r'2fa|one-?time code|authenticate in the browser|browser to authorize|approve on your (?:phone|device)|'
     r'(?:hit|press|click) send|send (?:the )?(?:email|reply|message|dm|note))\b')
-print('yes' if (RUN.search(msg) and CMDCUE.search(msg) and not EXEMPT.search(msg)) else 'no')
+print('yes' if (RUN.search(msg) and not EXEMPT.search(msg) and not FORM_PASTE.search(msg)) else 'no')
 " 2>/dev/null || echo "no")
 
   if [ "$directs_user_to_run" = "yes" ]; then

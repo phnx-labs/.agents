@@ -9,14 +9,16 @@
   session had written a script to a temp path AND the final message told the user to
   "run/paste" something. The "directs the user to run" side was too broad: it matched
   ordinary prose with pronoun objects, so a message like "paste that blurb into the
-  application" or "paste it in and hit send" (an email the user must send) tripped it,
-  even when the temp script was the agent's own helper that it had already run itself.
-  The gate now requires a command cue (a script path, `.sh`, or a shell/terminal/script/
-  command word) alongside the run/paste directive, and it exempts sending a
-  message/email/reply under the user's own identity ("hit send", "send the reply") the
-  same way it already exempts a biometric or interactive login. The real handback it
-  targets (`run /tmp/release.sh`, `paste it into your shell`) still blocks; four new test
-  cases pin the false positives.
+  application" or "paste it in and hit send" (an email the user must send under their own
+  identity) tripped it, even when the temp script was the agent's own helper it had
+  already run. The gate now **excludes the two shapes that are not running a command**:
+  pasting/typing text into a UI form/field/composer, and sending a message/email/reply
+  under the user's own identity (exempted like a biometric/login). It does this by
+  excluding those patterns rather than demanding a positive command cue, which preserves
+  recall: a plain "just run it when you're ready" after a temp-script write is still a
+  handback and still blocks. The canonical target (`run /tmp/release.sh`, `paste it into
+  your shell`) blocks; four new tests pin the false positives and a recall guard pins the
+  cue-less handback.
 
 ### Added
 
