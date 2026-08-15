@@ -4,7 +4,7 @@
 
 ### Fixed
 
-- **Removed the readback Stop hard-block that over-fired on ordinary work (RUSH-2712 follow-up).** PR #308 exit-2 blocked any session that edited a .html/.png/.svg/.pdf file and used a common visual phrase even with nothing delivered; an independent review reproduced it on a routine routing-bug fix. The advisory PreToolUse nudge, the properly-scoped delivery-chain check, and the rules/preset changes from #308 are kept; only the Stop hard-block and its gate-specific test are removed. Re-landing the claim check with the 66-transcript corpus-replay validation the plan required is deferred.
+- **Removed the readback Stop hard-block that over-fired on ordinary work (RUSH-2712 follow-up).** PR #308 exit-2 blocked any session that edited a .html/.png/.svg/.pdf file and used a common visual phrase even with nothing delivered; an independent review reproduced it on a routine routing-bug fix. The advisory PreToolUse nudge, the properly-scoped delivery-chain check, and the rules/preset changes from #308 are kept; only the Stop hard-block is removed, along with only its visual-gate test fixture. Re-landing the claim check with the 66-transcript corpus-replay validation the plan required is deferred.
 
 ### Changed
 
