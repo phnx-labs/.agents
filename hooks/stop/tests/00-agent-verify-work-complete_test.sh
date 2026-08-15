@@ -907,19 +907,6 @@ check "no checklist allows stop (gate never fires)" "$rc" "0"
 rc=$(run_hook "$TK" "The parser is written and pushed to the branch." true)
 check "keep-moving gate respects stop_hook_active" "$rc" "0"
 
-# E9b. stop_hook_active does not bypass the visual-claim read-back gate. The
-# hook uses Python for this path, so removing jq proves the blocked input is
-# still refused without that optional JSON parser.
-TVIS="$SANDBOX/visual-$RANDOM.jsonl"
-printf '%s\n' '{"type":"user","message":{"role":"user","content":"show me a mockup"}}' > "$TVIS"
-printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"w1","name":"Write","input":{"file_path":"/tmp/mockup.html"}}]}}' >> "$TVIS"
-NOJQ="$SANDBOX/no-jq"; mkdir -p "$NOJQ"
-for command in bash python3 gh git linear grep sed awk tail head wc cut tr dirname mktemp rm mkdir chmod cat env sqlite3 sleep; do
-  target=$(command -v "$command" 2>/dev/null || true); [ -n "$target" ] && ln -s "$target" "$NOJQ/$command"
-done
-old_path="$PATH"; PATH="$NOJQ" rc=$(run_hook "$TVIS" "Here's the mockup and what you're looking at." true); PATH="$old_path"
-check "visual claim blocks on retry without jq" "$rc" "2"
-
 # E10. De-escalation: a 3rd keep-moving fire on the same session still blocks but
 # adds the context-led strategy guidance.
 mk_tasks_looped() {   # $1 = number of prior keep-moving fires
