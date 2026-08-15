@@ -7,9 +7,14 @@
 - **`/recap` closes the loop before it writes, and writes a back-from-vacation summary.**
   Two changes to `commands/recap.md`. First, a mandatory ordered step before any output:
   close every ticket the session delivered (with proof), file every follow-up it was about
-  to *suggest* as a real ticket under its project, then send the owner one short
-  `agents notify` update — the harness notifies the agent when a turn ends and never
-  notifies the owner, so a recap that lives only in the session window reaches nobody.
+  to *suggest* as a real ticket under its project, then confirm one owner update went out.
+  The harness notifies the agent when a turn ends and never notifies the owner, so a recap
+  that lives only in the session window reaches nobody. That third step routes through the
+  fleet's existing single path — `agents feed post --level important`, which
+  `feed.broadcast.owner` forwards to `agents notify` — and says explicitly that the
+  `verify-work-complete` Stop hook's own close-out post *is* that update. Firing an
+  independent notify here would have meant two phone buzzes per session for one delivered
+  piece of work, multiplied across every concurrent agent.
   Second, the output shape. It was an engineering status report (Situation / In Progress /
   Hypotheses / Recommended Next Steps) written for someone who had watched the session;
   it is now the back-from-vacation summary F4 asks for — Project, What you asked for, What
