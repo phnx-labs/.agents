@@ -29,7 +29,7 @@ from visual_readback import inspect_transcript
 
 
 HOOK_ID = "system.verify-work-complete"
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 RETENTION_DAYS = 30
 BUSY_TIMEOUT_MS = 100
 PR_URL = re.compile(r"https://github\.com/[\w.-]+/[\w.-]+/pull/\d+")
@@ -128,6 +128,18 @@ def _connect(path: Path) -> sqlite3.Connection:
         );
         CREATE INDEX IF NOT EXISTS idx_gate_events_session
           ON gate_events(session_key, created_at_ms);
+        CREATE TABLE IF NOT EXISTS gate_outcomes (
+          gate_event_id INTEGER PRIMARY KEY REFERENCES gate_events(id),
+          followon_tools INTEGER NOT NULL DEFAULT 0,
+          followon_mutated INTEGER NOT NULL DEFAULT 0,
+          demand_satisfied INTEGER NOT NULL DEFAULT 0,
+          refired INTEGER NOT NULL DEFAULT 0,
+          user_interjected INTEGER NOT NULL DEFAULT 0,
+          msg_sha256 TEXT NOT NULL DEFAULT '',
+          derived_at_ms INTEGER NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_gate_outcomes_derived
+          ON gate_outcomes(derived_at_ms);
         """
     )
     row = db.execute("SELECT value FROM meta WHERE key='schema_version'").fetchone()
@@ -137,6 +149,12 @@ def _connect(path: Path) -> sqlite3.Connection:
         columns = {str(value[1]) for value in db.execute("PRAGMA table_info(goal_boundaries)")}
         if "transcript_offset" not in columns:
             db.execute("ALTER TABLE goal_boundaries ADD COLUMN transcript_offset INTEGER NOT NULL DEFAULT 0")
+        db.execute("UPDATE meta SET value=? WHERE key='schema_version'", (str(SCHEMA_VERSION),))
+    elif int(row[0]) == 2:
+        # v2 -> v3 adds gate_outcomes, which the schema script above already created
+        # with CREATE TABLE IF NOT EXISTS. Nothing to backfill: an outcome is derived
+        # offline from the transcript, never reconstructed at connect time. So the
+        # migration is only the version stamp.
         db.execute("UPDATE meta SET value=? WHERE key='schema_version'", (str(SCHEMA_VERSION),))
     elif int(row[0]) != SCHEMA_VERSION:
         raise RuntimeError(f"unsupported schema version {row[0]}")
@@ -409,6 +427,11 @@ def _prune(db: sqlite3.Connection) -> None:
     db.execute("DELETE FROM session_aliases WHERE updated_at_ms < ?", (cutoff,))
     db.execute("DELETE FROM owned_entities WHERE updated_at_ms < ?", (cutoff,))
     db.execute("DELETE FROM gate_events WHERE created_at_ms < ?", (cutoff,))
+    # gate_outcomes rows outlive their gate_event only if pruning misses them. SQLite
+    # does not enforce the REFERENCES clause unless foreign_keys is ON, so drop the
+    # orphans explicitly rather than relying on a cascade that is not switched on.
+    db.execute("DELETE FROM gate_outcomes WHERE derived_at_ms < ?", (cutoff,))
+    db.execute("DELETE FROM gate_outcomes WHERE gate_event_id NOT IN (SELECT id FROM gate_events)")
     db.execute(
         "INSERT INTO meta(key,value) VALUES('last_pruned_ms',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
         (str(_now_ms()),),
