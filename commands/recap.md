@@ -73,8 +73,9 @@ a thing the user would otherwise have to do themselves after reading you.
    when the turn ends and never notifies them, so a recap that exists only in this
    window reaches nobody. **If this session already posted one, that was it.** The
    `verify-work-complete` Stop hook asks for the same single update before it hands
-   off to `/recap`, so posting again here is a second phone buzz for one delivered
-   piece of work. Do not send a separate `agents notify` on top of it.
+   off to `/recap`, so a second post here is a second phone buzz for one delivered
+   piece of work — do not repeat it, and do not reach for `agents notify` as a way
+   around that. If no update has gone out yet, send this one.
 
 Scale it to the work: a question answered in-session has no ticket to close, no
 follow-up to file, and nothing worth a notification. These steps apply when the
