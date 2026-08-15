@@ -701,6 +701,32 @@ THBS=$(mk_transcript handback-shell)
 rc=$(FAKE_GH_STATE=MERGED run_hook "$THBS" "The deploy is scripted at /tmp/deploy.sh — paste it into your shell to ship." false)
 check "shell-redirect temp script + 'paste it' blocks" "$rc" "2"
 
+# --- command-cue precision (false positives observed live) ------------------
+# The session had written helper scripts to /tmp earlier (THB), but the final
+# message is about pasting text into a FORM / sending a MESSAGE, not running a
+# command. RUN alone matched these ('paste that', 'you just paste it'), so the
+# gate false-fired. It must now require a command cue (script/.sh/shell/terminal).
+
+# H7. Temp script written, but final message says paste a blurb into a job
+#     application form (no command cue) -> allow (not a runnable-command handback).
+rc=$(FAKE_GH_STATE=MERGED run_hook "$THB" "Fastest move: paste that blurb into the Mercor application, then hit apply." false)
+check "paste-into-a-form directive does not fire handback gate" "$rc" "0"
+
+# H8. Temp script written, but final message tells the user to send an email
+#     reply (no command cue; 'hit send' is a user-only action) -> allow.
+rc=$(FAKE_GH_STATE=MERGED run_hook "$THB" "The reply's on your clipboard; paste it in, attach the resume, and hit send." false)
+check "send-a-message directive does not fire handback gate" "$rc" "0"
+
+# H9. Command cue present (shell) BUT the directive is to send a message ->
+#     exempt (sending under the user's identity is theirs to do). -> allow.
+rc=$(FAKE_GH_STATE=MERGED run_hook "$THB" "Paste it into your shell if you like, then hit send on the reply." false)
+check "message-send is exempted even with a shell cue" "$rc" "0"
+
+# H10. Temp script written, but 'build/run it' appears in ordinary prose about
+#      checking code (no command cue) -> allow (no nagging on incidental 'run it').
+rc=$(FAKE_GH_STATE=MERGED run_hook "$THB" "Verify each against the actual code (build/run it, like you said) and then we ship." false)
+check "incidental 'run it' in prose does not fire handback gate" "$rc" "0"
+
 # --- Fix 2 / RUSH-2394: only a DURABLE lander / monitor is a valid stop -------
 # W1. REGRESSION: Open PR + in-process `gh pr checks --watch` (run_in_background)
 #     + watcher phrasing -> BLOCK. That child dies when a headless agent exits

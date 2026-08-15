@@ -2,7 +2,30 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- **Stop hook: the command-handback gate stops false-firing on paste-into-a-form and
+  send-a-message handoffs.** `00-agent-verify-work-complete.sh` blocked a stop when the
+  session had written a script to a temp path AND the final message told the user to
+  "run/paste" something. The "directs the user to run" side was too broad: it matched
+  ordinary prose with pronoun objects, so a message like "paste that blurb into the
+  application" or "paste it in and hit send" (an email the user must send) tripped it,
+  even when the temp script was the agent's own helper that it had already run itself.
+  The gate now requires a command cue (a script path, `.sh`, or a shell/terminal/script/
+  command word) alongside the run/paste directive, and it exempts sending a
+  message/email/reply under the user's own identity ("hit send", "send the reply") the
+  same way it already exempts a biometric or interactive login. The real handback it
+  targets (`run /tmp/release.sh`, `paste it into your shell`) still blocks; four new test
+  cases pin the false positives.
+
 ### Added
+
+- **F3 (done-ness): a message or application is done only when it is staged where it gets
+  sent.** New `foundations` bullet. For a reply / reach-out / apply / DM task, done means
+  the message is in the channel the user sends from (a draft in the Gmail or InMail thread,
+  the LinkedIn or application composer), not draft text in a scratch `.md` file. "I wrote
+  the reply" is not "ready to send", and calling a pile of `.md` drafts "send-ready" is the
+  miss this bullet closes.
 
 - **`code:refactor` gains a seventh move: give the concept the contract its job calls for.**
   The six existing moves all ask where code *lives*; none asked whether a concept has the
