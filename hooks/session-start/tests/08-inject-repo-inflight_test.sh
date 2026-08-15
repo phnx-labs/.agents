@@ -229,4 +229,34 @@ check_contains "fallback still lists PRs"        "$out" "#12 fix the frobnicator
 check_absent   "single repo gets no label prefix" "$out" "["$'\u005b'"secondrepo]"
 check_absent   "fallback does not reach the second repo" "$out" "#77 second-repo PR"
 
+# --- 8. worst-case latency fits the registered hook timeout -------------------
+# This hook's manifest timeout was already wrong before this change (two
+# SEQUENTIAL probes at 4s + 8s against `timeout: 10`), and widening the scope
+# added two resolution calls in front of them. Assert the arithmetic so the two
+# numbers cannot drift apart again — the sibling hook's budget test went stale
+# precisely because it only counted `--max-time` and missed `_to`.
+LIB="$HERE/../../lib/project-context.sh"
+# Resolution runs BEFORE the probes and is sequential, so its budgets add.
+lib_to=$(grep -o -- '_to [0-9][0-9]*' "$LIB" 2>/dev/null | awk '{s += $2} END {print s+0}')
+# The probes are backgrounded, so the section costs the SLOWEST one, not the sum.
+probe_max=$(grep -o -- '_to [0-9][0-9]*' "$HOOK" | awk '{if ($2+0 > m) m = $2+0} END {print m+0}')
+declared=$(awk '/^  inject-repo-inflight:/{f=1} f&&/timeout:/{print $2; exit}' "$HERE/../../../agents.yaml" 2>/dev/null)
+declared="${declared:-10}"
+worst=$(( lib_to + probe_max ))
+# Same reasoning as the sibling hook: the timeout is wall-clock, and this script
+# spawns several python3 interpreters plus one gh per repo.
+MARGIN=3
+if [ "$probe_max" -gt 0 ] && [ $(( worst + MARGIN )) -le "$declared" ]; then
+  echo "ok   - worst-case ${worst}s + ${MARGIN}s runtime fits the registered ${declared}s timeout"
+else
+  echo "FAIL - worst case ${worst}s + ${MARGIN}s runtime exceeds the registered ${declared}s timeout"; fail=1
+fi
+# The probes must stay parallel: if they are ever serialised again the budget
+# above is wrong by construction, so pin the backgrounding.
+# The calls are multi-line, so match the redirect-and-background tail, not the
+# invocation line.
+bg=$(grep -cE '> "\$tmp/[a-z]+" 2>/dev/null &$' "$HOOK")
+[ "$bg" -ge 2 ] && echo "ok   - PR probes are backgrounded" || { echo "FAIL - PR probes no longer backgrounded ($bg)"; fail=1; }
+grep -q '^wait 2>/dev/null' "$HOOK" && echo "ok   - probes are collected with wait" || { echo "FAIL - no wait before reading probe output"; fail=1; }
+
 exit $fail

@@ -101,7 +101,7 @@ multi_repo=0
 # One probe per repo, run with the repo as cwd so `gh` resolves its own origin.
 # `-R <path>` does NOT work: that flag takes an owner/repo slug.
 probe_prs() {
-  local state="$1" limit="$2" template="$3" fields="$4" r label
+  local state="$1" limit="$2" template="$3" fields="$4" r label out ln
   while IFS= read -r r; do
     [ -n "$r" ] || continue
     label="$(basename "$r")"
@@ -109,7 +109,11 @@ probe_prs() {
       --json "$fields" --template "$template" 2>/dev/null) || true )"
     [ -n "$out" ] || continue
     if [ "$multi_repo" = "1" ]; then
-      printf '%s\n' "$out" | sed "s#^- #- [${label}] #"
+      # Bash prefix substitution, not sed: a directory name may contain `#` or
+      # `&`, which are the substitute delimiter and the match reference.
+      while IFS= read -r ln; do
+        printf '%s\n' "${ln/#- /- [${label}] }"
+      done <<< "$out"
     else
       printf '%s\n' "$out"
     fi
