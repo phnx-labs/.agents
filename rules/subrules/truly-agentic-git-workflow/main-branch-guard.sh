@@ -226,8 +226,27 @@ case "$tool" in
     # the dirname walk above collapses to `.', which is the session cwd and may
     # itself be in the primary tree — producing a false deny for a file that is
     # completely outside the repo.
+    # Two ways a drive-letter path can still land inside the tree, so a missing
+    # drive root is necessary but NOT sufficient:
+    #   1. a `..` component climbs out of the fake drive segment entirely, so
+    #      `C:/../tracked.txt` resolves to `<cwd>/tracked.txt`;
+    #   2. a literal directory named `C:` can exist in the session cwd — a Write
+    #      tool's own parent-dir step (mkdir -p / fs.mkdirSync recursive) creates
+    #      one on the way to writing the file.
+    # Taking the exemption on either of those reopens exactly the escape hatch
+    # this guard says it does not have ("No exceptions, no escape hatch — by
+    # design", above). Verified: without these two conditions,
+    # `C:/../tracked.txt` from a primary-tree cwd exits 0 and the real tracked
+    # file is overwritten.
     if [ "$is_drive_abs" = 1 ] && [ ! -d "${fp%%:*}:/" ]; then
-      exit 0
+      case "$fp" in
+        *../*|*/..) ;;  # traversal — fall through to the real primary-tree check
+        *)
+          # No traversal. Exempt only if the drive segment is not a real local
+          # directory the path could resolve through.
+          [ -d "${cwd:-.}/${fp%%/*}" ] || exit 0
+          ;;
+      esac
     fi
     if in_primary_tree "$d"; then
       # A gitignored path can never be committed and never dirties the tracked
