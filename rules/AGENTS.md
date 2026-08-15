@@ -538,9 +538,40 @@ orchestrator counts it as a green track and composes on top of work that does no
 
 A teammate whose work produces a PR is done when the PR is **merged or explicitly handed off to a named owner** — nothing else counts. "PR open, CI green, waiting for reviewer" is NOT completed: it's the top observed way team output gets stranded (an entire 11-teammate run once ended with every PR unmerged). Every edit-mode brief must include the line:
 
-> Your task is complete only when your PR is merged, or you have handed it off by naming who/what now owns it. If you are waiting on CI or review, keep waiting with a background watch — do not stop.
+> Your task is complete only when your PR is merged, or you have handed it off by naming who/what now owns it. If you are waiting on CI or review, keep waiting with a background watch — `(gh pr checks <pr> --watch --fail-fast; echo "CI settled rc=$?")` run in the background, never a `while`/`until` loop — do not stop.
 
 Mechanical backstop: the `verify-work-complete` Stop hook blocks a session from stopping with an open PR it created and no handoff — but the brief line is what makes teammates drive to merge instead of arguing with the gate.
+
+## You own what you spawn — an armed watcher is a claim you must verify
+
+Spawning is not delivering. The single most expensive orchestrator failure on this
+fleet is: start teammates, announce "I'll keep watch", then idle while nobody tracks
+whether the work is moving — or whether the teammates spawned at all.
+
+Measured, session `ea913c60` (2026-08-15): the orchestrator backgrounded a
+`while true; do … done` poll and told the user *"the background poll re-invokes me
+when the team settles."* `ps` showed **no such process**. Four teammates were still
+`RUNNING` with nothing watching them. The claim was false and the session was idle —
+exactly what it promised it was not.
+
+Three obligations, all mechanical:
+
+1. **Confirm the spawn.** `agents teams add`/`start` returning 0 is not a running
+   teammate. Confirm with `agents teams status <team>` that each teammate you added
+   is actually `RUNNING`, and say how many. A teammate that silently never started is
+   counted as a green track and composed on top of (see the boundary-contract note
+   above).
+2. **Arm a watcher that survives, then prove it.** Use `agents monitors add` (durable)
+   or a background command with a trailing finish-echo so the harness re-invokes you.
+   **Never `while true`, `until [ … ]`, or a bare `sleep` loop** — they die silently
+   with their owning shell. Then check the postcondition (`agents monitors list`,
+   `ps -p <pid>`) and quote it. **If you cannot show the watcher is alive, do not
+   tell the user you are watching.**
+3. **Track progress on cheap signals, never full logs.** `agents teams status`,
+   `gh pr list`, `git ls-remote` answer "is it moving?". `agents teams logs` /
+   `agents hosts logs` bill a teammate's whole transcript back to you as input —
+   pull them only to grep a failure or decide on a restart. `RUNNING` for 27 minutes
+   with no branch pushed is a **stall**: resume or re-dispatch it, don't keep waiting.
 
 ## Orchestrator completion contract (the whole swarm, not each track)
 

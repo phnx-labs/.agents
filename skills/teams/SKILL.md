@@ -152,7 +152,7 @@ Every edit-mode brief carries the fixed parts — Mission, Full scope, **Owns**,
 
 **Completion contract:**
 
-> Your task is complete only when your PR is merged, or you have handed it off by naming who/what now owns it. If you are waiting on CI or review, keep waiting with a background watch — do not stop.
+> Your task is complete only when your PR is merged, or you have handed it off by naming who/what now owns it. If you are waiting on CI or review, keep waiting with a background watch — `(gh pr checks <pr> --watch --fail-fast; echo "CI settled rc=$?")` run in the background, never a `while`/`until` loop — do not stop.
 
 A teammate is done only when its PR is **merged or handed to a named owner** — "PR open, CI green, waiting for review" is the top way team output gets stranded (a real 11-teammate run once ended with every PR unmerged). The `verify-work-complete` Stop hook backstops this, but the brief line is what makes teammates drive to merge.
 
@@ -164,6 +164,47 @@ You (the orchestrator) post one plain `agents feed post` on `teams start` and on
 
 ## Monitoring
 
+**Spawning is not delivering. You own the team until it lands.** The most expensive
+failure this skill has is an orchestrator that starts teammates, says "I'll keep
+watch", and then sits idle while nobody tracks whether the work is progressing —
+or whether the teammates even spawned. Measured on session `ea913c60`: the
+orchestrator armed a `while true; do … done &` poll, told the user *"the background
+poll re-invokes me when the team settles"*, and the loop was **dead** — `ps` showed
+nothing, while four teammates were still RUNNING with no one watching.
+
+### Arm a watcher that survives — then prove it is alive
+
+```bash
+# Durable (survives this session ending) — the default for a team you must land.
+agents monitors add pr-sweep-done \
+  --poll 'agents teams status my-feature --json' \
+  --run  'agents run claude "Team my-feature settled — verify and land"'
+
+# In-session: background command + a finish-echo, so the harness re-invokes you.
+( agents teams start my-feature --watch; echo "TEAM SETTLED rc=$? — next: verify each PR merged" )
+```
+
+Run the background form with `run_in_background: true`.
+
+**Never** `while true`, `until [ … ]`, or a bare `sleep` loop. They exit silently
+when the shell that owns them goes away, and you are left claiming a watch that
+does not exist.
+
+**Then assert it.** A watcher is not armed because the command returned 0 — check
+the postcondition and quote it:
+
+```bash
+agents monitors list | grep pr-sweep-done     # durable watcher registered?
+ps -p "$WATCH_PID" >/dev/null && echo alive   # background watcher still running?
+```
+
+If you cannot show that output, **do not tell the user you are watching.**
+
+### Check progress at the service level, never the full log
+
+Poll the cheap signals — they answer "is it moving?" without billing a teammate's
+whole transcript back into your context:
+
 ```bash
 # Check status
 agents teams status my-feature
@@ -171,9 +212,21 @@ agents teams status my-feature
 # Delta poll (efficient)
 agents teams status my-feature --since 2026-04-24T09:00:00-07:00
 
-# Read one teammate's log
-agents teams logs my-feature frontend
+# Ground truth for "did it actually deliver?" — cheaper and truer than any log
+gh pr list --state open --limit 30 --json number,title,statusCheckRollup
+git ls-remote --heads origin | grep my-feature
 ```
+
+**`agents teams logs` is a debugging tool, not a progress check.** Reading a
+teammate's transcript bills its output tokens back to you as input, for no signal
+you cannot get above. Pull it only to `grep` the failing line when status already
+says `FAILED`, or to decide whether to `resume` a stalled teammate.
+
+### A teammate that stalls is yours to restart
+
+`agents teams status` showing `RUNNING · 27 minutes · 50 tools` with no branch push
+is a stall, not progress. Nudge it (`agents teams resume`, below) or stop and
+re-dispatch it. Waiting longer is not monitoring.
 
 ## Resume / Message a Teammate
 

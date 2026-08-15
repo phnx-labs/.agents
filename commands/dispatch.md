@@ -64,9 +64,20 @@ not a duplicate.
 ## Step 6: Don't stop at "filed and dispatched"
 
 Per the `parallel-teams` completion contract: the task is done when the PR merges, or
-you've handed it off by naming who/what now owns it. If you're waiting on the dispatched
-agent, keep watching (background watch + finish-echo) — don't stop the turn on "dispatched"
-alone.
+you've handed it off by naming who/what now owns it. Don't stop the turn on "dispatched"
+alone. Three concrete obligations:
+
+1. **Confirm it spawned.** A dispatch that exits 0 is not a running agent — a sandbox
+   can die and still return 0. Confirm with `agents teams status` / `agents hosts ps`,
+   or the first real artifact (a pushed branch), and say what you saw.
+2. **Arm a watcher, then prove it is alive.** `agents monitors add` (durable), or a
+   background command with a trailing finish-echo so the harness re-invokes you.
+   **Never a `while`/`until`/`sleep` loop** — those die silently with their shell, and
+   an agent then reports a watch it does not have. Verify with `agents monitors list`
+   or `ps -p <pid>` and quote it.
+3. **Poll cheap signals, not logs.** `gh pr list`, `git ls-remote`, `agents teams status`.
+   Pull `agents hosts logs` only to grep a failure — it bills the whole transcript back
+   to you.
 
 ## Anti-patterns
 
@@ -76,3 +87,8 @@ alone.
 - **Skipping Step 4 and dispatching untracked work.** Even solo, file it — that's what
   makes `/triage` later able to see it.
 - **Treating "ticket filed + agent dispatched" as done.** It's in flight, not shipped.
+- **Claiming a watch you never verified.** "I'll be notified when it settles" after
+  backgrounding a loop that already died is worse than saying nothing — the user stops
+  checking, and so do you. Show the watcher is alive or don't mention it.
+- **Reading a dispatched agent's log to see how it's doing.** That's what status and
+  `gh pr list` are for; the log is for debugging a failure.
