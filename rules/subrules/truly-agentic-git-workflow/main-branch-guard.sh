@@ -226,8 +226,25 @@ case "$tool" in
     # the dirname walk above collapses to `.', which is the session cwd and may
     # itself be in the primary tree — producing a false deny for a file that is
     # completely outside the repo.
+    # A missing drive root is necessary but NOT sufficient: a `..` component
+    # climbs out of the fake drive segment, so `C:/../tracked.txt` resolves to
+    # `<cwd>/tracked.txt` — a real file in the primary tree. Verified against the
+    # guard as first shipped: it exited 0 and a standard mkdir-then-write
+    # overwrote the tracked file, in a guard whose own header says "No
+    # exceptions, no escape hatch — by design". So a traversal path falls through
+    # to the real primary-tree check instead of taking the exemption.
+    #
+    # Only traversal needs handling here. A literal `C:` DIRECTORY in the tree is
+    # already covered: the test above is `[ ! -d "${fp%%:*}:/" ]` with no leading
+    # slash, so it resolves relative to the process cwd, not the filesystem root.
+    # Measured both ways — dir present and `C:` symlinked to the tree root both
+    # already deny without any extra check, so guarding them again would be a
+    # branch no test can distinguish.
     if [ "$is_drive_abs" = 1 ] && [ ! -d "${fp%%:*}:/" ]; then
-      exit 0
+      case "$fp" in
+        *../*|*/..) ;;   # traversal — fall through to the real check below
+        *) exit 0 ;;
+      esac
     fi
     if in_primary_tree "$d"; then
       # A gitignored path can never be committed and never dirties the tracked

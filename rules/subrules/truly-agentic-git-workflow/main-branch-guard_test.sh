@@ -137,6 +137,17 @@ run_guard 0 "Write drive-letter path (forward slash) outside repo, POSIX cwd on 
 run_guard 0 "Write drive-letter path (backslash) outside repo, POSIX cwd on main" \
   "$(wj Write file_path "C:\\completely\\external\\nonexistent\\path\\file.txt" "$MAIN_REPO")" "$MAIN_REPO"
 
+# The drive-letter exemption above must not become an escape hatch. A missing
+# drive root is necessary but NOT sufficient: `..` climbs out of the fake drive
+# segment, so `C:/../tracked.txt` resolves to `<cwd>/tracked.txt` — a real file
+# in the primary tree. Reproduced before the fix: the guard exited 0 and a
+# standard mkdir-then-write overwrote the tracked file, against a guard whose own
+# header says "No exceptions, no escape hatch — by design".
+run_guard 2 "Write drive-letter path with .. traversal into the primary tree" \
+  "$(wj Write file_path "C:/../tracked.txt" "$MAIN_REPO")" "$MAIN_REPO"
+run_guard 2 "Write drive-letter path with backslash .. traversal" \
+  "$(wj Write file_path "C:\\..\\tracked.txt" "$MAIN_REPO")" "$MAIN_REPO"
+
 # --- Windows-style paths: drive-letter-rooted, backslash or forward-slash ---
 # separated paths (as sent by Claude Code / other harnesses running natively on
 # Windows) must be recognized as absolute, never concatenated onto cwd. Real
