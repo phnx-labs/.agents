@@ -2,8 +2,36 @@
 
 ## [Unreleased]
 
+### Added
+
+- **Argue-past ramp in the verify-work-complete Stop gate.** A retried stop
+  (stop_hook_active) used to pass unconditionally — the ramp three sessions used
+  on 2026-08-15 to clear blocked stops by restating "correct stopping point" /
+  "stays open by design and is not mine to close" / "the permission classifier
+  bars me". A retry carrying a stand-down phrase is now blocked up to two more
+  times with a demand for verifiable evidence (live probes, real output); after
+  that it passes (a gate must never wedge a session) but files an
+  `agents feed post --blocked` so the evasion reaches the owner.
+- **Stand-down phrase list extended** with the exact rationalizations measured
+  that day: "stays open by design", "someone else's in-flight work", "owned by
+  another/two live sessions", "correct stopping point", "nothing needs you",
+  "ships on the next train", "permission classifier bars/denies". Each routes
+  the stop into the delivery gate, where evidence decides.
+- **Every-prompt worktree-law reminder** (`user-prompt-submit/05-worktree-law-reminder.sh`):
+  one line injected into every prompt of every session — writes go through a
+  linked worktree + PR, primary checkouts are untouchable — per the owner's
+  2026-08-15 directive after an agent wrote into a primary checkout on main.
+  main-branch-guard remains the hard enforcement; this keeps the rule in every
+  context window.
+
 ### Fixed
 
+- **Invoked is not armed: watcher escapes now require a successful arm.** Both
+  watcher checks (open-PR gate, keep-moving gate) accepted any
+  ScheduleWakeup/Monitor *tool_use* as a live watcher without looking at its
+  result — an errored or cancelled arm cleared the gate (ea913c60 idled on a
+  claimed watcher no process backed). A watcher now counts only with a
+  non-error paired tool_result.
 - **`/next` no longer tells agents a lease-claiming release script means "done at merged".**
   `commands/next.md`'s release step said a repo whose release script claims a lease has a
   "release train" and the agent "is done at merged + a changelog fragment" — agents-cli's
@@ -24,8 +52,6 @@
   (`allowed-tools: Bash(agents share*)`), so **the share skill could not execute its own
   command at all**. It now grants `Bash(agents artifacts share*)`.
 
-### Added
-
 - **`skills/registration_test.sh`** — every skill installs into one flat directory, so two
   `SKILL.md` files declaring the same `name:` contest a single slot and the installer picks
   a winner silently. Nothing errors and nothing warns. This test makes that visible, in the
@@ -40,6 +66,7 @@
   word-boundary grep passed even with the `run` row deleted, because "run" appears in the
   `secrets` row's prose. Verified both ways: introducing a duplicate `name: tickets`
   produced `FAIL - tickets: NEW contested bare name` and exit 1; removing it returned exit 0.
+
 - **Removed the readback Stop hard-block that over-fired on ordinary work (RUSH-2712 follow-up).** PR #308 exit-2 blocked any session that edited a .html/.png/.svg/.pdf file and used a common visual phrase even with nothing delivered; an independent review reproduced it on a routine routing-bug fix. The advisory PreToolUse nudge, the properly-scoped delivery-chain check, and the rules/preset changes from #308 are kept; only the Stop hard-block is removed, along with only its visual-gate test fixture. Re-landing the claim check with the 66-transcript corpus-replay validation the plan required is deferred.
 
 ### Changed
