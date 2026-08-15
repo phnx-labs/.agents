@@ -23,6 +23,20 @@ fail=0
 
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
+
+# git stub for the declaration-vs-diff cross-check: FAKE_PRD_FILES drives the
+# changed-file list so the check is judged against a controlled diff, not this
+# repo's real branch. Cases opt in via PATH="$TMP/bin:$PATH".
+mkdir -p "$TMP/bin"
+cat > "$TMP/bin/git" <<'STUB'
+#!/usr/bin/env bash
+case "$*" in
+  "symbolic-ref --short refs/remotes/origin/HEAD") echo "origin/main" ;;
+  "diff --name-only "*)                            printf '%s\n' "${FAKE_PRD_FILES:-}" ;;
+  *)                                               echo "" ;;
+esac
+STUB
+chmod +x "$TMP/bin/git"
 printf 'Just a real change with no proof of a run.\n'          > "$TMP/no-evidence.md"
 printf 'Ran it, here is the result: ![out](result.png)\n'     > "$TMP/with-image.md"
 printf 'Pure refactor, no behavior change.\n'                  > "$TMP/refactor.md"
@@ -71,11 +85,27 @@ check 0 toolInput  "gh asset url"        'gh pr create -t x -b "https://github.c
 check 0 tool_input "body-file image"     "gh pr create -t x --body-file $TMP/with-image.md"
 
 # --- ALLOW (exit 0): explicit no-run declaration (release / docs / refactor / test) ---
+# Checkable declarations (test-only / docs-only) are verified against the branch
+# diff via the git stub; TRUE declarations still clear.
 check 0 tool_input "release"             'gh pr create -t x -b "release v1.2.3"'
-check 0 tool_input "docs-only"           'gh pr create -t x -b "docs-only: spec the model"'
+PATH="$TMP/bin:$PATH" FAKE_PRD_FILES=$'docs/spec.md\nREADME.md' \
+  check 0 tool_input "docs-only (diff matches)"  'gh pr create -t x -b "docs-only: spec the model"'
 check 0 tool_input "refactor"            'gh pr create -t x -b "pure refactor, no behavior change"'
-check 0 tool_input "test-only"           'gh pr create -t x -b "test-only coverage bump"'
+PATH="$TMP/bin:$PATH" FAKE_PRD_FILES=$'src/widget.test.ts\ntests/e2e_test.sh' \
+  check 0 tool_input "test-only (diff matches)"  'gh pr create -t x -b "test-only coverage bump"'
 check 0 tool_input "body-file refactor"  "gh pr create -t x --body-file $TMP/refactor.md"
+
+# --- NUDGE (exit 2): declaration CONTRADICTED by the diff (the PR #2736 gaming) ---
+PATH="$TMP/bin:$PATH" FAKE_PRD_FILES=$'apps/cli/src/lib/browser/identity.ts\napps/cli/src/lib/browser/identity.test.ts' \
+  check 2 tool_input "test-only contradicted by src files blocks" \
+  'gh pr create -t x -b "test-only. Identity-based browser task resolution."'
+PATH="$TMP/bin:$PATH" FAKE_PRD_FILES=$'src/server.py' \
+  check 2 tool_input "docs-only contradicted by code blocks" \
+  'gh pr create -t x -b "docs-only cleanup"'
+# Diff unreadable (stubbed git returns nothing) -> fail open.
+PATH="$TMP/bin:$PATH" FAKE_PRD_FILES='' \
+  check 0 tool_input "test-only with unreadable diff fails open" \
+  'gh pr create -t x -b "test-only coverage bump"'
 
 # --- ALLOW (exit 0): body not inspectable / absent -> FAIL OPEN ---
 check 0 tool_input "body-file missing"   "gh pr create -t x --body-file $TMP/does-not-exist.md"

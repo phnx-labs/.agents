@@ -4,10 +4,13 @@
 # Nudges (a satisfiable block, exit 2) when a `gh pr create` / `gh pr edit` ships a
 # body with NO proof the agent ran what it built — no screenshot / recording /
 # uploaded asset. The reviewer should see it work, not read code to believe it. The
-# reminder clears the moment the body carries a real run result OR an explicit
-# no-run declaration (release / docs-only / refactor / test-only). A code block, a
-# table, and a bare ticket/plan LINK are context, not proof of a run, and do NOT
-# clear it.
+# reminder clears on a real run result OR an explicit no-run declaration — and a
+# CHECKABLE declaration (test-only / docs-only) is verified against the branch's
+# changed files: a contradicted declaration BLOCKS instead of clearing (2026-08-15,
+# PR #2736: "test-only." on a fifteen-file fix diff). Unverifiable declarations
+# (release-shaped phrases / refactor / no-behavior-change) clear as before. A code
+# block, a table, and a bare ticket/plan LINK are context, not proof of a run, and
+# do NOT clear it.
 #
 # The body it inspects: an inline --body/-b AND the file behind --body-file/-F
 # (read and inspected — agents route nearly every multi-line body through it). A
@@ -124,10 +127,61 @@ esac
 #    evidence — it does NOT clear the run-result requirement on its own.
 lower=$(printf '%s' "$hay" | tr '[:upper:]' '[:lower:]')
 case "$lower" in
-  *"release"*|*"docs-only"*|*"docs only"*|*"docs:"*|\
+  *"chore(release)"*|*"release pr"*|*"release:"*|*"release v"*|*"docs:"*|\
   *"no behavior change"*|*"no-behavior-change"*|*"no visible surface"*|*"no user-visible"*|\
-  *"refactor"*|*"test-only"*|*"test only"*|*"internal only"*) exit 0 ;;
+  *"refactor"*|*"internal only"*) exit 0 ;;
 esac
+
+# Declaration-vs-diff cross-check (2026-08-15, PR #2736): "test-only." on a
+# +1,519/-200 fifteen-file fix(browser) diff cleared this gate — the magic word
+# had become a password. A checkable declaration (test-only / docs-only) is now
+# verified against the branch's actual changed files; a contradicted
+# declaration BLOCKS instead of clearing. Unverifiable declarations (release /
+# refactor / no-behavior-change) keep clearing above — the diff cannot decide
+# them. Fail open when the diff is unreadable: a reminder must never block a
+# legit PR because git hiccuped.
+declared=""
+case "$lower" in *"test-only"*|*"test only"*) declared="test-only" ;; esac
+if [ -z "$declared" ]; then
+  case "$lower" in *"docs-only"*|*"docs only"*) declared="docs-only" ;; esac
+fi
+if [ -n "$declared" ]; then
+  _base=$(git symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null | sed 's#^origin/##')
+  [ -n "$_base" ] || _base=main
+  _files=$(git diff --name-only "origin/$_base...HEAD" 2>/dev/null)
+  [ -n "$_files" ] || exit 0
+  _bad=""
+  while IFS= read -r _f; do
+    [ -n "$_f" ] || continue
+    case "$declared" in
+      test-only)
+        # *test* already covers testdata/ and __tests__ paths (SC2221).
+        case "$_f" in
+          *test*|*Test*|*.spec.*) ;;
+          *) _bad="$_bad  - $_f
+" ;;
+        esac ;;
+      docs-only)
+        case "$_f" in
+          *.md|*.mdx|*.txt|docs/*|*/docs/*|LICENSE*) ;;
+          *) _bad="$_bad  - $_f
+" ;;
+        esac ;;
+    esac
+  done <<PRDIFF
+$_files
+PRDIFF
+  if [ -z "$_bad" ]; then exit 0; fi
+  {
+    echo "PR evidence reminder (truly-agentic-git-workflow): the body declares '$declared' but the branch diff contradicts it."
+    echo
+    echo "Non-$declared files changed on this branch:"
+    printf '%s' "$_bad"
+    echo
+    echo "A no-run declaration is only for a diff that genuinely matches it — declaring 'test-only' on a behavior change is how an evidence-free PR walks past this gate (PR #2736). Either fix the declaration and attach a real run result (screenshot / recording / uploaded output), or split the PR so the declaration is true."
+  } >&2
+  exit 2
+fi
 
 # No run result and not exempt — nudge once. Satisfiable: run it, capture, attach.
 {
