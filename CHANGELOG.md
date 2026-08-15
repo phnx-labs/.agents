@@ -4,6 +4,16 @@
 
 ### Fixed
 
+- **`/next` no longer tells agents a lease-claiming release script means "done at merged".**
+  `commands/next.md`'s release step said a repo whose release script claims a lease has a
+  "release train" and the agent "is done at merged + a changelog fragment" — agents-cli's
+  `release.sh` claims a lease, so every `/next` nudge re-licensed the merged-stop the nudge
+  was meant to break (observed 2026-08-15: a session re-asserted "release correctly stops at
+  merged" immediately after `/next`). The step now mirrors the rewritten `release-to-fleet`:
+  two end states only, the lease serializes concurrent releasers, driving or verifiably
+  watching the release is the next task when the registry is behind, and the
+  `AskUserQuestion`-to-confirm-release instruction is gone.
+
 - **Removed the readback Stop hard-block that over-fired on ordinary work (RUSH-2712 follow-up).** PR #308 exit-2 blocked any session that edited a .html/.png/.svg/.pdf file and used a common visual phrase even with nothing delivered; an independent review reproduced it on a routine routing-bug fix. The advisory PreToolUse nudge, the properly-scoped delivery-chain check, and the rules/preset changes from #308 are kept; only the Stop hard-block is removed, along with only its visual-gate test fixture. Re-landing the claim check with the 66-transcript corpus-replay validation the plan required is deferred.
 
 ### Changed
