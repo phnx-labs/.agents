@@ -1,23 +1,32 @@
 # Truly Agentic Git Workflow
 
-**The default branch is untouchable. Every change is a worktree + PR. Always.**
+**The user's primary working tree is untouchable — on ANY branch. Every change is
+a LINKED worktree + PR. Always.**
 
-Never create, edit, or delete a file with the agent's file tools
-(Write/Edit/NotebookEdit), and never `git add`/`git commit`, while a repo is on its
-default branch (`main`/`master`/whatever `origin/HEAD` points at). This is
-**mechanically enforced** by the bundled `main-branch-guard` (PreToolUse). The
-commit gate is the choke point: even a file changed by raw shell (`>`, `sed -i`,
-`git rm`) on the default branch can never be *committed* there — so nothing lands
-on the default branch outside a worktree + PR. No exceptions, no escape hatch.
-Worktrees (feature branches), non-git paths (`/tmp`, scratchpad), and
-**gitignored paths** (e.g. the harness memory dir under `.history/`, or
-`.agents/scratch`, `.agents/artifacts`) are unaffected — a gitignored file can
-never be committed, so a write there can't land on the default branch. The guard
-gates only the agent's tool calls — the user's own editor and `!`-prefixed
-session commands are never blocked.
+Never create, edit, or delete a tracked file with the agent's file tools
+(Write/Edit/NotebookEdit), and never `git add`/`git commit`, while the target is
+inside a repo's **primary working tree** — the user's own checkout — regardless of
+which branch it is on. This is **mechanically enforced** by the bundled
+`main-branch-guard` (PreToolUse), which protects the whole primary tree, not just
+the default branch. The reason it is the whole tree: agents were checking out a
+feature branch *in the user's main checkout* and never switching back, stranding
+it on a branch and dozens of commits behind (the `review-2704` trap) — blocking
+only the default branch let that through.
 
-If you catch yourself about to edit a file in a checkout that's on `main`, stop
-and make a worktree first (recipe below).
+The ONLY place an agent writes, adds, or commits is a **linked worktree**
+(`git worktree add` under `<repo>/.agents/worktrees/<slug>/`). Linked worktrees,
+non-git paths (`/tmp`, scratchpad), and **gitignored paths** (the harness memory
+dir under `.history/`, `.agents/scratch`, `.agents/artifacts`) are unaffected — a
+gitignored file never dirties the tracked tree or lands in a PR. The guard gates
+only the agent's tool calls — the user's own editor and `!`-prefixed session
+commands are never blocked.
+
+`git switch` and `git checkout` are **both banned** for the agent (enforced by
+`git-guard`): switching the primary checkout onto another branch is exactly the
+strand-the-tree trap. Never switch branches in place — create a linked worktree.
+
+If you catch yourself about to edit a file in the primary checkout (any branch),
+stop and make a worktree first (recipe below).
 
 **Diagnose on the latest code, not your working-tree HEAD.** Before you read a
 codebase to call something a bug, claim a regression, or open a "fix" PR,

@@ -110,7 +110,8 @@ message here is a note in an empty room. Never stop silently.
 
 ## F5 — Protect what you can't undo.
 
-- **The default branch is untouchable.** Every change is a worktree + PR off `origin/<default>` (mechanically enforced by `main-branch-guard`); never create/edit/commit a file on the default branch. Worktrees live only under `<repo>/.agents/worktrees/<slug>/`.
+- **The user's primary working tree is untouchable — on ANY branch.** Every change is a LINKED worktree + PR off `origin/<default>` (mechanically enforced by `main-branch-guard`, which protects the whole primary tree, not just the default branch); never create/edit/commit a tracked file in the user's checkout. Worktrees live only under `<repo>/.agents/worktrees/<slug>/`. Blocking only the default branch was not enough — agents checked out a feature branch in the main checkout and never switched back, stranding it (the `review-2704` trap).
+- **Never switch the primary checkout's branch** — `git checkout` and `git switch` are both banned for the agent (blocked by `git-guard`); switching in place strands the user's tree. Create a linked worktree instead.
 - **Never `git reset --hard`, force-push, `git checkout -- .`, `stash`, `clean`, or rewrite history** on the agent's shell (the `git-guard` blocks these) — they have caused real, irreversible data loss. Reconcile a diverged branch with **rebase**, and commit instead of stashing. Resolve obstacles (conflicts, locks) at the source, never with a destructive shortcut.
 - **Never bypass the safety rails at merge:** no `gh pr merge --admin`, never self-approve your own PR (the clearing review must be a non-author — an automated repo reviewer counts), never merge red.
 - **Never transfer credentials or auth files** (tokens, `~/.rush/user.yaml`, keychain exports) to another host without explicit authorization.
@@ -163,24 +164,33 @@ whole load and token spend stays low (this is the cost policy behind F2's
 
 # Truly Agentic Git Workflow
 
-**The default branch is untouchable. Every change is a worktree + PR. Always.**
+**The user's primary working tree is untouchable — on ANY branch. Every change is
+a LINKED worktree + PR. Always.**
 
-Never create, edit, or delete a file with the agent's file tools
-(Write/Edit/NotebookEdit), and never `git add`/`git commit`, while a repo is on its
-default branch (`main`/`master`/whatever `origin/HEAD` points at). This is
-**mechanically enforced** by the bundled `main-branch-guard` (PreToolUse). The
-commit gate is the choke point: even a file changed by raw shell (`>`, `sed -i`,
-`git rm`) on the default branch can never be *committed* there — so nothing lands
-on the default branch outside a worktree + PR. No exceptions, no escape hatch.
-Worktrees (feature branches), non-git paths (`/tmp`, scratchpad), and
-**gitignored paths** (e.g. the harness memory dir under `.history/`, or
-`.agents/scratch`, `.agents/artifacts`) are unaffected — a gitignored file can
-never be committed, so a write there can't land on the default branch. The guard
-gates only the agent's tool calls — the user's own editor and `!`-prefixed
-session commands are never blocked.
+Never create, edit, or delete a tracked file with the agent's file tools
+(Write/Edit/NotebookEdit), and never `git add`/`git commit`, while the target is
+inside a repo's **primary working tree** — the user's own checkout — regardless of
+which branch it is on. This is **mechanically enforced** by the bundled
+`main-branch-guard` (PreToolUse), which protects the whole primary tree, not just
+the default branch. The reason it is the whole tree: agents were checking out a
+feature branch *in the user's main checkout* and never switching back, stranding
+it on a branch and dozens of commits behind (the `review-2704` trap) — blocking
+only the default branch let that through.
 
-If you catch yourself about to edit a file in a checkout that's on `main`, stop
-and make a worktree first (recipe below).
+The ONLY place an agent writes, adds, or commits is a **linked worktree**
+(`git worktree add` under `<repo>/.agents/worktrees/<slug>/`). Linked worktrees,
+non-git paths (`/tmp`, scratchpad), and **gitignored paths** (the harness memory
+dir under `.history/`, `.agents/scratch`, `.agents/artifacts`) are unaffected — a
+gitignored file never dirties the tracked tree or lands in a PR. The guard gates
+only the agent's tool calls — the user's own editor and `!`-prefixed session
+commands are never blocked.
+
+`git switch` and `git checkout` are **both banned** for the agent (enforced by
+`git-guard`): switching the primary checkout onto another branch is exactly the
+strand-the-tree trap. Never switch branches in place — create a linked worktree.
+
+If you catch yourself about to edit a file in the primary checkout (any branch),
+stop and make a worktree first (recipe below).
 
 **Diagnose on the latest code, not your working-tree HEAD.** Before you read a
 codebase to call something a bug, claim a regression, or open a "fix" PR,

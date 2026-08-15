@@ -2,10 +2,11 @@
 # Test for main-branch-guard.sh (PreToolUse guard on file tools + Bash).
 #
 # Exercises the real script over real stdin JSON against REAL throwaway git
-# repos (no mocking): a repo on its default branch (deny), a repo on a feature
-# branch (allow), a cloned repo whose default is `trunk` via origin/HEAD (deny),
-# and a non-git dir (allow). Verifies both the Write/Edit/NotebookEdit path and
-# the `git commit|add` Bash path.
+# repos (no mocking): a PRIMARY working tree on its default branch (deny) AND on a
+# feature branch (deny — the whole primary tree is protected, not just default),
+# a LINKED worktree (allow — where all agent work belongs), gitignored and non-git
+# paths (allow), and worktree-add base freshness. Verifies both the
+# Write/Edit/NotebookEdit path and the `git commit|add` Bash path.
 set -u
 DIR=$(cd "$(dirname "$0")" && pwd)
 GUARD="$DIR/main-branch-guard.sh"
@@ -115,9 +116,12 @@ run_guard 2 "NotebookEdit on main"               "$(wj NotebookEdit notebook_pat
 run_guard 2 "Write on cloned trunk default"      "$(wj Write file_path "$CLONE/tracked.txt")"
 run_guard 2 "Write relative path, cwd on main"   "$(wj Write file_path "tracked.txt" "$MAIN_REPO")"
 
-# --- File tools: ALLOW off default branch / non-git (exit 0) ---
-run_guard 0 "Write on feature branch"            "$(wj Write file_path "$FEAT_REPO/tracked.txt")"
-run_guard 0 "Write on clone feature branch"      "$(wj Write file_path "$CLONE_FEAT/z.txt")"
+# --- File tools: PRIMARY tree on ANY branch is DENIED (exit 2) ---
+# The whole primary working tree is off limits, not just the default branch —
+# a feature branch checked out IN the user's main checkout is the review-2704
+# strand-the-tree trap. Only LINKED worktrees / non-git / gitignored allow.
+run_guard 2 "Write on primary-tree feature branch is BLOCKED"       "$(wj Write file_path "$FEAT_REPO/tracked.txt")"
+run_guard 2 "Write on clone primary-tree feature branch is BLOCKED" "$(wj Write file_path "$CLONE_FEAT/z.txt")"
 run_guard 0 "Write in non-git dir"               "$(wj Write file_path "$NOGIT/file.txt")"
 run_guard 0 "Write to /tmp scratch"              "$(wj Write file_path "$TMP/loose.txt")"
 # The core bug case, runnable everywhere (no cygpath): a drive-letter path OUTSIDE
@@ -183,9 +187,9 @@ run_guard 2 "git -C clone(trunk) commit"         "$(bj "git -C $CLONE commit -m 
 run_guard 2 "sh -c wrapped commit on main"       "$(bj "sh -c \"git -C $MAIN_REPO commit -m x\"")"
 run_guard 2 "chained cd/commit on main"          "$(bj "echo hi && git commit -m x" "$MAIN_REPO")"
 
-# --- Bash git commit/add: ALLOW off default branch / non-gated ops (exit 0) ---
-run_guard 0 "git -C feat commit"                 "$(bj "git -C $FEAT_REPO commit -m x")"
-run_guard 0 "git commit on clone feature branch" "$(bj "git commit -m x" "$CLONE_FEAT")"
+# --- Bash git commit/add: PRIMARY tree on ANY branch DENIED; non-gated ops allowed ---
+run_guard 2 "git -C primary-tree feature branch commit is BLOCKED"       "$(bj "git -C $FEAT_REPO commit -m x")"
+run_guard 2 "git commit on clone primary-tree feature branch is BLOCKED" "$(bj "git commit -m x" "$CLONE_FEAT")"
 run_guard 0 "git status on main (not gated)"     "$(bj "git status" "$MAIN_REPO")"
 run_guard 0 "git push on main (not gated here)"  "$(bj "git push" "$MAIN_REPO")"
 run_guard 0 "git commit in non-git cwd"          "$(bj "git commit -m x" "$NOGIT")"
@@ -260,11 +264,11 @@ run_guard 2 "camelCase Write tracked file on main"  "$(wjc Write file_path "$MAI
 run_guard 2 "camelCase Edit file on main"           "$(wjc Edit file_path "$MAIN_REPO/tracked.txt")"
 run_guard 2 "camelCase NotebookEdit on main"        "$(wjc NotebookEdit notebook_path "$MAIN_REPO/nb.ipynb")"
 run_guard 2 "camelCase Write relative, cwd on main" "$(wjc Write file_path "tracked.txt" "$MAIN_REPO")"
-run_guard 0 "camelCase Write on feature branch"     "$(wjc Write file_path "$FEAT_REPO/tracked.txt")"
+run_guard 2 "camelCase Write on primary-tree feature branch is BLOCKED" "$(wjc Write file_path "$FEAT_REPO/tracked.txt")"
 run_guard 0 "camelCase Write gitignored on main"    "$(wjc Write file_path "$MAIN_REPO/scratch/tmp.txt")"
 run_guard 2 "camelCase git commit, cwd on main"     "$(bjc "git commit -m x" "$MAIN_REPO")"
 run_guard 2 "camelCase git -C main commit"          "$(bjc "git -C $MAIN_REPO commit -m x")"
-run_guard 0 "camelCase git commit on feature branch" "$(bjc "git -C $FEAT_REPO commit -m x")"
+run_guard 2 "camelCase git commit on primary-tree feature branch is BLOCKED" "$(bjc "git -C $FEAT_REPO commit -m x")"
 run_guard 2 "camelCase worktree add -b, local base" "$(bjc "git -C $CLONE worktree add -b feat/cc1 $TMP/wt_cc1 trunk")"
 run_guard 0 "camelCase worktree add -b, origin base" "$(bjc "git -C $CLONE worktree add -b feat/cc2 $TMP/wt_cc2 origin/trunk")"
 

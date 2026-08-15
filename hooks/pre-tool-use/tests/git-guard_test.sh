@@ -114,6 +114,15 @@ check_deny  "quoted first token"                                "'git' reset --h
 check_deny  "git config write"                                  "git config user.name newname" "config write is denied"
 check_deny  "git merge --abort"                                 "git merge --abort" "merge --abort is denied"
 check_deny  "real newline before destructive op"                 "$(printf 'cd /tmp\ngit reset --hard')" "reset is denied"
+# Branch-switching in the primary checkout strands the user's tree — banned in
+# every form (the review-2704 trap). `switch` is the modern `checkout` and must
+# be denied alongside it.
+check_deny  "git switch <branch> (strands the primary tree)"     "git switch main" "switch is denied"
+check_deny  "git switch -c <new> (branch in place, not a worktree)" "git switch -c feat/x" "switch is denied"
+check_deny  "git checkout <branch>"                              "git checkout main" "checkout is denied"
+check_deny  "git checkout -b <new>"                              "git checkout -b feat/y" "checkout is denied"
+check_deny  "git -C <path> switch (dressed)"                     "git -C /tmp switch main" "switch is denied"
+check_deny  "sh -c wrapped switch"                               'sh -c "git switch main"' "switch is denied"
 
 # worktree remove on a dirty tree -> denied, listing the dirty files.
 WT_DIRTY="$SANDBOX/wt-dirty"

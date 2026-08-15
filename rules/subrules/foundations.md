@@ -110,7 +110,8 @@ message here is a note in an empty room. Never stop silently.
 
 ## F5 — Protect what you can't undo.
 
-- **The default branch is untouchable.** Every change is a worktree + PR off `origin/<default>` (mechanically enforced by `main-branch-guard`); never create/edit/commit a file on the default branch. Worktrees live only under `<repo>/.agents/worktrees/<slug>/`.
+- **The user's primary working tree is untouchable — on ANY branch.** Every change is a LINKED worktree + PR off `origin/<default>` (mechanically enforced by `main-branch-guard`, which protects the whole primary tree, not just the default branch); never create/edit/commit a tracked file in the user's checkout. Worktrees live only under `<repo>/.agents/worktrees/<slug>/`. Blocking only the default branch was not enough — agents checked out a feature branch in the main checkout and never switched back, stranding it (the `review-2704` trap).
+- **Never switch the primary checkout's branch** — `git checkout` and `git switch` are both banned for the agent (blocked by `git-guard`); switching in place strands the user's tree. Create a linked worktree instead.
 - **Never `git reset --hard`, force-push, `git checkout -- .`, `stash`, `clean`, or rewrite history** on the agent's shell (the `git-guard` blocks these) — they have caused real, irreversible data loss. Reconcile a diverged branch with **rebase**, and commit instead of stashing. Resolve obstacles (conflicts, locks) at the source, never with a destructive shortcut.
 - **Never bypass the safety rails at merge:** no `gh pr merge --admin`, never self-approve your own PR (the clearing review must be a non-author — an automated repo reviewer counts), never merge red.
 - **Never transfer credentials or auth files** (tokens, `~/.rush/user.yaml`, keychain exports) to another host without explicit authorization.
