@@ -30,9 +30,48 @@
   word-boundary grep passed even with the `run` row deleted, because "run" appears in the
   `secrets` row's prose. Verified both ways: introducing a duplicate `name: tickets`
   produced `FAIL - tickets: NEW contested bare name` and exit 1; removing it returned exit 0.
-
+- **Removed the readback Stop hard-block that over-fired on ordinary work (RUSH-2712 follow-up).** PR #308 exit-2 blocked any session that edited a .html/.png/.svg/.pdf file and used a common visual phrase even with nothing delivered; an independent review reproduced it on a routine routing-bug fix. The advisory PreToolUse nudge, the properly-scoped delivery-chain check, and the rules/preset changes from #308 are kept; only the Stop hard-block is removed, along with only its visual-gate test fixture. Re-landing the claim check with the 66-transcript corpus-replay validation the plan required is deferred.
 
 ### Changed
+
+- **The git guardrails now protect the user's whole PRIMARY working tree, on any
+  branch — not just the default branch — and ban `git switch` alongside `git
+  checkout`.** Agents were checking out a feature branch in the user's own
+  checkout and never switching back, stranding it on a branch dozens of commits
+  behind (the `review-2704` trap); blocking only the default branch let that
+  through, and `git switch` (the modern `checkout`) was not blocked by the hook at
+  all. Changes:
+  - **`hooks/lib/git-facts.sh`** — adds a fork-free `primary` fact (a primary
+    working tree has `.git` as a directory; a linked worktree has `.git` as a
+    file) and a `git_facts_in_primary_tree` accessor; cache format bumped v1→v2.
+  - **`rules/subrules/truly-agentic-git-workflow/main-branch-guard.sh`** — protects
+    the entire primary working tree (any branch) instead of only the default
+    branch. The gitignore exemption (`.history/`, `.agents/scratch|artifacts`) and
+    the non-git and linked-worktree allowances are preserved; linked worktrees
+    under `.agents/worktrees/` remain the one place agents write, add, and commit.
+  - **`hooks/pre-tool-use/git-guard.sh`** — adds `git switch` to the banned
+    subcommands (`checkout` was already banned), catching every dressed form
+    (`git -C <path> switch`, `FOO=1 git switch`, `cd … && git switch`, `sh -c`).
+  - **`rules/subrules/foundations.md`** (F5), **`.../truly-agentic-git-workflow/rule.md`**,
+    and the composed **`rules/AGENTS.md`** updated to state the primary-tree rule
+    and the switch/checkout ban, so the rule text matches the mechanism.
+  - Permission layer (`permissions/groups/99-deny.yaml` → built `default.yaml`)
+    already denied plain `git checkout` / `git switch`; the hook is what now closes
+    the dressed forms the permission prefix-globs cannot match.
+  - Fails **safe** under a non-atomic two-file rollout: if `main-branch-guard.sh`
+    is updated before `git-facts.sh`, the guard only trusts the lib when it exports
+    `git_facts_in_primary_tree`, else falls through to the git-fork path (a stale
+    lib no longer silently allows a primary-tree commit).
+  - **Submodules** are treated as primary-tree content, not linked worktrees: a
+    `.git`-as-file is a linked worktree only when its `gitdir:` points under
+    `.git/worktrees/`; a submodule's `.git/modules/…` pointer stays protected.
+
+- **Regression debugging now identifies who caused the change and how it escaped review.**
+  `/debug` and `/swarm:debug` invoke the existing read-only `/blame` primitive for
+  regressions, then report the culprit commit/PR and diff, the lost or weakened test,
+  the responsible agent/session, and whether the PR flagged the loss or let it slip
+  silently. The fleet-wide research rule now makes that attribution part of debugging
+  discipline instead of allowing an investigation to stop at the technical root cause.
 
 - **An orchestrator now owns what it spawns, and an armed watcher is a claim it must
   verify.** Changes to `rules/subrules/parallel-teams.md`, `skills/teams/SKILL.md`, and
@@ -82,10 +121,22 @@
 
 ### Fixed
 
-- **The repository pre-commit hook now refuses every staged path under `.agents/`.**
-  The system mirror no longer tracks a session-specific rendered plan, ignores the whole
-  local `.agents/` tree, and names offending additions or deletions before a commit can
-  distribute per-machine agent output fleet-wide.
+- **Visual delivery read-back (`hooks/stop/visual_readback.py`, `verify-work-state.py`,
+  `verify-delivery-chain.py`, and `00-agent-verify-work-complete.sh`).** A visual artifact
+  authored under `/tmp` and sent with `scp`, `rsync`, `agents share`, or `open` now counts
+  as a delivery. Narrow final-message claims such as “what you're looking at” require a
+  paired image result after the latest render, including on the first
+  `stop_hook_active` retry. The advisory `pre-tool-use/11-visual-readback-nudge.py` names
+  the headless `agents browser` path without blocking transport commands.
+
+- **UI rules now render without stealing focus.** `rules/subrules/ui-work-discipline.md`
+  is included in `rules/rules.yaml`; it directs workers to a bare headless
+  `agents browser` render, screenshot, and read-back. `plan-presentation` now renders and
+  inspects every plan but opens it on the interactive host only when requested.
+
+- **The repository pre-commit hook refuses local output under `.agents/`, while reviewed
+  plans remain trackable under `.agents/plans/`.** It names offending additions or
+  deletions before a commit can distribute per-machine agent output fleet-wide.
 
 - **Stop hook: the command-handback gate stops false-firing on paste-into-a-form and
   send-a-message handoffs.** `00-agent-verify-work-complete.sh` blocked a stop when the

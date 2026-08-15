@@ -3,7 +3,7 @@
 #
 # Enforces the plan-presentation rule: a plan must be RENDERED as a self-contained
 # HTML doc (plan-render skill) before it is presented, so the user reviews it in the
-# browser — skinned in the product's brand, light/dark, opened on the Mac they sit at.
+# browser — skinned in the product's brand, light/dark, and inspected headlessly.
 #
 # The source of truth is Markdown under the repo's dated artifact layout:
 #   `.agents/artifacts/yyyy-mm-dd/<artifact-title>.md`
@@ -190,7 +190,7 @@ fi
   echo "Before presenting this plan (plan-presentation rule), finish these:"
   echo
   if [ "$html_ok" != 1 ]; then
-    echo "* Render a FIGURE-RICH browser-ready HTML plan and open it on the user's Mac."
+    echo "* Render and inspect a FIGURE-RICH browser-ready HTML plan headlessly."
     echo "  Load the plan-render skill. Author Markdown under the dated artifact layout:"
     echo "    .agents/artifacts/yyyy-mm-dd/plan-<slug>.md"
     echo "  then:"
@@ -204,9 +204,11 @@ fi
     echo "    - fenced code blocks for commands/APIs (not only inline \`code\` pills)"
     echo "    - at least one table (files/risks/validation) and an artifact-callout"
     echo "  artifacts check/render now ERROR if a plan has no drawn SVG figure."
-    echo "  Open it on the online macOS device (resolve from \`agents devices\`):"
-    echo "    scp .agents/artifacts/\$DATE/plan-<slug>.html <host>:/tmp/ && agents ssh <host> 'open /tmp/plan-<slug>.html'"
-    echo "  Headless fleet with no browser host: still render a figure-rich file (that clears this)."
+    echo "  Inspect without stealing focus:"
+    echo "    agents browser start --url file://\$PWD/.agents/artifacts/\$DATE/plan-<slug>.html"
+    echo "    agents browser screenshot -o /tmp/plan-<slug>.png"
+    echo "    view_image /tmp/plan-<slug>.png"
+    echo "  Copy/open it on the interactive host only when the user explicitly requested it."
     echo "  Same layout for any related artifact (visuals, reports): .agents/artifacts/yyyy-mm-dd/<title>.md"
   fi
   if [ "$checklist_ok" != 1 ]; then

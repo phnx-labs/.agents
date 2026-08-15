@@ -85,6 +85,7 @@ the live version); show the result, don't narrate it.
 - **Swarm work is blind to the seam between tracks.** "Every track's PR merged green" is not "the composed feature runs where one track calls another" — each teammate's tests and reviewer only saw its own half. Trigger the cross-track flow end-to-end and quote its real output before calling it done; never per-track green.
 - **A gap is a problem to solve, not to report.** Your first move on a ⚠️ / "hung" / "skipped" / untriggered hop is to drive it to done yourself — fix it, work around it (reduce scope, override config, run the command directly), or reach the outcome another way. "Call it unverified" is the last resort after you've genuinely exhausted those; even then, quote the gap and never write "confirmed."
 - **Docs + CHANGELOG are part of done**, not a follow-up the user must request: when a change touches a user-visible surface (a flag, command, API, config, behavior), update the docs that already cover it and add a CHANGELOG line under the next version, in the *same* delivery. Exempt (say so): pure bug fixes, internal refactors, test-only changes, self-evident renames.
+- **A message or application is done only when it is staged where it gets sent.** For a task to reply, reach out, apply, or DM someone, done means the message is sitting in the channel the user actually sends from: a reply draft inside the Gmail/InMail thread, the LinkedIn or application composer with the text already in it. Draft text in a scratch `.md` file or on the clipboard is NOT "send-ready" and must not be called that. "I wrote the reply" is not "the reply is ready to send" (a real miss: recruiter replies left as `.md` files drew *"where do I hit the replies? did you create them as drafts in my Gmail properly as replies to those messages?"*). Stage it in the channel; the only piece you legitimately hand back is the final Send when it genuinely requires the user's own identity.
 - **A "build it / ship it / release" carries through the whole chain:** merge-on-green → publish → tag + push the tag → upgrade every reachable host → verify the installed version. No fresh ask at each hop. **But a status *question* ("did you ship it?", "is it live?") is a request to report, not a go-signal** — quote the phrase back and confirm in one line if intent is genuinely ambiguous.
 - **Independently-shippable surfaces deploy on their own prerequisites** — a landing site is not blocked on an npm publish; gate each on its own readiness, label what's still coming.
 
@@ -109,7 +110,8 @@ message here is a note in an empty room. Never stop silently.
 
 ## F5 — Protect what you can't undo.
 
-- **The default branch is untouchable.** Every change is a worktree + PR off `origin/<default>` (mechanically enforced by `main-branch-guard`); never create/edit/commit a file on the default branch. Worktrees live only under `<repo>/.agents/worktrees/<slug>/`.
+- **The user's primary working tree is untouchable — on ANY branch.** Every change is a LINKED worktree + PR off `origin/<default>` (mechanically enforced by `main-branch-guard`, which protects the whole primary tree, not just the default branch); never create/edit/commit a tracked file in the user's checkout. Worktrees live only under `<repo>/.agents/worktrees/<slug>/`. Blocking only the default branch was not enough — agents checked out a feature branch in the main checkout and never switched back, stranding it (the `review-2704` trap).
+- **Never switch the primary checkout's branch** — `git checkout` and `git switch` are both banned for the agent (blocked by `git-guard`); switching in place strands the user's tree. Create a linked worktree instead.
 - **Never `git reset --hard`, force-push, `git checkout -- .`, `stash`, `clean`, or rewrite history** on the agent's shell (the `git-guard` blocks these) — they have caused real, irreversible data loss. Reconcile a diverged branch with **rebase**, and commit instead of stashing. Resolve obstacles (conflicts, locks) at the source, never with a destructive shortcut.
 - **Never bypass the safety rails at merge:** no `gh pr merge --admin`, never self-approve your own PR (the clearing review must be a non-author — an automated repo reviewer counts), never merge red.
 - **Never transfer credentials or auth files** (tokens, `~/.rush/user.yaml`, keychain exports) to another host without explicit authorization.
@@ -122,7 +124,7 @@ Epistemic rigor — the habits that keep claims true. (F3 governs *done*-ness; t
 governs *every* factual claim along the way.)
 
 - **No unverified claims.** Every factual claim — code, counts, sizes, API capabilities — needs proof: a file path, a line number, code quoted from this conversation. "I think there are 26 files" is a violation. Run the tool, then report. When in doubt, spawn subagents — cost is irrelevant, correctness is everything.
-- **No lazy debugging.** Read every file in the data path. If data flows A → B → C → D, read all four and present file:line quotes from each.
+- **No lazy debugging.** Read every file in the data path. If data flows A → B → C → D, read all four and present file:line quotes from each. When debugging a regression on this fleet, attribute the culprit change to its agent/session (`git blame` → commit → `agents sessions preview`) and note whether the PR flagged the loss; do not stop at "what broke."
 - **Current-code anchoring.** Your local checkout goes stale the moment another agent pushes — on this fleet, constantly. Before you diagnose a codebase, call something a bug/regression, or open a "fix" PR, `git fetch origin` and check how far behind you are (`git rev-list --count HEAD..origin/<default>`); read the *latest* code, not your working-tree HEAD. A real miss: an architecture diagnosed against a checkout 39 commits / ~90 min stale produced confident-but-false claims and a merged PR that "restored" code a newer commit had deliberately superseded — the fix *was* the regression. The git analog of current-date anchoring below.
 - **Current date anchoring.** Your weights are stale. The real date is in the system prompt under `currentDate`. Every web query about state-of-the-world (models, APIs, prices, libraries, releases) must include the current YEAR.
 - **Web-search first for time-sensitive claims.** WebSearch before answering, not "if the user asks." Load search tools eagerly at session start: `ToolSearch select:WebSearch,WebFetch`.
@@ -162,24 +164,33 @@ whole load and token spend stays low (this is the cost policy behind F2's
 
 # Truly Agentic Git Workflow
 
-**The default branch is untouchable. Every change is a worktree + PR. Always.**
+**The user's primary working tree is untouchable — on ANY branch. Every change is
+a LINKED worktree + PR. Always.**
 
-Never create, edit, or delete a file with the agent's file tools
-(Write/Edit/NotebookEdit), and never `git add`/`git commit`, while a repo is on its
-default branch (`main`/`master`/whatever `origin/HEAD` points at). This is
-**mechanically enforced** by the bundled `main-branch-guard` (PreToolUse). The
-commit gate is the choke point: even a file changed by raw shell (`>`, `sed -i`,
-`git rm`) on the default branch can never be *committed* there — so nothing lands
-on the default branch outside a worktree + PR. No exceptions, no escape hatch.
-Worktrees (feature branches), non-git paths (`/tmp`, scratchpad), and
-**gitignored paths** (e.g. the harness memory dir under `.history/`, or
-`.agents/scratch`, `.agents/artifacts`) are unaffected — a gitignored file can
-never be committed, so a write there can't land on the default branch. The guard
-gates only the agent's tool calls — the user's own editor and `!`-prefixed
-session commands are never blocked.
+Never create, edit, or delete a tracked file with the agent's file tools
+(Write/Edit/NotebookEdit), and never `git add`/`git commit`, while the target is
+inside a repo's **primary working tree** — the user's own checkout — regardless of
+which branch it is on. This is **mechanically enforced** by the bundled
+`main-branch-guard` (PreToolUse), which protects the whole primary tree, not just
+the default branch. The reason it is the whole tree: agents were checking out a
+feature branch *in the user's main checkout* and never switching back, stranding
+it on a branch and dozens of commits behind (the `review-2704` trap) — blocking
+only the default branch let that through.
 
-If you catch yourself about to edit a file in a checkout that's on `main`, stop
-and make a worktree first (recipe below).
+The ONLY place an agent writes, adds, or commits is a **linked worktree**
+(`git worktree add` under `<repo>/.agents/worktrees/<slug>/`). Linked worktrees,
+non-git paths (`/tmp`, scratchpad), and **gitignored paths** (the harness memory
+dir under `.history/`, `.agents/scratch`, `.agents/artifacts`) are unaffected — a
+gitignored file never dirties the tracked tree or lands in a PR. The guard gates
+only the agent's tool calls — the user's own editor and `!`-prefixed session
+commands are never blocked.
+
+`git switch` and `git checkout` are **both banned** for the agent (enforced by
+`git-guard`): switching the primary checkout onto another branch is exactly the
+strand-the-tree trap. Never switch branches in place — create a linked worktree.
+
+If you catch yourself about to edit a file in the primary checkout (any branch),
+stop and make a worktree first (recipe below).
 
 **Diagnose on the latest code, not your working-tree HEAD.** Before you read a
 codebase to call something a bug, claim a regression, or open a "fix" PR,
@@ -685,6 +696,22 @@ re-read up to 34×/session). A follow-up A/B then showed *misused* mq (the dance
 is worse than reading — so the win depends on the discipline above, not on reaching
 for mq blindly.
 
+# UI Work — See It Before "Done", Design It for the Eyes
+
+## Verify UI by looking at it
+
+- A UI or visual change is not verified until you have seen the rendered result and judged it against the intent. A passing build or present bundle strings are proxies, not proof (F3).
+- **One-off HTML and worker-host UI:** render headlessly with a bare `agents browser start --url file://<absolute-path>`, capture it with `agents browser screenshot -o /tmp/<name>.png`, then read that exact path with `view_image` and critique it. On workers, never pass `--profile` or hunt for a browser binary; the machine resolves its configured headless profile.
+- **Webview or web UI:** first check for the repository's preview harness (Vite, Storybook, or a `/preview` route), then use `agents browser` against that real surface and inspect a screenshot.
+- **Native UI:** use `agents computer` in element mode. `describe` returns element refs; `click --id` and `type --id` do not steal foreground focus. Never use `--raise` or coordinate clicks on a machine the user is using. Screenshots are focus-safe.
+- Render and inspect on the machine doing the work. Transfer or `open` the result on the interactive host only when the user explicitly requested it, and never before read-back.
+
+## Design for what the user will see
+
+- Lead with the visible behavior and appearance, then the implementation details.
+- Product mockups must use the product's real layout, components, and visual language. Abstract diagrams do not substitute for a product-faithful mockup.
+- When a genuine design choice exists, show two or three rendered variations with one-line tradeoffs and stop at the design gate for the user's choice.
+
 # Present Plans as Browser-Ready HTML
 
 **Whenever you produce an implementation plan — the harness's native plan mode
@@ -797,14 +824,15 @@ transport — lives in the **`plan-render` skill**. Load it and follow it.
   light editorial house palette only when the product declares no brand.
 - **Light + dark.** Ship the in-page `◐` toggle, defaulting to the OS
   `prefers-color-scheme`, so the plan is readable in bright light and dim alike.
-- **Open it proactively, every time.** Resolve the online macOS device from the
-  **Host & Fleet** context (`agents ssh <host> 'open …'` when remote; local `open` /
-  `xdg-open` otherwise). macOS `open` uses the user's **default browser**. **Never
-  hardcode a host** — resolve it from `agents devices`. If the user is away, the plan is
-  waiting in a tab when they return. Skip only the *open* (never the render) when no
-  browser host is reachable.
+- **Render every time; open only on request.** On a worker, use its headless default with
+  `agents browser start --url file://<absolute-plan-path>`, save a screenshot with `-o`,
+  and inspect that exact path with `view_image`. On
+  the interactive host, still render headlessly so the user's focus is untouched. Copy or
+  `open` the HTML on that host only when the user explicitly asked to see it. Never
+  hardcode a host; resolve the interactive device from `agents devices`.
 
-A plan the user can't see rendered is not presented. Render, open, then discuss.
+A plan the agent has not seen rendered is not presented. Render, inspect, then discuss;
+open it for the user only on request.
 
 ## A multi-step plan also carries a checklist
 

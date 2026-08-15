@@ -29,9 +29,102 @@ export AGENT_SELF="${AGENT_SELF:-claude}"
 AGENT_SELF_SAFE=$(printf '%s' "$AGENT_SELF" | tr -cd 'A-Za-z0-9_-')
 export AGENT_SELF_SAFE="${AGENT_SELF_SAFE:-claude}"
 
-# Candidate names to match the cwd against a Linear project. Git repo name first
-# (stable across subdirs), then the raw cwd basename. Python normalizes both
-# ("agents-cli" and "Agents CLI" -> "agentscli").
+# Portable timeout. macOS ships neither `timeout` nor `gtimeout`, and the old
+# fallback here ran the command BARE — so on every Mac on this fleet nothing was
+# bounded at all, and a hung call took the whole hook past its manifest timeout,
+# which delivers zero bytes rather than a degraded brief. Emulate it instead:
+# run the command in the background with a watchdog that kills it.
+#
+# The watchdog's own output is discarded so a command substitution around this
+# closes when the command does, not when the watchdog does.
+# Emulation runs through python3, which this hook already hard-depends on, not
+# through bash job control. Two things the obvious bash version gets wrong:
+# killing the child's pid leaves ITS children holding the pipe (a `$(...)` then
+# still blocks for the full duration), and a backgrounded job silently loses
+# stdin. `start_new_session` + `killpg` kills the whole subtree, and the
+# std streams are inherited.
+_to() {
+  local secs="$1"; shift
+  if command -v timeout >/dev/null 2>&1; then timeout "$secs" "$@"; return $?; fi
+  if command -v gtimeout >/dev/null 2>&1; then gtimeout "$secs" "$@"; return $?; fi
+  command -v python3 >/dev/null 2>&1 || { "$@"; return $?; }
+  python3 -c '
+import os, signal, subprocess, sys
+secs = float(sys.argv[1])
+try:
+    p = subprocess.Popen(sys.argv[2:], start_new_session=True)
+except (FileNotFoundError, PermissionError):
+    sys.exit(127)
+try:
+    sys.exit(p.wait(timeout=secs))
+except subprocess.TimeoutExpired:
+    for sig in (signal.SIGTERM, signal.SIGKILL):
+        try:
+            os.killpg(os.getpgid(p.pid), sig)
+        except Exception:
+            pass
+        try:
+            p.wait(timeout=1)
+            break
+        except Exception:
+            continue
+    sys.exit(124)
+' "$secs" "$@"
+}
+
+# Which Linear project is this cwd? `agents projects` owns that mapping — a def
+# under ~/.agents/projects/<name>.yaml binds a root, its repos[].path entries,
+# and a `linear.projectId`/`linear.name`. Ask the CLI rather than re-deriving it:
+# `for-cwd` does longest-match over every bound root and monorepo subpath, so a
+# worktree, a subdir, and two projects sharing one monorepo root all resolve
+# correctly — none of which a basename comparison can do.
+#
+# Cost: two CLI calls, measured 0.28-0.31s each on an idle box. The brief below
+# already budgets 8s of curl and the lane sweep up to 3s against a `timeout: 15`
+# manifest cap, so ~0.6s here stays inside the remaining headroom. Both are
+# bounded and fail open — no `agents` on PATH, no def for this cwd, or a slow
+# call just leaves the fields empty and the basename fallback takes over.
+CWD_PROJECT_DEF=""
+CWD_PROJECT_NAME=""
+OTHER_PROJECT_NAMES=""
+if command -v agents >/dev/null 2>&1; then
+  CWD_PROJECT_DEF=$(_to 3 agents projects for-cwd --json 2>/dev/null | python3 -c '
+import json, sys
+try:
+    print((json.load(sys.stdin) or {}).get("name") or "")
+except Exception:
+    pass
+' 2>/dev/null || true)
+  if [ -n "$CWD_PROJECT_DEF" ]; then
+    # The def name is the LOCAL id ("agents-cli"); linear.name is what the board
+    # calls the work ("AGI"). Several defs may point at one Linear project, so
+    # the board name is the right key for matching the project rows below.
+    CWD_PROJECT_NAME=$(_to 3 agents projects list --json 2>/dev/null | CWD_PROJECT_DEF="$CWD_PROJECT_DEF" python3 -c '
+import json, os, sys
+want = os.environ.get("CWD_PROJECT_DEF") or ""
+try:
+    defs = json.load(sys.stdin)
+except Exception:
+    raise SystemExit
+if not isinstance(defs, list):
+    raise SystemExit
+for d in defs:
+    if (d or {}).get("name") == want:
+        print(((d.get("linear") or {}).get("name")) or "")
+        break
+' 2>/dev/null || true)
+  fi
+fi
+export CWD_PROJECT_NAME
+
+# The basename fuzz stays armed even when the def resolved. It is the fallback
+# for two cases, and disabling it on a merely-PRESENT linear.name failed closed:
+# a def whose recorded name no longer matches any live project (the CLI only
+# started refreshing it in 1.22.40, so every older def carries a stale label)
+# expanded NOTHING and claimed no def existed. Python prefers the exact match
+# and only falls back when it finds no project by that name.
+# Git repo name first (stable across subdirs), then the raw cwd basename; python
+# normalizes both ("agents-cli" and "Agents CLI" -> "agentscli").
 git_root=$(git rev-parse --show-toplevel 2>/dev/null)
 export CWD_PROJECT_HINTS="$(basename "$git_root" 2>/dev/null),$(basename "$PWD" 2>/dev/null)"
 
@@ -166,6 +259,9 @@ import json, sys, os, re
 # be able to carry newlines or markup.
 SELF = os.environ.get('AGENT_SELF_SAFE') or 'claude'
 HINTS = [h for h in os.environ.get('CWD_PROJECT_HINTS', '').split(',') if h.strip()]
+# Set when \`agents projects\` resolved this cwd to a def carrying a linear.name.
+# Authoritative when present: HINTS is then empty and the fuzz never runs.
+CWD_PROJECT = (os.environ.get('CWD_PROJECT_NAME') or '').strip()
 
 def norm(s):
     return re.sub(r'[^a-z0-9]', '', (s or '').lower())
@@ -268,7 +364,12 @@ try:
     ]
     hint_norms = [norm(h) for h in HINTS if norm(h)]
 
-    def is_cwd_match(p):
+    def exact_match(p):
+        # The recorded link. Exact only: this is not a guess, so widening it
+        # could only add false matches.
+        return bool(CWD_PROJECT) and norm(p.get('name')) == norm(CWD_PROJECT)
+
+    def fuzzy_match(p):
         pn = norm(p.get('name'))
         if pn in hint_norms:
             return True
@@ -276,6 +377,14 @@ try:
             if len(hn) >= 4 and (hn in pn or pn in hn):
                 return True
         return False
+
+    # Prefer the recorded link, but only when it actually names a live project.
+    # A def carrying a name the board no longer uses must degrade to the guess,
+    # not to nothing — that was the fail-closed bug.
+    _matcher = exact_match if any(exact_match(p) for p in live_projects) else fuzzy_match
+
+    def is_cwd_match(p):
+        return _matcher(p)
 
     # cwd-matched project first, then the rest alphabetically.
     focus = [p for p in live_projects if is_cwd_match(p)]
@@ -287,13 +396,31 @@ try:
 
     if ordered:
         print(f'## Projects ({len(ordered)})')
-        print('_Each project: milestones, then top open tickets by priority. Full board: linear tasks --project <name> --by-milestone._')
+        # Depth goes to the project this cwd belongs to; the rest are one line
+        # each. Printing every project in full was ~13.8KB of injected context
+        # per session, most of it about work this session cannot touch.
+        if focus:
+            print(f'_Depth on **{focus[0].get(\"name\")}** (this working directory). Others are one line — \`linear tasks --project <name> --by-milestone\` for detail._')
+        else:
+            # Nothing claims this directory: fail OPEN to the old full listing.
+            # Collapsing every project here would leave a session with no board
+            # context at all, which is strictly worse than the pre-scoping brief.
+            print('_Each project: milestones, then top open tickets by priority. Full board: linear tasks --project <name> --by-milestone._')
         print()
         for p in ordered:
             name = p.get('name') or 'unnamed'
             pct = pct_str(p.get('progress')) or '?'
             state = p.get('state') or ''
-            star = ' ★ cwd' if is_cwd_match(p) else ''
+            # `focus and` keeps the no-focus case on the full listing, matching
+            # the cycle section below — one rule, both sections.
+            if focus and not is_cwd_match(p):
+                # One-line roll-up: enough to know the project exists and roughly
+                # where it stands, without its milestones or ticket list.
+                n_open = len((p.get('issues') or {}).get('nodes', []))
+                open_s = f' · {n_open}+ open' if n_open else ''
+                print(f'- **{name}** — {pct} · {state}{open_s}')
+                continue
+            star = ' ★ this directory' if is_cwd_match(p) else ''
             print(f'### {name}{star} — {pct} · {state}')
 
             ms = (p.get('projectMilestones') or {}).get('nodes', [])
@@ -413,14 +540,22 @@ try:
 
     if by_project:
         print('### Cycle by project')
+        focus_names = {(p.get('name') or '') for p in focus}
+
         # Focus project first if present, then alpha
         def proj_sort_key(name):
-            for p in focus:
-                if (p.get('name') or '') == name:
-                    return (0, name.lower())
-            return (1, name.lower())
+            return (0, name.lower()) if name in focus_names else (1, name.lower())
+
+        # Same scoping rule as the Projects section above: the cwd's project is
+        # listed ticket by ticket, every other project collapses to a count.
+        # Measured before this: 5865 bytes, 54% of the whole injection, and most
+        # of it was cycle tickets for projects this session cannot act on.
+        rolled = []
         for pname in sorted(by_project.keys(), key=proj_sort_key):
             issues = sorted(by_project[pname], key=pri_rank)
+            if focus_names and pname not in focus_names:
+                rolled.append(f'{pname} {len(issues)}')
+                continue
             # Cap per project in the cycle section to protect context
             CAP = 12
             shown = issues[:CAP]
@@ -430,6 +565,9 @@ try:
                 print(fmt_issue_line(n, with_desc=False))
             if more > 0:
                 print(f'- _+{more} more in cycle (see project section / linear tasks --project {pname})_')
+            print()
+        if rolled:
+            print('**Elsewhere in the cycle:** ' + ' · '.join(rolled) + ' open — \`linear tasks --project <name>\`')
             print()
 
     # Other-agent counts only (not full dump — agents already have project view).

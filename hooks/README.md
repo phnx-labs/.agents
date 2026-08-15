@@ -92,6 +92,7 @@ register time). See [§Subrule hooks](#subrule-hooks-rules-not-this-tree).
 | [`01-git-require-clean-tree.sh`](./pre-tool-use/01-git-require-clean-tree.sh) | Blocks `git pull` / `rebase` / autostash while the tree is dirty |
 | [`09-mailbox-inject.py`](./pre-tool-use/09-mailbox-inject.py) | Delivers queued messages into a running session |
 | [`10-mq-read-nudge.py`](./pre-tool-use/10-mq-read-nudge.py) | On a large whole-file `Read`, suggests `mq` |
+| [`11-visual-readback-nudge.py`](./pre-tool-use/11-visual-readback-nudge.py) | Advises rendering and reading back a visual artifact before it leaves the session |
 
 ### `user-prompt-submit/` — UserPromptSubmit
 
@@ -108,6 +109,7 @@ register time). See [§Subrule hooks](#subrule-hooks-rules-not-this-tree).
 |---|---|
 | [`00-agent-verify-work-complete.sh`](./stop/00-agent-verify-work-complete.sh) | Blocks a stop that claims "done" without verification / open PR with no handoff |
 | [`verify-work-state.py`](./stop/verify-work-state.py) | Goal-scoped positive-evidence classifier, session-owned entity ledger, and structured gate telemetry used by `verify-work-complete` |
+| [`visual_readback.py`](./stop/visual_readback.py) | Shared transcript evidence for authored, delivered, and image-read visual artifacts |
 | [`verify-delivery-chain.py`](./stop/verify-delivery-chain.py) | Goal-scoped delivery-chain verifier invoked by the Stop gate (not registered alone) |
 
 ### `notification/` — Notification

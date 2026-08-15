@@ -21,6 +21,12 @@ hooks:
     matcher: Read
     script: pre-tool-use/10-mq-read-nudge.py
     timeout: 5
+  visual-readback-nudge:
+    # Advisory only: reminds once per artifact before a visual leaves the session.
+    events: [PreToolUse]
+    matcher: Bash
+    script: pre-tool-use/11-visual-readback-nudge.py
+    timeout: 5
   session-start-autosync:
     events:
       - SessionStart
@@ -142,7 +148,12 @@ hooks:
     events:
       - SessionStart
     script: session-start/03-linear-inject-tasks-context.sh
-    timeout: 15
+    # 20, not 15: the brief curl (8s) + three sweep pages (3s) + the two bounded
+    # project-resolution calls (6s) is a 17s worst case, and the sweep runs
+    # BEFORE anything prints — an overrun delivers zero bytes, not a short brief.
+    # The script's own test asserts this sum against this number, counting both
+    # curl's --max-time and each `_to <secs>`, so the two move together.
+    timeout: 20
   # Restored: dropped by 8b006a6 ("remove legacy agents hook config", Jun 24 2026),
   # which removed rm-guard and large-file-add-guard together. rm-guard was later
   # re-registered; this one was forgotten. Verified blocking an 11 MiB `git add`.

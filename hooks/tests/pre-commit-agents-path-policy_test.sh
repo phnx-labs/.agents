@@ -20,9 +20,14 @@ git -C "$TMP_DIR" commit -q -m "normal commit"
 
 mkdir -p "$TMP_DIR/.agents/plans"
 printf 'local plan\n' > "$TMP_DIR/.agents/plans/plan.html"
-NEWLINE_PATH=$'.agents/plans/line\nbreak.html'
-printf 'newline plan\n' > "$TMP_DIR/$NEWLINE_PATH"
-git -C "$TMP_DIR" add .agents/plans/plan.html "$NEWLINE_PATH"
+git -C "$TMP_DIR" add .agents/plans/plan.html
+git -C "$TMP_DIR" commit -q -m "tracked reviewed plan"
+
+mkdir -p "$TMP_DIR/.agents/artifacts"
+printf 'local artifact\n' > "$TMP_DIR/.agents/artifacts/output.html"
+NEWLINE_PATH=$'.agents/artifacts/line\nbreak.html'
+printf 'newline artifact\n' > "$TMP_DIR/$NEWLINE_PATH"
+git -C "$TMP_DIR" add .agents/artifacts/output.html "$NEWLINE_PATH"
 
 set +e
 ADD_OUTPUT=$(git -C "$TMP_DIR" commit -m "must fail" 2>&1)
@@ -33,12 +38,12 @@ if [[ $ADD_STATUS -eq 0 ]]; then
     echo "FAIL: staged .agents/ addition was committed" >&2
     exit 1
 fi
-if [[ "$ADD_OUTPUT" != *"Commit blocked: .agents/ contains local agent output and must not be tracked."* ]]; then
+if [[ "$ADD_OUTPUT" != *"Commit blocked: .agents/ contains local agent output outside tracked .agents/plans/."* ]]; then
     echo "FAIL: missing path-policy refusal for .agents/ addition" >&2
     echo "$ADD_OUTPUT" >&2
     exit 1
 fi
-if [[ "$ADD_OUTPUT" != *".agents/plans/plan.html"* ]]; then
+if [[ "$ADD_OUTPUT" != *".agents/artifacts/output.html"* ]]; then
     echo "FAIL: refusal did not name the staged .agents/ addition" >&2
     echo "$ADD_OUTPUT" >&2
     exit 1
@@ -49,8 +54,8 @@ if [[ "$ADD_OUTPUT" != *"$NEWLINE_PATH"* ]]; then
     exit 1
 fi
 
-git -C "$TMP_DIR" commit -q --no-verify -m "fixture: track local plan"
-rm "$TMP_DIR/.agents/plans/plan.html"
+git -C "$TMP_DIR" commit -q --no-verify -m "fixture: track local artifact"
+rm "$TMP_DIR/.agents/artifacts/output.html"
 rm "$TMP_DIR/$NEWLINE_PATH"
 git -C "$TMP_DIR" add -u .agents
 
@@ -63,10 +68,10 @@ if [[ $DELETE_STATUS -eq 0 ]]; then
     echo "FAIL: staged .agents/ deletion was committed" >&2
     exit 1
 fi
-if [[ "$DELETE_OUTPUT" != *".agents/plans/plan.html"* ]]; then
+if [[ "$DELETE_OUTPUT" != *".agents/artifacts/output.html"* ]]; then
     echo "FAIL: refusal did not name the staged .agents/ deletion" >&2
     echo "$DELETE_OUTPUT" >&2
     exit 1
 fi
 
-echo "PASS: pre-commit blocks staged .agents/ additions and deletions, and allows unrelated commits"
+echo "PASS: pre-commit tracks reviewed plans and blocks other .agents/ additions/deletions"

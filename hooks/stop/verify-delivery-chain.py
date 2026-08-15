@@ -18,6 +18,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from visual_readback import inspect_transcript
+
 LINEAR_BIN = (
     os.environ.get("LINEAR_BIN")
     or shutil.which("linear")
@@ -563,7 +565,12 @@ def main():
     # real delivery with no file diff, and `_release_status` already gates it on
     # independent tag/publish/verify evidence. ANDing is_real_delivery here would
     # silently disable release verification for that ordinary flow.
-    is_real_delivery = bool(pr_data) or (bool(repo_path) and bool(_deliverable_changed_files(repo_path, pr_data)))
+    visual = inspect_transcript(transcript_path, goal_offset)
+    is_real_delivery = (
+        bool(pr_data)
+        or (bool(repo_path) and bool(_deliverable_changed_files(repo_path, pr_data)))
+        or visual["visual_delivered"]
+    )
 
     user_facing = _looks_user_facing(pr_data, first_user_msg) and is_real_delivery
     docs_ok, changelog_ok = _docs_changelog_status(repo_path, pr_data) if repo_path else (True, True)
@@ -586,6 +593,8 @@ def main():
         issues.append("independently-shippable change not released/verified")
     if (ticket_ids or user_facing or shippable) and not evidence_ok:
         issues.append("outcome evidence missing")
+    if visual["visual_delivered"] and not visual["visual_read_back"]:
+        issues.append("visual artifact delivered without image read-back")
 
     if not issues:
         return
@@ -621,6 +630,14 @@ def main():
         if not release_verified:
             lines.append("  Missing: live verification evidence (npm view, installed --version, gh release view, health URL, etc.).")
         lines.append("  Satisfy: run the release, verify it is live, and cite the concrete version/URL/output in your final message.")
+        lines.append("")
+
+    if visual["visual_delivered"] and not visual["visual_read_back"]:
+        lines.append("Visual artifact delivery has no image read-back after the latest render:")
+        lines.append(f"  - {visual['latest_visual'] or 'visual artifact'}")
+        lines.append("  Render it headlessly with `agents browser start --url file://…`, capture it with")
+        lines.append("  `agents browser screenshot -o /tmp/<name>.png`, then read that path with")
+        lines.append("  `view_image` before describing it.")
         lines.append("")
 
     if (ticket_ids or user_facing or shippable) and not evidence_ok:

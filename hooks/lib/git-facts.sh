@@ -14,6 +14,9 @@
 #   cur   — current branch short name (empty if detached)
 #   def   — origin/HEAD default branch short name (may be empty)
 #   on    — 1 if cur is the default (or main/master fallback), else 0
+#   primary — 1 if the worktree root is the PRIMARY working tree (`.git` is a
+#             directory, or a submodule pointer), 0 if a linked worktree
+#             (`.git` file → `gitdir: …/.git/worktrees/…`)
 #
 # Invalidation (both required for a hit):
 #   1. TTL expiry (default 5s; override GIT_FACTS_TTL_SEC; 0 disables cache)
@@ -24,15 +27,19 @@
 #
 # State: ~/.agents/.cache/state/git-facts/  (override with GIT_FACTS_CACHE_DIR)
 # Format (one line, pipe-separated, no newlines in fields):
-#   v1|<expiry_epoch>|<top>|<cur>|<def>|<on>|<head_content>
+#   v2|<expiry_epoch>|<top>|<cur>|<def>|<on>|<primary>|<head_content>
+#   (v1 — without <primary> — is rejected by the prefix check and safely misses.)
 #
 # Public API (source this file, then call):
 #   git_facts_load <dir>
-#     Sets GIT_FACTS_TOP / GIT_FACTS_CUR / GIT_FACTS_DEF / GIT_FACTS_ON_DEFAULT.
-#     Returns 0 when <dir> is inside a git worktree, 1 otherwise.
+#     Sets GIT_FACTS_TOP / GIT_FACTS_CUR / GIT_FACTS_DEF / GIT_FACTS_ON_DEFAULT /
+#     GIT_FACTS_PRIMARY. Returns 0 when <dir> is inside a git worktree, 1 otherwise.
 #   git_facts_on_default <dir>
 #     Convenience: return 0 if protected (on default branch), 1 if allow.
 #     Also sets _top / _cur / _def for deny-message callers (main-branch-guard).
+#   git_facts_in_primary_tree <dir>
+#     Convenience: return 0 if <dir> is in the PRIMARY working tree (protected on
+#     any branch), 1 if a linked worktree / not a repo. Sets _top / _cur / _def.
 #
 # Hit/miss counters (for tests / microbenches; process-local only):
 #   GIT_FACTS_HITS  GIT_FACTS_MISSES
@@ -126,6 +133,29 @@ _git_facts_compute() {
   _gf_def=$(git -C "$_gf_top" symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null | sed 's#^origin/##') || _gf_def=""
   _gf_head=$(_git_facts_read_head "$_gf_top" 2>/dev/null) || _gf_head=""
 
+  # Primary vs linked worktree, fork-free, via the `.git` entry at the tree top:
+  #   - `.git` is a DIRECTORY        → PRIMARY working tree (protect, any branch).
+  #   - `.git` is a FILE `gitdir: …` → depends on where it points:
+  #       * under `.git/worktrees/`  → a real linked worktree (git worktree add) →
+  #                                     ALLOW; this is where agents work.
+  #       * under `.git/modules/`    → a SUBMODULE working dir — part of the
+  #                                     primary tree's tracked content, NOT an
+  #                                     agent worktree → PROTECT.
+  #       * anything else / unknown  → PROTECT (fail-safe).
+  # This is the same `.git` signal _git_facts_read_head keys on. The primary tree
+  # is the user's own checkout — off-limits to every agent tool call.
+  if [ -d "$_gf_top/.git" ]; then
+    _gf_primary=1
+  elif [ -f "$_gf_top/.git" ]; then
+    _gf_gitdir=$(sed -n 's/^gitdir:[[:space:]]*//p' "$_gf_top/.git" 2>/dev/null | head -1)
+    case "$_gf_gitdir" in
+      */worktrees/*) _gf_primary=0 ;;   # linked worktree — the blessed agent path
+      *)             _gf_primary=1 ;;   # submodule (.git/modules/…) or unknown — protect
+    esac
+  else
+    _gf_primary=0                        # no .git at top — not a normal primary tree
+  fi
+
   _gf_on=0
   if [ -n "$_gf_cur" ]; then
     if [ -n "$_gf_def" ] && [ "$_gf_cur" = "$_gf_def" ]; then
@@ -158,8 +188,8 @@ _git_facts_write() {
   case "$_gf_top$_gf_cur$_gf_def$_gf_head" in
     *'|'*) rm -f "$_tmp" 2>/dev/null; return 0 ;;
   esac
-  printf 'v1|%s|%s|%s|%s|%s|%s\n' \
-    "$_exp" "$_gf_top" "$_gf_cur" "$_gf_def" "$_gf_on" "$_gf_head" >"$_tmp" 2>/dev/null \
+  printf 'v2|%s|%s|%s|%s|%s|%s|%s\n' \
+    "$_exp" "$_gf_top" "$_gf_cur" "$_gf_def" "$_gf_on" "${_gf_primary:-0}" "$_gf_head" >"$_tmp" 2>/dev/null \
     && mv -f "$_tmp" "$_path" 2>/dev/null \
     || rm -f "$_tmp" 2>/dev/null
   return 0
@@ -172,16 +202,17 @@ _git_facts_try_read() {
   [ -f "$_path" ] || return 1
   _line=$(head -1 "$_path" 2>/dev/null) || return 1
   case "$_line" in
-    v1\|*) ;;
+    v2\|*) ;;
     *) return 1 ;;
   esac
   # Split carefully without IFS side effects on the caller.
-  _rest=${_line#v1|}
+  _rest=${_line#v2|}
   _exp=${_rest%%|*}; _rest=${_rest#*|}
   _gf_top=${_rest%%|*}; _rest=${_rest#*|}
   _gf_cur=${_rest%%|*}; _rest=${_rest#*|}
   _gf_def=${_rest%%|*}; _rest=${_rest#*|}
   _gf_on=${_rest%%|*}; _rest=${_rest#*|}
+  _gf_primary=${_rest%%|*}; _rest=${_rest#*|}
   _gf_head=$_rest
 
   # TTL check (0 = disabled / always recompute).
@@ -211,6 +242,7 @@ git_facts_load() {
   GIT_FACTS_CUR=""
   GIT_FACTS_DEF=""
   GIT_FACTS_ON_DEFAULT=0
+  GIT_FACTS_PRIMARY=0
 
   _dir=${1:-.}
   # Windows backslashes → forward.
@@ -242,6 +274,7 @@ git_facts_load() {
       GIT_FACTS_CUR=$_gf_cur
       GIT_FACTS_DEF=$_gf_def
       GIT_FACTS_ON_DEFAULT=$_gf_on
+      GIT_FACTS_PRIMARY=${_gf_primary:-0}
       return 0
     fi
   fi
@@ -255,6 +288,7 @@ git_facts_load() {
   GIT_FACTS_CUR=$_gf_cur
   GIT_FACTS_DEF=$_gf_def
   GIT_FACTS_ON_DEFAULT=$_gf_on
+  GIT_FACTS_PRIMARY=${_gf_primary:-0}
 
   if [ "$_ttl" -gt 0 ] && [ -n "$_cpath" ]; then
     _now=$(_git_facts_now)
@@ -285,5 +319,24 @@ git_facts_on_default() {
   _def=$GIT_FACTS_DEF
   [ -z "$_cur" ] && return 1
   [ "$GIT_FACTS_ON_DEFAULT" = 1 ] && return 0
+  return 1
+}
+
+# git_facts_in_primary_tree <dir>
+# Return 0 if <dir> is inside the PRIMARY working tree of a git repo (the user's
+# own checkout) — protected on ANY branch, so no agent tool call may mutate it.
+# Return 1 for: not a git repo, OR a linked worktree (git worktree add), which is
+# where all agent work belongs. Sets _top / _cur / _def for deny-message builders.
+git_facts_in_primary_tree() {
+  _top=""
+  _cur=""
+  _def=""
+  if ! git_facts_load "$1"; then
+    return 1
+  fi
+  _top=$GIT_FACTS_TOP
+  _cur=$GIT_FACTS_CUR
+  _def=$GIT_FACTS_DEF
+  [ "$GIT_FACTS_PRIMARY" = 1 ] && return 0
   return 1
 }
