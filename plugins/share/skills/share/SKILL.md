@@ -1,8 +1,8 @@
 ---
 name: share
-description: "Publish an agent-generated HTML artifact (a plan, viz, or report) to a shareable link on the user's own Cloudflare R2 (zero egress, ~$0) via `agents share`. Public links get an auto Open Graph cover (a screenshot of the page's hero) so they unfurl into preview cards in Slack/iMessage/Twitter/Discord; private links are unlisted + auto-expiring with no card. Use when an agent has produced HTML worth handing to a human, or when a plan/viz should outlive /tmp. Triggers on: 'share this', 'publish the plan', 'make a link', 'shareable link', 'send me the plan', 'og image / preview card for this'."
+description: "Publish an agent-generated HTML artifact (a plan, viz, or report) to a shareable link on the user's own Cloudflare R2 (zero egress, ~$0) via `agents artifacts share`. Public links get an auto Open Graph cover (a screenshot of the page's hero) so they unfurl into preview cards in Slack/iMessage/Twitter/Discord; private links are unlisted + auto-expiring with no card. Use when an agent has produced HTML worth handing to a human, or when a plan/viz should outlive /tmp. Triggers on: 'share this', 'publish the plan', 'make a link', 'shareable link', 'send me the plan', 'og image / preview card for this'."
 argument-hint: "[file | empty for the session's most recent HTML] [--private]"
-allowed-tools: Bash(agents share*), Bash(agents secrets*), Read(*), Bash(ls*), Bash(curl *)
+allowed-tools: Bash(agents artifacts share*), Bash(agents secrets*), Read(*), Bash(ls*), Bash(curl *)
 user-invocable: true
 ---
 
@@ -21,22 +21,22 @@ $0). The page is stored in R2, so the link outlives the agent that made it.
 
 ## One-time setup (per machine / per fleet)
 
-`agents share` needs an endpoint first. Check with `agents share status`:
+`agents artifacts share` needs an endpoint first. Check with `agents artifacts share status`:
 
-- **Empty** → the user must run **`agents share setup`** once (provisions an R2 bucket
+- **Empty** → the user must run **`agents artifacts share setup`** once (provisions an R2 bucket
   + a tiny Worker on their Cloudflare, read from their `cloudflare.com` secrets bundle;
   maps `share.<domain>` if the token owns the zone, else a free `*.workers.dev` URL), or
-  **`agents share join <baseUrl>`** to publish through an existing endpoint with a shared
+  **`agents artifacts share join <baseUrl>`** to publish through an existing endpoint with a shared
   write token. **Do not provision silently** — tell the user and stop if it's unset.
 - **Configured** → just publish.
 
 ## Publishing
 
 ```bash
-agents share plan.html                 # public link + auto OG cover
-agents share plan.html --slug my-name  # stable, exact slug instead of the default
-agents share plan.html --no-cover      # skip the preview image
-agents share report.html --expire 7d   # auto-expire (30d / 12h / 2026-08-01 also work)
+agents artifacts share plan.html                 # public link + auto OG cover
+agents artifacts share plan.html --slug my-name  # stable, exact slug instead of the default
+agents artifacts share plan.html --no-cover      # skip the preview image
+agents artifacts share report.html --expire 7d   # auto-expire (30d / 12h / 2026-08-01 also work)
 ```
 
 - **Default slug** is `<project>-<feature>-<hash>` (e.g. `agents-cli-fleet-cockpit-3a6687`):

@@ -115,14 +115,14 @@ The body carries **the actual run result, not a description of it**:
 - **A user-visible change ships a picture — a screenshot is required, not optional.**
   The reviewer should not have to read code or a hand-made table to believe it works;
   they should **see it work**. Capture the running feature (the web UI, the app screen),
-  publish it with **`agents share <file>`** (§Attaching evidence), and embed the returned
+  publish it with **`agents artifacts share <file>`** (§Attaching evidence), and embed the returned
   URL in the body with `![caption](url)`. When the change has a visible before/after, show
   **both** stills.
 - **Prefer a recording when a still can't carry the flow.** You have the tools: capture a
   **web app** with the `browser` skill (record the click-through), or a **terminal flow**
   with `agents pty` (record the run), and attach the file.
 - **A no-UI change still shows the run** — screenshot the passing run / the `curl`'d
-  response, or `agents share` the run's output or log as an **asset** and link it. Pasted
+  response, or `agents artifacts share` the run's output or log as an **asset** and link it. Pasted
   **source code** and **hand-authored tables are not proof of a run** and do not count. If
   there is genuinely no visible surface, **declare it** (refactor / test-only).
 - **Link the context.** Include the **Linear ticket** for the work, and — if a plan was
@@ -145,24 +145,24 @@ unreadable `--body-file` — a reminder must never block a legit PR.
 local screenshot path in the body does **not** render on GitHub. Get the asset a public URL
 and embed it with `![caption](url)`. Use these, in order:
 
-1. **`agents share <file>` — the primary mechanic.** It publishes any static asset (a
+1. **`agents artifacts share <file>` — the primary mechanic.** It publishes any static asset (a
    `.png`/`.jpg`/`.gif` screenshot, a `.mp4`/`.mov`/`.webm` recording, a `.pdf`) to your own
    Cloudflare R2 and prints a public URL that renders inline via `![caption](url)`. No
    browser and no manual drag-drop, so it works **headlessly** — the default way an agent
-   attaches media. Not configured on this box? `agents share status` says so; configure it
-   once with `agents share setup` (provision your own endpoint) or `agents share join
+   attaches media. Not configured on this box? `agents artifacts share status` says so; configure it
+   once with `agents artifacts share setup` (provision your own endpoint) or `agents artifacts share join
    <baseUrl>` (use an existing one), then re-run. If you truly cannot configure it, hand the
-   one-time `agents share setup` to the user and use drag-drop meanwhile. **Public share is
+   one-time `agents artifacts share setup` to the user and use drag-drop meanwhile. **Public share is
    for shareable visual proof only** — never publish a private or secret asset (a
    transcript, anything carrying tokens or internal paths) to a public R2 URL; those stay in
    a secret gist or a local path (see the transcript rule below). `--expire 30d` bounds the
    link's life.
-2. **Web drag-drop (browser-only fallback).** When `agents share` isn't available, open the
+2. **Web drag-drop (browser-only fallback).** When `agents artifacts share` isn't available, open the
    PR/comment box in the browser and drag the image/recording (`.png`/`.gif`/`.mp4`/`.mov`)
    in. GitHub uploads it and inserts a `https://github.com/user-attachments/assets/…` URL
    that renders inline via `![](…)`. Open the PR on the user's Mac to do it (`agents ssh
    <mac> 'open <pr-url>'`), or drive the upload with the `browser` skill.
-3. **Comment after the fact.** Once you have a public URL (an `agents share` link or a
+3. **Comment after the fact.** Once you have a public URL (an `agents artifacts share` link or a
    `user-attachments` URL), `gh pr comment <pr> --body '![result](<url>)'` adds it without
    touching the body.
 4. **Path fallback (fleet-local only).** If you genuinely can't upload anywhere, reference
@@ -178,7 +178,7 @@ Every `gh pr create` / `gh issue create` / ticket-open carries:
 - **Screenshots and relevant materials of the user-visible outcome** — the rendered
   UI, the passing test run, the `curl`'d health response, a before/after. If you
   produced a visual while verifying end-to-end (F3), it belongs in
-  the body. Publish it with `agents share <file>` and embed the URL (or drag it into the
+  the body. Publish it with `agents artifacts share <file>` and embed the URL (or drag it into the
   web UI); reference on-disk images by **full path** so the reviewer can click to preview.
 - **A session transcript — kept confidential, always.** The transcript can carry
   secrets, tokens, internal paths, and raw reasoning, so it **never** goes inline in

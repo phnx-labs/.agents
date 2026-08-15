@@ -56,7 +56,7 @@ message, check the send result — a `--dry-run` only proves the address resolve
 ## Read status through the command surface — and still bound the wait
 
 Cache and state files under `~/.agents/.cache/` are written by whichever process last
-touched them, so they go stale without any error. Ask the CLI (`agents hosts ps`,
+touched them, so they go stale without any error. Ask the CLI (`agents devices ps`,
 `agents sessions`, `gh pr view`), which reconciles on demand. A guard or loop built on a
 raw cache file inherits that staleness and can wedge permanently.
 

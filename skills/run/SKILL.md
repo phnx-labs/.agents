@@ -238,12 +238,12 @@ A different axis from cloud: `agents run --device <name>` runs the agent on one 
 agents run claude "profile this build" --device gpu-box   # run there, follow live
 agents run claude "..." --device gpu-box --no-follow        # detach
 
-agents hosts ps              # list dispatched runs
+agents devices ps              # list dispatched runs
 agents logs --device gpu-box   # pick a run on that host and view its log
 agents logs <id> -f          # re-attach to a running one and follow
 ```
 
-`agents logs [id]` is the unified viewer over device-dispatch runs and local session transcripts; `agents hosts logs <id>` is the host-only equivalent. See the `devices` skill.
+`agents logs [id]` is the unified viewer over device-dispatch runs and local session transcripts; `agents logs <id>` is the host-only equivalent. See the `devices` skill.
 
 **`--remote-cwd <dir>` — the working directory on the host, used verbatim.** It is an `agents run` flag **only**: `agents teams add` rejects it with a hard error (a teammate's directory is `--worktree <role>` or `--cwd <dir>` instead — see the `teams` skill). Resolve the path **on the remote**: a bare `~`/`$HOME` expands on your local box (`/Users/you`) and silently targets a path that doesn't exist on the remote (`/home/you`), so pass a valid remote absolute path or single-quote so `$HOME` expands there. For codex, point it at a real git repo on the target box (it refuses to start outside a trusted git dir).
 
