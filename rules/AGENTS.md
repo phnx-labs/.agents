@@ -558,7 +558,7 @@ when the team settles."* `ps` showed **no such process**. Four teammates were st
 `RUNNING` with nothing watching them. The claim was false and the session was idle —
 exactly what it promised it was not.
 
-Three obligations, all mechanical:
+Five obligations, all mechanical:
 
 1. **Confirm the spawn.** `agents teams add`/`start` returning 0 is not a running
    teammate. Confirm with `agents teams status <team>` that each teammate you added
@@ -577,7 +577,24 @@ Three obligations, all mechanical:
    (RUSH-2681). While that holds, a monitor owns nothing; drive the work in-session and
    keep the monitor as a backstop. **If you cannot show the watcher is alive, do not
    tell the user you are watching.**
-3. **Track progress on cheap signals, never full logs.** `agents teams status`,
+3. **When you park on a watcher, hand the user a receipt they can check.** A healthy
+   wait and a dead one look identical from the outside — an idle session and a shell
+   that may or may not still be running — so the owner ends up pinging every session
+   one by one to find out which is which. Measured 2026-08-15, three sessions that were
+   visually indistinguishable: `6805bf66` was **healthy** (watcher pid alive, builder
+   `RUNNING · 21.0 minutes · 294 tools` waiting on CI shards); `ea913c60` was **dead**
+   (watcher process gone, four teammates orphaned); `pr306-land` was **decorative** (fire
+   logged `ok`, action `skipped`, nothing spawned). Never write the unfalsifiable form
+   ("I'll be re-invoked when it settles") — write what can be checked at a glance:
+   *"watcher pid 43234 alive; builder RUNNING 21m/294 tools on PR #2694; blocked on CI
+   shards 1-2."* If you cannot produce those numbers, you do not have a watcher.
+4. **A teammate `RUNNING` with no new tool calls and no branch push is a stall, not
+   progress.** `--watch` blocks until the DAG drains and has no stall timeout, so one
+   wedged teammate turns a correct watcher into an infinite wait that never re-invokes
+   anyone. Give every wait a ceiling drawn from the job's own expected runtime; past it,
+   `agents teams resume` the teammate or stop and re-dispatch it. Waiting longer is not
+   monitoring.
+5. **Track progress on cheap signals, never full logs.** `agents teams status`,
    `gh pr list`, `git ls-remote` answer "is it moving?". `agents teams logs` /
    `agents hosts logs` bill a teammate's whole transcript back to you as input —
    pull them only to grep a failure or decide on a restart. `RUNNING` for 27 minutes
