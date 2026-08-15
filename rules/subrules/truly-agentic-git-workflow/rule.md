@@ -144,9 +144,14 @@ you actually ship** — an inline `--body`/`-b` and the file behind `--body-file
 It nudges — a satisfiable block, `exit 2` — when that body shows **no run result** (no
 image / recording / uploaded asset), and it is **not** cleared by a code block, a table, or a
 bare ticket/plan link: those are context, not proof you ran it. It clears on a real run result
-**or** an explicit no-run declaration (`release` / `docs-only` / `refactor` / `test-only`). It
-still **fails open** on a `--fill` / `--template` / editor body it cannot read, and on an
-unreadable `--body-file` — a reminder must never block a legit PR.
+**or** an explicit no-run declaration — and a **checkable declaration is verified against the
+branch's changed files**: `test-only` with non-test files changed, or `docs-only` with code
+changed, **blocks** instead of clearing (2026-08-15, PR #2736 declared "test-only." on a
+fifteen-file `fix(browser)` diff), and bare `release` only counts in release-shaped phrases
+(`chore(release)` / "release PR" / "release:" / "release v"). Unverifiable declarations
+(`refactor` / no-behavior-change) clear as before. It still **fails open** on a `--fill` /
+`--template` / editor body it cannot read, on an unreadable `--body-file`, and on an
+unreadable branch diff — a reminder must never block a legit PR.
 
 ### Attaching evidence on GitHub — the mechanics
 

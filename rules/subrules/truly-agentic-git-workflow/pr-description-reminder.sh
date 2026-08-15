@@ -4,10 +4,13 @@
 # Nudges (a satisfiable block, exit 2) when a `gh pr create` / `gh pr edit` ships a
 # body with NO proof the agent ran what it built — no screenshot / recording /
 # uploaded asset. The reviewer should see it work, not read code to believe it. The
-# reminder clears the moment the body carries a real run result OR an explicit
-# no-run declaration (release / docs-only / refactor / test-only). A code block, a
-# table, and a bare ticket/plan LINK are context, not proof of a run, and do NOT
-# clear it.
+# reminder clears on a real run result OR an explicit no-run declaration — and a
+# CHECKABLE declaration (test-only / docs-only) is verified against the branch's
+# changed files: a contradicted declaration BLOCKS instead of clearing (2026-08-15,
+# PR #2736: "test-only." on a fifteen-file fix diff). Unverifiable declarations
+# (release-shaped phrases / refactor / no-behavior-change) clear as before. A code
+# block, a table, and a bare ticket/plan LINK are context, not proof of a run, and
+# do NOT clear it.
 #
 # The body it inspects: an inline --body/-b AND the file behind --body-file/-F
 # (read and inspected — agents route nearly every multi-line body through it). A
@@ -152,8 +155,9 @@ if [ -n "$declared" ]; then
     [ -n "$_f" ] || continue
     case "$declared" in
       test-only)
+        # *test* already covers testdata/ and __tests__ paths (SC2221).
         case "$_f" in
-          *test*|*Test*|*__tests__*|*.spec.*|testdata/*|*/testdata/*) ;;
+          *test*|*Test*|*.spec.*) ;;
           *) _bad="$_bad  - $_f
 " ;;
         esac ;;

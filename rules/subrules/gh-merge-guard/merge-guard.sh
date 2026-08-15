@@ -98,7 +98,9 @@ if ! cmd=$(_json_field "$input" tool_input.command toolInput.command); then
 fi
 [ -n "$cmd" ] || exit 0
 
+blanked=no
 if command -v perl >/dev/null 2>&1; then
+  blanked=yes
   scan=$(printf '%s' "$cmd" | perl -0777 -pe '
     # 0. Join backslash-newline line continuations so routing on the next
     #    physical line (e.g. `cat <<EOF \` <newline> `| sh`) is seen inline.
@@ -154,6 +156,19 @@ case "$norm" in
         ;;
     esac
 
+    # With perl absent nothing was blanked, so body/title TEXT mentioning a
+    # merge (e.g. a PR body documenting "gh pr merge 42") could reach the API
+    # probe below on a non-merge command. Require the command to actually START
+    # with a merge invocation (allowing a leading env/command position) in that
+    # case — the admin check above stays as-is (over-blocking is its safe
+    # direction; a network probe on the wrong command is not).
+    if [ "$blanked" = "no" ]; then
+      case "$cmd" in
+        "gh pr merge"*|*";gh pr merge"*|*"; gh pr merge"*|*"&& gh pr merge"*|*"| gh pr merge"*) ;;
+        *) exit 0 ;;
+      esac
+    fi
+
     # Review-on-THIS-PR check (2026-08-15, PR #2736): a merge satisfied the
     # non-author-review convention with "Non-author APPROVE on #2731" — an
     # approval carried from a DIFFERENT PR. A verdict only counts on the PR it
@@ -176,8 +191,13 @@ case "$norm" in
       fi
     fi
     if [ -n "$_pr_num" ] && [ -n "$_pr_repo" ]; then
-      _reviews=$(_to 8 gh api "repos/$_pr_repo/pulls/$_pr_num/reviews" --cache 60s 2>/dev/null) || _reviews="__API_ERR__"
-      _comments=$(_to 8 gh api "repos/$_pr_repo/issues/$_pr_num/comments" --cache 60s 2>/dev/null) || _comments="__API_ERR__"
+      # 3s per call: two sequential probes must fit the hook's registered
+      # timeout. On stock macOS (no timeout/gtimeout) _to runs gh unbounded —
+      # the harness then kills the hook at its registered timeout, which FAILS
+      # OPEN at the harness layer; acceptable for a review probe, never relied
+      # on for the admin block (which needs no network).
+      _reviews=$(_to 3 gh api "repos/$_pr_repo/pulls/$_pr_num/reviews" --cache 60s 2>/dev/null) || _reviews="__API_ERR__"
+      _comments=$(_to 3 gh api "repos/$_pr_repo/issues/$_pr_num/comments" --cache 60s 2>/dev/null) || _comments="__API_ERR__"
       if [ "$_reviews" != "__API_ERR__" ] && [ "$_comments" != "__API_ERR__" ]; then
         _verdict=$(printf '%s\n---AGENTS-SPLIT---\n%s' "$_reviews" "$_comments" | python3 -c '
 import json, re, sys
@@ -197,7 +217,7 @@ if not ok:
             if not re.search(r"\bAPPROVE\b", body):
                 continue
             # A verdict that only points at another PR is laundering, not review.
-            if re.search(r"\bcarried (?:over )?from\b|\bAPPROVE (?:on|from) #\d+", body):
+            if re.search(r"\bcarried\s+(?:over\s+)?from\b|\bAPPROVE\s+(?:on|from)\s+#\d+", body):
                 continue
             ok = True
             break
