@@ -111,13 +111,16 @@ only, attach a **redacted** session transcript as a **secret** gist for audit �
 public gist, never on a public repo (link `<host>:<path>` instead).
 
 **Release (if applicable).** If the work touches a publishable package, `release-to-fleet` is
-the authority and takes precedence. **Nothing auto-ships a merge** — there is no release
-train, so never stop at merged expecting a scheduled releaser to finish it. If you were asked
-to ship, or you are the releaser: build, run the full suite, run the release, and verify it
-landed in the registry (not just that the script exited 0). If you are a feature agent who
-was **not** asked to release: stop at **merged + a changelog fragment** and say plainly
-"merged; not released". Where a release script claims a lease (`release-lease.sh`), let it —
-that is what keeps two releasers from colliding.
+the authority and takes precedence — read it, and do not restate a weaker rule here.
+**Nothing auto-ships a merge**: there is no release train, so never stop at merged expecting a
+scheduled releaser to finish it. Build, run the full suite, run the release, and verify it
+landed in the registry (not just that the script exited 0). *"I was not asked to release"* is
+not a license to stop when your own merges left that package's registry behind the default
+branch — probe any release you believe is in flight with live signals before citing it, and
+watch it to completion. Stop at **merged + a changelog fragment** only when the user scoped
+you away from releasing, or the stale registry belongs to a package you did not change; say
+plainly "merged; not released" and name who owns it. Where a release script claims a lease
+(`release-lease.sh`), let it — that is what keeps two releasers from colliding.
 
 **Tracker.** Update the issue tracker only with proof (commit, PR, deploy URL, test output,
 health-check response). For a deliberately deferred slice (with a complete shippable slice
