@@ -136,7 +136,7 @@ check "concurrent hook processes preserve all writes" "$parallel" "8"
 V1="$SANDBOX/v1.db"
 sqlite3 "$V1" "create table meta(key text primary key,value text not null); insert into meta values('schema_version','1'); create table goal_boundaries(session_key text not null,ordinal integer not null,prompt_sha256 text not null,created_at_ms integer not null,primary key(session_key,ordinal)); insert into goal_boundaries values('claude:legacy',1,'abc',9999999999999);"
 out=$(VERIFY_WORK_STATE_DB="$V1" eval_payload "{\"session_id\":\"legacy\",\"agent\":\"claude\",\"transcript_path\":\"$research\"}")
-check "v1 database migrates to schema two" "$(sqlite3 "$V1" "select value from meta where key='schema_version';")" "2"
+check "v1 database migrates to the current schema" "$(sqlite3 "$V1" "select value from meta where key='schema_version';")" "3"
 check "v1 migration preserves goal row" "$(sqlite3 "$V1" "select count(*) from goal_boundaries where session_key='claude:legacy';")" "1"
 check "v1 migration adds transcript offset" "$(sqlite3 "$V1" "select transcript_offset from goal_boundaries where session_key='claude:legacy';")" "0"
 
@@ -180,6 +180,53 @@ out=$(env -u AGENT_LAUNCH_ID VERIFY_WORK_STATE_DB="$DB" python3 "$STATE" evaluat
 EOF
 )
 check "missing identity stays stateless" "$(printf '%s' "$out" | python3 -c 'import json,sys; print(json.load(sys.stdin)["recorded"])')" "False"
+
+# --- gate_outcomes (schema v3) -------------------------------------------------
+# The measurement table. It is written offline by the backfill, never at connect
+# time, so the migration is a version stamp plus CREATE TABLE IF NOT EXISTS. What
+# these pin is that an EXISTING v2 database survives the bump with its rows intact
+# — that is the whole risk, since the live one already holds hundreds of fires.
+
+check "schema version is 3" "$(sqlite3 "$DB" "select value from meta where key='schema_version';")" "3"
+check "gate_outcomes exists" \
+  "$(sqlite3 "$DB" "select name from sqlite_master where type='table' and name='gate_outcomes';")" \
+  "gate_outcomes"
+
+# a v2 database with rows must migrate without losing them
+V2="$SANDBOX/v2.db"
+cp "$DB" "$V2"
+sqlite3 "$V2" "drop table gate_outcomes; update meta set value='2' where key='schema_version';"
+sqlite3 "$V2" "insert into gate_events(session_key,goal_ordinal,gate_name,outcome,reason_code,created_at_ms)
+               values('claude:v2-canary',1,'open-pr','blocked','owned-pr-open',$(python3 -c 'import time;print(int(time.time()*1000))'));"
+before=$(sqlite3 "$V2" "select count(*) from gate_events;")
+VERIFY_WORK_STATE_DB="$V2" python3 "$STATE" evaluate >/dev/null 2>&1 <<'EOF'
+{"session_id":"native-1","agent":"claude","transcript_path":"/nonexistent"}
+EOF
+check "v2 database migrates to v3" "$(sqlite3 "$V2" "select value from meta where key='schema_version';")" "3"
+check "v2 rows survive the migration" "$(sqlite3 "$V2" "select count(*) from gate_events;")" "$before"
+check "migration creates gate_outcomes" \
+  "$(sqlite3 "$V2" "select name from sqlite_master where type='table' and name='gate_outcomes';")" \
+  "gate_outcomes"
+
+# an outcome row orphaned from its gate_event must not survive a prune
+sqlite3 "$V2" "insert into gate_outcomes(gate_event_id,derived_at_ms) values(999999,1);"
+check "orphan row is present before prune" \
+  "$(sqlite3 "$V2" "select count(*) from gate_outcomes where gate_event_id not in (select id from gate_events);")" "1"
+sqlite3 "$V2" "update meta set value='0' where key='last_pruned_ms';"
+VERIFY_WORK_STATE_DB="$V2" python3 "$STATE" evaluate >/dev/null 2>&1 <<'EOF'
+{"session_id":"native-1","agent":"claude","transcript_path":"/nonexistent"}
+EOF
+check "prune drops orphaned outcomes" \
+  "$(sqlite3 "$V2" "select count(*) from gate_outcomes where gate_event_id not in (select id from gate_events);")" "0"
+
+# an unknown future version must still refuse rather than silently downgrade
+V9="$SANDBOX/v9.db"; cp "$DB" "$V9"
+sqlite3 "$V9" "update meta set value='9' where key='schema_version';"
+VERIFY_WORK_STATE_DB="$V9" python3 "$STATE" evaluate >/dev/null 2>&1 <<'EOF'
+{"session_id":"native-1","agent":"claude","transcript_path":"/nonexistent"}
+EOF
+check "unknown schema version leaves the stamp alone" \
+  "$(sqlite3 "$V9" "select value from meta where key='schema_version';")" "9"
 
 echo "$pass passed, $fail failed"
 [ "$fail" -eq 0 ]
