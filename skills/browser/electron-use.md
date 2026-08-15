@@ -30,7 +30,7 @@ curl -s http://localhost:<port>/json | head -20
 ## Start a Task (Attach)
 
 ```bash
-export AGENTS_BROWSER_TASK=$(agents browser start --profile <name>)
+agents browser start --profile <name>    # prints the task handle; later calls take --task <handle>
 ```
 
 Attaches to the running process — does **not** launch a new instance. Confirm:
@@ -134,7 +134,7 @@ If the app has an entry in `app-skills/`, read it first — it has verified IPC 
 1. **Verify** `curl -s http://localhost:<port>/json` returns pages
 2. **Check `app-skills/`** for this app — if found, read it; if not, proceed with general approach
 3. **Create profile** (one-time): `agents browser profiles create <name> --browser custom --electron -e cdp://localhost:<port>`
-4. **Start**: `export AGENTS_BROWSER_TASK=$(agents browser start --profile <name>)`
+4. **Start**: `agents browser start --profile <name>` — remember the printed handle; pass `--task <handle>` on every call
 5. **Screenshot** to confirm which window you landed in
 6. **Evaluate** `Object.keys(window)` to discover what the app exposes
 7. **Navigate** to the route under test
