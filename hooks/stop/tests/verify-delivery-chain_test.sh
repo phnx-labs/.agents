@@ -142,9 +142,17 @@ git -C "$d7" remote set-head origin main
 printf '# Changelog\n\n## [Unreleased]\n\n- a user-facing feature merged and never published\n- add the new publish flag\n\n## [0.9.321] - 2026-08-14\n- shipped\n' > "$d7/CHANGELOG.md"
 git -C "$d7" $GC commit -q -am "feat: add the new publish flag"
 tr7="$(mktemp)"
+# The transcript carries BOTH release-command and live-verify evidence ("released
+# v0.9.321", "npm view ... version"), so under the OLD code release_ran and
+# verified_live were both True and the gate stayed silent — the reviewer reproduced
+# exactly that (all 8 tests green against pre-fix code when this transcript lacked
+# such evidence, because the gate then fired for the unrelated not-verified reason).
+# Only the [Unreleased] override makes the gate fire here, so this test now fails
+# against the old code and passes against the new.
 printf '%s\n' '{"role":"user","content":"add a new publish flag and release it"}' > "$tr7"
+printf '%s\n' '{"role":"assistant","content":"released v0.9.321 earlier; npm view ext version shows 0.9.321 — registry verified live"}' >> "$tr7"
 out7="$(run_gate "$d7" "$tr7")"
-if printf '%s' "$out7" | grep -qi "release"; then
+if printf '%s' "$out7" | grep -q 'Unreleased'; then
   echo "PASS: gate fires on merged-but-unreleased even though the repo has a tag"
 else
   echo "FAIL: a tag in history silently satisfied the release gate:"; echo "$out7"; fail=1
