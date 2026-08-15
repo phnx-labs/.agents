@@ -110,14 +110,14 @@ transport — lives in the **`plan-render` skill**. Load it and follow it.
   light editorial house palette only when the product declares no brand.
 - **Light + dark.** Ship the in-page `◐` toggle, defaulting to the OS
   `prefers-color-scheme`, so the plan is readable in bright light and dim alike.
-- **Open it proactively, every time.** Resolve the online macOS device from the
-  **Host & Fleet** context (`agents ssh <host> 'open …'` when remote; local `open` /
-  `xdg-open` otherwise). macOS `open` uses the user's **default browser**. **Never
-  hardcode a host** — resolve it from `agents devices`. If the user is away, the plan is
-  waiting in a tab when they return. Skip only the *open* (never the render) when no
-  browser host is reachable.
+- **Render every time; open only on request.** On a worker, use its headless default with
+  `agents browser start --url file://<absolute-plan-path>` and inspect a screenshot. On
+  the interactive host, still render headlessly so the user's focus is untouched. Copy or
+  `open` the HTML on that host only when the user explicitly asked to see it. Never
+  hardcode a host; resolve the interactive device from `agents devices`.
 
-A plan the user can't see rendered is not presented. Render, open, then discuss.
+A plan the agent has not seen rendered is not presented. Render, inspect, then discuss;
+open it for the user only on request.
 
 ## A multi-step plan also carries a checklist
 
