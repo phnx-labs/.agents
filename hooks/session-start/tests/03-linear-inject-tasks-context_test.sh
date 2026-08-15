@@ -427,16 +427,21 @@ check_contains "empty team: no projects message"           "$out" "No projects o
 # --- 6b. worst-case latency fits the registered hook timeout -------------------
 # The lane sweep runs BEFORE anything prints, so a sweep that overruns is not a
 # degraded brief — it is a killed hook and no brief at all. agents.yaml registers
-# this hook with `timeout: 15`, so the sum of every --max-time must stay under it.
+# this hook with a `timeout:`, so the sum of every bounded call — curl's
+# --max-time AND each `_to <secs>` — must stay under it.
 # Match only real flags with a number — a prose mention of --max-time in a
 # comment must not be read as a zero-second budget.
 brief_t=$(grep -o -- '--max-time [0-9][0-9]*' "$HOOK" | head -1 | awk '{print $2}')
 sweep_t=$(grep -o -- '--max-time [0-9][0-9]*' "$HOOK" | tail -1 | awk '{print $2}')
 pages=$(grep -c 'for _ in 1 2 3; do' "$HOOK")
+# Every bounded non-curl call counts too. The budget assertion used to read only
+# --max-time, so the project-resolution calls added later were invisible to it —
+# it passed while the real worst case was 2s over the registered timeout.
+to_total=$(grep -o -- '_to [0-9][0-9]*' "$HOOK" | awk '{s += $2} END {print s+0}')
 declared=$(awk '/^  linear-tasks:/{f=1} f&&/timeout:/{print $2; exit}' "$HERE/../../../agents.yaml" 2>/dev/null)
 declared="${declared:-15}"
-# One brief request plus three sweep pages, each at its own --max-time.
-worst=$(( brief_t + 3 * sweep_t ))
+# One brief request, three sweep pages, plus every `_to`-bounded call.
+worst=$(( brief_t + 3 * sweep_t + to_total ))
 # The timeout covers wall-clock, not just curl. This script spawns up to nine
 # python3 interpreters — ~0.85s idle, ~1.2s under contention, and SessionStart
 # runs precisely when a box is contended. A budget that merely fits on paper
@@ -474,12 +479,26 @@ out=$(LINEAR_CLI_CONFIG="$SANDBOX/config.json" env -u LINEAR_API_KEY -u LINEAR_T
 check_contains "project def picks the focus project"  "$out" "★ this directory"
 check_contains "focus project keeps its milestones"   "$out" "**Milestones:**"
 
-# A def whose linear.name matches NOTHING on the board expands nothing, rather
-# than silently falling back to the basename and expanding the wrong project.
+# A def whose linear.name matches NOTHING live on the board must fail OPEN to the
+# basename fuzz, not fail closed. The CLI only began refreshing linear.name in
+# 1.22.40, so every def written before that carries a label the board may have
+# renamed away from — treating "present" as "authoritative" collapsed every
+# project to one line and claimed no def existed.
 out=$(LINEAR_CLI_CONFIG="$SANDBOX/config.json" env -u LINEAR_API_KEY -u LINEAR_TEAM_ID \
   AGENTS_FOR_CWD_JSON='{"name":"agents-cli"}' \
   AGENTS_PROJECTS_JSON='[{"name":"agents-cli","linear":{"projectId":"lin_x","name":"Nothing Named This"}}]' \
   bash "$HOOK" 2>/dev/null)
-check_absent "an unmatched def expands no project"    "$out" "★ this directory"
+check_contains "stale def falls back to the fuzz"     "$out" "### Agents CLI ★ this directory"
+check_contains "stale def still gets full depth"      "$out" "**Milestones:**"
+check_absent   "stale def names no phantom project"   "$out" "Nothing Named This"
+
+# No def at all AND no fuzz match: fail open to the full listing rather than
+# collapsing every project, which would leave the session with no board context.
+mkdir -p "$SANDBOX/work/unclaimed"
+out=$(cd "$SANDBOX/work/unclaimed" && LINEAR_CLI_CONFIG="$SANDBOX/config.json" \
+  env -u LINEAR_API_KEY -u LINEAR_TEAM_ID bash "$HOOK" 2>/dev/null)
+check_contains "no match keeps Agents CLI expanded"   "$out" "### Agents CLI"
+check_contains "no match keeps Rush App expanded"     "$out" "### Rush App"
+check_absent   "no match stars nothing"               "$out" "★ this directory"
 
 exit $fail

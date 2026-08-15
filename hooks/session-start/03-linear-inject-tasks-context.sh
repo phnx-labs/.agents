@@ -29,14 +29,47 @@ export AGENT_SELF="${AGENT_SELF:-claude}"
 AGENT_SELF_SAFE=$(printf '%s' "$AGENT_SELF" | tr -cd 'A-Za-z0-9_-')
 export AGENT_SELF_SAFE="${AGENT_SELF_SAFE:-claude}"
 
-# Portable timeout: macOS ships neither `timeout` nor `gtimeout` by default.
-# Fall back to running the command bare — the manifest-level hook timeout is the
-# real backstop; this helper only tightens the individual calls below.
+# Portable timeout. macOS ships neither `timeout` nor `gtimeout`, and the old
+# fallback here ran the command BARE — so on every Mac on this fleet nothing was
+# bounded at all, and a hung call took the whole hook past its manifest timeout,
+# which delivers zero bytes rather than a degraded brief. Emulate it instead:
+# run the command in the background with a watchdog that kills it.
+#
+# The watchdog's own output is discarded so a command substitution around this
+# closes when the command does, not when the watchdog does.
+# Emulation runs through python3, which this hook already hard-depends on, not
+# through bash job control. Two things the obvious bash version gets wrong:
+# killing the child's pid leaves ITS children holding the pipe (a `$(...)` then
+# still blocks for the full duration), and a backgrounded job silently loses
+# stdin. `start_new_session` + `killpg` kills the whole subtree, and the
+# std streams are inherited.
 _to() {
-  if command -v timeout >/dev/null 2>&1; then timeout "$@"
-  elif command -v gtimeout >/dev/null 2>&1; then gtimeout "$@"
-  else shift; "$@"
-  fi
+  local secs="$1"; shift
+  if command -v timeout >/dev/null 2>&1; then timeout "$secs" "$@"; return $?; fi
+  if command -v gtimeout >/dev/null 2>&1; then gtimeout "$secs" "$@"; return $?; fi
+  command -v python3 >/dev/null 2>&1 || { "$@"; return $?; }
+  python3 -c '
+import os, signal, subprocess, sys
+secs = float(sys.argv[1])
+try:
+    p = subprocess.Popen(sys.argv[2:], start_new_session=True)
+except (FileNotFoundError, PermissionError):
+    sys.exit(127)
+try:
+    sys.exit(p.wait(timeout=secs))
+except subprocess.TimeoutExpired:
+    for sig in (signal.SIGTERM, signal.SIGKILL):
+        try:
+            os.killpg(os.getpgid(p.pid), sig)
+        except Exception:
+            pass
+        try:
+            p.wait(timeout=1)
+            break
+        except Exception:
+            continue
+    sys.exit(124)
+' "$secs" "$@"
 }
 
 # Which Linear project is this cwd? `agents projects` owns that mapping — a def
@@ -84,16 +117,16 @@ for d in defs:
 fi
 export CWD_PROJECT_NAME
 
-# Fallback only: when no project def claims this cwd, fall back to the old
-# basename fuzz so an unregistered repo still gets its project starred. Git repo
-# name first (stable across subdirs), then the raw cwd basename. Python
+# The basename fuzz stays armed even when the def resolved. It is the fallback
+# for two cases, and disabling it on a merely-PRESENT linear.name failed closed:
+# a def whose recorded name no longer matches any live project (the CLI only
+# started refreshing it in 1.22.40, so every older def carries a stale label)
+# expanded NOTHING and claimed no def existed. Python prefers the exact match
+# and only falls back when it finds no project by that name.
+# Git repo name first (stable across subdirs), then the raw cwd basename; python
 # normalizes both ("agents-cli" and "Agents CLI" -> "agentscli").
 git_root=$(git rev-parse --show-toplevel 2>/dev/null)
-if [ -n "$CWD_PROJECT_NAME" ]; then
-  export CWD_PROJECT_HINTS=""
-else
-  export CWD_PROJECT_HINTS="$(basename "$git_root" 2>/dev/null),$(basename "$PWD" 2>/dev/null)"
-fi
+export CWD_PROJECT_HINTS="$(basename "$git_root" 2>/dev/null),$(basename "$PWD" 2>/dev/null)"
 
 # Resolve credentials: env first, then ~/.linear-cli/config.json. No secrets
 # broker, no keychain — so this can never pop Touch ID or hang.
@@ -331,19 +364,27 @@ try:
     ]
     hint_norms = [norm(h) for h in HINTS if norm(h)]
 
-    def is_cwd_match(p):
+    def exact_match(p):
+        # The recorded link. Exact only: this is not a guess, so widening it
+        # could only add false matches.
+        return bool(CWD_PROJECT) and norm(p.get('name')) == norm(CWD_PROJECT)
+
+    def fuzzy_match(p):
         pn = norm(p.get('name'))
-        # Definitive: the project def bound to this cwd named its Linear project.
-        # Exact only — the fuzz below exists because a basename is a guess, but
-        # this is the recorded link, so widening it could only add false matches.
-        if CWD_PROJECT:
-            return pn == norm(CWD_PROJECT)
         if pn in hint_norms:
             return True
         for hn in hint_norms:
             if len(hn) >= 4 and (hn in pn or pn in hn):
                 return True
         return False
+
+    # Prefer the recorded link, but only when it actually names a live project.
+    # A def carrying a name the board no longer uses must degrade to the guess,
+    # not to nothing — that was the fail-closed bug.
+    _matcher = exact_match if any(exact_match(p) for p in live_projects) else fuzzy_match
+
+    def is_cwd_match(p):
+        return _matcher(p)
 
     # cwd-matched project first, then the rest alphabetically.
     focus = [p for p in live_projects if is_cwd_match(p)]
@@ -361,20 +402,26 @@ try:
         if focus:
             print(f'_Depth on **{focus[0].get(\"name\")}** (this working directory). Others are one line — \`linear tasks --project <name> --by-milestone\` for detail._')
         else:
-            print('_No project def claims this directory, so no project is expanded. Bind one with \`agents projects add\`/\`link\`. Full board: \`linear tasks --project <name> --by-milestone\`._')
+            # Nothing claims this directory: fail OPEN to the old full listing.
+            # Collapsing every project here would leave a session with no board
+            # context at all, which is strictly worse than the pre-scoping brief.
+            print('_Each project: milestones, then top open tickets by priority. Full board: linear tasks --project <name> --by-milestone._')
         print()
         for p in ordered:
             name = p.get('name') or 'unnamed'
             pct = pct_str(p.get('progress')) or '?'
             state = p.get('state') or ''
-            if not is_cwd_match(p):
+            # `focus and` keeps the no-focus case on the full listing, matching
+            # the cycle section below — one rule, both sections.
+            if focus and not is_cwd_match(p):
                 # One-line roll-up: enough to know the project exists and roughly
                 # where it stands, without its milestones or ticket list.
                 n_open = len((p.get('issues') or {}).get('nodes', []))
                 open_s = f' · {n_open}+ open' if n_open else ''
                 print(f'- **{name}** — {pct} · {state}{open_s}')
                 continue
-            print(f'### {name} ★ this directory — {pct} · {state}')
+            star = ' ★ this directory' if is_cwd_match(p) else ''
+            print(f'### {name}{star} — {pct} · {state}')
 
             ms = (p.get('projectMilestones') or {}).get('nodes', [])
             if ms:
