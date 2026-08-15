@@ -4,6 +4,31 @@
 
 ### Changed
 
+- **The git guardrails now protect the user's whole PRIMARY working tree, on any
+  branch — not just the default branch — and ban `git switch` alongside `git
+  checkout`.** Agents were checking out a feature branch in the user's own
+  checkout and never switching back, stranding it on a branch dozens of commits
+  behind (the `review-2704` trap); blocking only the default branch let that
+  through, and `git switch` (the modern `checkout`) was not blocked by the hook at
+  all. Changes:
+  - **`hooks/lib/git-facts.sh`** — adds a fork-free `primary` fact (a primary
+    working tree has `.git` as a directory; a linked worktree has `.git` as a
+    file) and a `git_facts_in_primary_tree` accessor; cache format bumped v1→v2.
+  - **`rules/subrules/truly-agentic-git-workflow/main-branch-guard.sh`** — protects
+    the entire primary working tree (any branch) instead of only the default
+    branch. The gitignore exemption (`.history/`, `.agents/scratch|artifacts`) and
+    the non-git and linked-worktree allowances are preserved; linked worktrees
+    under `.agents/worktrees/` remain the one place agents write, add, and commit.
+  - **`hooks/pre-tool-use/git-guard.sh`** — adds `git switch` to the banned
+    subcommands (`checkout` was already banned), catching every dressed form
+    (`git -C <path> switch`, `FOO=1 git switch`, `cd … && git switch`, `sh -c`).
+  - **`rules/subrules/foundations.md`** (F5), **`.../truly-agentic-git-workflow/rule.md`**,
+    and the composed **`rules/AGENTS.md`** updated to state the primary-tree rule
+    and the switch/checkout ban, so the rule text matches the mechanism.
+  - Permission layer (`permissions/groups/99-deny.yaml` → built `default.yaml`)
+    already denied plain `git checkout` / `git switch`; the hook is what now closes
+    the dressed forms the permission prefix-globs cannot match.
+
 - **Regression debugging now identifies who caused the change and how it escaped review.**
   `/debug` and `/swarm:debug` invoke the existing read-only `/blame` primitive for
   regressions, then report the culprit commit/PR and diff, the lost or weakened test,

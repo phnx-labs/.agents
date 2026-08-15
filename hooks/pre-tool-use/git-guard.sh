@@ -205,10 +205,10 @@ check_segment() {
         "reconcile with \`git rebase origin/<default>\` (or \`git pull --rebase\`); never \`reset --hard\`. Commit instead of stashing; resolve obstacles at the source."
       return 1
       ;;
-    checkout|stash|cherry-pick|revert|clean|reflog|filter-branch|gc|prune|fsck)
+    checkout|switch|stash|cherry-pick|revert|clean|reflog|filter-branch|gc|prune|fsck)
       set_deny "git.$sub" \
-        "git $sub is denied (rewrites history or destroys work)." \
-        "use a worktree-based flow under <repo>/.agents/worktrees/<slug>; never rewrite or destroy work on the default branch."
+        "git $sub is denied (switches/rewrites the working tree or destroys work)." \
+        "never switch the primary checkout onto another branch — that strands the user's tree behind and dirties it. Create an isolated worktree instead: git worktree add -b <slug> <repo>/.agents/worktrees/<slug> origin/<default>, and work there. To discard a file use \`git restore\`; to move an existing ref materialize it in a new worktree."
       return 1
       ;;
     rebase)
