@@ -42,7 +42,11 @@ cat > "$SANDBOX/bin/gh" <<'STUB'
 here="$(basename "$PWD")"
 case "$*" in
   *"--state merged"*)
-    printf -- '- #90 landed thing in %s\n- #91 other landed thing in %s\n' "$here" "$here" ;;
+    # The hook asks for --json now, not a rendered --template: gh has no --sort
+    # and returns CREATION order, so the merged list is sorted on mergedAt after
+    # the fact. Emit JSON, deliberately in the WRONG order (the older merge
+    # first), so the assertion below proves the sort actually happens.
+    printf -- '[{"number":91,"title":"other landed thing in %s","mergedAt":"2026-08-01T00:00:00Z"},{"number":90,"title":"landed thing in %s","mergedAt":"2026-08-09T00:00:00Z"}]\n' "$here" "$here" ;;
   *)
     if [ "$here" = "secondrepo" ]; then
       printf -- '- #77 second-repo PR (feat-two)\n'
@@ -214,6 +218,17 @@ check_absent   "agent outside the project excluded" "$out" "outside0"
 # Recently-merged: what already landed, so an agent does not re-propose it.
 check_contains "merged section rendered"         "$out" "Recently merged"
 check_contains "merged PR listed"                "$out" "#90 landed thing"
+# gh returns creation order; #90 merged LATER than #91 and must therefore rank
+# first. Without the mergedAt sort the stub's own order (#91 first) survives,
+# and the section that exists to show "what just landed" leads with the older
+# merge. Verified against agents-cli, where #2734 merged most recently and gh
+# ranked it third.
+merged_block="$(printf '%s' "$out" | sed -n '/Recently merged/,/^$/p')"
+if [ "$(printf '%s' "$merged_block" | grep -n '#9[01]' | head -1 | grep -c '#90')" = "1" ]; then
+  echo "ok   - merged list is ordered by mergedAt, not creation date"
+else
+  echo "FAIL - merged list is not sorted by mergedAt (older merge ranked first)"; fail=1
+fi
 
 # --- 7. no project def: the git repo stays the anchor, unlabelled -------------
 # Fail-open. Nothing about the widening may change a repo that no def claims.
@@ -253,10 +268,22 @@ else
 fi
 # The probes must stay parallel: if they are ever serialised again the budget
 # above is wrong by construction, so pin the backgrounding.
-# The calls are multi-line, so match the redirect-and-background tail, not the
+# The calls are multi-line, so match the outfile-and-background tail, not the
 # invocation line.
-bg=$(grep -cE '> "\$tmp/[a-z]+" 2>/dev/null &$' "$HOOK")
+bg=$(grep -cE '"\$tmp/[a-z]+" 2>/dev/null &$' "$HOOK")
 [ "$bg" -ge 2 ] && echo "ok   - PR probes are backgrounded" || { echo "FAIL - PR probes no longer backgrounded ($bg)"; fail=1; }
+# And per REPO, not just per state. `probe_max` above takes the single largest
+# `_to` in the hook, which is only the true worst case if every repo is probed
+# concurrently. An earlier version looped the repos INSIDE one backgrounded
+# function, so the real cost was repos x 4s: a 3-repo project measured 17.5s
+# against an 18s timeout and a 4th blew past it, while this budget check still
+# printed "fits" because it never multiplied by repo count. Pin the shape that
+# makes the arithmetic true.
+if grep -q 'probe_one .*&$' "$HOOK"; then
+  echo "ok   - each repo is probed in its own background job"
+else
+  echo "FAIL - repos are not probed concurrently; the budget above is wrong by repo count"; fail=1
+fi
 grep -q '^wait 2>/dev/null' "$HOOK" && echo "ok   - probes are collected with wait" || { echo "FAIL - no wait before reading probe output"; fail=1; }
 
 exit $fail
