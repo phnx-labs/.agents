@@ -33,8 +33,15 @@ ensure_yq() {
 
 ensure_yq
 
-# Get staged files
-STAGED=$(git diff --cached --name-only --diff-filter=ACM)
+# Get the full staged path list. The policy check includes additions and deletions.
+STAGED=$(git diff --cached --name-only)
+
+AGENTS_PATHS=$(printf '%s\n' "$STAGED" | awk '$0 == ".agents" || index($0, ".agents/") == 1')
+if [[ -n "$AGENTS_PATHS" ]]; then
+    echo -e "${RED}Commit blocked: .agents/ contains local agent output and must not be tracked.${NC}" >&2
+    printf '%s\n' "$AGENTS_PATHS" | sed 's/^/  /' >&2
+    exit 1
+fi
 
 # Print only the first YAML frontmatter block (between the first two `---`
 # lines). Body markdown horizontal rules (`---`) are ignored — extraction stops
