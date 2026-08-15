@@ -232,5 +232,46 @@ EOF
 check "unknown schema version leaves the stamp alone" \
   "$(sqlite3 "$V9" "select value from meta where key='schema_version';")" "9"
 
+# --- record-gates: the batched writer -----------------------------------------
+# Recording only blocks is what left gate_events with 325 rows all reading
+# 'blocked' — no denominator, so no gate had a false-positive rate. These pin that
+# allow outcomes are writable, that a batch is all-or-nothing, and that one bad
+# triple cannot half-write the rest.
+
+BATCH_DB="$SANDBOX/batch.db"
+export VERIFY_WORK_STATE_DB="$BATCH_DB"
+printf '%s' "$prompt" | python3 "$STATE" record-prompt >/dev/null
+
+out=$(printf '%s' "$prompt" | python3 "$STATE" record-gates \
+  "open-pr:skipped:no-owned-pr" "keep-moving:passed:checklist-clear" "stop:skipped:not-claiming-done")
+check "batch reports how many it wrote" \
+  "$(printf '%s' "$out" | python3 -c 'import json,sys; print(json.load(sys.stdin)["count"])')" "3"
+check "batch writes every row" "$(sqlite3 "$BATCH_DB" "select count(*) from gate_events;")" "3"
+check "passed outcome is recorded" \
+  "$(sqlite3 "$BATCH_DB" "select count(*) from gate_events where outcome='passed';")" "1"
+check "skipped outcome is recorded" \
+  "$(sqlite3 "$BATCH_DB" "select count(*) from gate_events where outcome='skipped';")" "2"
+check "more than one outcome value now exists" \
+  "$(sqlite3 "$BATCH_DB" "select count(distinct outcome) from gate_events;")" "2"
+
+# one invalid triple must abort the WHOLE batch, not write the good ones first
+before=$(sqlite3 "$BATCH_DB" "select count(*) from gate_events;")
+printf '%s' "$prompt" | python3 "$STATE" record-gates \
+  "open-pr:passed:fine" "bad:NOTANOUTCOME:x" >/dev/null 2>&1 || true
+check "an invalid triple writes nothing at all" \
+  "$(sqlite3 "$BATCH_DB" "select count(*) from gate_events;")" "$before"
+
+# a malformed spec is rejected the same way
+printf '%s' "$prompt" | python3 "$STATE" record-gates "missing-colons" >/dev/null 2>&1 || true
+check "a malformed spec writes nothing" \
+  "$(sqlite3 "$BATCH_DB" "select count(*) from gate_events;")" "$before"
+
+# an empty batch is a no-op, not an error
+out=$(printf '%s' "$prompt" | python3 "$STATE" record-gates)
+check "an empty batch records nothing" \
+  "$(printf '%s' "$out" | python3 -c 'import json,sys; print(json.load(sys.stdin)["recorded"])')" "False"
+
+export VERIFY_WORK_STATE_DB="$DB"
+
 echo "$pass passed, $fail failed"
 [ "$fail" -eq 0 ]
