@@ -2,6 +2,27 @@
 
 ## [Unreleased]
 
+### Changed
+
+- **The release-train concept is removed from the release surfaces — nothing
+  auto-ships a merge.** `commands/next.md`, `plugins/code/skills/release/SKILL.md`,
+  and `plugins/code/commands/release.md` all told agents to detect a "release
+  train" (a scheduled releaser) and, if one existed, to stop at merged and hand off
+  to it. No such train has ever run: the `release-train` routine measured
+  `enabled: False`, `devices: []`, `lastStatus: None`, `lastRun: None`,
+  `nextRun: None` — defined, never fired, not once. Instructing agents to hand off
+  to it was worse than instructing nothing, because it turned "nobody shipped this"
+  into "someone else will", and work sat merged-but-unreleased with every agent
+  believing it was covered.
+
+  The release skill's Phase 1.0 gate is rewritten from a *train detection* check
+  (which told agents to **stop**) into a *concurrency* check (which tells them to
+  **proceed unless someone else is mid-release**): a held `release-lease.sh`, an
+  open `chore(release)` PR, or a running `release.sh`. The lease is the real
+  serialization and it already refuses a second claimant, so the correct action
+  when a script takes one is simply to run it. Companion to the
+  `rules/subrules/release-to-fleet.md` rewrite in the user repo.
+
 ### Fixed
 
 - **Removed the readback Stop hard-block that over-fired on ordinary work (RUSH-2712 follow-up).** PR #308 exit-2 blocked any session that edited a .html/.png/.svg/.pdf file and used a common visual phrase even with nothing delivered; an independent review reproduced it on a routine routing-bug fix. The advisory PreToolUse nudge, the properly-scoped delivery-chain check, and the rules/preset changes from #308 are kept; only the Stop hard-block is removed, along with only its visual-gate test fixture. Re-landing the claim check with the 66-transcript corpus-replay validation the plan required is deferred.
