@@ -79,10 +79,11 @@ git_q clone "$BARE" "$CLONE_MAIN"
 git_q -C "$CLONE_MAIN" remote set-head origin trunk
 git_q -C "$CLONE_MAIN" checkout -b main
 
-# run_guard <want_exit> <desc> <json>
+# run_guard <want_exit> <desc> <json> [cwd]
 run_guard() {
   want=$1; desc=$2; json=$3
-  printf '%s' "$json" | "$GUARD" >/dev/null 2>&1
+  _dir="${4:-.}"
+  (cd "$_dir" && printf '%s' "$json" | "$GUARD") >/dev/null 2>&1
   got=$?
   if [ "$got" -eq "$want" ]; then
     pass=$((pass + 1))
@@ -129,10 +130,12 @@ run_guard 0 "Write to /tmp scratch"              "$(wj Write file_path "$TMP/loo
 # the relative branch, got concatenated onto cwd, and dirname walked back up to the
 # main repo -> false deny. These two run on Linux/macOS CI, where the Windows-cwd
 # cases below are skipped.
+# Run these from the primary tree so the dirname collapse lands in a protected
+# cwd; without the drive-letter POSIX early-exit the guard would falsely deny.
 run_guard 0 "Write drive-letter path (forward slash) outside repo, POSIX cwd on main" \
-  "$(wj Write file_path "C:/completely/external/nonexistent/path/file.txt" "$MAIN_REPO")"
+  "$(wj Write file_path "C:/completely/external/nonexistent/path/file.txt" "$MAIN_REPO")" "$MAIN_REPO"
 run_guard 0 "Write drive-letter path (backslash) outside repo, POSIX cwd on main" \
-  "$(wj Write file_path "C:\\completely\\external\\nonexistent\\path\\file.txt" "$MAIN_REPO")"
+  "$(wj Write file_path "C:\\completely\\external\\nonexistent\\path\\file.txt" "$MAIN_REPO")" "$MAIN_REPO"
 
 # --- Windows-style paths: drive-letter-rooted, backslash or forward-slash ---
 # separated paths (as sent by Claude Code / other harnesses running natively on
