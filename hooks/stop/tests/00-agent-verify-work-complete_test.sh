@@ -722,10 +722,12 @@ check "send-a-message directive does not fire handback gate" "$rc" "0"
 rc=$(FAKE_GH_STATE=MERGED run_hook "$THB" "Paste it into your shell if you like, then hit send on the reply." false)
 check "message-send is exempted even with a shell cue" "$rc" "0"
 
-# H10. Temp script written, but 'build/run it' appears in ordinary prose about
-#      checking code (no command cue) -> allow (no nagging on incidental 'run it').
-rc=$(FAKE_GH_STATE=MERGED run_hook "$THB" "Verify each against the actual code (build/run it, like you said) and then we ship." false)
-check "incidental 'run it' in prose does not fire handback gate" "$rc" "0"
+# H10. RECALL GUARD: a plain 'just run it when you're ready' after a temp-script
+#      write names no command cue but IS the canonical handback -> still block.
+#      (Excluding false-positive shapes, rather than demanding a positive command
+#      cue, is what keeps this real case firing.)
+rc=$(FAKE_GH_STATE=MERGED run_hook "$THB" "I've prepared the release; just run it when you're ready." false)
+check "plain 'run it when ready' handback still blocks (recall preserved)" "$rc" "2"
 
 # --- Fix 2 / RUSH-2394: only a DURABLE lander / monitor is a valid stop -------
 # W1. REGRESSION: Open PR + in-process `gh pr checks --watch` (run_in_background)
