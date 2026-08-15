@@ -4,6 +4,31 @@
 
 ### Changed
 
+- **An orchestrator now owns what it spawns, and an armed watcher is a claim it must
+  verify.** Changes to `rules/subrules/parallel-teams.md`, `skills/teams/SKILL.md`, and
+  `commands/dispatch.md` (plus the regenerated `rules/AGENTS.md`). The failure they
+  prevent, measured in session `ea913c60` on 2026-08-15: the orchestrator backgrounded a
+  `while true; do … done` poll over `agents teams status`, told the user *"the background
+  poll re-invokes me when the team settles, and I verify every PR's terminal state before
+  reporting anything as done"* — and `ps` showed **no such process**. Four teammates were
+  still `RUNNING` with nothing watching them. The session was idle while asserting it was
+  not, which is the shape the owner reports as the single biggest source of lost time:
+  *"they spin up sub-agents and then sit idle. They don't track if they're making
+  progress. They don't even check if they were properly spawned."*
+  The root cause was a gap in this repo's own text, not agent invention alone: both the
+  teammate brief and the orchestrator contract said only *"keep waiting with a background
+  watch"* — naming no mechanism — while `operational` separately bans exactly the
+  `while`/`until` loop an agent reaches for to satisfy it. The three files now name the
+  mechanism (`agents monitors add` for durable watches; a backgrounded command with a
+  trailing finish-echo in-session), ban the silent-death loop forms outright, and require
+  the postcondition: confirm each teammate actually reached `RUNNING`, then prove the
+  watcher is alive (`agents monitors list`, `ps -p <pid>`) before telling anyone you are
+  watching. They also separate progress-checking from debugging — `agents teams status`,
+  `gh pr list`, and `git ls-remote` answer "is it moving?", while `agents teams logs` /
+  `agents hosts logs` bill a teammate's whole transcript back as input and are reserved
+  for grepping a failure — and name the stall case (`RUNNING` for 27 minutes with no
+  branch pushed) as something to resume or re-dispatch rather than keep waiting on.
+
 - **`/recap` closes the loop before it writes, and writes a back-from-vacation summary.**
   Two changes to `commands/recap.md`. First, a mandatory ordered step before any output:
   close every ticket the session delivered (with proof), file every follow-up it was about
