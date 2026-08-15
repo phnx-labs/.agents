@@ -544,6 +544,10 @@ Mechanical backstop: the `verify-work-complete` Stop hook blocks a session from 
 
 ## You own what you spawn — an armed watcher is a claim you must verify
 
+F3 and `unattended-verification` ("exit code 0 is not evidence") applied to the act of
+spawning: the postcondition is a teammate that is actually running and a watcher that is
+actually alive, not a command that returned 0.
+
 Spawning is not delivering. The single most expensive orchestrator failure on this
 fleet is: start teammates, announce "I'll keep watch", then idle while nobody tracks
 whether the work is moving — or whether the teammates spawned at all.
@@ -561,11 +565,17 @@ Three obligations, all mechanical:
    is actually `RUNNING`, and say how many. A teammate that silently never started is
    counted as a green track and composed on top of (see the boundary-contract note
    above).
-2. **Arm a watcher that survives, then prove it.** Use `agents monitors add` (durable)
-   or a background command with a trailing finish-echo so the harness re-invokes you.
-   **Never `while true`, `until [ … ]`, or a bare `sleep` loop** — they die silently
-   with their owning shell. Then check the postcondition (`agents monitors list`,
-   `ps -p <pid>`) and quote it. **If you cannot show the watcher is alive, do not
+2. **Arm a watcher that survives, then prove it.** Use `agents monitors add` (durable —
+   note the interval is a second argument to `--poll`, and `--run` takes an agent *name*
+   with the text in `--prompt`) or a background command with a trailing finish-echo so
+   the harness re-invokes you. **Never `while true`, `until [ … ]`, or a bare `sleep`
+   loop** — they die silently with their owning shell. Then check the postcondition and
+   quote it. **Registered is not running, and fired is not ran:** `agents monitors runs
+   <name>` can report a fire as `ok` while `agents monitors logs <name>` reports that
+   same run as `skipped  (no output captured)`, meaning no agent was ever spawned —
+   reproduced on agents-cli 1.22.39, the installed *and* latest published version
+   (RUSH-2681). While that holds, a monitor owns nothing; drive the work in-session and
+   keep the monitor as a backstop. **If you cannot show the watcher is alive, do not
    tell the user you are watching.**
 3. **Track progress on cheap signals, never full logs.** `agents teams status`,
    `gh pr list`, `git ls-remote` answer "is it moving?". `agents teams logs` /

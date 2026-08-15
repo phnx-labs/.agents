@@ -175,10 +175,11 @@ nothing, while four teammates were still RUNNING with no one watching.
 ### Arm a watcher that survives — then prove it is alive
 
 ```bash
-# Durable (survives this session ending) — the default for a team you must land.
+# Durable (survives this session ending). Note the interval is a SECOND argument to
+# --poll, and --run takes an agent NAME with the prompt in --prompt.
 agents monitors add pr-sweep-done \
-  --poll 'agents teams status my-feature --json' \
-  --run  'agents run claude "Team my-feature settled — verify and land"'
+  --poll 'agents teams status my-feature --json' 5m \
+  --run claude --prompt 'Team my-feature settled — verify each PR merged, then land it'
 
 # In-session: background command + a finish-echo, so the harness re-invokes you.
 ( agents teams start my-feature --watch; echo "TEAM SETTLED rc=$? — next: verify each PR merged" )
@@ -190,13 +191,22 @@ Run the background form with `run_in_background: true`.
 when the shell that owns them goes away, and you are left claiming a watch that
 does not exist.
 
-**Then assert it.** A watcher is not armed because the command returned 0 — check
-the postcondition and quote it:
+**Then assert it — this is F3 applied to the watcher itself.** A watcher is not armed
+because the command returned 0. Check the postcondition and quote it:
 
 ```bash
-agents monitors list | grep pr-sweep-done     # durable watcher registered?
-ps -p "$WATCH_PID" >/dev/null && echo alive   # background watcher still running?
+agents monitors list | grep pr-sweep-done       # registered?
+agents monitors logs pr-sweep-done              # did the ACTION actually run?
+ps -p "$WATCH_PID" >/dev/null && echo alive     # background watcher still running?
 ```
+
+**Registered is not running, and fired is not ran.** `agents monitors runs <name>`
+reporting a fire as `ok` while `agents monitors logs <name>` reports that same run as
+`skipped  (no output captured)` means the action never executed and no agent was
+spawned — the monitor is decorative. Reproduced on agents-cli 1.22.39 on 2026-08-15,
+which is both the installed and the latest published version (RUSH-2681). **While that
+is true, a monitor cannot be the owner of anything** — drive the work in-session and
+treat the monitor as a backstop.
 
 If you cannot show that output, **do not tell the user you are watching.**
 

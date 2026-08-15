@@ -68,16 +68,19 @@ you've handed it off by naming who/what now owns it. Don't stop the turn on "dis
 alone. Three concrete obligations:
 
 1. **Confirm it spawned.** A dispatch that exits 0 is not a running agent — a sandbox
-   can die and still return 0. Confirm with `agents teams status` / `agents hosts ps`,
-   or the first real artifact (a pushed branch), and say what you saw.
-2. **Arm a watcher, then prove it is alive.** `agents monitors add` (durable), or a
-   background command with a trailing finish-echo so the harness re-invokes you.
-   **Never a `while`/`until`/`sleep` loop** — those die silently with their shell, and
-   an agent then reports a watch it does not have. Verify with `agents monitors list`
-   or `ps -p <pid>` and quote it.
+   can die and still return 0. Confirm with `agents teams status`, `agents sessions
+   --active`, or the first real artifact (a pushed branch), and say what you saw.
+2. **Arm a watcher, then prove it is alive** (F3 applied to the watcher itself). Use
+   `agents monitors add` (durable) or a background command with a trailing finish-echo
+   so the harness re-invokes you. **Never a `while`/`until`/`sleep` loop** — those die
+   silently with their shell, and an agent then reports a watch it does not have.
+   Verify with `agents monitors list` + `agents monitors logs <name>`, or `ps -p <pid>`,
+   and quote it. **Registered is not running and fired is not ran:** a fire recorded as
+   `ok` whose action logs `skipped  (no output captured)` spawned nothing (RUSH-2681,
+   live on 1.22.39) — then the monitor owns nothing and you must drive it in-session.
 3. **Poll cheap signals, not logs.** `gh pr list`, `git ls-remote`, `agents teams status`.
-   Pull `agents hosts logs` only to grep a failure — it bills the whole transcript back
-   to you.
+   Pull a run log (`agents logs <id>`, `agents teams logs`) only to grep a failure — it
+   bills the whole transcript back to you as input.
 
 ## Anti-patterns
 
