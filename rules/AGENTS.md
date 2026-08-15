@@ -596,7 +596,7 @@ Five obligations, all mechanical:
    monitoring.
 5. **Track progress on cheap signals, never full logs.** `agents teams status`,
    `gh pr list`, `git ls-remote` answer "is it moving?". `agents teams logs` /
-   `agents hosts logs` bill a teammate's whole transcript back to you as input —
+   `agents logs <id>` bill a teammate's whole transcript back to you as input —
    pull them only to grep a failure or decide on a restart. `RUNNING` for 27 minutes
    with no branch pushed is a **stall**: resume or re-dispatch it, don't keep waiting.
 
