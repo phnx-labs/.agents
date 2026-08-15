@@ -13,6 +13,40 @@
 set -u
 DIR=$(cd "$(dirname "$0")" && pwd)
 GUARD="$DIR/merge-guard.sh"
+
+# gh/git stubs so the review-on-this-PR check never touches the network in
+# tests. Defaults keep every legacy case's expectation: reviews empty, comments
+# carry a fresh APPROVE verdict (so a plain merge stays allowed). Cases override
+# with FAKE_MG_REVIEWS / FAKE_MG_COMMENTS; FAKE_MG_GH_FAIL=1 simulates an API
+# error (guard must fail open).
+STUBTMP=$(mktemp -d)
+trap 'rm -rf "$STUBTMP"' EXIT
+mkdir -p "$STUBTMP/bin"
+cat > "$STUBTMP/bin/gh" <<'STUB'
+#!/usr/bin/env bash
+# NOTE: no inline-JSON ${VAR:-default} here — a default word containing `}`
+# terminates the parameter expansion early and emits malformed JSON.
+[ "${FAKE_MG_GH_FAIL:-}" = "1" ] && exit 1
+case "$*" in
+  *"/reviews"*)
+    if [ -n "${FAKE_MG_REVIEWS+x}" ]; then printf '%s' "$FAKE_MG_REVIEWS"
+    else printf '%s' '[]'; fi ;;
+  *"/comments"*)
+    if [ -n "${FAKE_MG_COMMENTS+x}" ]; then printf '%s' "$FAKE_MG_COMMENTS"
+    else printf '%s' '[{"body":"Non-author review: APPROVE - verified the diff."}]'; fi ;;
+  *) echo "" ;;
+esac
+STUB
+chmod +x "$STUBTMP/bin/gh"
+cat > "$STUBTMP/bin/git" <<'STUB'
+#!/usr/bin/env bash
+case "$*" in
+  "remote get-url origin") echo "git@github.com:acme/widgets.git" ;;
+  *)                       echo "" ;;
+esac
+STUB
+chmod +x "$STUBTMP/bin/git"
+export PATH="$STUBTMP/bin:$PATH"
 M="mer""ge"      # -> "merge"
 A="--ad""min"    # -> "--admin"
 pass=0
@@ -119,6 +153,36 @@ checkc 2 "camelCase sh -c quoted bypass"   "sh -c 'gh pr $M 40 $A'"
 checkc 0 "camelCase legit squash merge"    "gh pr $M 40 --squash --delete-branch"
 checkc 0 "camelCase body mentions it only" \
   "gh pr create --body \"never run gh pr $M 40 $A, it bypasses protection\""
+
+# --- review-on-THIS-PR check (2026-08-15, the #2736 laundering pattern) -----
+# Default stub carries a fresh APPROVE comment -> allowed (covered above by the
+# legit-merge cases). Now the negative space:
+
+# No verdict anywhere on the PR -> block.
+FAKE_MG_COMMENTS='[{"body":"looks big, did not review"}]' \
+  check 2 "merge with no APPROVE verdict on the PR blocks" "gh pr $M 42"
+
+# The verdict is carried from ANOTHER PR -> laundering, block.
+FAKE_MG_COMMENTS='[{"body":"Non-author APPROVE carried from #2731."}]' \
+  check 2 "carried-from verdict does not satisfy the review" "gh pr $M 42"
+FAKE_MG_COMMENTS='[{"body":"Non-author APPROVE on #2731 covers this."}]' \
+  check 2 "APPROVE-on-#N citation does not satisfy the review" "gh pr $M 42"
+
+# A real GitHub APPROVED review satisfies it even with no comments.
+FAKE_MG_REVIEWS='[{"state":"APPROVED"}]' FAKE_MG_COMMENTS='[]' \
+  check 0 "GitHub APPROVED review satisfies the check" "gh pr $M 42"
+
+# A fresh APPROVE verdict comment satisfies it (the fleet convention).
+FAKE_MG_COMMENTS='[{"body":"## Verdict: APPROVE\nRe-verified both findings."}]' \
+  check 0 "fresh APPROVE verdict comment satisfies the check" "gh pr $M 42"
+
+# API failure -> fail OPEN (a review guard must not block on a GitHub hiccup).
+FAKE_MG_GH_FAIL=1 \
+  check 0 "API error fails open" "gh pr $M 42"
+
+# URL-form merge resolves repo+number from the URL.
+FAKE_MG_COMMENTS='[{"body":"no verdict here"}]' \
+  check 2 "URL-form merge without verdict blocks" "gh pr $M https://github.com/acme/widgets/pull/42"
 
 printf -- '---\nmerge-guard: %s passed, %s failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]

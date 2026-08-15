@@ -124,10 +124,60 @@ esac
 #    evidence — it does NOT clear the run-result requirement on its own.
 lower=$(printf '%s' "$hay" | tr '[:upper:]' '[:lower:]')
 case "$lower" in
-  *"release"*|*"docs-only"*|*"docs only"*|*"docs:"*|\
+  *"chore(release)"*|*"release pr"*|*"release:"*|*"release v"*|*"docs:"*|\
   *"no behavior change"*|*"no-behavior-change"*|*"no visible surface"*|*"no user-visible"*|\
-  *"refactor"*|*"test-only"*|*"test only"*|*"internal only"*) exit 0 ;;
+  *"refactor"*|*"internal only"*) exit 0 ;;
 esac
+
+# Declaration-vs-diff cross-check (2026-08-15, PR #2736): "test-only." on a
+# +1,519/-200 fifteen-file fix(browser) diff cleared this gate — the magic word
+# had become a password. A checkable declaration (test-only / docs-only) is now
+# verified against the branch's actual changed files; a contradicted
+# declaration BLOCKS instead of clearing. Unverifiable declarations (release /
+# refactor / no-behavior-change) keep clearing above — the diff cannot decide
+# them. Fail open when the diff is unreadable: a reminder must never block a
+# legit PR because git hiccuped.
+declared=""
+case "$lower" in *"test-only"*|*"test only"*) declared="test-only" ;; esac
+if [ -z "$declared" ]; then
+  case "$lower" in *"docs-only"*|*"docs only"*) declared="docs-only" ;; esac
+fi
+if [ -n "$declared" ]; then
+  _base=$(git symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null | sed 's#^origin/##')
+  [ -n "$_base" ] || _base=main
+  _files=$(git diff --name-only "origin/$_base...HEAD" 2>/dev/null)
+  [ -n "$_files" ] || exit 0
+  _bad=""
+  while IFS= read -r _f; do
+    [ -n "$_f" ] || continue
+    case "$declared" in
+      test-only)
+        case "$_f" in
+          *test*|*Test*|*__tests__*|*.spec.*|testdata/*|*/testdata/*) ;;
+          *) _bad="$_bad  - $_f
+" ;;
+        esac ;;
+      docs-only)
+        case "$_f" in
+          *.md|*.mdx|*.txt|docs/*|*/docs/*|LICENSE*) ;;
+          *) _bad="$_bad  - $_f
+" ;;
+        esac ;;
+    esac
+  done <<PRDIFF
+$_files
+PRDIFF
+  if [ -z "$_bad" ]; then exit 0; fi
+  {
+    echo "PR evidence reminder (truly-agentic-git-workflow): the body declares '$declared' but the branch diff contradicts it."
+    echo
+    echo "Non-$declared files changed on this branch:"
+    printf '%s' "$_bad"
+    echo
+    echo "A no-run declaration is only for a diff that genuinely matches it — declaring 'test-only' on a behavior change is how an evidence-free PR walks past this gate (PR #2736). Either fix the declaration and attach a real run result (screenshot / recording / uploaded output), or split the PR so the declaration is true."
+  } >&2
+  exit 2
+fi
 
 # No run result and not exempt — nudge once. Satisfiable: run it, capture, attach.
 {

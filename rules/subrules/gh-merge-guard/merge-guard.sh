@@ -35,6 +35,14 @@
 # Exits 0 (allow) or 2 (deny, message on stderr).
 input=$(cat)
 
+# Portable timeout: macOS ships neither `timeout` nor `gtimeout` by default.
+_to() {
+  if command -v timeout >/dev/null 2>&1; then timeout "$@"
+  elif command -v gtimeout >/dev/null 2>&1; then gtimeout "$@"
+  else shift; "$@"
+  fi
+}
+
 # --- portable JSON field extractor (jq -> node -> python) -------------------
 # jq is absent on Windows git-bash; the old `… | jq …` extraction then returned
 # empty and this guard fail-OPEN'd (waved `gh pr merge --admin` through). Prefer
@@ -145,6 +153,64 @@ case "$norm" in
         exit 2
         ;;
     esac
+
+    # Review-on-THIS-PR check (2026-08-15, PR #2736): a merge satisfied the
+    # non-author-review convention with "Non-author APPROVE on #2731" — an
+    # approval carried from a DIFFERENT PR. A verdict only counts on the PR it
+    # was posted on. Accept either a real GitHub APPROVED review, or the fleet
+    # convention of an APPROVE verdict comment on this PR that is not a
+    # carried-from citation. Fail OPEN on anything the guard cannot resolve
+    # (no number, no repo, API error, rate limit) — a review guard must never
+    # block a legit merge because GitHub hiccuped; --admin blocking above never
+    # fails open.
+    _pr_num=""; _pr_repo=""
+    _pr_url=$(printf '%s' "$cmd" | grep -oE 'https://github\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+/pull/[0-9]+' | head -1)
+    if [ -n "$_pr_url" ]; then
+      _pr_num=${_pr_url##*/}
+      _pr_repo=$(printf '%s' "$_pr_url" | sed -E 's#https://github\.com/([^/]+/[^/]+)/pull/.*#\1#')
+    else
+      _pr_num=$(printf '%s' "$cmd" | grep -oE 'pr merge[[:space:]]+[0-9]+' | grep -oE '[0-9]+' | head -1)
+      _pr_repo=$(printf '%s' "$cmd" | grep -oE '\-\-repo[= ][A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+' | sed -E 's/--repo[= ]//' | head -1)
+      if [ -z "$_pr_repo" ]; then
+        _pr_repo=$(git remote get-url origin 2>/dev/null | sed -E 's#(git@github\.com:|https://github\.com/)([^/]+/[^/.]+)(\.git)?#\2#' | head -1)
+      fi
+    fi
+    if [ -n "$_pr_num" ] && [ -n "$_pr_repo" ]; then
+      _reviews=$(_to 8 gh api "repos/$_pr_repo/pulls/$_pr_num/reviews" --cache 60s 2>/dev/null) || _reviews="__API_ERR__"
+      _comments=$(_to 8 gh api "repos/$_pr_repo/issues/$_pr_num/comments" --cache 60s 2>/dev/null) || _comments="__API_ERR__"
+      if [ "$_reviews" != "__API_ERR__" ] && [ "$_comments" != "__API_ERR__" ]; then
+        _verdict=$(printf '%s\n---AGENTS-SPLIT---\n%s' "$_reviews" "$_comments" | python3 -c '
+import json, re, sys
+raw = sys.stdin.read().split("---AGENTS-SPLIT---")
+ok = False
+try:
+    reviews = json.loads(raw[0])
+    if isinstance(reviews, list) and any(r.get("state") == "APPROVED" for r in reviews):
+        ok = True
+except Exception:
+    pass
+if not ok:
+    try:
+        comments = json.loads(raw[1])
+        for c in (comments if isinstance(comments, list) else []):
+            body = c.get("body") or ""
+            if not re.search(r"\bAPPROVE\b", body):
+                continue
+            # A verdict that only points at another PR is laundering, not review.
+            if re.search(r"\bcarried (?:over )?from\b|\bAPPROVE (?:on|from) #\d+", body):
+                continue
+            ok = True
+            break
+    except Exception:
+        pass
+print("ok" if ok else "missing")
+' 2>/dev/null) || _verdict="ok"
+        if [ "$_verdict" = "missing" ]; then
+          printf '%s\n' "Blocked: no non-author review verdict found ON this PR ($_pr_repo#$_pr_num). A GitHub APPROVED review or an APPROVE verdict comment must be posted on the PR being merged — a verdict 'carried from' another PR satisfies nothing (the #2736 laundering pattern). Get the automated reviewer's verdict or spawn a non-author subagent review on THIS PR, then retry." >&2
+          exit 2
+        fi
+      fi
+    fi
     ;;
 esac
 exit 0

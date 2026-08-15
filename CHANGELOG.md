@@ -2,6 +2,23 @@
 
 ## [Unreleased]
 
+### Added
+
+- **merge-guard: a non-author review verdict must be ON the PR being merged.**
+  `gh pr merge` is blocked when the PR has neither a GitHub APPROVED review nor
+  a fresh APPROVE verdict comment — and a comment citing a verdict "carried
+  from #N" satisfies nothing (measured 2026-08-15: PR #2736 was staged for
+  merge on "Non-author APPROVE on #2731"). Fails open on any API error or an
+  unresolvable PR reference; the --admin block never fails open.
+- **pr-description-reminder: checkable no-run declarations are verified against
+  the branch diff.** "test-only" with non-test files changed, or "docs-only"
+  with code changed, now blocks instead of clearing — PR #2736 declared
+  "test-only." on a +1,519/−200 fifteen-file `fix(browser)` diff and walked
+  past the gate. The bare-word "release" escape is tightened to
+  release-shaped phrases (`chore(release)` / "release PR" / "release:" /
+  "release v"). Unverifiable declarations (refactor / no-behavior-change)
+  and unreadable diffs keep failing open.
+
 ### Fixed
 
 - **The ruleset told agents to run two commands that do not exist.** `agents share` and
