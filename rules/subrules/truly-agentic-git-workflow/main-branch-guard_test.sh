@@ -272,5 +272,32 @@ run_guard 2 "camelCase git commit on primary-tree feature branch is BLOCKED" "$(
 run_guard 2 "camelCase worktree add -b, local base" "$(bjc "git -C $CLONE worktree add -b feat/cc1 $TMP/wt_cc1 trunk")"
 run_guard 0 "camelCase worktree add -b, origin base" "$(bjc "git -C $CLONE worktree add -b feat/cc2 $TMP/wt_cc2 origin/trunk")"
 
+# --- Submodule: its working dir is PRIMARY-tree content, not a linked worktree.
+# A submodule's `.git` is a FILE (like a linked worktree) but points into
+# `.git/modules/`, not `.git/worktrees/` — so it must be DENIED, not allowed.
+SUBSRC="$TMP/subsrc"; mkdir -p "$SUBSRC"; git_q -C "$SUBSRC" init
+git_q -C "$SUBSRC" commit --allow-empty -m s
+SUPER="$TMP/super"; mkdir -p "$SUPER"; git_q -C "$SUPER" init
+git_q -C "$SUPER" commit --allow-empty -m init
+git -c protocol.file.allow=always -c user.email=t@t.dev -c user.name=t -C "$SUPER" submodule add "$SUBSRC" sub >/dev/null 2>&1
+git_q -C "$SUPER" commit -m addsub
+if [ -f "$SUPER/sub/.git" ]; then
+  run_guard 2 "Write inside a submodule (primary-tree content, not a worktree)" "$(wj Write file_path "$SUPER/sub/f.txt")"
+  run_guard 2 "git commit inside a submodule"                                    "$(bj "git commit -m x" "$SUPER/sub")"
+fi
+
+# --- Version skew (regression for the fail-open BLOCKER): this guard sourced with
+# a STALE git-facts.sh (present but lacking git_facts_in_primary_tree) must FAIL
+# SAFE via the git-fork fallback, not fall through to allow. Uses a fake install
+# layout so the guard's relative candidate resolves to the stale lib.
+FAKE="$TMP/fake"; mkdir -p "$FAKE/rules/subrules/truly-agentic-git-workflow" "$FAKE/hooks/lib"
+cp "$GUARD" "$FAKE/rules/subrules/truly-agentic-git-workflow/main-branch-guard.sh"
+printf '#!/bin/sh\ngit_facts_on_default() { return 1; }\n' > "$FAKE/hooks/lib/git-facts.sh"
+FAKE_GUARD="$FAKE/rules/subrules/truly-agentic-git-workflow/main-branch-guard.sh"
+# FEAT_REPO is a PRIMARY tree on a feature branch — only the NEW primary-tree
+# logic denies it, so this proves the fork fallback (not the stale fn) protects it.
+_sk=$(printf '%s' "$(bj "git commit -m x" "$FEAT_REPO")" | HOME="$TMP/home" "$FAKE_GUARD" >/dev/null 2>&1; echo $?)
+if [ "$_sk" -eq 2 ]; then pass=$((pass+1)); else fail=$((fail+1)); printf 'FAIL: stale-lib version skew still blocks primary feature-branch commit (want 2, got %s)\n' "$_sk"; fi
+
 printf -- '---\nmain-branch-guard: %s passed, %s failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]
