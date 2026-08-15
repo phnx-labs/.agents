@@ -27,6 +27,11 @@
 
 ### Fixed
 
+- **The repository pre-commit hook now refuses every staged path under `.agents/`.**
+  The system mirror no longer tracks a session-specific rendered plan, ignores the whole
+  local `.agents/` tree, and names offending additions or deletions before a commit can
+  distribute per-machine agent output fleet-wide.
+
 - **Stop hook: the command-handback gate stops false-firing on paste-into-a-form and
   send-a-message handoffs.** `00-agent-verify-work-complete.sh` blocked a stop when the
   session had written a script to a temp path AND the final message told the user to
