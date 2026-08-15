@@ -20,7 +20,9 @@ git -C "$TMP_DIR" commit -q -m "normal commit"
 
 mkdir -p "$TMP_DIR/.agents/plans"
 printf 'local plan\n' > "$TMP_DIR/.agents/plans/plan.html"
-git -C "$TMP_DIR" add .agents/plans/plan.html
+NEWLINE_PATH=$'.agents/plans/line\nbreak.html'
+printf 'newline plan\n' > "$TMP_DIR/$NEWLINE_PATH"
+git -C "$TMP_DIR" add .agents/plans/plan.html "$NEWLINE_PATH"
 
 set +e
 ADD_OUTPUT=$(git -C "$TMP_DIR" commit -m "must fail" 2>&1)
@@ -41,10 +43,16 @@ if [[ "$ADD_OUTPUT" != *".agents/plans/plan.html"* ]]; then
     echo "$ADD_OUTPUT" >&2
     exit 1
 fi
+if [[ "$ADD_OUTPUT" != *"$NEWLINE_PATH"* ]]; then
+    echo "FAIL: refusal did not name the staged .agents/ path containing a newline" >&2
+    echo "$ADD_OUTPUT" >&2
+    exit 1
+fi
 
 git -C "$TMP_DIR" commit -q --no-verify -m "fixture: track local plan"
 rm "$TMP_DIR/.agents/plans/plan.html"
-git -C "$TMP_DIR" add -u .agents/plans/plan.html
+rm "$TMP_DIR/$NEWLINE_PATH"
+git -C "$TMP_DIR" add -u .agents
 
 set +e
 DELETE_OUTPUT=$(git -C "$TMP_DIR" commit -m "must also fail" 2>&1)
