@@ -28,6 +28,13 @@
   - Permission layer (`permissions/groups/99-deny.yaml` → built `default.yaml`)
     already denied plain `git checkout` / `git switch`; the hook is what now closes
     the dressed forms the permission prefix-globs cannot match.
+  - Fails **safe** under a non-atomic two-file rollout: if `main-branch-guard.sh`
+    is updated before `git-facts.sh`, the guard only trusts the lib when it exports
+    `git_facts_in_primary_tree`, else falls through to the git-fork path (a stale
+    lib no longer silently allows a primary-tree commit).
+  - **Submodules** are treated as primary-tree content, not linked worktrees: a
+    `.git`-as-file is a linked worktree only when its `gitdir:` points under
+    `.git/worktrees/`; a submodule's `.git/modules/…` pointer stays protected.
 
 - **Regression debugging now identifies who caused the change and how it escaped review.**
   `/debug` and `/swarm:debug` invoke the existing read-only `/blame` primitive for

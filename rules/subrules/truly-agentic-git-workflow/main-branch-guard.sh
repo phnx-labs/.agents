@@ -34,10 +34,10 @@
 # internal hooks are unaffected.
 #
 # Scope (deliberate — the "files + commit gate" design): raw-shell working-tree
-# mutation on the default branch (`>`/`>>` redirection, `tee`, `sed -i`, `cp`,
+# mutation in the primary tree (`>`/`>>` redirection, `tee`, `sed -i`, `cp`,
 # `git rm`/`git mv`) is NOT blocked at write time. The `git add`/`git commit`
-# gate is the choke point — such changes can never be committed to the default
-# branch, so nothing lands there outside a worktree + PR.
+# gate is the choke point — such changes can never be committed from the primary
+# working tree, so nothing lands outside a linked worktree + PR.
 #
 # Limitations (intentionally out of scope — runtime obfuscation only a sandbox
 # can stop): `eval`/`xargs`/`$(...)` subshells feeding a git command string,
@@ -120,8 +120,17 @@ do
   if [ -f "$_cand" ]; then
     # shellcheck source=../../../hooks/lib/git-facts.sh
     . "$_cand"
-    _GIT_FACTS_READY=1
-    break
+    # Only trust the lib if it actually exports the function we call. A stale lib
+    # — present but pre-dating git_facts_in_primary_tree, exactly the state a
+    # non-atomic two-file sync produces (main-branch-guard updated, git-facts not
+    # yet) — would otherwise leave _GIT_FACTS_READY=1 and make the
+    # `if in_primary_tree` test hit an undefined function (rc!=0, immune to
+    # `set -e` inside an `if`), fall through, and ALLOW a primary-tree commit.
+    # Fail-safe: fall through to the git-fork fallback below instead.
+    if command -v git_facts_in_primary_tree >/dev/null 2>&1; then
+      _GIT_FACTS_READY=1
+      break
+    fi
   fi
 done
 unset _MBG_DIR _cand
@@ -138,9 +147,11 @@ unset _MBG_DIR _cand
 # limits on every branch; the ONLY place an agent writes is a linked worktree.
 #
 # Uses the shared git-facts cache (HEAD-validated, short TTL). If the lib is
-# missing (partial install), fall through to git forks so the guard never
-# soft-opens. Primary vs linked is fork-free: primary has `.git` as a directory;
-# a linked worktree has `.git` as a file (`gitdir:` pointer).
+# missing OR stale (no git_facts_in_primary_tree — see the source loop above),
+# fall through to git forks so the guard never soft-opens. Primary vs linked is
+# fork-free via the `.git` entry: a directory → primary; a file pointing under
+# `.git/worktrees/` → linked worktree (allow); a file pointing elsewhere (a
+# submodule's `.git/modules/…`, or unknown) → protect.
 in_primary_tree() {
   if [ "${_GIT_FACTS_READY:-0}" = 1 ]; then
     git_facts_in_primary_tree "$1"
@@ -149,8 +160,16 @@ in_primary_tree() {
   _top=$(git -C "$1" rev-parse --show-toplevel 2>/dev/null) || return 1
   _cur=$(git -C "$_top" symbolic-ref --short -q HEAD 2>/dev/null) || _cur=""
   _def=$(git -C "$_top" symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null | sed 's#^origin/##') || _def=""
-  [ -d "$_top/.git" ] && return 0   # primary working tree (any branch) — protected
-  return 1                          # linked worktree / not-a-repo — allow
+  if [ -d "$_top/.git" ]; then
+    return 0                        # primary working tree (any branch) — protected
+  elif [ -f "$_top/.git" ]; then
+    _gd=$(sed -n 's/^gitdir:[[:space:]]*//p' "$_top/.git" 2>/dev/null | head -1)
+    case "$_gd" in
+      */worktrees/*) return 1 ;;    # linked worktree — the blessed agent path
+      *)             return 0 ;;    # submodule / unknown pointer — protect
+    esac
+  fi
+  return 1                          # not a normal primary tree — allow
 }
 
 set_deny_reason() {
@@ -220,7 +239,7 @@ case "$tool" in
   *) exit 0 ;;
 esac
 
-# --- Bash branch: gate `git commit|add|stage` on the default branch --------
+# --- Bash branch: gate `git commit|add|stage` in the primary working tree -----
 # Fast path: no "git" anywhere -> nothing to police.
 case "$input" in *git*) ;; *) exit 0 ;; esac
 # Parser presence already confirmed by the tool_name extraction above.

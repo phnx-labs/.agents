@@ -37,12 +37,13 @@ Rules:
 
 ## Process
 
-> **Default branch is off-limits.** If the working tree is on its default branch
-> (`main`/`master`), the `main-branch-guard` hook blocks `git add`/`git commit` —
-> by design (see the truly-agentic-git-workflow rule). Move the changes to a
-> worktree + branch and commit there (`git worktree add -b <slug>
-> <repo>/.agents/worktrees/<slug>`), then open a PR. Don't try to work around the
-> guard.
+> **The primary working tree is off-limits — on ANY branch.** If the target is the
+> user's own checkout (the primary working tree), the `main-branch-guard` hook
+> blocks `git add`/`git commit` regardless of which branch it is on, not just the
+> default — by design (see the truly-agentic-git-workflow rule). Move the changes
+> to a linked worktree and commit there (`git worktree add -b <slug>
+> <repo>/.agents/worktrees/<slug> origin/<default>`), then open a PR. Don't try to
+> work around the guard.
 
 1. Run `git status` and `git diff` (staged + unstaged) in parallel.
 2. If nothing to commit, say so and stop. Do not create an empty commit.
