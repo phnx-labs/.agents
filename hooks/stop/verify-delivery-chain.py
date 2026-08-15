@@ -390,10 +390,17 @@ def _release_status(repo_path, pr_data, transcript_path, last_assistant_message,
 
     all_text = "\n".join(text_chunks)
 
-    # Recent git tag is release evidence, but not live verification by itself.
-    recent_tag = _run(["git", "describe", "--tags", "--abbrev=0"], cwd=repo_path, timeout=5)
-    if recent_tag:
-        release_ran = True
+    # A tag ANYWHERE in history used to set release_ran here. That defeated the gate
+    # permanently in any repo that has ever cut a release: agents-cli has 185 tags, so
+    # `git describe --tags --abbrev=0` always answered, release_ran was always True, and
+    # "merged is not shipped" could never fire. Measured 2026-08-15: PR #2705 merged, its
+    # entry sat under `## [Unreleased]`, and the session stopped clean asking whether to
+    # release — the exact banned stop this gate exists to catch.
+    #
+    # Ask the real question instead: is the delivered work still staged rather than
+    # shipped? A changelog this PR touched that still carries content under
+    # `## [Unreleased]` is the mechanical signature of merged-but-unreleased.
+    unreleased_changelogs = _unreleased_changelogs(repo_path, pr_data)
 
     release_cmds = re.compile(
         r"\b(npm\s+publish|yarn\s+publish|cargo\s+publish|vsce\s+publish|"
@@ -419,7 +426,35 @@ def _release_status(repo_path, pr_data, transcript_path, last_assistant_message,
         release_ran = True
         verified_live = True
 
+    # Staged work outranks any positive signal above: a real `## [Unreleased]` block in a
+    # changelog this delivery touched means the change is merged and not published, whatever
+    # the transcript claims.
+    if unreleased_changelogs:
+        release_ran = False
+        verified_live = False
+
     return release_ran, verified_live
+
+
+def _unreleased_changelogs(repo_path, pr_data):
+    """Changelogs this delivery touched that still carry content under `## [Unreleased]`.
+
+    An empty `## [Unreleased]` heading is fine — that is the normal resting state. Only a
+    heading with real content beneath it means work is staged and unshipped.
+    """
+    if not repo_path:
+        return []
+    found = []
+    for path in _changed_files(repo_path, pr_data):
+        if "changelog" not in path.lower():
+            continue
+        body = _run(["git", "show", f"HEAD:{path}"], cwd=repo_path, timeout=5)
+        if not body:
+            continue
+        m = re.search(r"^##\s*\[Unreleased\]\s*$(.*?)(?=^##\s|\Z)", body, re.M | re.S)
+        if m and m.group(1).strip():
+            found.append(path)
+    return found
 
 
 def _docs_changelog_status(repo_path, pr_data):
