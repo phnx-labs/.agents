@@ -481,8 +481,7 @@ check_contains "focus project keeps its milestones"   "$out" "**Milestones:**"
 
 # A def whose linear.name matches NOTHING live on the board must fail OPEN to the
 # basename fuzz, not fail closed. The CLI only began refreshing linear.name in
-# agi-cli#2706, which is merged but not yet released — so today every def on
-# every machine still carries a label the board may have
+# 1.22.40, so every def written before that carries a label the board may have
 # renamed away from — treating "present" as "authoritative" collapsed every
 # project to one line and claimed no def existed.
 out=$(LINEAR_CLI_CONFIG="$SANDBOX/config.json" env -u LINEAR_API_KEY -u LINEAR_TEAM_ID \

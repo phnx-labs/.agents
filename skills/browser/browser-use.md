@@ -8,17 +8,23 @@ CDP-based automation for websites and web apps.
 # Create a profile (one-time)
 agents browser profiles create my-profile -b chrome -e cdp://localhost:9222
 
-# Start a task — sets AGENTS_BROWSER_TASK for the session
-export AGENTS_BROWSER_TASK=$(agents browser start --profile my-profile)
+# Start a task — stdout IS the task handle. Remember it; later calls take --task <handle>.
+agents browser start --profile my-profile
+# -> quiet-falcon-summit-a743161a
 
 # Navigate and interact
-agents browser tab add --url https://example.com
-agents browser refs
-agents browser click <ref>
-agents browser type <ref> --text "hello"
-agents browser screenshot
-agents browser done
+agents browser tab add --url https://example.com --task <handle>
+agents browser refs --task <handle>
+agents browser click <ref> --task <handle>
+agents browser type <ref> --text "hello" --task <handle>
+agents browser screenshot --task <handle>
+agents browser done --task <handle>
 ```
+
+Do **not** `export AGENTS_BROWSER_TASK` and rely on it later: every agent tool call runs
+in a fresh shell, so the export is gone by your next call. Remember the printed handle
+and pass `--task <handle>` explicitly. (Inside one multi-command invocation a plain
+shell variable is fine.)
 
 ## How do I keep a browser action loop warm?
 
@@ -37,7 +43,7 @@ between requests.
 Set the task once when launching the process:
 
 ```bash
-agents browser stream --task "$AGENTS_BROWSER_TASK"
+agents browser stream --task <handle>
 ```
 
 Use the ordinary commands for a single action or when the calling tool cannot keep a
@@ -61,8 +67,8 @@ Supported browsers: `chrome`, `comet`, `chromium`, `brave`, `edge`
 ## Session Lifecycle
 
 ```bash
-# Start — stdout is the resolved task name; export it so no per-call --task is needed
-export AGENTS_BROWSER_TASK=$(agents browser start --profile <profile>)
+# Start — stdout is the task handle; pass it to every later call via --task
+agents browser start --profile <profile>
 
 agents browser status        # list running tasks
 agents browser done          # complete task, close tabs, save to history
@@ -169,8 +175,8 @@ agents browser evaluate --expression 'document.execCommand("insertText", false, 
 
 ```bash
 agents browser profiles create remote-mac -b comet -e ssh://user@hostname?port=9222
-export AGENTS_BROWSER_TASK=$(agents browser start --profile remote-mac)
-agents browser tab add --url https://example.com
+agents browser start --profile remote-mac      # prints the task handle
+agents browser tab add --url https://example.com --task <handle>
 ```
 
 The SSH driver launches the browser on the remote host and tunnels CDP back.
@@ -178,7 +184,7 @@ The SSH driver launches the browser on the remote host and tunnels CDP back.
 ## Workflow Pattern
 
 1. **Create profile** (one-time): `agents browser profiles create …`
-2. **Start**: `export AGENTS_BROWSER_TASK=$(agents browser start --profile <name>)`
+2. **Start**: `agents browser start --profile <name>` — remember the printed handle; pass `--task <handle>` on every call
 3. **Open tab**: `agents browser tab add --url <url>`
 4. **Wait** for page to load (`--state networkidle` or `--selector`)
 5. **Refs** to see clickable elements

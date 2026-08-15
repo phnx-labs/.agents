@@ -22,7 +22,7 @@ commands are often thin wrappers that only invoke a skill (harness-friendly).
 |---|---|
 | [`/plan`](./plan.md) | Plan with grounded design — research, read code, create artifacts, optionally get early review |
 | [`/swarm`](./swarm.md) | Front door to the `swarm` plugin — fan work across parallel agents (`run` by default; or `plan` / `spec` / `debug`) |
-| [`/debug`](./debug.md) | Trace the data path, hypothesize a root cause, then have independent agents confirm it before any fix (routes to `swarm:debug`) |
+| [`/debug`](./debug.md) | Trace the data path, attribute regressions to the responsible agent/session and explain how they slipped, then have independent agents confirm the root cause (routes to `swarm:debug`) |
 | [`/blame`](./blame.md) | Trace a regression — a feature that worked and silently broke — to the culprit change, the removed/skipped test that let it through, and the agent/session behind it. Read-only forensics, no fix |
 
 Multi-agent plan/spec/debug live under `/swarm …` and `/swarm:plan` / `/swarm:spec` /

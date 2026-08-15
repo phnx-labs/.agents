@@ -309,6 +309,19 @@ else
   bad "TTL=0 expected 2 misses 0 hits, got misses=$GIT_FACTS_MISSES hits=$GIT_FACTS_HITS"
 fi
 
+# --- git_facts_in_primary_tree: primary protected, linked worktree allowed, submodule protected ---
+export GIT_FACTS_TTL_SEC=0
+if git_facts_in_primary_tree "$MAIN_REPO"; then ok "primary tree -> protected (rc=0)"; else bad "primary tree should be protected"; fi
+[ "$GIT_FACTS_PRIMARY" = 1 ] && ok "GIT_FACTS_PRIMARY=1 in primary tree" || bad "GIT_FACTS_PRIMARY should be 1 in primary tree (got $GIT_FACTS_PRIMARY)"
+if git_facts_in_primary_tree "$WT_LINK"; then bad "linked worktree should NOT be protected"; else ok "linked worktree -> allowed (rc=1)"; fi
+[ "$GIT_FACTS_PRIMARY" = 0 ] && ok "GIT_FACTS_PRIMARY=0 in linked worktree" || bad "GIT_FACTS_PRIMARY should be 0 in linked worktree (got $GIT_FACTS_PRIMARY)"
+GF_SUBSRC="$TMP/gf_subsrc"; mkdir -p "$GF_SUBSRC"; git_q -C "$GF_SUBSRC" init; git_q -C "$GF_SUBSRC" commit --allow-empty -m s
+GF_SUPER="$TMP/gf_super"; mkdir -p "$GF_SUPER"; git_q -C "$GF_SUPER" init; git_q -C "$GF_SUPER" commit --allow-empty -m init
+git -c protocol.file.allow=always -c user.email=t@t.dev -c user.name=t -C "$GF_SUPER" submodule add "$GF_SUBSRC" sub >/dev/null 2>&1
+if [ -f "$GF_SUPER/sub/.git" ]; then
+  if git_facts_in_primary_tree "$GF_SUPER/sub"; then ok "submodule working dir -> protected (.git/modules, not a worktree)"; else bad "submodule working dir should be protected"; fi
+fi
+
 echo
 echo "git-facts: $pass passed, $fail failed"
 [ "$fail" -eq 0 ]

@@ -3,12 +3,17 @@
 # and Bash.
 #
 # Enforces the Truly Agentic Git Workflow: no agent tool call may create, update,
-# or delete a file, or `git add` / `git commit`, while a repository is checked out
-# on its DEFAULT branch (main / master / trunk / whatever origin/HEAD points at).
-# All work goes through an isolated worktree + PR. Worktrees (feature branches),
-# non-git paths (/tmp, scratchpad, loose files), and gitignored paths (harness
-# memory under .history/, .agents/scratch, .agents/artifacts) are unaffected — a
-# gitignored file can never be committed, so it can't reach the default branch.
+# or delete a tracked file, or `git add` / `git commit`, while the target is
+# inside the PRIMARY working tree of a repo — the user's own checkout — on ANY
+# branch (not just the default). All work goes through an isolated LINKED worktree
+# (`git worktree add` under <repo>/.agents/worktrees/<slug>) + PR. Linked
+# worktrees, non-git paths (/tmp, scratchpad, loose files), and gitignored paths
+# (harness memory under .history/, .agents/scratch, .agents/artifacts) are
+# unaffected — a gitignored file never dirties the tracked tree or lands in a PR.
+#
+# Why the whole primary tree: blocking only the default branch let agents check
+# out a feature branch in the user's main checkout and never switch back, leaving
+# it stranded on a branch and dozens of commits behind (the review-2704 trap).
 #
 # Fires on:
 #   - Write / Edit / MultiEdit / NotebookEdit -> inspects .tool_input.file_path
@@ -29,10 +34,10 @@
 # internal hooks are unaffected.
 #
 # Scope (deliberate — the "files + commit gate" design): raw-shell working-tree
-# mutation on the default branch (`>`/`>>` redirection, `tee`, `sed -i`, `cp`,
+# mutation in the primary tree (`>`/`>>` redirection, `tee`, `sed -i`, `cp`,
 # `git rm`/`git mv`) is NOT blocked at write time. The `git add`/`git commit`
-# gate is the choke point — such changes can never be committed to the default
-# branch, so nothing lands there outside a worktree + PR.
+# gate is the choke point — such changes can never be committed from the primary
+# working tree, so nothing lands outside a linked worktree + PR.
 #
 # Limitations (intentionally out of scope — runtime obfuscation only a sandbox
 # can stop): `eval`/`xargs`/`$(...)` subshells feeding a git command string,
@@ -115,44 +120,68 @@ do
   if [ -f "$_cand" ]; then
     # shellcheck source=../../../hooks/lib/git-facts.sh
     . "$_cand"
-    _GIT_FACTS_READY=1
-    break
+    # Only trust the lib if it actually exports the function we call. A stale lib
+    # — present but pre-dating git_facts_in_primary_tree, exactly the state a
+    # non-atomic two-file sync produces (main-branch-guard updated, git-facts not
+    # yet) — would otherwise leave _GIT_FACTS_READY=1 and make the
+    # `if in_primary_tree` test hit an undefined function (rc!=0, immune to
+    # `set -e` inside an `if`), fall through, and ALLOW a primary-tree commit.
+    # Fail-safe: fall through to the git-fork fallback below instead.
+    if command -v git_facts_in_primary_tree >/dev/null 2>&1; then
+      _GIT_FACTS_READY=1
+      break
+    fi
   fi
 done
 unset _MBG_DIR _cand
 
-# on_default_branch <dir> — return 0 (protected) if <dir> is inside a git
-# work-tree whose current branch IS the repo's default branch. Return 1 (allow)
-# for: not a git repo, detached HEAD, or a non-default (feature/worktree) branch.
-# Sets _top / _cur / _def for the caller's deny message.
+# in_primary_tree <dir> — return 0 (protected) if <dir> is inside the PRIMARY
+# working tree of a git repo — the user's own checkout — on ANY branch. Return 1
+# (allow) for: not a git repo, OR a linked worktree (`git worktree add`, where all
+# agent work belongs). Sets _top / _cur / _def for the caller's deny message.
+#
+# Why the whole primary tree, not just the default branch: agents were checking
+# out a feature branch IN the user's main checkout and never switching back,
+# stranding it on a branch and dozens of commits behind (the review-2704 trap).
+# Blocking only the default branch let that through. The primary tree is off
+# limits on every branch; the ONLY place an agent writes is a linked worktree.
 #
 # Uses the shared git-facts cache (HEAD-validated, short TTL). If the lib is
-# missing (partial install), fall through to the three git forks so the guard
-# never soft-opens.
-on_default_branch() {
+# missing OR stale (no git_facts_in_primary_tree — see the source loop above),
+# fall through to git forks so the guard never soft-opens. Primary vs linked is
+# fork-free via the `.git` entry: a directory → primary; a file pointing under
+# `.git/worktrees/` → linked worktree (allow); a file pointing elsewhere (a
+# submodule's `.git/modules/…`, or unknown) → protect.
+in_primary_tree() {
   if [ "${_GIT_FACTS_READY:-0}" = 1 ]; then
-    git_facts_on_default "$1"
+    git_facts_in_primary_tree "$1"
     return $?
   fi
   _top=$(git -C "$1" rev-parse --show-toplevel 2>/dev/null) || return 1
   _cur=$(git -C "$_top" symbolic-ref --short -q HEAD 2>/dev/null) || _cur=""
-  [ -z "$_cur" ] && return 1
   _def=$(git -C "$_top" symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null | sed 's#^origin/##') || _def=""
-  # Protect the resolved default (origin/HEAD) AND always the conventional names,
-  # so a stale/mispointed/absent origin/HEAD can never expose `main`/`master`.
-  [ -n "$_def" ] && [ "$_cur" = "$_def" ] && return 0
-  case "$_cur" in
-    main|master) return 0 ;;
-    *) return 1 ;;
-  esac
+  if [ -d "$_top/.git" ]; then
+    return 0                        # primary working tree (any branch) — protected
+  elif [ -f "$_top/.git" ]; then
+    _gd=$(sed -n 's/^gitdir:[[:space:]]*//p' "$_top/.git" 2>/dev/null | head -1)
+    case "$_gd" in
+      */worktrees/*) return 1 ;;    # linked worktree — the blessed agent path
+      *)             return 0 ;;    # submodule / unknown pointer — protect
+    esac
+  fi
+  return 1                          # not a normal primary tree — allow
 }
 
 set_deny_reason() {
   # $1 = what is blocked (e.g. the file path or "git commit"); uses _top/_cur.
-  deny_reason="Blocked: $1 on the default branch '$_cur' of $_top.
+  _where=$_top
+  [ -n "$_cur" ] && _where="$_top (branch '$_cur')"
+  deny_reason="Blocked: $1 in the PRIMARY working tree of $_where.
 
-Direct file/commit changes on the default branch are not allowed — all work goes
-through an isolated worktree + PR (the Truly Agentic Git Workflow). No exceptions.
+No agent may modify the user's primary working tree — on ANY branch. It is the
+checkout the user works in; leaving it dirty or switched onto a feature branch
+strands their machine. All work goes through an isolated LINKED worktree + PR
+(the Truly Agentic Git Workflow). No exceptions.
 
 Create a worktree off the freshly-fetched default branch, then work there:
   REPO=$_top
@@ -176,10 +205,12 @@ case "$tool" in
     # edit to a file completely outside the repo was misreported as "on the
     # default branch of <repo>". Normalize backslashes first so the case glob,
     # `dirname`, and `git -C` all agree on one separator.
+    is_drive_abs=0
     case "$fp" in *\\*) fp=$(printf '%s' "$fp" | tr '\\' '/') ;; esac
     # Resolve a relative path against the session cwd.
     case "$fp" in
-      /*|[A-Za-z]:/*) ;;
+      [A-Za-z]:/*) is_drive_abs=1 ;;
+      /*) ;;
       *) [ -n "$cwd" ] && fp="$cwd/$fp" ;;
     esac
     # Nearest existing ancestor directory (a Write may be creating a new file).
@@ -190,13 +221,21 @@ case "$tool" in
       d=$_nd
     done
     [ -d "$d" ] || exit 0
-    if on_default_branch "$d"; then
-      # A gitignored path can never be committed, so a write there can't land on
-      # the default branch — allow it. This is what the harness memory dir
-      # (.history/, gitignored) and runtime scratch/artifact dirs rely on;
-      # blocking them was a false positive. Tracked paths (real source, or a
-      # would-be new tracked file) still fall through to the deny below and must
-      # go via a worktree + PR. check-ignore works on not-yet-created paths too.
+    # Drive-letter absolute path on a POSIX box: the drive root does not exist
+    # locally, so the path cannot be inside any git repo here. Without this check
+    # the dirname walk above collapses to `.', which is the session cwd and may
+    # itself be in the primary tree — producing a false deny for a file that is
+    # completely outside the repo.
+    if [ "$is_drive_abs" = 1 ] && [ ! -d "${fp%%:*}:/" ]; then
+      exit 0
+    fi
+    if in_primary_tree "$d"; then
+      # A gitignored path can never be committed and never dirties the tracked
+      # tree — allow it. This is what the harness memory dir (.history/,
+      # gitignored) and runtime scratch/artifact dirs rely on; blocking them
+      # would break normal agent operation. Tracked paths (real source, or a
+      # would-be new tracked file) fall through to the deny and must go via a
+      # linked worktree + PR. check-ignore works on not-yet-created paths too.
       if git -C "$_top" check-ignore -q "$fp" 2>/dev/null; then
         exit 0
       fi
@@ -210,7 +249,7 @@ case "$tool" in
   *) exit 0 ;;
 esac
 
-# --- Bash branch: gate `git commit|add|stage` on the default branch --------
+# --- Bash branch: gate `git commit|add|stage` in the primary working tree -----
 # Fast path: no "git" anywhere -> nothing to police.
 case "$input" in *git*) ;; *) exit 0 ;; esac
 # Parser presence already confirmed by the tool_name extraction above.
@@ -443,7 +482,7 @@ check_segment() {
   case "$sub" in
     commit|add|stage)
       _repo=$(resolve_repo_dir "$cpath")
-      if on_default_branch "$_repo"; then
+      if in_primary_tree "$_repo"; then
         set_deny_reason "\`git $sub\`"
         return 1
       fi

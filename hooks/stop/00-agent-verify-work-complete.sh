@@ -60,43 +60,47 @@ failed = bool(data.get("state_error")) or not isinstance(data.get("delivery_evid
 print("STATE_EVAL_FAILED=" + shlex.quote("yes" if failed else "no"))
 ' 2>/dev/null || printf '%s\n' 'STATE_DELIVERY_EVIDENCE=no' 'STATE_CONTEXT_KIND=unknown' 'STATE_GOAL_OFFSET=0' 'STATE_OWNED_PRS=' 'STATE_EVAL_FAILED=yes')"
 
-record_gate() { # $1 gate, $2 reason code
-  printf '%s' "$INPUT_JSON" | python3 "$HERE/verify-work-state.py" record-gate "$1" blocked "$2" >/dev/null 2>&1 || true
+# --- gate outcome recording ---------------------------------------------------
+# Every gate evaluation is recorded, not just the ones that block. Recording only
+# blocks is why gate_events held 325 rows and every single one read 'blocked':
+# there was no denominator, so no gate had a false-positive rate and no change to
+# gate logic could be shown to be an improvement.
+#
+# Batched deliberately. A stop evaluates many gates and most of them allow, but a
+# bare `python3` start costs ~18ms before sqlite3 is even imported — a process per
+# gate would tax every stop on every machine for telemetry nobody reads in the
+# moment. So callers accumulate and a single flush writes them through one
+# connection on exit.
+#
+# Tradeoff, stated: a hard kill (SIGKILL, or the harness timing the hook out
+# without a signal) loses the batch. That costs telemetry, never correctness — the
+# block itself is the exit code, not the row.
+GATE_LOG=()
+
+record_gate() { # $1 gate, $2 reason code  — blocked, the pre-existing contract
+  GATE_LOG+=("$1:blocked:$2")
 }
 
-# --- visual claim read-back gate --------------------------------------------
-# Gate the claim, not scp/open. A narrow visual assertion is blocked only when
-# this goal authored a visual artifact and no paired image result read that render
-# back afterward. Unsupported transcript shapes fail open.
-visual_gate=$(VISUAL_STOP_INPUT="$INPUT_JSON" python3 - "$TRANSCRIPT_PATH" "${STATE_GOAL_OFFSET:-0}" "$HERE" <<'PY' 2>/dev/null || true
-import json, os, sys
-sys.path.insert(0, sys.argv[3])
-from visual_readback import inspect_transcript, makes_visual_claim
+record_gate_ok() { # $1 gate, $2 outcome (passed|skipped), $3 reason code
+  GATE_LOG+=("$1:$2:$3")
+}
 
-payload = json.loads(os.environ.get("VISUAL_STOP_INPUT", "{}"))
-message = str(payload.get("last_assistant_message") or payload.get("lastAssistantMessage") or "")
-evidence = inspect_transcript(sys.argv[1], int(sys.argv[2] or 0))
-if (evidence["parser_supported"] and evidence["visual_authored"]
-        and makes_visual_claim(message) and not evidence["visual_read_back"]):
-    print(evidence["latest_visual"] or "visual artifact")
-PY
-)
-if [ -n "$visual_gate" ]; then
-  cat >&2 <<GATE
-STOP GATE (visual read-back): Your final message describes a rendered UI, but this
-session has no paired image read-back after authoring `$visual_gate`.
+flush_gate_log() {
+  [ "${#GATE_LOG[@]}" -eq 0 ] && return 0
+  printf '%s' "$INPUT_JSON" | python3 "$HERE/verify-work-state.py" record-gates \
+    ${GATE_LOG[@]+"${GATE_LOG[@]}"} >/dev/null 2>&1 || true
+  GATE_LOG=()
+}
+# EXIT flushes. INT/TERM must flush and then genuinely DIE: a signal handler that
+# does not exit suppresses the signal's default terminate action, so the script
+# would resume and run past the 20s timeout in agents.yaml. Reset the trap and
+# re-raise so the process dies with the conventional 128+signal status.
+trap flush_gate_log EXIT
+trap 'flush_gate_log; trap - INT; kill -INT $$' INT
+trap 'flush_gate_log; trap - TERM; kill -TERM $$' TERM
 
-Render it headlessly with `agents browser start --url file://…`, capture it with
-`agents browser screenshot -o /tmp/<name>.png`, then read that path with
-`view_image` and inspect what it
-actually shows before describing or delivering it.
-GATE
-  record_gate visual-readback visual-claim-unverified
-  exit 2
-fi
-
-# A blocked Stop is retried with stop_hook_active=true. The visual claim check
-# above still runs meaningfully once; older gates retain their loop protection.
+# Loop protection: a blocked Stop is retried with stop_hook_active=true; the
+# remaining gates fire at most once so a retry cannot wedge the session.
 if [ "$stop_active" = "true" ]; then
   exit 0
 fi
@@ -276,6 +280,9 @@ except Exception:
     pass
 " "$TRANSCRIPT_PATH" "${STATE_OWNED_PRS:-}" "${STATE_GOAL_OFFSET:-0}" 2>/dev/null || true)
 
+  if [ -z "$responsible_prs" ]; then
+    record_gate_ok open-pr skipped no-owned-pr
+  fi
   if [ -n "$responsible_prs" ]; then
     open_prs=""
     while IFS= read -r pr_url; do
@@ -286,6 +293,9 @@ except Exception:
       fi
     done <<< "$responsible_prs"
 
+    if [ -z "$open_prs" ]; then
+      record_gate_ok open-pr passed no-pr-left-open
+    fi
     if [ -n "$open_prs" ]; then
       # Durable watcher evidence (RUSH-2394): a process that OUTLIVES this agent
       # may own the next step. Background `gh pr checks --watch` is NOT durable
@@ -372,6 +382,12 @@ ok = (re.search(pat, msg)
 print('yes' if ok else 'no')
 " 2>/dev/null || echo "no")
 
+      if [ "$has_handoff" = "yes" ]; then
+        # The PR is still open, but a named owner or a durable watcher accepted it.
+        # That is the gate's third real outcome and the one most worth counting: it
+        # is the difference between "handed off properly" and "abandoned".
+        record_gate_ok open-pr passed handoff-or-watcher-declared
+      fi
       if [ "$has_handoff" != "yes" ]; then
         repeat_guidance "an open pull request (${open_prs%%$'\n'*})" "$(prior_fires 'pull request(s) that are still OPEN')"
         cat >&2 <<PRGATE
@@ -738,6 +754,9 @@ PY
   [ -z "$task_verdict" ] && task_verdict="allow"
 fi
 
+if [ "$task_verdict" != "block" ]; then
+  record_gate_ok keep-moving passed checklist-clear-or-escaped
+fi
 if [ "$task_verdict" = "block" ]; then
   task_next=$(echo "$todo_json" | python3 -c "
 import json, sys
@@ -943,6 +962,7 @@ fi
 
 # Neither a done claim nor a PR finish line needs any later completion gate.
 if [ "$delivery_trigger" != "yes" ] && [ "$is_claiming_done" != "yes" ]; then
+  record_gate_ok stop skipped no-delivery-or-done-claim
   exit 0
 fi
 
@@ -967,6 +987,7 @@ print(turns)
 " "$TRANSCRIPT_PATH" 2>/dev/null || echo "0")
 
 if [ "${turn_count:-0}" -le 2 ]; then
+  record_gate_ok self-audit skipped session-too-short
   exit 0
 fi
 
@@ -999,6 +1020,7 @@ fi
 
 # Not claiming done -> no further gates (PR finish-line deliveries pass here).
 if [ "$is_claiming_done" != "yes" ]; then
+  record_gate_ok stop skipped not-claiming-done
   exit 0
 fi
 
@@ -1008,6 +1030,7 @@ fi
 # audit below, preserving the guard against an agent that did nothing and quit.
 case "${STATE_CONTEXT_KIND:-unknown}" in
   browser-external|ticket-creation|review-only|research-diagnostic)
+    record_gate_ok stop skipped non-code-outcome
     exit 0
     ;;
 esac
@@ -1083,6 +1106,7 @@ print(out)
 
 # If we couldn't extract a genuine user message, allow stop
 if [ -z "$first_user_msg" ]; then
+  record_gate_ok self-audit skipped no-user-goal-found
   exit 0
 fi
 

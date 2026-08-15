@@ -29,50 +29,98 @@ export AGENT_SELF="${AGENT_SELF:-claude}"
 AGENT_SELF_SAFE=$(printf '%s' "$AGENT_SELF" | tr -cd 'A-Za-z0-9_-')
 export AGENT_SELF_SAFE="${AGENT_SELF_SAFE:-claude}"
 
-
-# Which Linear project is this cwd? `agents projects` owns that mapping, and the
-# resolution is shared with 08-inject-repo-inflight.sh, so it lives in one place.
-# Sourcing also brings in `_to`, the bounded-call helper both hooks use.
-LIB="$(dirname "$(dirname "$(realpath "${BASH_SOURCE[0]}" 2>/dev/null || printf '%s' "${BASH_SOURCE[0]}")")")/lib/project-context.sh"
-if [ -f "$LIB" ]; then
-  # shellcheck source=/dev/null
-  . "$LIB"
-  resolve_project_context "$PWD"
-fi
-# Without the lib there is no `_to`; define the same bounded helper so the curl
-# budget below still holds. A hook that silently stops bounding its network
-# calls is the failure this guards.
-if ! declare -F _to >/dev/null 2>&1; then
-  _to() {
-    local secs="$1"; shift
-    if command -v timeout >/dev/null 2>&1; then timeout "$secs" "$@"; return $?; fi
-    if command -v gtimeout >/dev/null 2>&1; then gtimeout "$secs" "$@"; return $?; fi
-    command -v python3 >/dev/null 2>&1 || { "$@"; return $?; }
-    python3 -c 'import os,signal,subprocess,sys
-secs=float(sys.argv[1])
-try: p=subprocess.Popen(sys.argv[2:],start_new_session=True)
-except (FileNotFoundError,PermissionError): sys.exit(127)
-try: sys.exit(p.wait(timeout=secs))
+# Portable timeout. macOS ships neither `timeout` nor `gtimeout`, and the old
+# fallback here ran the command BARE — so on every Mac on this fleet nothing was
+# bounded at all, and a hung call took the whole hook past its manifest timeout,
+# which delivers zero bytes rather than a degraded brief. Emulate it instead:
+# run the command in the background with a watchdog that kills it.
+#
+# The watchdog's own output is discarded so a command substitution around this
+# closes when the command does, not when the watchdog does.
+# Emulation runs through python3, which this hook already hard-depends on, not
+# through bash job control. Two things the obvious bash version gets wrong:
+# killing the child's pid leaves ITS children holding the pipe (a `$(...)` then
+# still blocks for the full duration), and a backgrounded job silently loses
+# stdin. `start_new_session` + `killpg` kills the whole subtree, and the
+# std streams are inherited.
+_to() {
+  local secs="$1"; shift
+  if command -v timeout >/dev/null 2>&1; then timeout "$secs" "$@"; return $?; fi
+  if command -v gtimeout >/dev/null 2>&1; then gtimeout "$secs" "$@"; return $?; fi
+  command -v python3 >/dev/null 2>&1 || { "$@"; return $?; }
+  python3 -c '
+import os, signal, subprocess, sys
+secs = float(sys.argv[1])
+try:
+    p = subprocess.Popen(sys.argv[2:], start_new_session=True)
+except (FileNotFoundError, PermissionError):
+    sys.exit(127)
+try:
+    sys.exit(p.wait(timeout=secs))
 except subprocess.TimeoutExpired:
-    for sig in (signal.SIGTERM,signal.SIGKILL):
-        try: os.killpg(os.getpgid(p.pid),sig)
-        except Exception: pass
+    for sig in (signal.SIGTERM, signal.SIGKILL):
         try:
-            p.wait(timeout=1); break
-        except Exception: continue
-    sys.exit(124)' "$secs" "$@"
-  }
+            os.killpg(os.getpgid(p.pid), sig)
+        except Exception:
+            pass
+        try:
+            p.wait(timeout=1)
+            break
+        except Exception:
+            continue
+    sys.exit(124)
+' "$secs" "$@"
+}
+
+# Which Linear project is this cwd? `agents projects` owns that mapping — a def
+# under ~/.agents/projects/<name>.yaml binds a root, its repos[].path entries,
+# and a `linear.projectId`/`linear.name`. Ask the CLI rather than re-deriving it:
+# `for-cwd` does longest-match over every bound root and monorepo subpath, so a
+# worktree, a subdir, and two projects sharing one monorepo root all resolve
+# correctly — none of which a basename comparison can do.
+#
+# Cost: two CLI calls, measured 0.28-0.31s each on an idle box. The brief below
+# already budgets 8s of curl and the lane sweep up to 3s against a `timeout: 15`
+# manifest cap, so ~0.6s here stays inside the remaining headroom. Both are
+# bounded and fail open — no `agents` on PATH, no def for this cwd, or a slow
+# call just leaves the fields empty and the basename fallback takes over.
+CWD_PROJECT_DEF=""
+CWD_PROJECT_NAME=""
+OTHER_PROJECT_NAMES=""
+if command -v agents >/dev/null 2>&1; then
+  CWD_PROJECT_DEF=$(_to 3 agents projects for-cwd --json 2>/dev/null | python3 -c '
+import json, sys
+try:
+    print((json.load(sys.stdin) or {}).get("name") or "")
+except Exception:
+    pass
+' 2>/dev/null || true)
+  if [ -n "$CWD_PROJECT_DEF" ]; then
+    # The def name is the LOCAL id ("agents-cli"); linear.name is what the board
+    # calls the work ("AGI"). Several defs may point at one Linear project, so
+    # the board name is the right key for matching the project rows below.
+    CWD_PROJECT_NAME=$(_to 3 agents projects list --json 2>/dev/null | CWD_PROJECT_DEF="$CWD_PROJECT_DEF" python3 -c '
+import json, os, sys
+want = os.environ.get("CWD_PROJECT_DEF") or ""
+try:
+    defs = json.load(sys.stdin)
+except Exception:
+    raise SystemExit
+if not isinstance(defs, list):
+    raise SystemExit
+for d in defs:
+    if (d or {}).get("name") == want:
+        print(((d.get("linear") or {}).get("name")) or "")
+        break
+' 2>/dev/null || true)
+  fi
 fi
-# The board name the def records; the python block below prefers it over the
-# basename fuzz when it names a live project.
-CWD_PROJECT_NAME="${PROJECT_NAME:-}"
 export CWD_PROJECT_NAME
 
 # The basename fuzz stays armed even when the def resolved. It is the fallback
 # for two cases, and disabling it on a merely-PRESENT linear.name failed closed:
 # a def whose recorded name no longer matches any live project (the CLI only
-# only started refreshing it in agi-cli#2706 — merged but UNRELEASED, so today
-# every def on every machine still carries whatever label it was written with)
+# started refreshing it in 1.22.40, so every older def carries a stale label)
 # expanded NOTHING and claimed no def existed. Python prefers the exact match
 # and only falls back when it finds no project by that name.
 # Git repo name first (stable across subdirs), then the raw cwd basename; python
