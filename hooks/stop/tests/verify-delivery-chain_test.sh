@@ -124,7 +124,53 @@ else
   echo "FAIL: scratch visual delivery passed without image read-back:"; echo "$out6"; fail=1
 fi
 
-rm -rf "$d1" "$d2" "$d3" "$d4" "$bare2" "$bare3" "$bare4" "$tr1" "$tr2" "$tr3" "$tr4" "$tr5" "$tr6" 2>/dev/null
+# --- Test 7: merged but still under [Unreleased], in a repo that has tags -> gate FIRES --
+# The old check set release_ran=True whenever `git describe --tags` answered at all, so any
+# repo that had ever cut a release satisfied it forever. Measured 2026-08-15: agents-cli has
+# 185 tags, PR #2705 merged with its entry stranded under `## [Unreleased]`, and the session
+# stopped clean asking whether to release. A tag in history is not a shipped change.
+d7="$(mktemp -d)"; bare7="$(mktemp -d)/o.git"
+git init -q "$d7"; git init -q --bare "$bare7"
+printf '{"name":"ext","version":"0.9.321"}\n' > "$d7/package.json"
+printf '# Changelog\n\n## [Unreleased]\n\n- a user-facing feature merged and never published\n\n## [0.9.321] - 2026-08-14\n- shipped\n' > "$d7/CHANGELOG.md"
+git -C "$d7" add package.json CHANGELOG.md; git -C "$d7" $GC commit -q -m "baseline"
+git -C "$d7" tag v0.9.321
+git -C "$d7" remote add origin "$bare7"; git -C "$d7" push -q origin HEAD:main
+git -C "$d7" remote set-head origin main
+# Commit ahead of origin/main rather than branching — the gate diffs origin/<default>..HEAD,
+# so this produces the same changed-file set with no branch operation.
+printf '# Changelog\n\n## [Unreleased]\n\n- a user-facing feature merged and never published\n- add the new publish flag\n\n## [0.9.321] - 2026-08-14\n- shipped\n' > "$d7/CHANGELOG.md"
+git -C "$d7" $GC commit -q -am "feat: add the new publish flag"
+tr7="$(mktemp)"
+printf '%s\n' '{"role":"user","content":"add a new publish flag and release it"}' > "$tr7"
+out7="$(run_gate "$d7" "$tr7")"
+if printf '%s' "$out7" | grep -qi "release"; then
+  echo "PASS: gate fires on merged-but-unreleased even though the repo has a tag"
+else
+  echo "FAIL: a tag in history silently satisfied the release gate:"; echo "$out7"; fail=1
+fi
+
+# --- Test 8: an EMPTY [Unreleased] heading is the resting state -> must not trip it -----
+d8="$(mktemp -d)"; bare8="$(mktemp -d)/o.git"
+git init -q "$d8"; git init -q --bare "$bare8"
+printf '# Changelog\n\n## [Unreleased]\n\n## [1.0.0] - 2026-01-01\n- shipped\n' > "$d8/CHANGELOG.md"
+printf 'hello\n' > "$d8/README.md"
+git -C "$d8" add CHANGELOG.md README.md; git -C "$d8" $GC commit -q -m "baseline"
+git -C "$d8" remote add origin "$bare8"; git -C "$d8" push -q origin HEAD:main
+git -C "$d8" remote set-head origin main
+# Same as above: commit ahead of origin/main, no branch operation.
+printf 'hello there\n' > "$d8/README.md"
+git -C "$d8" $GC commit -q -am "docs: tweak readme"
+tr8="$(mktemp)"
+printf '%s\n' '{"role":"user","content":"fix a typo in the readme"}' > "$tr8"
+out8="$(run_gate "$d8" "$tr8")"
+if printf '%s' "$out8" | grep -qi "unreleased"; then
+  echo "FAIL: an empty [Unreleased] heading was treated as staged work:"; echo "$out8"; fail=1
+else
+  echo "PASS: an empty [Unreleased] heading does not trip the release gate"
+fi
+
+rm -rf "$d1" "$d2" "$d3" "$d4" "$d7" "$d8" "$bare2" "$bare3" "$bare4" "$bare7" "$bare8" "$tr1" "$tr2" "$tr3" "$tr4" "$tr5" "$tr6" "$tr7" "$tr8" 2>/dev/null
 
 if [ "$fail" -ne 0 ]; then
   echo "verify-delivery-chain_test: FAILED"; exit 1
