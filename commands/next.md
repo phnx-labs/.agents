@@ -111,11 +111,16 @@ only, attach a **redacted** session transcript as a **secret** gist for audit �
 public gist, never on a public repo (link `<host>:<path>` instead).
 
 **Release (if applicable).** If the work touches a publishable package, `release-to-fleet` is
-the authority and takes precedence. A repo **with a release train** (a scheduled releaser, or
-a release script that claims a lease): you are done at **merged + a changelog fragment** — do
-not run the release script, tag, or publish; name the train and when it next runs. A repo
-**without one**: build, run the full suite, then `AskUserQuestion` to confirm the release, run
-it, and verify it landed in the registry (not just that the script exited 0).
+the authority and takes precedence — and it has exactly two end states: you were asked to
+ship (you own the whole chain, `merged → published → tagged → fleet-upgraded →
+installed-version-verified`), or the user explicitly scoped you away from releasing (you name
+who owns it). There is no release train, and "merged + a changelog fragment" is never where
+/next ends: if the registry is behind the default branch, driving or verifiably watching the
+release **is the next task** — the lease (`release-lease.sh`) serializes concurrent
+releasers, so start it and let the lease refuse you if another *verified-live* releaser
+holds it. Verify the result landed in the registry (not just that the script exited 0). Do
+not `AskUserQuestion` to confirm a release the session's goal already authorizes — that
+re-ask is the banned stop.
 
 **Tracker.** Update the issue tracker only with proof (commit, PR, deploy URL, test output,
 health-check response). For a deliberately deferred slice (with a complete shippable slice
