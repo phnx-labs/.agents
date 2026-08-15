@@ -91,7 +91,13 @@ flush_gate_log() {
     ${GATE_LOG[@]+"${GATE_LOG[@]}"} >/dev/null 2>&1 || true
   GATE_LOG=()
 }
-trap flush_gate_log EXIT INT TERM
+# EXIT flushes. INT/TERM must flush and then genuinely DIE: a signal handler that
+# does not exit suppresses the signal's default terminate action, so the script
+# would resume and run past the 20s timeout in agents.yaml. Reset the trap and
+# re-raise so the process dies with the conventional 128+signal status.
+trap flush_gate_log EXIT
+trap 'flush_gate_log; trap - INT; kill -INT $$' INT
+trap 'flush_gate_log; trap - TERM; kill -TERM $$' TERM
 
 # --- visual claim read-back gate --------------------------------------------
 # Gate the claim, not scp/open. A narrow visual assertion is blocked only when
@@ -407,6 +413,12 @@ ok = (re.search(pat, msg)
 print('yes' if ok else 'no')
 " 2>/dev/null || echo "no")
 
+      if [ "$has_handoff" = "yes" ]; then
+        # The PR is still open, but a named owner or a durable watcher accepted it.
+        # That is the gate's third real outcome and the one most worth counting: it
+        # is the difference between "handed off properly" and "abandoned".
+        record_gate_ok open-pr passed handoff-or-watcher-declared
+      fi
       if [ "$has_handoff" != "yes" ]; then
         repeat_guidance "an open pull request (${open_prs%%$'\n'*})" "$(prior_fires 'pull request(s) that are still OPEN')"
         cat >&2 <<PRGATE
