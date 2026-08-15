@@ -206,8 +206,15 @@ and the merge.
 (gh pr checks <pr> --watch --fail-fast; echo "CI settled rc=$? — next: non-author review, then merge on green")
 ```
 
-   run with `run_in_background: true` — the harness re-invokes you when checks
-   settle. If the PR has no checks configured, skip the watch and go to review.
+   run with `run_in_background: true`. **It will not re-invoke you.** The launch
+   result says *"You will be notified when it completes"*, but measured across two
+   full transcripts on 2026-08-15 that string appears exactly once per session — the
+   launch itself. No completion notification is ever injected into an idle session.
+   The child survives; the wake-up does not exist. So either read the output back
+   yourself on a later turn (`BashOutput` / the task's output file), or put the wait
+   inside an `Agent` subagent, whose completion *does* re-enter the turn. **Never tell
+   the user a backgrounded watch will re-invoke you.** If the PR has no checks
+   configured, skip the watch and go to review.
 
 2. **Check whether the automated code reviewer is functioning** — do this
    immediately, do not wait for CI to finish first:

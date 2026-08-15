@@ -2,6 +2,37 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- **The ruleset told every agent that a backgrounded watch would wake it up. It does not.**
+  `rules/subrules/truly-agentic-git-workflow/rule.md:209` read *"run with
+  `run_in_background: true` — the harness re-invokes you when checks settle"*, and
+  `rules/subrules/operational.md:9` read *"the echo keeps you in the loop."* Both are false.
+  Measured 2026-08-15 across two complete transcripts (`6805bf66`, `ea913c60`): the launch
+  result says *"You will be notified when it completes"*, and **that string occurs exactly
+  once per session — at launch. No completion notification is ever injected into an idle
+  session.** The child process survives fine; the wake-up does not exist. In `6805bf66` the
+  watcher was still alive 23 minutes on while the owner typed *"Is it done?"*, *"Is it done
+  and landed?"*, *"Done?"* — three manual pings for one watcher.
+  This one false sentence is the mechanical cause of the fleet's most expensive behavior:
+  agents background a watch, tell the owner they will be re-invoked, and go silent until a
+  human pokes them. Every affected file now states what actually happens and what to do
+  instead — read the result back yourself on a later turn, or put the wait inside an `Agent`
+  subagent, whose completion genuinely does re-enter the turn.
+  Also records what else does not work on the installed `agents-cli` **1.22.39** (the latest
+  published version): `agents monitors --run` fires `ok` while its action logs `skipped  (no
+  output captured)` and spawns nothing (RUSH-2681, fixed upstream but unreleased), and
+  `agents pr land` does not exist (`unknown command 'pr'`; RUSH-2394 fix, also unreleased).
+  So of every "durable owner" the docs and the `verify-work-complete` Stop gate recommend,
+  the only one that works today is an in-session subagent — which dies with its session.
+  Files: `rules/subrules/operational.md`, `rules/subrules/truly-agentic-git-workflow/rule.md`,
+  `rules/subrules/parallel-teams.md`, `skills/teams/SKILL.md`, `commands/dispatch.md`, and
+  the regenerated `rules/AGENTS.md`.
+  Left explicitly unresolved rather than guessed: `operational` says never use
+  `ScheduleWakeup`/`Monitor` ("they fail silently") while
+  `hooks/stop/00-agent-verify-work-complete.sh:287` accepts **only** those two as a durable
+  owner. Nobody has measured which is right; the text now says so instead of picking a side.
+
 ### Changed
 
 - **An orchestrator now owns what it spawns, and an armed watcher is a claim it must

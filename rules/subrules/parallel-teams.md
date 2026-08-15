@@ -60,7 +60,7 @@ orchestrator counts it as a green track and composes on top of work that does no
 
 A teammate whose work produces a PR is done when the PR is **merged or explicitly handed off to a named owner** — nothing else counts. "PR open, CI green, waiting for reviewer" is NOT completed: it's the top observed way team output gets stranded (an entire 11-teammate run once ended with every PR unmerged). Every edit-mode brief must include the line:
 
-> Your task is complete only when your PR is merged, or you have handed it off by naming who/what now owns it. If you are waiting on CI or review, keep waiting with a background watch — `(gh pr checks <pr> --watch --fail-fast; echo "CI settled rc=$?")` run in the background, never a `while`/`until` loop — do not stop.
+> Your task is complete only when your PR is merged, or you have handed it off by naming who/what now owns it. If you are waiting on CI or review, keep driving it: background `(gh pr checks <pr> --watch --fail-fast; echo "CI settled rc=$?")` and then **read that result back yourself on a later turn** — a backgrounded watch does NOT re-invoke you, and never a `while`/`until` loop. Do not stop, and do not claim you will be notified.
 
 Mechanical backstop: the `verify-work-complete` Stop hook blocks a session from stopping with an open PR it created and no handoff — but the brief line is what makes teammates drive to merge instead of arguing with the gate.
 
@@ -87,18 +87,25 @@ Five obligations, all mechanical:
    is actually `RUNNING`, and say how many. A teammate that silently never started is
    counted as a green track and composed on top of (see the boundary-contract note
    above).
-2. **Arm a watcher that survives, then prove it.** Use `agents monitors add` (durable —
-   note the interval is a second argument to `--poll`, and `--run` takes an agent *name*
-   with the text in `--prompt`) or a background command with a trailing finish-echo so
-   the harness re-invokes you. **Never `while true`, `until [ … ]`, or a bare `sleep`
-   loop** — they die silently with their owning shell. Then check the postcondition and
-   quote it. **Registered is not running, and fired is not ran:** `agents monitors runs
-   <name>` can report a fire as `ok` while `agents monitors logs <name>` reports that
-   same run as `skipped  (no output captured)`, meaning no agent was ever spawned —
-   reproduced on agents-cli 1.22.39, the installed *and* latest published version
-   (RUSH-2681). While that holds, a monitor owns nothing; drive the work in-session and
-   keep the monitor as a backstop. **If you cannot show the watcher is alive, do not
-   tell the user you are watching.**
+2. **Know which watcher actually wakes you — on the installed fleet, almost none do.**
+   Measured 2026-08-15 on agents-cli **1.22.39**, the installed *and* latest published
+   version:
+
+   | Mechanism | Does it re-invoke an idle session? |
+   |---|---|
+   | `run_in_background: true` Bash watch | **No.** The launch result promises a notification; across two full transcripts that string appears only at launch. The child lives; the wake-up never comes. |
+   | `agents monitors add --run` | **No.** Fires `ok`, action logs `skipped  (no output captured)`, nothing spawned (RUSH-2681 — fixed upstream, unreleased). |
+   | `agents pr land --detach` | **Does not exist** here (`unknown command 'pr'`; RUSH-2394 fix, unreleased). |
+   | in-session `Agent` subagent | **Yes** — its completion notification re-enters the turn. Dies with the session. |
+   | `ScheduleWakeup` / `Monitor` | **Unmeasured.** `operational` says never; the `verify-work-complete` Stop gate accepts only these as a durable owner. Unresolved — do not assert either way. |
+
+   So: **never `while true`, `until [ … ]`, or a bare `sleep` loop** (they die silently
+   with their shell), and **never tell the user a backgrounded watch will re-invoke
+   you** — that sentence is false and is why the owner ends up pinging sessions one by
+   one. Plan to read the result back yourself, or put the wait inside a subagent.
+   **Registered is not running, and fired is not ran** — check `agents monitors logs
+   <name>` for a `skipped` action before treating a monitor as an owner. **If you
+   cannot show the watcher is alive, do not tell the user you are watching.**
 3. **When you park on a watcher, hand the user a receipt they can check.** A healthy
    wait and a dead one look identical from the outside — an idle session and a shell
    that may or may not still be running — so the owner ends up pinging every session

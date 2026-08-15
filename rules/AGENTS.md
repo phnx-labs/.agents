@@ -368,8 +368,15 @@ and the merge.
 (gh pr checks <pr> --watch --fail-fast; echo "CI settled rc=$? — next: non-author review, then merge on green")
 ```
 
-   run with `run_in_background: true` — the harness re-invokes you when checks
-   settle. If the PR has no checks configured, skip the watch and go to review.
+   run with `run_in_background: true`. **It will not re-invoke you.** The launch
+   result says *"You will be notified when it completes"*, but measured across two
+   full transcripts on 2026-08-15 that string appears exactly once per session — the
+   launch itself. No completion notification is ever injected into an idle session.
+   The child survives; the wake-up does not exist. So either read the output back
+   yourself on a later turn (`BashOutput` / the task's output file), or put the wait
+   inside an `Agent` subagent, whose completion *does* re-enter the turn. **Never tell
+   the user a backgrounded watch will re-invoke you.** If the PR has no checks
+   configured, skip the watch and go to review.
 
 2. **Check whether the automated code reviewer is functioning** — do this
    immediately, do not wait for CI to finish first:
@@ -446,7 +453,12 @@ Enforced by the bundled `footer-guard.sh` (PreToolUse): a `gh`/`git commit` comm
 - **Ask about scope; decide about implementation.** Unclear what the user *wants* (requirements, scope, priorities)? Ask — 30 seconds beats hours of wrong work. Unclear *how* to implement what they asked for? Decide, state reasoning briefly, keep going (F1).
 - **Workflow rhythm: ACT → VERIFY → SHOW → CONTINUE.** See a problem, fix it — don't ask permission for obvious fixes. Path clear? Take it, don't narrate. Unsure which path? Decide, state the reason in one line, continue (F1).
 - **Design before code — for *new* design only** (a UI flow, architecture, a pipeline shape): show a mockup/diagram, then ship. For follow-ups and edits, skip it and go straight to code.
-- **Waiting: echo/sleep only, never `Monitor` / `ScheduleWakeup` / `until` loops** (they fail silently). Short waits (<2 min): `cmd && sleep N && check && echo "result: …"`. Long waits (2+ min): `run_in_background: true` with a trailing finish-echo so you know the next action when it fires. Never say "I'll check back later" — the echo keeps you in the loop.
+- **Waiting: nothing wakes an idle session except a subagent finishing or the user typing.** Measured 2026-08-15 across two full transcripts: a `run_in_background: true` Bash call returns *"You will be notified when it completes"*, and **that string appears exactly once per session — the launch result. No completion notification is ever injected.** In `6805bf66` the backgrounded watcher was still alive 23 minutes later while the user typed *"Is it done?"*, *"Is it done and landed?"*, *"Done?"* — three manual pings for one watcher. So:
+  - **Short waits (<2 min):** `cmd && sleep N && check && echo "result: …"` in the foreground. It blocks your own turn, which is the point — you see the result.
+  - **Long waits (2+ min):** `run_in_background: true` **plus an explicit plan to read it back yourself** on a later turn (`BashOutput`, or read the task's output file). The background child does survive an idle session — it is the *notification* that does not exist.
+  - **The only mechanism proven to wake an idle session is an in-session `Agent` subagent completing** — its task-notification does re-enter the turn. If you need to be woken, put the wait inside a subagent.
+  - **Never claim you will be re-invoked by a backgrounded shell command.** That sentence is false, and it is the single biggest source of the owner having to ping sessions one by one.
+  - `while`/`until` loops die silently with their owning shell — never use them. (`Monitor` / `ScheduleWakeup` are harness-native and the `verify-work-complete` Stop gate accepts them as a durable owner; whether they reliably fire here is **unmeasured** — do not assert either way until someone tests it.)
 - **No emojis** in code, comments, commits, or user-facing output — unless explicitly asked.
 - **No credentials in env vars or config.** Use `agents secrets` (OS keychain-backed).
 - **Env vars are not a secure boundary — treat anything in them as visible, not private.** A child process inherits the full parent environment by default; on Linux another process **running as the same user** can read it from `/proc/<pid>/environ` (mode 400 — a different user cannot, but on this fleet every agent runs as the same uid); values routinely leak into crash dumps, log lines that dump `os.Environ()`/`process.env`, and error reports; and any ancestor silently sets what everything it spawns will see. That holds whether the value is a secret or an ordinary config toggle: an env var was never an isolation mechanism, just ambient global state anything nearby can read and hijack.
@@ -538,7 +550,7 @@ orchestrator counts it as a green track and composes on top of work that does no
 
 A teammate whose work produces a PR is done when the PR is **merged or explicitly handed off to a named owner** — nothing else counts. "PR open, CI green, waiting for reviewer" is NOT completed: it's the top observed way team output gets stranded (an entire 11-teammate run once ended with every PR unmerged). Every edit-mode brief must include the line:
 
-> Your task is complete only when your PR is merged, or you have handed it off by naming who/what now owns it. If you are waiting on CI or review, keep waiting with a background watch — `(gh pr checks <pr> --watch --fail-fast; echo "CI settled rc=$?")` run in the background, never a `while`/`until` loop — do not stop.
+> Your task is complete only when your PR is merged, or you have handed it off by naming who/what now owns it. If you are waiting on CI or review, keep driving it: background `(gh pr checks <pr> --watch --fail-fast; echo "CI settled rc=$?")` and then **read that result back yourself on a later turn** — a backgrounded watch does NOT re-invoke you, and never a `while`/`until` loop. Do not stop, and do not claim you will be notified.
 
 Mechanical backstop: the `verify-work-complete` Stop hook blocks a session from stopping with an open PR it created and no handoff — but the brief line is what makes teammates drive to merge instead of arguing with the gate.
 
@@ -565,18 +577,25 @@ Five obligations, all mechanical:
    is actually `RUNNING`, and say how many. A teammate that silently never started is
    counted as a green track and composed on top of (see the boundary-contract note
    above).
-2. **Arm a watcher that survives, then prove it.** Use `agents monitors add` (durable —
-   note the interval is a second argument to `--poll`, and `--run` takes an agent *name*
-   with the text in `--prompt`) or a background command with a trailing finish-echo so
-   the harness re-invokes you. **Never `while true`, `until [ … ]`, or a bare `sleep`
-   loop** — they die silently with their owning shell. Then check the postcondition and
-   quote it. **Registered is not running, and fired is not ran:** `agents monitors runs
-   <name>` can report a fire as `ok` while `agents monitors logs <name>` reports that
-   same run as `skipped  (no output captured)`, meaning no agent was ever spawned —
-   reproduced on agents-cli 1.22.39, the installed *and* latest published version
-   (RUSH-2681). While that holds, a monitor owns nothing; drive the work in-session and
-   keep the monitor as a backstop. **If you cannot show the watcher is alive, do not
-   tell the user you are watching.**
+2. **Know which watcher actually wakes you — on the installed fleet, almost none do.**
+   Measured 2026-08-15 on agents-cli **1.22.39**, the installed *and* latest published
+   version:
+
+   | Mechanism | Does it re-invoke an idle session? |
+   |---|---|
+   | `run_in_background: true` Bash watch | **No.** The launch result promises a notification; across two full transcripts that string appears only at launch. The child lives; the wake-up never comes. |
+   | `agents monitors add --run` | **No.** Fires `ok`, action logs `skipped  (no output captured)`, nothing spawned (RUSH-2681 — fixed upstream, unreleased). |
+   | `agents pr land --detach` | **Does not exist** here (`unknown command 'pr'`; RUSH-2394 fix, unreleased). |
+   | in-session `Agent` subagent | **Yes** — its completion notification re-enters the turn. Dies with the session. |
+   | `ScheduleWakeup` / `Monitor` | **Unmeasured.** `operational` says never; the `verify-work-complete` Stop gate accepts only these as a durable owner. Unresolved — do not assert either way. |
+
+   So: **never `while true`, `until [ … ]`, or a bare `sleep` loop** (they die silently
+   with their shell), and **never tell the user a backgrounded watch will re-invoke
+   you** — that sentence is false and is why the owner ends up pinging sessions one by
+   one. Plan to read the result back yourself, or put the wait inside a subagent.
+   **Registered is not running, and fired is not ran** — check `agents monitors logs
+   <name>` for a `skipped` action before treating a monitor as an owner. **If you
+   cannot show the watcher is alive, do not tell the user you are watching.**
 3. **When you park on a watcher, hand the user a receipt they can check.** A healthy
    wait and a dead one look identical from the outside — an idle session and a shell
    that may or may not still be running — so the owner ends up pinging every session

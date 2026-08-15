@@ -70,10 +70,14 @@ alone. Three concrete obligations:
 1. **Confirm it spawned.** A dispatch that exits 0 is not a running agent — a sandbox
    can die and still return 0. Confirm with `agents teams status`, `agents sessions
    --active`, or the first real artifact (a pushed branch), and say what you saw.
-2. **Arm a watcher, then prove it is alive** (F3 applied to the watcher itself). Use
-   `agents monitors add` (durable) or a background command with a trailing finish-echo
-   so the harness re-invokes you. **Never a `while`/`until`/`sleep` loop** — those die
-   silently with their shell, and an agent then reports a watch it does not have.
+2. **Know what actually wakes you, and prove the watcher is alive** (F3 applied to the
+   watcher itself). Measured on agents-cli 1.22.39: a `run_in_background` watch does
+   **not** re-invoke you (the promised completion notification never arrives), an
+   `agents monitors --run` action logs `skipped` and spawns nothing, and `agents pr
+   land` does not exist. The one mechanism that does wake an idle session is an
+   in-session `Agent` subagent completing. So plan to read the result back yourself,
+   or put the wait in a subagent. **Never a `while`/`until`/`sleep` loop** — those die
+   silently with their shell — and **never tell the user you will be notified.**
    Verify with `agents monitors list` + `agents monitors logs <name>`, or `ps -p <pid>`,
    and quote it. **Registered is not running and fired is not ran:** a fire recorded as
    `ok` whose action logs `skipped  (no output captured)` spawned nothing (RUSH-2681,
