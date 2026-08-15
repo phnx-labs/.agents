@@ -6,6 +6,8 @@ Blame a regression: $ARGUMENTS
 
 A feature worked before and now silently doesn't, and it's hard to tell which agent's change caused it. Your job is **forensics, not repair**: find the change that broke it, the test or expectation that was removed/disabled so nothing caught it, and the agent/session responsible — then report. Make **no code changes** and cause **no side effects**.
 
+`/blame` is the read-only attribution primitive that `/debug` invokes when a bug is a regression.
+
 ## Step 1: Pin the expectation
 
 - State the **expected** behavior (what the feature should do) and the **observed** behavior (what it does now) in one line each. If `$ARGUMENTS` is vague, read the code path (or reproduce) until "broken" is concrete — you cannot blame a regression you can't define.

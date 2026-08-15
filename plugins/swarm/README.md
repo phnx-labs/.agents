@@ -19,7 +19,7 @@ the internal **`swarm:orchestrate`** skill (no command of its own).
 | --- | --- |
 | `/swarm:plan` | Before building anything non-trivial. Research, **mock-ups**, OpenSpec-grade change proposal, blind independent planners, reconcile. |
 | `/swarm:spec` | Durable **source-of-truth** contract of a capability (SHALL + Given/When/Then) so other agents and humans do not invent wrong behavior — reverse-engineered from real code, drift-checked, with **mock-ups** for any UI/flow surface. |
-| `/swarm:debug` | Non-obvious bug; wrong diagnosis is expensive. Trace the data path, blind multi-provider root-cause confirm, then close the loop. |
+| `/swarm:debug` | Non-obvious bug; wrong diagnosis is expensive. Trace the data path, attribute regressions to the responsible agent/session and explain how they slipped, then blind multi-provider root-cause confirm. |
 
 ## plan vs spec (similar, not the same)
 

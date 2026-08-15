@@ -4,6 +4,13 @@
 
 ### Changed
 
+- **Regression debugging now identifies who caused the change and how it escaped review.**
+  `/debug` and `/swarm:debug` invoke the existing read-only `/blame` primitive for
+  regressions, then report the culprit commit/PR and diff, the lost or weakened test,
+  the responsible agent/session, and whether the PR flagged the loss or let it slip
+  silently. The fleet-wide research rule now makes that attribution part of debugging
+  discipline instead of allowing an investigation to stop at the technical root cause.
+
 - **An orchestrator now owns what it spawns, and an armed watcher is a claim it must
   verify.** Changes to `rules/subrules/parallel-teams.md`, `skills/teams/SKILL.md`, and
   `commands/dispatch.md` (plus the regenerated `rules/AGENTS.md`). The failure they
