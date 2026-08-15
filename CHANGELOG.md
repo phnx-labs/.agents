@@ -108,6 +108,12 @@
   `agents browser` render, screenshot, and read-back. `plan-presentation` now renders and
   inspects every plan but opens it on the interactive host only when requested.
 
+- **`main-branch-guard` no longer falsely denies Windows-style drive-letter paths on
+  POSIX hosts.** A `Write`/`Edit` of `C:/external/path/file.txt` (or backslash form)
+  used to collapse to the session cwd during directory resolution and be misreported as
+  an edit in the primary tree. It is now recognized as outside any local repo and
+  allowed.
+
 - **The repository pre-commit hook refuses local output under `.agents/`, while reviewed
   plans remain trackable under `.agents/plans/`.** It names offending additions or
   deletions before a commit can distribute per-machine agent output fleet-wide.

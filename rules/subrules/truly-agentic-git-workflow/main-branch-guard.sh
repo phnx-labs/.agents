@@ -205,10 +205,12 @@ case "$tool" in
     # edit to a file completely outside the repo was misreported as "on the
     # default branch of <repo>". Normalize backslashes first so the case glob,
     # `dirname`, and `git -C` all agree on one separator.
+    is_drive_abs=0
     case "$fp" in *\\*) fp=$(printf '%s' "$fp" | tr '\\' '/') ;; esac
     # Resolve a relative path against the session cwd.
     case "$fp" in
-      /*|[A-Za-z]:/*) ;;
+      [A-Za-z]:/*) is_drive_abs=1 ;;
+      /*) ;;
       *) [ -n "$cwd" ] && fp="$cwd/$fp" ;;
     esac
     # Nearest existing ancestor directory (a Write may be creating a new file).
@@ -219,6 +221,14 @@ case "$tool" in
       d=$_nd
     done
     [ -d "$d" ] || exit 0
+    # Drive-letter absolute path on a POSIX box: the drive root does not exist
+    # locally, so the path cannot be inside any git repo here. Without this check
+    # the dirname walk above collapses to `.', which is the session cwd and may
+    # itself be in the primary tree — producing a false deny for a file that is
+    # completely outside the repo.
+    if [ "$is_drive_abs" = 1 ] && [ ! -d "${fp%%:*}:/" ]; then
+      exit 0
+    fi
     if in_primary_tree "$d"; then
       # A gitignored path can never be committed and never dirties the tracked
       # tree — allow it. This is what the harness memory dir (.history/,
