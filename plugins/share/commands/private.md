@@ -2,13 +2,13 @@
 description: Publish an HTML file as an unlisted, auto-expiring link with no preview card (discreet sharing).
 ---
 
-Publish `$ARGUMENTS` as a **private / unlisted** link with `agents share`.
+Publish `$ARGUMENTS` as a **private / unlisted** link with `agents artifacts share`.
 
 ## Steps
 
 1. **Resolve the file** (same as `/share:public` — named file, else the most recent HTML artifact, else ask).
-2. **Check setup.** Run `agents share status`. If unset, tell the user to run `agents share setup` (or `agents share join <baseUrl>`) first, then stop.
-3. **Publish discreetly.** Run `agents share <file> --no-cover --expire 7d`.
+2. **Check setup.** Run `agents artifacts share status`. If unset, tell the user to run `agents artifacts setup` (or `agents artifacts share join <baseUrl>`) first, then stop.
+3. **Publish discreetly.** Run `agents artifacts share <file> --no-cover --expire 7d`.
    - `--no-cover` — no OG image, so the link does **not** unfurl into a preview card and won't be pulled into a rich embed.
    - `--expire 7d` — auto-expires after a week (offer a different window if the user wants; the Worker returns `410` and deletes the object past expiry).
 4. **Report** the link and when it expires.

@@ -79,7 +79,7 @@ agents secrets view production --reveal
 ## Remote secrets (other hosts)
 
 Browse and *use* the bundles that live on another machine, over SSH. Hosts
-resolve through the `agents hosts` registry, an ssh-config alias, or `user@host`.
+resolve through the `agents devices` registry, an ssh-config alias, or `user@host`.
 Use `--device` for one host and `--devices` for a comma-separated list.
 
 ```bash
