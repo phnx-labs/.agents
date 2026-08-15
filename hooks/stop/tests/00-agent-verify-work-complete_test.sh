@@ -83,7 +83,7 @@ mk_transcript() {
     echo '{"type":"user","message":{"role":"user","content":"Please implement the widget and open a PR for it"}}'
     echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"Working on it"}]}}'
     case "$1" in
-      create|create+view|create+watch|create+nativemon|create+monitor)
+      create|create+view|create+watch|create+nativemon|create+monitor|create+monitor-err)
         echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_create1","name":"Bash","input":{"command":"cd /repo && gh pr create --title widget"}}]}}'
         echo '{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_create1","content":[{"type":"text","text":"https://github.com/acme/widgets/pull/42\n"}]}]}}'
         ;;
@@ -99,11 +99,22 @@ mk_transcript() {
       create+nativemon)
         # Durable native re-invoke: a Monitor tool_use the harness owns; it
         # outlives the agent (RUSH-2394). Replaces the removed agents pr land.
+        # The paired non-error tool_result is REQUIRED — invoked is not armed
+        # (2026-08-15: a claimed watcher whose arm failed counted as live).
         echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_natmon1","name":"Monitor","input":{"source":"gh pr checks 42","condition":"green","action":"merge on green"}}]}}'
+        echo '{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_natmon1","content":[{"type":"text","text":"monitor armed"}]}]}}'
         ;;
       create+monitor)
-        # A ScheduleWakeup that re-invokes the agent when CI settles.
+        # A ScheduleWakeup that re-invokes the agent when CI settles, with its
+        # successful tool_result (see create+nativemon note).
         echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_mon1","name":"ScheduleWakeup","input":{"delaySeconds":300,"reason":"re-check CI and merge on green"}}]}}'
+        echo '{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_mon1","content":[{"type":"text","text":"wakeup scheduled"}]}]}}'
+        ;;
+      create+monitor-err)
+        # The arm FAILED — a ScheduleWakeup whose tool_result is an error is not
+        # a watcher, whatever the final message claims.
+        echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_monE","name":"ScheduleWakeup","input":{"delaySeconds":300,"reason":"re-check CI"}}]}}'
+        echo '{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_monE","is_error":true,"content":[{"type":"text","text":"Error: scheduler unavailable"}]}]}}'
         ;;
     esac
     case "$1" in
@@ -852,9 +863,11 @@ mk_tasks() {   # $1 selects checklist state
         ;;
       watcher-remaining)
         # one item left AND a durable native ScheduleWakeup this session owns it
-        # (RUSH-2394). Replaces the removed agents pr land --detach.
+        # (RUSH-2394). Replaces the removed agents pr land --detach. The paired
+        # non-error tool_result is required — invoked is not armed (2026-08-15).
         echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"tu1","name":"TaskUpdate","input":{"taskId":"1","status":"completed"}}]}}'
         echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"tw1","name":"ScheduleWakeup","input":{"delaySeconds":300,"reason":"re-check CI and merge PR 42 on green"}}]}}'
+        echo '{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"tw1","content":[{"type":"text","text":"wakeup scheduled"}]}]}}'
         ;;
     esac
     echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"progress"}]}}'
@@ -953,5 +966,42 @@ rc_json=$(python3 "$TODO" "$TSNAP")
 # Fail-open: a missing transcript yields a zero result, never an error.
 rc_json=$(python3 "$TODO" "/no/such/file.jsonl")
 echo "$rc_json" | grep -q '"total": 0' && echo "ok   - todo-progress fails open on a missing transcript" || { echo "FAIL - todo-progress did not fail open ($rc_json)"; fail=1; }
+
+# --- 2026-08-15 hardening: argue-past ramp, errored watchers, evasion replay ---
+
+# AP1. Retried stop restating the ea913c60 evasion verbatim -> block again.
+T=$(mk_transcript create)
+rc=$(FAKE_GH_STATE=OPEN run_hook "$T" "Merged, not released — and that's the correct stopping point, not a gap." true)
+check "argue-past: 'correct stopping point' on retry blocks" "$rc" "2"
+grep -q "STOP GATE (argue-past)" "$SANDBOX/stderr" && echo "ok   - argue-past names its gate" || { echo "FAIL - no argue-past message"; fail=1; }
+
+# AP2. Retried stop restating the 6805bf66 evasion -> block again.
+rc=$(FAKE_GH_STATE=OPEN run_hook "$T" "Restating for the gate: RUSH-2719 stays open by design and is not mine to close." true)
+check "argue-past: 'stays open by design / not mine to close' on retry blocks" "$rc" "2"
+
+# AP3. Retried stop citing the permission classifier as a hand-back -> block again.
+rc=$(FAKE_GH_STATE=OPEN run_hook "$T" "The permission classifier bars me from executing it; run the deploy from your terminal." true)
+check "argue-past: 'permission classifier bars me' on retry blocks" "$rc" "2"
+
+# AP4. An ordinary retry with no evasion phrase keeps the old behavior -> allow.
+rc=$(FAKE_GH_STATE=OPEN run_hook "$T" "Continuing: merged the fix and closed the ticket with proof." true)
+check "argue-past: plain retry without evasion phrase still passes" "$rc" "0"
+
+# AP5. Cap: after two prior argue-past fires the retry passes (never wedge).
+TCAP="$SANDBOX/transcript-cap-$RANDOM.jsonl"
+cp "$T" "$TCAP"
+echo '{"type":"user","isMeta":true,"message":{"role":"user","content":"Stop hook feedback: STOP GATE (argue-past): This stop was already blocked"}}' >> "$TCAP"
+echo '{"type":"user","isMeta":true,"message":{"role":"user","content":"Stop hook feedback: STOP GATE (argue-past): This stop was already blocked"}}' >> "$TCAP"
+rc=$(FAKE_GH_STATE=OPEN run_hook "$TCAP" "Merged, not released — and that's the correct stopping point." true)
+check "argue-past: capped after two prior fires (never wedges)" "$rc" "0"
+
+# EW1. Errored ScheduleWakeup arm + watcher phrasing + open PR -> still blocks.
+TE=$(mk_transcript create+monitor-err)
+rc=$(FAKE_GH_STATE=OPEN run_hook "$TE" "A ScheduleWakeup is set to re-invoke me when CI settles; the poller owns the merge." false)
+check "errored watcher arm does not clear the open-PR gate" "$rc" "2"
+
+# RP1. First-stop replay of the fe1b0f93 stand-down (not a retry) -> blocks.
+rc=$(FAKE_GH_STATE=OPEN run_hook "$T" "1.22.40 is already in flight as PR #2664, owned by two live sessions under RUSH-2639 — someone else's in-flight work, not mine to take. Nothing needs you." false)
+check "stand-down deferral to unverified sessions does not escape the open-PR gate" "$rc" "2"
 
 exit $fail

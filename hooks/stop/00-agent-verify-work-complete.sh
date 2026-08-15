@@ -99,11 +99,9 @@ trap flush_gate_log EXIT
 trap 'flush_gate_log; trap - INT; kill -INT $$' INT
 trap 'flush_gate_log; trap - TERM; kill -TERM $$' TERM
 
-# Loop protection: a blocked Stop is retried with stop_hook_active=true; the
-# remaining gates fire at most once so a retry cannot wedge the session.
-if [ "$stop_active" = "true" ]; then
-  exit 0
-fi
+# Loop protection moved below the repeated-gate helpers: the retry path now
+# needs prior_fires() to bound the argue-past ramp. Nothing between here and
+# that check executes a gate, so the early-exit semantics are unchanged.
 
 # --- repeated-gate guidance --------------------------------------------------
 # Repeating the identical block text eventually stops adding information. On a
@@ -153,6 +151,66 @@ the actual context to decide; these are suggestions, not a fixed route.
 GUIDANCE
 }
 # --- end repeated-gate guidance ---------------------------------------------
+
+# Loop protection: a blocked Stop is retried with stop_hook_active=true; the
+# remaining gates fire at most once so a retry cannot wedge the session.
+#
+# Argue-past ramp (measured 2026-08-15): three sessions cleared blocked stops by
+# RESTATING a stand-down phrase on the retry — "Merged, not released — and
+# that's the correct stopping point" (ea913c60), "Release correctly stops at
+# merged" re-asserted after /next (fe1b0f93), "RUSH-2719 stays open by design
+# and is not mine to close" restated across three fires (6805bf66). The
+# unconditional retry pass was the ramp. A retried stop whose final message
+# carries one of those phrases is now blocked up to two more times; after that
+# it passes (a gate must never wedge a session) but files a fail-loud
+# `agents feed post --blocked` so the evasion is never silent. Keep PHRASES in
+# sync with `standdown` in the done-claim gate below.
+if [ "$stop_active" = "true" ]; then
+  evasion=$(echo "$INPUT_JSON" | python3 -c "
+import json, re, sys
+msg = json.load(sys.stdin).get('last_assistant_message', '').lower()
+PHRASES = [
+    r'\bnot mine to (?:drive|own|finish|land|take|push|ship|complete|close|merge|run)\b',
+    r'\bstays open by design\b',
+    r'\bsomeone else.{0,3}s in.?flight work\b',
+    r'\bowned by (?:another|other|two|the) (?:live )?(?:sessions?|agents?)\b',
+    r'\bcorrect stopping point\b',
+    r'\bnothing needs you\b',
+    r'\bships? on the next train\b',
+    r'\bpermission classifier (?:bars|blocks|denies|denied|refused|refuses)\b',
+]
+print('yes' if any(re.search(p, msg) for p in PHRASES) else 'no')
+" 2>/dev/null || echo no)
+  if [ "$evasion" = "yes" ]; then
+    n=$(prior_fires 'STOP GATE (argue-past)')
+    if [ "${n:-0}" -lt 2 ]; then
+      record_gate argue-past restated-standdown-on-retry
+      cat >&2 <<'MSG'
+STOP GATE (argue-past): This stop was already blocked, and the retry RESTATES a
+stand-down phrase instead of closing the loop. Re-asserting "correct stopping
+point" / "not mine to close" / "someone else owns it" is not evidence — it is
+the exact evasion this gate exists to catch.
+
+Do ONE of these, with verifiable evidence in your final message:
+1. Close the loop: drive the remaining step (release, ticket, deploy, PR) and
+   quote the real output (registry version, ticket state, URL).
+2. Defer to another owner ONLY with a live probe quoted: the owning process
+   (`pgrep`/lease state), the PR updated within minutes, or the owning session
+   actually running — plus a bounded watch on the outcome you have armed.
+3. Name a genuine user-only blocker (biometric, interactive login) and quote the
+   distinct attempts you made first.
+
+A claim without a probe will be blocked again.
+MSG
+      exit 2
+    fi
+    if [ "${n:-0}" -eq 2 ]; then
+      sid=$(echo "$INPUT_JSON" | python3 -c "import json,sys; print(json.load(sys.stdin).get('session_id',''))" 2>/dev/null)
+      _to 5 agents feed post --session "${sid:-unknown}" --title "Stop-gate evasion: argued past 3 blocks" "Session restated a stand-down phrase after repeated delivery blocks and was allowed to stop. Transcript: $TRANSCRIPT_PATH" --blocked >/dev/null 2>&1 || true
+    fi
+  fi
+  exit 0
+fi
 
 # --- Open-PR abandonment gate ------------------------------------------------
 # A session that CREATED *or actively WORKED* a pull request may not stop while
@@ -309,11 +367,17 @@ except Exception:
 import json, re, sys
 # Legacy in-process watch — REJECT as a handoff (dies with the agent).
 INPROC_WATCH = re.compile(r'gh\s+pr\s+checks\b.*--watch', re.S)
-found = False
+# Invoked is not armed (measured 2026-08-15, ea913c60: a claimed watcher with no
+# live process). A ScheduleWakeup/Monitor tool_use only counts when its paired
+# tool_result came back WITHOUT error — an errored or cancelled arm is not a
+# watcher. Deeper daemon-side liveness belongs to `agents monitors`; this is the
+# strongest check the transcript alone supports.
+wake_ids = set()
+ok_ids = set()
 try:
     with open(sys.argv[1]) as f:
         for raw in f:
-            if 'tool_use' not in raw:
+            if 'tool_use' not in raw and 'tool_result' not in raw:
                 continue
             try:
                 rec = json.loads(raw)
@@ -324,18 +388,24 @@ try:
             if not isinstance(content, list):
                 continue
             for b in content:
-                if not isinstance(b, dict) or b.get('type') != 'tool_use':
+                if not isinstance(b, dict):
                     continue
-                name = b.get('name') or ''
-                # The only durable handoff evidence is a native re-invoke tool the
-                # harness owns (ScheduleWakeup / Monitor) — it outlives this agent.
-                if name in ('ScheduleWakeup', 'Monitor'):
-                    found = True
+                btype = b.get('type')
+                if btype == 'tool_use':
+                    name = b.get('name') or ''
+                    # The only durable handoff evidence is a native re-invoke tool
+                    # the harness owns (ScheduleWakeup / Monitor) — it outlives
+                    # this agent.
+                    if name in ('ScheduleWakeup', 'Monitor'):
+                        wake_ids.add(b.get('id') or '')
+                elif btype == 'tool_result' and not b.get('is_error'):
+                    ok_ids.add(b.get('tool_use_id') or '')
                 # Explicitly do NOT accept run_in_background + gh pr checks --watch
                 # (RUSH-2394). Leave INPROC_WATCH unused except as documentation of
                 # the rejected pattern so a future edit does not re-enable it by
                 # matching the old comment alone.
                 _ = INPROC_WATCH
+    found = any(i for i in wake_ids if i in ok_ids)
     print('yes' if found else 'no')
 except Exception:
     print('no')
@@ -703,10 +773,15 @@ except Exception:
 # tool the harness owns (ScheduleWakeup / Monitor) outlives the agent.
 live_watcher = False
 last_struct_tool = ''
+# Invoked is not armed (2026-08-15): a ScheduleWakeup/Monitor tool_use counts
+# only with a non-error paired tool_result. Keep in sync with the open-PR gate's
+# identical check above.
+wake_ids = set()
+ok_ids = set()
 try:
     with open(sys.argv[1]) as f:
         for raw in f:
-            if 'tool_use' not in raw:
+            if 'tool_use' not in raw and 'tool_result' not in raw:
                 continue
             try:
                 rec = json.loads(raw)
@@ -717,12 +792,17 @@ try:
             if not isinstance(content, list):
                 continue
             for b in content:
-                if not isinstance(b, dict) or b.get('type') != 'tool_use':
+                if not isinstance(b, dict):
                     continue
-                name = b.get('name') or ''
-                last_struct_tool = name
-                if name in ('ScheduleWakeup', 'Monitor'):
-                    live_watcher = True
+                btype = b.get('type')
+                if btype == 'tool_use':
+                    name = b.get('name') or ''
+                    last_struct_tool = name
+                    if name in ('ScheduleWakeup', 'Monitor'):
+                        wake_ids.add(b.get('id') or '')
+                elif btype == 'tool_result' and not b.get('is_error'):
+                    ok_ids.add(b.get('tool_use_id') or '')
+    live_watcher = any(i for i in wake_ids if i in ok_ids)
 except Exception:
     pass
 
@@ -873,6 +953,17 @@ soft_parking = [
 # — that legitimate escape lives in the open-PR gate above.
 standdown = [
     r'\bnot mine to (?:drive|own|finish|land|take|push|ship|complete|close|merge|run)\b',
+    # 2026-08-15 additions — each phrase below was used verbatim that day to
+    # rationalize a mid-delivery stop (ea913c60, fe1b0f93, 6805bf66, SV Atlas).
+    # Matching routes the stop into the delivery gate, where evidence decides;
+    # an honest finished session passes because its evidence is real.
+    r'\bstays open by design\b',
+    r'\bsomeone else.{0,3}s in.?flight work\b',
+    r'\bowned by (?:another|other|two|the) (?:live )?(?:sessions?|agents?)\b',
+    r'\bcorrect stopping point\b',
+    r'\bnothing needs you\b',
+    r'\bships? on the next train\b',
+    r'\bpermission classifier (?:bars|blocks|denies|denied|refused|refuses)\b',
     r'\b(?:is|it\'?s) yours,? not mine\b',
     # 'handing it back' must be TO THE HUMAN — bare 'handing it back to the main
     # thread / caller / event loop' is legitimate async prose, not a stand-down.
