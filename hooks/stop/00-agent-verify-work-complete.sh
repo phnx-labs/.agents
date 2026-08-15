@@ -179,7 +179,18 @@ PHRASES = [
     r'\bships? on the next train\b',
     r'\bpermission classifier (?:bars|blocks|denies|denied|refused|refuses)\b',
 ]
-print('yes' if any(re.search(p, msg) for p in PHRASES) else 'no')
+# Evidence exception: the ramp demands a probe, so a retry that CARRIES one
+# passes — a URL the user can open, or a quoted live-probe command
+# (pgrep/ps/lease/monitors runs/updated_at). The measured evasions carried
+# neither (bare '#2664' citations, no probes); an honest evidenced wrap-up
+# ('nothing needs you' + merged-PR URL + health check output) carries both.
+EVIDENCE = [
+    r'https?://\S+',
+    r'\bpgrep\b', r'\bps -p \d+', r'\blease (?:state|held|claimed)\b',
+    r'\bmonitors runs\b', r'\bupdated_at\b',
+]
+evading = any(re.search(p, msg) for p in PHRASES) and not any(re.search(p, msg) for p in EVIDENCE)
+print('yes' if evading else 'no')
 " 2>/dev/null || echo no)
   if [ "$evasion" = "yes" ]; then
     n=$(prior_fires 'STOP GATE (argue-past)')

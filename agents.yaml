@@ -144,6 +144,14 @@ hooks:
       - UserPromptSubmit
     script: user-prompt-submit/03-vacation-recap.py
     timeout: 5
+  # Owner directive (2026-08-15) after an agent wrote into a primary checkout
+  # on main: keep the worktree law inside every context window, every prompt.
+  # main-branch-guard stays the hard enforcement; this is the standing reminder.
+  worktree-law-reminder:
+    events:
+      - UserPromptSubmit
+    script: user-prompt-submit/05-worktree-law-reminder.sh
+    timeout: 5
   linear-tasks:
     events:
       - SessionStart

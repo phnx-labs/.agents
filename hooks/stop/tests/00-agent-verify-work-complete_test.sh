@@ -995,6 +995,13 @@ echo '{"type":"user","isMeta":true,"message":{"role":"user","content":"Stop hook
 rc=$(FAKE_GH_STATE=OPEN run_hook "$TCAP" "Merged, not released — and that's the correct stopping point." true)
 check "argue-past: capped after two prior fires (never wedges)" "$rc" "0"
 
+# AP6. An honest, EVIDENCED wrap-up that happens to contain a listed phrase —
+#      "nothing needs you" plus a merged-PR URL and quoted health output — must
+#      pass the ramp (reviewer repro: phrase-only matching blocked it and then
+#      filed a false --blocked feed post).
+rc=$(FAKE_GH_STATE=MERGED run_hook "$T" "PR merged: https://github.com/acme/widgets/pull/42 and health check returned 200 OK. Nothing needs you." true)
+check "argue-past: evidenced honest wrap-up passes the ramp" "$rc" "0"
+
 # EW1. Errored ScheduleWakeup arm + watcher phrasing + open PR -> still blocks.
 TE=$(mk_transcript create+monitor-err)
 rc=$(FAKE_GH_STATE=OPEN run_hook "$TE" "A ScheduleWakeup is set to re-invoke me when CI settles; the poller owns the merge." false)
