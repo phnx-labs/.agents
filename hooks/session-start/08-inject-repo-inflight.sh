@@ -62,6 +62,7 @@ fi
 # `agents-cli` was blind to open PRs on `agents-cli-web` and `.agents-system`,
 # which is exactly the duplicate-work this hook exists to prevent. The git repo
 # stays the fallback anchor when no def claims the cwd.
+LIBDIR="$(dirname "$(dirname "$(realpath "${BASH_SOURCE[0]}" 2>/dev/null || printf '%s' "${BASH_SOURCE[0]}")")")/lib"
 LIB="$(dirname "$(dirname "$(realpath "${BASH_SOURCE[0]}" 2>/dev/null || printf '%s' "${BASH_SOURCE[0]}")")")/lib/project-context.sh"
 scope_label="this repo"
 roots="$repo"
@@ -100,37 +101,70 @@ multi_repo=0
 
 # One probe per repo, run with the repo as cwd so `gh` resolves its own origin.
 # `-R <path>` does NOT work: that flag takes an owner/repo slug.
-probe_prs() {
-  local state="$1" limit="$2" template="$3" fields="$4" r label out ln
-  while IFS= read -r r; do
-    [ -n "$r" ] || continue
-    label="$(basename "$r")"
+#
+# Each repo gets its OWN background job. An earlier version looped the repos
+# inside a single backgrounded function, each call bounded by `_to 4` — so an
+# R-repo project cost R x 4s, not 4s. The 3-repo project this hook was written
+# for measured 17.5s against an 18s manifest timeout, and a 4th repo pushes the
+# hook past it. A killed SessionStart hook injects NOTHING, so that failure is
+# not a degraded brief, it is no brief at all. Now the worst case is one bound.
+probe_one() { # $1 repo, $2 state, $3 limit, $4 template, $5 fields, $6 outfile
+  local r="$1" state="$2" limit="$3" template="$4" fields="$5" outfile="$6"
+  local label out ln
+  label="$(basename "$r")"
+  if [ "$state" = "merged" ]; then
+    # `gh pr list` has no --sort and returns CREATION order, so the most recently
+    # merged PR is not necessarily first. Over-fetch and sort on mergedAt.
+    out="$( (cd "$r" 2>/dev/null && _to 4 gh pr list --state merged --limit 20 \
+      --json number,title,mergedAt 2>/dev/null) || true )"
+    out="$(printf '%s' "$out" | _to 3 python3 "$LIBDIR/sort-merged-prs.py" "$limit" 2>/dev/null || true)"
+  else
     out="$( (cd "$r" 2>/dev/null && _to 4 gh pr list --state "$state" --limit "$limit" \
       --json "$fields" --template "$template" 2>/dev/null) || true )"
-    [ -n "$out" ] || continue
-    if [ "$multi_repo" = "1" ]; then
-      # Bash prefix substitution, not sed: a directory name may contain `#` or
-      # `&`, which are the substitute delimiter and the match reference.
-      while IFS= read -r ln; do
-        printf '%s\n' "${ln/#- /- [${label}] }"
-      done <<< "$out"
-    else
-      printf '%s\n' "$out"
-    fi
+  fi
+  [ -n "$out" ] || return 0
+  if [ "$multi_repo" = "1" ]; then
+    # Bash prefix substitution, not sed: a directory name may contain `#` or
+    # `&`, which are the substitute delimiter and the match reference.
+    while IFS= read -r ln; do
+      printf '%s\n' "${ln/#- /- [${label}] }"
+    done <<< "$out" > "$outfile"
+  else
+    printf '%s\n' "$out" > "$outfile"
+  fi
+}
+
+probe_prs() { # $1 state, $2 limit, $3 template, $4 fields, $5 outfile
+  local state="$1" limit="$2" template="$3" fields="$4" outfile="$5"
+  local r i=0 parts=""
+  while IFS= read -r r; do
+    [ -n "$r" ] || continue
+    i=$((i + 1))
+    probe_one "$r" "$state" "$limit" "$template" "$fields" "${outfile}.part.$i" &
+    parts="$parts ${outfile}.part.$i"
   done <<< "$roots"
+  wait
+  if [ -n "$parts" ]; then
+    # shellcheck disable=SC2086
+    cat $parts 2>/dev/null > "$outfile" || : > "$outfile"
+    # shellcheck disable=SC2086
+    rm -f $parts 2>/dev/null || true
+  else
+    : > "$outfile"
+  fi
 }
 
 if command -v gh >/dev/null 2>&1; then
   probe_prs open 10 \
     '{{range .}}- #{{.number}} {{if .isDraft}}[draft] {{end}}{{.title}} ({{.headRefName}}){{"\n"}}{{end}}' \
-    number,title,headRefName,isDraft > "$tmp/prs" 2>/dev/null &
+    number,title,headRefName,isDraft "$tmp/prs" 2>/dev/null &
   # What just LANDED. An agent that cannot see the last few merges re-proposes
   # work already on main, or "fixes" something a newer commit deliberately
   # superseded — the regression this fleet hits most. Capped tight: this is
   # orientation, not a changelog.
   probe_prs merged 5 \
     '{{range .}}- #{{.number}} {{.title}}{{"\n"}}{{end}}' \
-    number,title,mergedAt > "$tmp/merged" 2>/dev/null &
+    number,title,mergedAt "$tmp/merged" 2>/dev/null &
 fi
 
 # Agents actively working on THIS project, on THIS machine only (--local).
