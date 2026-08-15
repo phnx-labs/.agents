@@ -31,17 +31,25 @@ ensure_yq() {
     fi
 }
 
-ensure_yq
+# Check the full staged path list before any dependency setup. NUL delimiters keep
+# unusual but valid filenames from being quoted or split before policy evaluation.
+AGENTS_PATHS=()
+while IFS= read -r -d '' file; do
+    case "$file" in
+        .agents|.agents/*) AGENTS_PATHS[${#AGENTS_PATHS[@]}]="$file" ;;
+    esac
+done < <(git diff --cached --name-only -z)
 
-# Get the full staged path list. The policy check includes additions and deletions.
-STAGED=$(git diff --cached --name-only)
-
-AGENTS_PATHS=$(printf '%s\n' "$STAGED" | awk '$0 == ".agents" || index($0, ".agents/") == 1')
-if [[ -n "$AGENTS_PATHS" ]]; then
+if [[ ${#AGENTS_PATHS[@]} -gt 0 ]]; then
     echo -e "${RED}Commit blocked: .agents/ contains local agent output and must not be tracked.${NC}" >&2
-    printf '%s\n' "$AGENTS_PATHS" | sed 's/^/  /' >&2
+    printf '  %s\n' "${AGENTS_PATHS[@]}" >&2
     exit 1
 fi
+
+ensure_yq
+
+# Extension validation applies only to staged files that still exist.
+STAGED=$(git diff --cached --name-only --diff-filter=ACM)
 
 # Print only the first YAML frontmatter block (between the first two `---`
 # lines). Body markdown horizontal rules (`---`) are ignored — extraction stops
