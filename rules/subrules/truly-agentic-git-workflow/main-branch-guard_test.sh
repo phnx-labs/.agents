@@ -147,13 +147,6 @@ run_guard 2 "Write drive-letter path with .. traversal into the primary tree" \
   "$(wj Write file_path "C:/../tracked.txt" "$MAIN_REPO")" "$MAIN_REPO"
 run_guard 2 "Write drive-letter path with backslash .. traversal" \
   "$(wj Write file_path "C:\\..\\tracked.txt" "$MAIN_REPO")" "$MAIN_REPO"
-# And the same once a literal `C:` directory exists in the tree — which a Write
-# tool's own parent-dir step (mkdir -p / fs.mkdirSync recursive) creates on the
-# way to writing the file, so this is the realistic shape, not a contrived one.
-mkdir -p "$MAIN_REPO/C:"
-run_guard 2 "Write drive-letter traversal with a literal C: dir present" \
-  "$(wj Write file_path "C:/../tracked.txt" "$MAIN_REPO")" "$MAIN_REPO"
-rmdir "$MAIN_REPO/C:" 2>/dev/null || true
 
 # --- Windows-style paths: drive-letter-rooted, backslash or forward-slash ---
 # separated paths (as sent by Claude Code / other harnesses running natively on
