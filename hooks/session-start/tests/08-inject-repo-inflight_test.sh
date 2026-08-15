@@ -32,10 +32,33 @@ run_hook() {   # $1 = cwd to report, $2 = session_id of the starting session
 
 # --- stubs -------------------------------------------------------------------
 mkdir -p "$SANDBOX/bin"
+# Written through a function so a case that removes it (to isolate the sessions
+# block) can put it back — the project-scope cases below need it again.
+write_gh_stub() {
 cat > "$SANDBOX/bin/gh" <<'STUB'
 #!/usr/bin/env bash
-printf -- '- #12 fix the frobnicator (fix-frob)\n- #13 [draft] new dashboard (dash-v2)\n'
+# Answers per (state, cwd) so the multi-repo widening and the merged section are
+# both observable. The hook runs `gh` with the repo as cwd, so $PWD names it.
+here="$(basename "$PWD")"
+case "$*" in
+  *"--state merged"*)
+    # The hook asks for --json now, not a rendered --template: gh has no --sort
+    # and returns CREATION order, so the merged list is sorted on mergedAt after
+    # the fact. Emit JSON, deliberately in the WRONG order (the older merge
+    # first), so the assertion below proves the sort actually happens.
+    printf -- '[{"number":91,"title":"other landed thing in %s","mergedAt":"2026-08-01T00:00:00Z"},{"number":90,"title":"landed thing in %s","mergedAt":"2026-08-09T00:00:00Z"}]\n' "$here" "$here" ;;
+  *)
+    if [ "$here" = "secondrepo" ]; then
+      printf -- '- #77 second-repo PR (feat-two)\n'
+    else
+      printf -- '- #12 fix the frobnicator (fix-frob)\n- #13 [draft] new dashboard (dash-v2)\n'
+    fi ;;
+esac
 STUB
+chmod +x "$SANDBOX/bin/gh"
+}
+write_gh_stub
+
 # JSON rows exercising every filter and rank path. In-project rows that are NOT
 # `activity=="working"` (idle, waiting_input) or are parked (orphaned/abandoned/
 # closed) or dead (pidAlive false) must be dropped. Two working rows in-project
@@ -44,6 +67,14 @@ STUB
 # session itself must all be excluded.
 cat > "$SANDBOX/bin/agents" <<'STUB'
 #!/usr/bin/env bash
+# `projects` is the project-resolution path; AGENTS_* env vars drive it, and the
+# default (empty) leaves every pre-existing case on the git-repo fallback.
+if [ "$1" = "projects" ] && [ "$2" = "for-cwd" ]; then
+  printf '%s\n' "${AGENTS_FOR_CWD_JSON:-{\"name\":null\}}"; exit 0
+fi
+if [ "$1" = "projects" ] && [ "$2" = "list" ]; then
+  printf '%s\n' "${AGENTS_PROJECTS_JSON:-[]}"; exit 0
+fi
 case "$*" in
   *--json*--local*|*--local*--json*) : ;;
   *) echo "stub: expected --json --local, got: $*" >&2; exit 1 ;;
@@ -147,5 +178,112 @@ chmod +x "$SANDBOX/bin/agents"
 out=$(run_hook "$REPO"); rc=$?
 [ "$rc" = "0" ] && echo "ok   - malformed JSON exits 0" || { echo "FAIL - malformed JSON rc=$rc"; fail=1; }
 check_empty "malformed session JSON stays silent" "$out"
+
+# --- 6. project scope: the survey covers every repo the def binds -------------
+# The core widening. A session in one checkout used to be blind to open PRs and
+# live agents in the project's OTHER repos — exactly the duplicate work this
+# hook exists to prevent. The project comes from `agents projects`, not the git
+# repo, so the def's repos[].path entries decide the scope.
+write_gh_stub   # case 4 removed it to isolate the sessions block
+SECOND="$SANDBOX/secondrepo"
+mkdir -p "$SECOND"
+git -C "$SECOND" init -q
+SECOND="$(cd "$SECOND" && pwd)"
+
+cat > "$SANDBOX/bin/agents" <<STUB
+#!/usr/bin/env bash
+if [ "\$1" = "projects" ] && [ "\$2" = "for-cwd" ]; then echo '{"name":"proj"}'; exit 0; fi
+if [ "\$1" = "projects" ] && [ "\$2" = "list" ]; then
+  echo '[{"name":"proj","root":"$REPO","linear":{"projectId":"lin_1","name":"Wide Project"},"repos":[{"slug":"o/a","path":"$REPO"},{"slug":"o/b","path":"$SECOND"}]}]'
+  exit 0
+fi
+cat <<EOF
+[
+  {"sessionId": "inrepo11-0000", "kind": "claude", "cwd": "$REPO", "status": "running", "activity": "working", "pidAlive": true, "lastActivityMs": 100, "topic": "agent in the first repo"},
+  {"sessionId": "insecond-0000", "kind": "codex", "cwd": "$SECOND", "status": "running", "activity": "working", "pidAlive": true, "lastActivityMs": 200, "topic": "agent in the SECOND project repo"},
+  {"sessionId": "outside0-0000", "kind": "claude", "cwd": "/nowhere/near", "status": "running", "activity": "working", "pidAlive": true, "lastActivityMs": 300, "topic": "outside the project"}
+]
+EOF
+STUB
+chmod +x "$SANDBOX/bin/agents"
+
+out=$(run_hook "$REPO" "self0000-0000")
+check_contains "header names the project"        "$out" "In-flight in Wide Project"
+check_contains "first repo PR listed"            "$out" "#12 fix the frobnicator"
+check_contains "SECOND repo PR listed"           "$out" "#77 second-repo PR"
+check_contains "multi-repo lines carry a label"  "$out" "[secondrepo]"
+check_contains "agent in the second repo listed" "$out" "insecond"
+check_contains "agent in the first repo listed"  "$out" "inrepo11"
+check_absent   "agent outside the project excluded" "$out" "outside0"
+# Recently-merged: what already landed, so an agent does not re-propose it.
+check_contains "merged section rendered"         "$out" "Recently merged"
+check_contains "merged PR listed"                "$out" "#90 landed thing"
+# gh returns creation order; #90 merged LATER than #91 and must therefore rank
+# first. Without the mergedAt sort the stub's own order (#91 first) survives,
+# and the section that exists to show "what just landed" leads with the older
+# merge. Verified against agents-cli, where #2734 merged most recently and gh
+# ranked it third.
+merged_block="$(printf '%s' "$out" | sed -n '/Recently merged/,/^$/p')"
+if [ "$(printf '%s' "$merged_block" | grep -n '#9[01]' | head -1 | grep -c '#90')" = "1" ]; then
+  echo "ok   - merged list is ordered by mergedAt, not creation date"
+else
+  echo "FAIL - merged list is not sorted by mergedAt (older merge ranked first)"; fail=1
+fi
+
+# --- 7. no project def: the git repo stays the anchor, unlabelled -------------
+# Fail-open. Nothing about the widening may change a repo that no def claims.
+cat > "$SANDBOX/bin/agents" <<STUB
+#!/usr/bin/env bash
+if [ "\$1" = "projects" ]; then echo '{"name":null}'; exit 0; fi
+echo '[]'
+STUB
+chmod +x "$SANDBOX/bin/agents"
+out=$(run_hook "$REPO" "self0000-0000")
+check_contains "fallback header says this repo"  "$out" "In-flight in this repo"
+check_contains "fallback still lists PRs"        "$out" "#12 fix the frobnicator"
+check_absent   "single repo gets no label prefix" "$out" "["$'\u005b'"secondrepo]"
+check_absent   "fallback does not reach the second repo" "$out" "#77 second-repo PR"
+
+# --- 8. worst-case latency fits the registered hook timeout -------------------
+# This hook's manifest timeout was already wrong before this change (two
+# SEQUENTIAL probes at 4s + 8s against `timeout: 10`), and widening the scope
+# added two resolution calls in front of them. Assert the arithmetic so the two
+# numbers cannot drift apart again — the sibling hook's budget test went stale
+# precisely because it only counted `--max-time` and missed `_to`.
+LIB="$HERE/../../lib/project-context.sh"
+# Resolution runs BEFORE the probes and is sequential, so its budgets add.
+lib_to=$(grep -o -- '_to [0-9][0-9]*' "$LIB" 2>/dev/null | awk '{s += $2} END {print s+0}')
+# The probes are backgrounded, so the section costs the SLOWEST one, not the sum.
+probe_max=$(grep -o -- '_to [0-9][0-9]*' "$HOOK" | awk '{if ($2+0 > m) m = $2+0} END {print m+0}')
+declared=$(awk '/^  inject-repo-inflight:/{f=1} f&&/timeout:/{print $2; exit}' "$HERE/../../../agents.yaml" 2>/dev/null)
+declared="${declared:-10}"
+worst=$(( lib_to + probe_max ))
+# Same reasoning as the sibling hook: the timeout is wall-clock, and this script
+# spawns several python3 interpreters plus one gh per repo.
+MARGIN=3
+if [ "$probe_max" -gt 0 ] && [ $(( worst + MARGIN )) -le "$declared" ]; then
+  echo "ok   - worst-case ${worst}s + ${MARGIN}s runtime fits the registered ${declared}s timeout"
+else
+  echo "FAIL - worst case ${worst}s + ${MARGIN}s runtime exceeds the registered ${declared}s timeout"; fail=1
+fi
+# The probes must stay parallel: if they are ever serialised again the budget
+# above is wrong by construction, so pin the backgrounding.
+# The calls are multi-line, so match the outfile-and-background tail, not the
+# invocation line.
+bg=$(grep -cE '"\$tmp/[a-z]+" 2>/dev/null &$' "$HOOK")
+[ "$bg" -ge 2 ] && echo "ok   - PR probes are backgrounded" || { echo "FAIL - PR probes no longer backgrounded ($bg)"; fail=1; }
+# And per REPO, not just per state. `probe_max` above takes the single largest
+# `_to` in the hook, which is only the true worst case if every repo is probed
+# concurrently. An earlier version looped the repos INSIDE one backgrounded
+# function, so the real cost was repos x 4s: a 3-repo project measured 17.5s
+# against an 18s timeout and a 4th blew past it, while this budget check still
+# printed "fits" because it never multiplied by repo count. Pin the shape that
+# makes the arithmetic true.
+if grep -q 'probe_one .*&$' "$HOOK"; then
+  echo "ok   - each repo is probed in its own background job"
+else
+  echo "FAIL - repos are not probed concurrently; the budget above is wrong by repo count"; fail=1
+fi
+grep -q '^wait 2>/dev/null' "$HOOK" && echo "ok   - probes are collected with wait" || { echo "FAIL - no wait before reading probe output"; fail=1; }
 
 exit $fail

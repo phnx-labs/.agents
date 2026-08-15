@@ -52,6 +52,15 @@ for t in "$HERE"/*/tests/*_test.sh; do
   run_one "$t"
 done
 
+# The skills namespace check. It lives outside hooks/ because it tests skills,
+# but it is a pre-PR integrity gate exactly like registration_test.sh — and an
+# un-run test rots the same way the flat-namespace bug it catches did. Ship it
+# inside the gate rather than hoping someone types it by hand.
+for t in "$ROOT"/skills/*_test.sh; do
+  [ -e "$t" ] || continue
+  run_one "$t"
+done
+
 # Guard rules under rules/subrules/*/.
 for t in "$ROOT"/rules/subrules/*/*_test.sh; do
   [ -e "$t" ] || continue

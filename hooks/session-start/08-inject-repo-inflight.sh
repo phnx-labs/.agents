@@ -57,12 +57,114 @@ fi
 [ -z "${repo:-}" ] && repo="$(git -C "$cwd" rev-parse --show-toplevel 2>/dev/null || true)"
 [ -z "$repo" ] && exit 0
 
-prs=""
+# A project is usually several repos. `agents projects` binds them, so survey all
+# of them rather than only the one this session happens to sit in: a session in
+# `agents-cli` was blind to open PRs on `agents-cli-web` and `.agents-system`,
+# which is exactly the duplicate-work this hook exists to prevent. The git repo
+# stays the fallback anchor when no def claims the cwd.
+LIBDIR="$(dirname "$(dirname "$(realpath "${BASH_SOURCE[0]}" 2>/dev/null || printf '%s' "${BASH_SOURCE[0]}")")")/lib"
+LIB="$(dirname "$(dirname "$(realpath "${BASH_SOURCE[0]}" 2>/dev/null || printf '%s' "${BASH_SOURCE[0]}")")")/lib/project-context.sh"
+scope_label="this repo"
+roots="$repo"
+if [ -f "$LIB" ]; then
+  # shellcheck source=/dev/null
+  . "$LIB"
+  resolve_project_context "$cwd"
+  if [ -n "${PROJECT_ROOTS:-}" ]; then
+    # Keep only roots that exist HERE — a def is fleet-wide, this box may not
+    # have every checkout, and a missing path would just waste a probe.
+    present=""
+    while IFS= read -r r; do
+      [ -n "$r" ] && [ -d "$r" ] && present="${present}${r}"$'\n'
+    done <<< "$PROJECT_ROOTS"
+    if [ -n "$present" ]; then
+      roots="$(printf '%s' "$present")"
+      scope_label="${PROJECT_NAME:-$PROJECT_DEF_NAME}"
+    fi
+  fi
+fi
+
+# Probes run in PARALLEL, each into its own temp file. They were sequential, so
+# the worst case was 4s (gh) + 8s (sessions) = 12s against a `timeout: 10` — the
+# manifest comment already said "speed comes from parallelising its two probes
+# inside the script", and this is that. Worst case is now the slowest single
+# probe, not their sum.
+tmp="$(mktemp -d 2>/dev/null || true)"
+[ -z "$tmp" ] && exit 0
+trap 'rm -rf "$tmp"' EXIT
+
+# Label each line with its repo only when the project spans more than one — on a
+# single-repo project the prefix is pure noise. `gh pr list --json` has no
+# `repository` field, so the label comes from the path we are already iterating.
+multi_repo=0
+[ "$(printf '%s\n' "$roots" | grep -c .)" -gt 1 ] && multi_repo=1
+
+# One probe per repo, run with the repo as cwd so `gh` resolves its own origin.
+# `-R <path>` does NOT work: that flag takes an owner/repo slug.
+#
+# Each repo gets its OWN background job. An earlier version looped the repos
+# inside a single backgrounded function, each call bounded by `_to 4` — so an
+# R-repo project cost R x 4s, not 4s. The 3-repo project this hook was written
+# for measured 17.5s against an 18s manifest timeout, and a 4th repo pushes the
+# hook past it. A killed SessionStart hook injects NOTHING, so that failure is
+# not a degraded brief, it is no brief at all. Now the worst case is one bound.
+probe_one() { # $1 repo, $2 state, $3 limit, $4 template, $5 fields, $6 outfile
+  local r="$1" state="$2" limit="$3" template="$4" fields="$5" outfile="$6"
+  local label out ln
+  label="$(basename "$r")"
+  if [ "$state" = "merged" ]; then
+    # `gh pr list` has no --sort and returns CREATION order, so the most recently
+    # merged PR is not necessarily first. Over-fetch and sort on mergedAt.
+    out="$( (cd "$r" 2>/dev/null && _to 4 gh pr list --state merged --limit 20 \
+      --json number,title,mergedAt 2>/dev/null) || true )"
+    out="$(printf '%s' "$out" | _to 3 python3 "$LIBDIR/sort-merged-prs.py" "$limit" 2>/dev/null || true)"
+  else
+    out="$( (cd "$r" 2>/dev/null && _to 4 gh pr list --state "$state" --limit "$limit" \
+      --json "$fields" --template "$template" 2>/dev/null) || true )"
+  fi
+  [ -n "$out" ] || return 0
+  if [ "$multi_repo" = "1" ]; then
+    # Bash prefix substitution, not sed: a directory name may contain `#` or
+    # `&`, which are the substitute delimiter and the match reference.
+    while IFS= read -r ln; do
+      printf '%s\n' "${ln/#- /- [${label}] }"
+    done <<< "$out" > "$outfile"
+  else
+    printf '%s\n' "$out" > "$outfile"
+  fi
+}
+
+probe_prs() { # $1 state, $2 limit, $3 template, $4 fields, $5 outfile
+  local state="$1" limit="$2" template="$3" fields="$4" outfile="$5"
+  local r i=0 parts=""
+  while IFS= read -r r; do
+    [ -n "$r" ] || continue
+    i=$((i + 1))
+    probe_one "$r" "$state" "$limit" "$template" "$fields" "${outfile}.part.$i" &
+    parts="$parts ${outfile}.part.$i"
+  done <<< "$roots"
+  wait
+  if [ -n "$parts" ]; then
+    # shellcheck disable=SC2086
+    cat $parts 2>/dev/null > "$outfile" || : > "$outfile"
+    # shellcheck disable=SC2086
+    rm -f $parts 2>/dev/null || true
+  else
+    : > "$outfile"
+  fi
+}
+
 if command -v gh >/dev/null 2>&1; then
-  prs="$(cd "$repo" 2>/dev/null && _to 4 gh pr list --state open --limit 10 \
-    --json number,title,headRefName,isDraft \
-    --template '{{range .}}- #{{.number}} {{if .isDraft}}[draft] {{end}}{{.title}} ({{.headRefName}}){{"\n"}}{{end}}' \
-    2>/dev/null || true)"
+  probe_prs open 10 \
+    '{{range .}}- #{{.number}} {{if .isDraft}}[draft] {{end}}{{.title}} ({{.headRefName}}){{"\n"}}{{end}}' \
+    number,title,headRefName,isDraft "$tmp/prs" 2>/dev/null &
+  # What just LANDED. An agent that cannot see the last few merges re-proposes
+  # work already on main, or "fixes" something a newer commit deliberately
+  # superseded — the regression this fleet hits most. Capped tight: this is
+  # orientation, not a changelog.
+  probe_prs merged 5 \
+    '{{range .}}- #{{.number}} {{.title}}{{"\n"}}{{end}}' \
+    number,title,mergedAt "$tmp/merged" 2>/dev/null &
 fi
 
 # Agents actively working on THIS project, on THIS machine only (--local).
@@ -76,11 +178,12 @@ fi
 # manifest-level `timeout: 10` backstop. The real fix is making
 # `agents sessions --active --local` faster; this stops the silent data loss meanwhile.
 CAP=5
-sessions=""
 if command -v agents >/dev/null 2>&1; then
-  sessions="$(_to 8 agents sessions --active --json --local 2>/dev/null | python3 -c '
-import json, sys
-repo, self_sid, cap = sys.argv[1], sys.argv[2], int(sys.argv[3])
+  (_to 8 agents sessions --active --json --local 2>/dev/null | ROOTS="$roots" python3 -c '
+import json, os, sys
+self_sid, cap = sys.argv[1], int(sys.argv[2])
+# Every root the project binds, not just the one repo the caller sits in.
+roots = [r for r in (os.environ.get("ROOTS") or "").split("\n") if r]
 try:
     rows = json.load(sys.stdin)
 except Exception:
@@ -92,7 +195,9 @@ for r in rows if isinstance(rows, list) else []:
     if not isinstance(r, dict):
         continue
     cwd = r.get("cwd") or ""
-    if cwd != repo and not cwd.startswith(repo + "/"):
+    # Path-boundary match against ANY bound root, so "…/agents" still does not
+    # swallow "…/agents-cli".
+    if not any(cwd == root or cwd.startswith(root + "/") for root in roots):
         continue
     sid = r.get("sessionId") or ""
     if self_sid and sid == self_sid:
@@ -143,20 +248,47 @@ if extra:
     hint = snippet(extra[0]) or (extra[0].get("kind") or "?")
     print("+ %d more agent%s working on this project (next: %s)" % (
         len(extra), "" if len(extra) == 1 else "s", hint))
-' "$repo" "${self_sid:-}" "$CAP" 2>/dev/null || true)"
+' "${self_sid:-}" "$CAP" 2>/dev/null || true) > "$tmp/sessions" 2>/dev/null &
 fi
 
-[ -z "$prs" ] && [ -z "$sessions" ] && exit 0
+# Every probe was backgrounded above; collect them. `wait` with no argument
+# returns once all of them are done, so the section costs the slowest probe
+# rather than their sum.
+wait 2>/dev/null || true
+prs="$(cat "$tmp/prs" 2>/dev/null || true)"
+merged="$(cat "$tmp/merged" 2>/dev/null || true)"
+sessions="$(cat "$tmp/sessions" 2>/dev/null || true)"
 
-echo "## In-flight in this repo (auto-injected)"
+[ -z "$prs" ] && [ -z "$merged" ] && [ -z "$sessions" ] && exit 0
+
+# Widening from one repo to a whole project multiplies every list by the repo
+# count, so each section carries a total cap with a "+N more" tail — the same
+# shape the sessions section already uses. Without it a three-repo project turns
+# a ~11-line block into ~30 lines of injected context on every session.
+render_capped() {
+  local body="$1" cap="$2" noun="$3" total shown
+  total="$(printf '%s\n' "$body" | grep -c .)"
+  printf '%s\n' "$body" | grep . | head -n "$cap"
+  shown=$(( total > cap ? cap : total ))
+  [ "$total" -gt "$shown" ] && echo "+ $(( total - shown )) more ${noun}"
+  return 0
+}
+
+echo "## In-flight in ${scope_label} (auto-injected)"
 echo
 echo "Work that already exists here. Before opening a PR, spawning agents, or"
-echo "adopting a task: don't duplicate an open PR's scope, and don't take over"
-echo "a live session's surface without checking what it is doing."
+echo "adopting a task: don't duplicate an open PR's scope, don't take over"
+echo "a live session's surface without checking what it is doing, and don't"
+echo "re-propose something the recent merges already landed."
 if [ -n "$prs" ]; then
   echo
   echo "Open PRs:"
-  printf '%s\n' "$prs"
+  render_capped "$prs" 12 "open (gh pr list)"
+fi
+if [ -n "$merged" ]; then
+  echo
+  echo "Recently merged (check before re-proposing):"
+  render_capped "$merged" 8 "recently merged (gh pr list --state merged)"
 fi
 if [ -n "$sessions" ]; then
   echo

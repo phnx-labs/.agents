@@ -2,7 +2,7 @@
 
 Turn any agent-generated HTML — a plan, a viz, a report — into a shareable link in
 one step, backed by **your own** Cloudflare R2 (zero egress, ~$0). Wraps the
-`agents share` CLI.
+`agents artifacts share` CLI.
 
 ## Commands
 
@@ -28,9 +28,9 @@ and it renders the card above.
 ## Requirements
 
 - [`agents-cli`](https://github.com/phnx-labs/agents-cli) on `$PATH`.
-- A one-time `agents share setup` (provisions an R2 bucket + a tiny Worker on your
+- A one-time `agents artifacts setup` (provisions an R2 bucket + a tiny Worker on your
   Cloudflare, read from your `cloudflare.com` secrets bundle) — or
-  `agents share join <baseUrl>` to publish through an existing endpoint.
+  `agents artifacts share join <baseUrl>` to publish through an existing endpoint.
 - For the public preview cover: a local headless-capable Chromium-family browser.
   Optional — without one, the link still publishes, just without a card.
 

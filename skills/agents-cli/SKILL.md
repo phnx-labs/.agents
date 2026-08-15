@@ -68,7 +68,7 @@ agents run claude --device yosemite-s0 --mode edit --model sonnet --name auth-re
 - Omitting the prompt with `--device` takes the interactive path and forwards your local TTY.
 - `--no-follow` is rejected for interactive host runs.
 - `--interactive` and `--headless` are mutually exclusive.
-- The remote machine must already have agents-cli installed and reachable; if not, enroll it with `agents hosts add <name>`.
+- The remote machine must already have agents-cli installed and reachable; if not, enroll it with `agents devices add <name>`.
 
 
 ## Teams: Parallel Multi-Agent Coordination
