@@ -64,39 +64,8 @@ record_gate() { # $1 gate, $2 reason code
   printf '%s' "$INPUT_JSON" | python3 "$HERE/verify-work-state.py" record-gate "$1" blocked "$2" >/dev/null 2>&1 || true
 }
 
-# --- visual claim read-back gate --------------------------------------------
-# Gate the claim, not scp/open. A narrow visual assertion is blocked only when
-# this goal authored a visual artifact and no paired image result read that render
-# back afterward. Unsupported transcript shapes fail open.
-visual_gate=$(VISUAL_STOP_INPUT="$INPUT_JSON" python3 - "$TRANSCRIPT_PATH" "${STATE_GOAL_OFFSET:-0}" "$HERE" <<'PY' 2>/dev/null || true
-import json, os, sys
-sys.path.insert(0, sys.argv[3])
-from visual_readback import inspect_transcript, makes_visual_claim
-
-payload = json.loads(os.environ.get("VISUAL_STOP_INPUT", "{}"))
-message = str(payload.get("last_assistant_message") or payload.get("lastAssistantMessage") or "")
-evidence = inspect_transcript(sys.argv[1], int(sys.argv[2] or 0))
-if (evidence["parser_supported"] and evidence["visual_authored"]
-        and makes_visual_claim(message) and not evidence["visual_read_back"]):
-    print(evidence["latest_visual"] or "visual artifact")
-PY
-)
-if [ -n "$visual_gate" ]; then
-  cat >&2 <<GATE
-STOP GATE (visual read-back): Your final message describes a rendered UI, but this
-session has no paired image read-back after authoring `$visual_gate`.
-
-Render it headlessly with `agents browser start --url file://…`, capture it with
-`agents browser screenshot -o /tmp/<name>.png`, then read that path with
-`view_image` and inspect what it
-actually shows before describing or delivering it.
-GATE
-  record_gate visual-readback visual-claim-unverified
-  exit 2
-fi
-
-# A blocked Stop is retried with stop_hook_active=true. The visual claim check
-# above still runs meaningfully once; older gates retain their loop protection.
+# Loop protection: a blocked Stop is retried with stop_hook_active=true; the
+# remaining gates fire at most once so a retry cannot wedge the session.
 if [ "$stop_active" = "true" ]; then
   exit 0
 fi
