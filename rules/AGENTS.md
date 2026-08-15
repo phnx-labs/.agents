@@ -312,9 +312,9 @@ and embed it with `![caption](url)`. Use these, in order:
    Cloudflare R2 and prints a public URL that renders inline via `![caption](url)`. No
    browser and no manual drag-drop, so it works **headlessly** — the default way an agent
    attaches media. Not configured on this box? `agents artifacts share status` says so; configure it
-   once with `agents artifacts share setup` (provision your own endpoint) or `agents artifacts share join
+   once with `agents artifacts setup` (provision your own endpoint) or `agents artifacts share join
    <baseUrl>` (use an existing one), then re-run. If you truly cannot configure it, hand the
-   one-time `agents artifacts share setup` to the user and use drag-drop meanwhile. **Public share is
+   one-time `agents artifacts setup` to the user and use drag-drop meanwhile. **Public share is
    for shareable visual proof only** — never publish a private or secret asset (a
    transcript, anything carrying tokens or internal paths) to a public R2 URL; those stay in
    a secret gist or a local path (see the transcript rule below). `--expire 30d` bounds the
