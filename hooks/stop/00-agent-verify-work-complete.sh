@@ -87,7 +87,8 @@ STOP GATE (visual read-back): Your final message describes a rendered UI, but th
 session has no paired image read-back after authoring `$visual_gate`.
 
 Render it headlessly with `agents browser start --url file://…`, capture it with
-`agents browser screenshot`, then read the resulting image and inspect what it
+`agents browser screenshot -o /tmp/<name>.png`, then read that path with
+`view_image` and inspect what it
 actually shows before describing or delivering it.
 GATE
   record_gate visual-readback visual-claim-unverified

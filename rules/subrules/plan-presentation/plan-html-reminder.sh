@@ -206,7 +206,8 @@ fi
     echo "  artifacts check/render now ERROR if a plan has no drawn SVG figure."
     echo "  Inspect without stealing focus:"
     echo "    agents browser start --url file://\$PWD/.agents/artifacts/\$DATE/plan-<slug>.html"
-    echo "    agents browser screenshot"
+    echo "    agents browser screenshot -o /tmp/plan-<slug>.png"
+    echo "    view_image /tmp/plan-<slug>.png"
     echo "  Copy/open it on the interactive host only when the user explicitly requested it."
     echo "  Same layout for any related artifact (visuals, reports): .agents/artifacts/yyyy-mm-dd/<title>.md"
   fi

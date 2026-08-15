@@ -40,6 +40,22 @@ sed -i '2i {"type":"assistant","message":{"content":[{"type":"tool_use","id":"c1
 out=$(inspect "$disciplined")
 check "disciplined session records paired image read-back" "$(printf '%s' "$out" | python3 -c 'import json,sys; print(json.load(sys.stdin)["visual_read_back"])')" "True"
 
+overwritten="$SANDBOX/overwritten.jsonl"
+cp "$disciplined" "$overwritten"
+printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"w2","name":"Write","input":{"file_path":"/tmp/mockup.png"}}]}}' >> "$overwritten"
+out=$(inspect "$overwritten")
+check "read-back before the latest overwrite does not clear it" "$(printf '%s' "$out" | python3 -c 'import json,sys; print(json.load(sys.stdin)["visual_read_back"])')" "False"
+
+automatic="$SANDBOX/automatic.jsonl"
+cat > "$automatic" <<'EOF'
+{"type":"item.completed","item":{"id":"shot1","type":"command_execution","command":"agents browser screenshot","aggregated_output":"Screenshot saved to /tmp/browser-shot.png"}}
+{"type":"response_item","payload":{"type":"function_call","call_id":"view1","name":"view_image","arguments":"{\"path\":\"/tmp/browser-shot.png\"}"}}
+{"type":"response_item","payload":{"type":"function_call_output","call_id":"view1","output":[{"type":"input_image","image_url":"data:image/png;base64,AA=="}]}}
+EOF
+out=$(inspect "$automatic")
+check "Codex auto-named screenshot output is authored" "$(printf '%s' "$out" | python3 -c 'import json,sys; print(json.load(sys.stdin)["visual_authored"])')" "True"
+check "Codex input_image read-back clears the render" "$(printf '%s' "$out" | python3 -c 'import json,sys; print(json.load(sys.stdin)["visual_read_back"])')" "True"
+
 malformed="$SANDBOX/malformed.jsonl"
 printf 'not-json\n' > "$malformed"
 out=$(inspect "$malformed")

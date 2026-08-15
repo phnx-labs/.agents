@@ -37,7 +37,8 @@ def main():
     note = (
         "[visual read-back] Before describing or delivering this visual artifact, render it "
         "headlessly with `agents browser start --url file://…`, capture it with "
-        "`agents browser screenshot`, and read the resulting image. This is advisory; the "
+        "`agents browser screenshot -o /tmp/<name>.png`, then read that path with "
+        "`view_image`. This is advisory; the "
         "command will still run."
     )
     print(json.dumps({"hookSpecificOutput": {"hookEventName": "PreToolUse", "additionalContext": note}}))
