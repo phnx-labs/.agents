@@ -50,7 +50,7 @@
     {
       "name": "share",
       "source": "./plugins/share",
-      "description": "share \u2014 publish an HTML artifact (a plan, viz, or report) to a shareable link on your own Cloudflare R2 (zero egress, ~$0) via `agents share`. `/share:public` posts a public link with an auto-generated OG cover (a screenshot of the page's hero) so it unfurls into a preview card in Slack/iMessage/Twitter/Discord; `/share:private` posts an unlisted, auto-expiring link with no preview card (unguessable but still public-read \u2014 not authenticated). Requires a one-time `agents share setup` (provisions an R2 bucket + Worker) or `agents share join`.",
+      "description": "share \u2014 publish an HTML artifact (a plan, viz, or report) to a shareable link on your own Cloudflare R2 (zero egress, ~$0) via `agents artifacts share`. `/share:public` posts a public link with an auto-generated OG cover (a screenshot of the page's hero) so it unfurls into a preview card in Slack/iMessage/Twitter/Discord; `/share:private` posts an unlisted, auto-expiring link with no preview card (unguessable but still public-read \u2014 not authenticated). Requires a one-time `agents artifacts setup` (provisions an R2 bucket + Worker) or `agents artifacts share join`.",
       "version": "0.1.0",
       "author": {
         "name": "Muqsit Nawaz",

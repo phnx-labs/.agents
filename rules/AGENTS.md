@@ -288,14 +288,14 @@ The body carries **the actual run result, not a description of it**:
 - **A user-visible change ships a picture — a screenshot is required, not optional.**
   The reviewer should not have to read code or a hand-made table to believe it works;
   they should **see it work**. Capture the running feature (the web UI, the app screen),
-  publish it with **`agents share <file>`** (§Attaching evidence), and embed the returned
+  publish it with **`agents artifacts share <file>`** (§Attaching evidence), and embed the returned
   URL in the body with `![caption](url)`. When the change has a visible before/after, show
   **both** stills.
 - **Prefer a recording when a still can't carry the flow.** You have the tools: capture a
   **web app** with the `browser` skill (record the click-through), or a **terminal flow**
   with `agents pty` (record the run), and attach the file.
 - **A no-UI change still shows the run** — screenshot the passing run / the `curl`'d
-  response, or `agents share` the run's output or log as an **asset** and link it. Pasted
+  response, or `agents artifacts share` the run's output or log as an **asset** and link it. Pasted
   **source code** and **hand-authored tables are not proof of a run** and do not count. If
   there is genuinely no visible surface, **declare it** (refactor / test-only).
 - **Link the context.** Include the **Linear ticket** for the work, and — if a plan was
@@ -318,24 +318,24 @@ unreadable `--body-file` — a reminder must never block a legit PR.
 local screenshot path in the body does **not** render on GitHub. Get the asset a public URL
 and embed it with `![caption](url)`. Use these, in order:
 
-1. **`agents share <file>` — the primary mechanic.** It publishes any static asset (a
+1. **`agents artifacts share <file>` — the primary mechanic.** It publishes any static asset (a
    `.png`/`.jpg`/`.gif` screenshot, a `.mp4`/`.mov`/`.webm` recording, a `.pdf`) to your own
    Cloudflare R2 and prints a public URL that renders inline via `![caption](url)`. No
    browser and no manual drag-drop, so it works **headlessly** — the default way an agent
-   attaches media. Not configured on this box? `agents share status` says so; configure it
-   once with `agents share setup` (provision your own endpoint) or `agents share join
+   attaches media. Not configured on this box? `agents artifacts share status` says so; configure it
+   once with `agents artifacts setup` (provision your own endpoint) or `agents artifacts share join
    <baseUrl>` (use an existing one), then re-run. If you truly cannot configure it, hand the
-   one-time `agents share setup` to the user and use drag-drop meanwhile. **Public share is
+   one-time `agents artifacts setup` to the user and use drag-drop meanwhile. **Public share is
    for shareable visual proof only** — never publish a private or secret asset (a
    transcript, anything carrying tokens or internal paths) to a public R2 URL; those stay in
    a secret gist or a local path (see the transcript rule below). `--expire 30d` bounds the
    link's life.
-2. **Web drag-drop (browser-only fallback).** When `agents share` isn't available, open the
+2. **Web drag-drop (browser-only fallback).** When `agents artifacts share` isn't available, open the
    PR/comment box in the browser and drag the image/recording (`.png`/`.gif`/`.mp4`/`.mov`)
    in. GitHub uploads it and inserts a `https://github.com/user-attachments/assets/…` URL
    that renders inline via `![](…)`. Open the PR on the user's Mac to do it (`agents ssh
    <mac> 'open <pr-url>'`), or drive the upload with the `browser` skill.
-3. **Comment after the fact.** Once you have a public URL (an `agents share` link or a
+3. **Comment after the fact.** Once you have a public URL (an `agents artifacts share` link or a
    `user-attachments` URL), `gh pr comment <pr> --body '![result](<url>)'` adds it without
    touching the body.
 4. **Path fallback (fleet-local only).** If you genuinely can't upload anywhere, reference
@@ -351,7 +351,7 @@ Every `gh pr create` / `gh issue create` / ticket-open carries:
 - **Screenshots and relevant materials of the user-visible outcome** — the rendered
   UI, the passing test run, the `curl`'d health response, a before/after. If you
   produced a visual while verifying end-to-end (F3), it belongs in
-  the body. Publish it with `agents share <file>` and embed the URL (or drag it into the
+  the body. Publish it with `agents artifacts share <file>` and embed the URL (or drag it into the
   web UI); reference on-disk images by **full path** so the reviewer can click to preview.
 - **A session transcript — kept confidential, always.** The transcript can carry
   secrets, tokens, internal paths, and raw reasoning, so it **never** goes inline in
@@ -1019,7 +1019,7 @@ to dodge a sandbox failure — that's the same security escalation as any sandbo
 Move to a harness/box that genuinely works, and say in your report that the box changed
 (measurements taken before and after a box change are not comparable).
 
-## A detached (`--no-follow`) run's status is only true through `agents hosts ps`
+## A detached (`--no-follow`) run's status is only true through `agents devices ps`
 
 `agents run --device … --no-follow` returns immediately and leaves the agent running on
 the remote box — the right primitive when you want to start work and do something else
@@ -1028,25 +1028,25 @@ an agent's tool call).
 
 Because nobody is tailing it, the on-disk dispatch record at
 `~/.agents/.cache/hosts/<id>.json` **stays `"status": "running"` after the agent has
-exited**, until something reconciles it. `agents hosts ps` does that reconciliation — it
+exited**, until something reconciles it. `agents devices ps` does that reconciliation — it
 reads the run's **remote `.exit` file** and writes the real outcome back. Verified on
-zion: two finished runs read `running` in the raw JSON, and after `agents hosts ps` both
+zion: two finished runs read `running` in the raw JSON, and after `agents devices ps` both
 read `completed`.
 
 **But reconciliation only works if the remote `.exit` was written.** A run whose process
 was killed, or whose box rebooted, never writes one — and then *no command rescues it*.
 Verified on yosemite-s1: four records (`273148b7`, `4663ce92`, `a281c096`, `8450cd2c`)
 still report `running` with PIDs confirmed dead by `ssh <host> 'ps -p <pid>'`, and
-`273148b7` has no `.exit` on either side. `agents hosts ps` leaves all four `running`.
+`273148b7` has no `.exit` on either side. `agents devices ps` leaves all four `running`.
 
 So:
 
-- Poll `agents hosts ps --json` (match the `name` you passed to `--name`), never the raw
+- Poll `agents devices ps --json` (match the `name` you passed to `--name`), never the raw
   cache file — the file is stale until `ps` reconciles it.
-- Harvest with `agents hosts logs <id>` once status leaves `running`.
+- Harvest with `agents logs <id>` once status leaves `running`.
 - **Always bound the wait — `ps` is not a liveness check.** Pick a concrete ceiling from
   the job's own expected runtime (2x it, or a stated cap) and treat anything past it as
-  dead, not slow: `agents hosts stop <id>`, then proceed. Without a ceiling, one
+  dead, not slow: `agents devices stop <id>`, then proceed. Without a ceiling, one
   abnormally-killed run leaves a permanent `running` record that blocks every future
   dispatch guarded on it. If you need certainty rather than a timeout, probe the pid
   directly (`ssh <host> 'ps -p <pid>'`).
@@ -1064,7 +1064,7 @@ tokens, for no benefit. Use:
 - `agents sessions preview <id>` — the fleet-resolved brief (fresh status, PR link, last response, files/tests/skills/plugins/errors).
 - `agents sessions --active` — the status column across all live agents.
 
-Pull the raw remote log (`agents hosts logs <name>`) ONLY to `grep` the single error
+Pull the raw remote log (`agents logs <name>`) ONLY to `grep` the single error
 line when the brief shows `failed`. Never `cat`/tail the whole transcript.
 
 # Unattended Work Fails Silently — Assert the Outcome, Not the Exit Code
@@ -1125,7 +1125,7 @@ message, check the send result — a `--dry-run` only proves the address resolve
 ## Read status through the command surface — and still bound the wait
 
 Cache and state files under `~/.agents/.cache/` are written by whichever process last
-touched them, so they go stale without any error. Ask the CLI (`agents hosts ps`,
+touched them, so they go stale without any error. Ask the CLI (`agents devices ps`,
 `agents sessions`, `gh pr view`), which reconciles on demand. A guard or loop built on a
 raw cache file inherits that staleness and can wedge permanently.
 
