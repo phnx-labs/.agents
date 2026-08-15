@@ -64,11 +64,17 @@ a thing the user would otherwise have to do themselves after reading you.
    naming the file, PR, or error that motivated it. One ticket per unit of delivery,
    not one per file. The summary then links the ids. If a follow-up doesn't earn a
    ticket, it doesn't earn a bullet either — drop it.
-3. **Send the owner one short update.** `agents notify --text "…"` delivers to the
-   channel configured in `agents.yaml`. 1-4 lines, leading with whatever needs them,
-   linking the PR or ticket rather than restating it. The harness notifies *you* when
-   the turn ends and never notifies them, so a recap that only exists in this window
-   is a recap nobody reads.
+3. **Make sure one owner update went out — exactly one.** There is a single path:
+   `agents feed post --title "<short outcome>" "<what you delivered + the one next
+   step>" --level important`. The `feed.broadcast.owner` sink in `agents.yaml`
+   forwards an `important` post to `agents notify`, so that one call is both the
+   record and the phone delivery. Keep it to 1-4 lines, lead with whatever needs
+   them, link the PR or ticket rather than restating it — the harness notifies *you*
+   when the turn ends and never notifies them, so a recap that exists only in this
+   window reaches nobody. **If this session already posted one, that was it.** The
+   `verify-work-complete` Stop hook asks for the same single update before it hands
+   off to `/recap`, so posting again here is a second phone buzz for one delivered
+   piece of work. Do not send a separate `agents notify` on top of it.
 
 Scale it to the work: a question answered in-session has no ticket to close, no
 follow-up to file, and nothing worth a notification. These steps apply when the
