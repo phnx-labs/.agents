@@ -545,16 +545,33 @@ def evaluate(payload: dict[str, Any], db_path: Path) -> dict[str, Any]:
     }
 
 
-def record_gate(payload: dict[str, Any], db_path: Path, gate_name: str, outcome: str, reason_code: str) -> dict[str, Any]:
-    session_key, _harness_name, native, launch = _identity(payload)
-    if not session_key:
-        return {"recorded": False, "reason": "missing session identity"}
+def _validate_gate(gate_name: str, outcome: str, reason_code: str) -> None:
     if not re.fullmatch(r"[a-z][a-z0-9-]{0,39}", gate_name):
         raise ValueError("invalid gate name")
     if outcome not in {"blocked", "passed", "skipped"}:
         raise ValueError("invalid gate outcome")
     if not re.fullmatch(r"[a-z][a-z0-9-]{0,63}", reason_code):
         raise ValueError("invalid reason code")
+
+
+def record_gates(payload: dict[str, Any], db_path: Path, triples: list[tuple[str, str, str]]) -> dict[str, Any]:
+    """Record several gate evaluations through ONE connection.
+
+    A Stop hook evaluates many gates per stop, and most of them ALLOW. Recording
+    those allows is what creates a denominator — without it every row is 'blocked'
+    and no gate has a false-positive rate. But one `python3` start costs ~18ms
+    before sqlite3 is even imported, so a process per gate would tax every stop on
+    every machine for data nobody reads in the moment. Hence the batch: the caller
+    accumulates and flushes once.
+    """
+    if not triples:
+        return {"recorded": False, "reason": "no gates"}
+    for gate_name, outcome, reason_code in triples:
+        _validate_gate(gate_name, outcome, reason_code)  # fail before any write
+    session_key, _harness_name, native, launch = _identity(payload)
+    if not session_key:
+        return {"recorded": False, "reason": "missing session identity"}
+    now = _now_ms()
     with _connect_recovering(db_path) as db:
         session_key = _reconcile_aliases(db, session_key, native, launch)
         row = db.execute(
@@ -562,12 +579,20 @@ def record_gate(payload: dict[str, Any], db_path: Path, gate_name: str, outcome:
             (session_key,),
         ).fetchone()
         goal_ordinal = int(row[0])
-        db.execute(
-            "INSERT INTO gate_events(session_key,goal_ordinal,gate_name,outcome,reason_code,created_at_ms) VALUES(?,?,?,?,?,?)",
-            (session_key, goal_ordinal, gate_name, outcome, reason_code, _now_ms()),
+        db.executemany(
+            "INSERT INTO gate_events(session_key,goal_ordinal,gate_name,outcome,reason_code,created_at_ms)"
+            " VALUES(?,?,?,?,?,?)",
+            [(session_key, goal_ordinal, g, o, r, now) for g, o, r in triples],
         )
         _prune(db)
-    return {"recorded": True, "gate_name": gate_name, "outcome": outcome}
+    return {"recorded": True, "count": len(triples)}
+
+
+def record_gate(payload: dict[str, Any], db_path: Path, gate_name: str, outcome: str, reason_code: str) -> dict[str, Any]:
+    result = record_gates(payload, db_path, [(gate_name, outcome, reason_code)])
+    if result.get("recorded"):
+        return {"recorded": True, "gate_name": gate_name, "outcome": outcome}
+    return result
 
 
 def _load_payload() -> dict[str, Any]:
@@ -590,6 +615,15 @@ def main() -> int:
             if len(sys.argv) != 5:
                 raise ValueError("record-gate requires gate, outcome, and reason")
             result = record_gate(payload, default_db_path(), sys.argv[2], sys.argv[3], sys.argv[4])
+        elif action == "record-gates":
+            # each remaining argv is "gate:outcome:reason"
+            triples = []
+            for spec in sys.argv[2:]:
+                parts = spec.split(":")
+                if len(parts) != 3:
+                    raise ValueError("gate spec must be gate:outcome:reason")
+                triples.append((parts[0], parts[1], parts[2]))
+            result = record_gates(payload, default_db_path(), triples)
         else:
             raise ValueError(f"unknown action: {action}")
     except (OSError, sqlite3.Error, RuntimeError, ValueError) as exc:

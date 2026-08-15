@@ -75,7 +75,7 @@ to dodge a sandbox failure — that's the same security escalation as any sandbo
 Move to a harness/box that genuinely works, and say in your report that the box changed
 (measurements taken before and after a box change are not comparable).
 
-## A detached (`--no-follow`) run's status is only true through `agents hosts ps`
+## A detached (`--no-follow`) run's status is only true through `agents devices ps`
 
 `agents run --device … --no-follow` returns immediately and leaves the agent running on
 the remote box — the right primitive when you want to start work and do something else
@@ -84,25 +84,25 @@ an agent's tool call).
 
 Because nobody is tailing it, the on-disk dispatch record at
 `~/.agents/.cache/hosts/<id>.json` **stays `"status": "running"` after the agent has
-exited**, until something reconciles it. `agents hosts ps` does that reconciliation — it
+exited**, until something reconciles it. `agents devices ps` does that reconciliation — it
 reads the run's **remote `.exit` file** and writes the real outcome back. Verified on
-zion: two finished runs read `running` in the raw JSON, and after `agents hosts ps` both
+zion: two finished runs read `running` in the raw JSON, and after `agents devices ps` both
 read `completed`.
 
 **But reconciliation only works if the remote `.exit` was written.** A run whose process
 was killed, or whose box rebooted, never writes one — and then *no command rescues it*.
 Verified on yosemite-s1: four records (`273148b7`, `4663ce92`, `a281c096`, `8450cd2c`)
 still report `running` with PIDs confirmed dead by `ssh <host> 'ps -p <pid>'`, and
-`273148b7` has no `.exit` on either side. `agents hosts ps` leaves all four `running`.
+`273148b7` has no `.exit` on either side. `agents devices ps` leaves all four `running`.
 
 So:
 
-- Poll `agents hosts ps --json` (match the `name` you passed to `--name`), never the raw
+- Poll `agents devices ps --json` (match the `name` you passed to `--name`), never the raw
   cache file — the file is stale until `ps` reconciles it.
-- Harvest with `agents hosts logs <id>` once status leaves `running`.
+- Harvest with `agents logs <id>` once status leaves `running`.
 - **Always bound the wait — `ps` is not a liveness check.** Pick a concrete ceiling from
   the job's own expected runtime (2x it, or a stated cap) and treat anything past it as
-  dead, not slow: `agents hosts stop <id>`, then proceed. Without a ceiling, one
+  dead, not slow: `agents devices stop <id>`, then proceed. Without a ceiling, one
   abnormally-killed run leaves a permanent `running` record that blocks every future
   dispatch guarded on it. If you need certainty rather than a timeout, probe the pid
   directly (`ssh <host> 'ps -p <pid>'`).
@@ -120,5 +120,5 @@ tokens, for no benefit. Use:
 - `agents sessions preview <id>` — the fleet-resolved brief (fresh status, PR link, last response, files/tests/skills/plugins/errors).
 - `agents sessions --active` — the status column across all live agents.
 
-Pull the raw remote log (`agents hosts logs <name>`) ONLY to `grep` the single error
+Pull the raw remote log (`agents logs <name>`) ONLY to `grep` the single error
 line when the brief shows `failed`. Never `cat`/tail the whole transcript.

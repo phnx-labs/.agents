@@ -56,7 +56,11 @@ hooks:
     events:
       - SessionStart
     script: session-start/08-inject-repo-inflight.sh
-    timeout: 10
+    # 18, not 10. Two sequential project-resolution calls (3s each) run before
+    # the probes, and the probes themselves are now parallel, so the worst case
+    # is 6 + max(gh 4, sessions 8) = 14s, plus runtime margin. It was already
+    # wrong at 10: the probes used to be SEQUENTIAL at 4 + 8 = 12s.
+    timeout: 18
     # NOT cached, deliberately. The hook excludes the CALLING session from the live-session
     # list (`self_sid`, 08-inject-repo-inflight.sh:72), so its correct output differs per
     # session. `per-cwd` keying drops session_id, which would serve agent B the snapshot
