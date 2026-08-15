@@ -379,7 +379,7 @@ def _is_shippable_repo(repo_path):
 
 
 def _release_status(repo_path, pr_data, transcript_path, last_assistant_message, start_offset=0):
-    """Return (release_ran, verified_live) from concrete transcript/repo evidence."""
+    """Return (release_ran, verified_live, unreleased_changelogs) from concrete evidence."""
     release_ran = False
     verified_live = False
 
@@ -428,12 +428,15 @@ def _release_status(repo_path, pr_data, transcript_path, last_assistant_message,
 
     # Staged work outranks any positive signal above: a real `## [Unreleased]` block in a
     # changelog this delivery touched means the change is merged and not published, whatever
-    # the transcript claims.
+    # the transcript claims. The paths ride along so the gate can name the actual
+    # remediation (fold + finish the release) instead of "run the release" — which would
+    # be wrong, and could induce a duplicate publish, when a publish already ran but the
+    # changelog was never folded.
     if unreleased_changelogs:
         release_ran = False
         verified_live = False
 
-    return release_ran, verified_live
+    return release_ran, verified_live, unreleased_changelogs
 
 
 def _unreleased_changelogs(repo_path, pr_data):
@@ -610,8 +613,10 @@ def main():
     user_facing = _looks_user_facing(pr_data, first_user_msg) and is_real_delivery
     docs_ok, changelog_ok = _docs_changelog_status(repo_path, pr_data) if repo_path else (True, True)
     shippable = _is_shippable_repo(repo_path) and _looks_shippable(pr_data, first_user_msg)
-    release_ran, release_verified = (
-        _release_status(repo_path, pr_data, transcript_path, last_msg, goal_offset) if shippable else (True, True)
+    release_ran, release_verified, unreleased_changelogs = (
+        _release_status(repo_path, pr_data, transcript_path, last_msg, goal_offset)
+        if shippable
+        else (True, True, [])
     )
     evidence_ok = _has_outcome_evidence(
         pr_data, transcript_path, data.get("last_assistant_message", ""), goal_offset
@@ -660,11 +665,20 @@ def main():
 
     if shippable and (not release_ran or not release_verified):
         lines.append("Independently-shippable change detected, but release/live verification is incomplete.")
-        if not release_ran:
-            lines.append("  Missing: release command/tag/publish evidence.")
-        if not release_verified:
-            lines.append("  Missing: live verification evidence (npm view, installed --version, gh release view, health URL, etc.).")
-        lines.append("  Satisfy: run the release, verify it is live, and cite the concrete version/URL/output in your final message.")
+        if unreleased_changelogs:
+            lines.append("  Changelog(s) touched by this delivery still carry entries under `## [Unreleased]`:")
+            for path in unreleased_changelogs:
+                lines.append(f"    - {path}")
+            lines.append("  The work is merged but not published. Finish the release — fold [Unreleased] into a")
+            lines.append("  version, publish, tag — or verify a live releaser owns it (probe the process/lease/PR,")
+            lines.append("  not a claim). If a publish already ran this session, fold the changelog and verify the")
+            lines.append("  registry version; do NOT blindly re-publish.")
+        else:
+            if not release_ran:
+                lines.append("  Missing: release command/tag/publish evidence.")
+            if not release_verified:
+                lines.append("  Missing: live verification evidence (npm view, installed --version, gh release view, health URL, etc.).")
+            lines.append("  Satisfy: run the release, verify it is live, and cite the concrete version/URL/output in your final message.")
         lines.append("")
 
     if visual["visual_delivered"] and not visual["visual_read_back"]:
