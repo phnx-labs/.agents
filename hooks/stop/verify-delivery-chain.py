@@ -636,7 +636,8 @@ def main():
         lines.append("Visual artifact delivery has no image read-back after the latest render:")
         lines.append(f"  - {visual['latest_visual'] or 'visual artifact'}")
         lines.append("  Render it headlessly with `agents browser start --url file://…`, capture it with")
-        lines.append("  `agents browser screenshot`, and read the resulting image before describing it.")
+        lines.append("  `agents browser screenshot -o /tmp/<name>.png`, then read that path with")
+        lines.append("  `view_image` before describing it.")
         lines.append("")
 
     if (ticket_ids or user_facing or shippable) and not evidence_ok:

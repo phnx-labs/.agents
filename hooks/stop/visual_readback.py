@@ -23,7 +23,7 @@ WRITE_NAMES = {"write", "edit", "multiedit", "notebookedit", "apply_patch", "app
 def _blocks(record: dict[str, Any]) -> Iterable[dict[str, Any]]:
     item = record.get("item")
     if isinstance(item, dict) and item.get("type") == "command_execution":
-        yield {"type": "tool_use", "name": "bash", "input": {"command": item.get("command") or ""}}
+        yield {"type": "tool_use", "id": item.get("id"), "name": "bash", "input": {"command": item.get("command") or ""}}
         output = item.get("aggregated_output")
         if output is not None:
             yield {"type": "custom_tool_call_output", "call_id": item.get("id"), "output": output}
@@ -87,6 +87,8 @@ def inspect_transcript(transcript_path: str, start_offset: int = 0) -> dict[str,
     authored: dict[str, int] = {}
     delivered: set[str] = set()
     reads: dict[str, tuple[str, int]] = {}
+    producers: dict[str, int] = {}
+    readbacks: list[tuple[str, int]] = []
     index = 0
     try:
         with path.open("rb") as handle:
@@ -105,26 +107,40 @@ def inspect_transcript(transcript_path: str, start_offset: int = 0) -> dict[str,
                         candidates = _derived_paths(command)
                         if target.lower().endswith(VISUAL_SUFFIXES):
                             candidates.add(target)
-                        if name in WRITE_NAMES or re.search(r"(?:>|\b(?:artifacts\s+render|agents\s+browser\s+screenshot)\b)", command):
+                        produces_visual = bool(
+                            name in WRITE_NAMES
+                            or re.search(r"(?:>|\b(?:artifacts\s+render|agents\s+browser\s+screenshot)\b)", command)
+                        )
+                        if produces_visual:
                             for candidate in candidates:
                                 authored[candidate] = index
                         if SHIP_RE.search(command):
                             delivered.update(candidates)
                         call_id = str(block.get("id") or block.get("call_id") or "")
+                        if call_id and produces_visual:
+                            producers[call_id] = index
                         if call_id and target.lower().endswith(VISUAL_SUFFIXES):
                             reads[call_id] = (target, index)
                     elif kind in {"tool_result", "function_call_output", "custom_tool_call_output"}:
                         call_id = str(block.get("tool_use_id") or block.get("call_id") or "")
+                        if call_id in producers:
+                            output_paths = _paths(json.dumps(block.get("content") or block.get("output") or ""))
+                            for output_path in output_paths:
+                                authored[output_path] = index
                         if call_id in reads and _contains_image(block):
                             read_path, read_index = reads[call_id]
-                            if any(read_index > written_at and Path(read_path).name == Path(written).name for written, written_at in authored.items()):
-                                result["visual_read_back"] = True
+                            readbacks.append((read_path, max(read_index, index)))
     except (OSError, ValueError, json.JSONDecodeError):
         return result
     if authored:
         latest = max(authored, key=authored.get)
         result["visual_authored"] = True
         result["latest_visual"] = latest
+        latest_index = authored[latest]
+        result["visual_read_back"] = any(
+            read_index > latest_index and Path(read_path).name == Path(latest).name
+            for read_path, read_index in readbacks
+        )
         result["visual_delivered"] = any(
             Path(sent).name == Path(written).name for sent in delivered for written in authored
         )

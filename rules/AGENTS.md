@@ -691,7 +691,7 @@ for mq blindly.
 ## Verify UI by looking at it
 
 - A UI or visual change is not verified until you have seen the rendered result and judged it against the intent. A passing build or present bundle strings are proxies, not proof (F3).
-- **One-off HTML and worker-host UI:** render headlessly with a bare `agents browser start --url file://<absolute-path>`, capture it with `agents browser screenshot`, then read and critique the screenshot. On workers, never pass `--profile` or hunt for a browser binary; the machine resolves its configured headless profile.
+- **One-off HTML and worker-host UI:** render headlessly with a bare `agents browser start --url file://<absolute-path>`, capture it with `agents browser screenshot -o /tmp/<name>.png`, then read that exact path with `view_image` and critique it. On workers, never pass `--profile` or hunt for a browser binary; the machine resolves its configured headless profile.
 - **Webview or web UI:** first check for the repository's preview harness (Vite, Storybook, or a `/preview` route), then use `agents browser` against that real surface and inspect a screenshot.
 - **Native UI:** use `agents computer` in element mode. `describe` returns element refs; `click --id` and `type --id` do not steal foreground focus. Never use `--raise` or coordinate clicks on a machine the user is using. Screenshots are focus-safe.
 - Render and inspect on the machine doing the work. Transfer or `open` the result on the interactive host only when the user explicitly requested it, and never before read-back.
@@ -815,7 +815,8 @@ transport — lives in the **`plan-render` skill**. Load it and follow it.
 - **Light + dark.** Ship the in-page `◐` toggle, defaulting to the OS
   `prefers-color-scheme`, so the plan is readable in bright light and dim alike.
 - **Render every time; open only on request.** On a worker, use its headless default with
-  `agents browser start --url file://<absolute-plan-path>` and inspect a screenshot. On
+  `agents browser start --url file://<absolute-plan-path>`, save a screenshot with `-o`,
+  and inspect that exact path with `view_image`. On
   the interactive host, still render headlessly so the user's focus is untouched. Copy or
   `open` the HTML on that host only when the user explicitly asked to see it. Never
   hardcode a host; resolve the interactive device from `agents devices`.

@@ -111,7 +111,8 @@ transport — lives in the **`plan-render` skill**. Load it and follow it.
 - **Light + dark.** Ship the in-page `◐` toggle, defaulting to the OS
   `prefers-color-scheme`, so the plan is readable in bright light and dim alike.
 - **Render every time; open only on request.** On a worker, use its headless default with
-  `agents browser start --url file://<absolute-plan-path>` and inspect a screenshot. On
+  `agents browser start --url file://<absolute-plan-path>`, save a screenshot with `-o`,
+  and inspect that exact path with `view_image`. On
   the interactive host, still render headlessly so the user's focus is untouched. Copy or
   `open` the HTML on that host only when the user explicitly asked to see it. Never
   hardcode a host; resolve the interactive device from `agents devices`.
