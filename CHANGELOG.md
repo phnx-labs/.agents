@@ -4,6 +4,16 @@
 
 ### Fixed
 
+- **`/next` no longer tells agents a lease-claiming release script means "done at merged".**
+  `commands/next.md`'s release step said a repo whose release script claims a lease has a
+  "release train" and the agent "is done at merged + a changelog fragment" — agents-cli's
+  `release.sh` claims a lease, so every `/next` nudge re-licensed the merged-stop the nudge
+  was meant to break (observed 2026-08-15: a session re-asserted "release correctly stops at
+  merged" immediately after `/next`). The step now mirrors the rewritten `release-to-fleet`:
+  two end states only, the lease serializes concurrent releasers, driving or verifiably
+  watching the release is the next task when the registry is behind, and the
+  `AskUserQuestion`-to-confirm-release instruction is gone.
+
 - **The ruleset told agents to run two commands that do not exist.** `agents share` and
   `agents hosts` are both `error: unknown command` on the installed agents-cli 1.22.39,
   yet the ruleset cited them across 15 files — `agents share` as *"the primary mechanic"*
