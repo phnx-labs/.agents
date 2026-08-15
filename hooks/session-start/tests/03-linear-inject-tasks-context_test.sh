@@ -4,7 +4,9 @@
 # Critical-path assertions:
 #   - credentials come from the Linear CLI's plaintext config.json
 #     (LINEAR_CLI_CONFIG fixture); env vars still win
-#   - the hook NEVER invokes the `agents` CLI (no secrets / Touch ID path)
+#   - the hook resolves the cwd's project via `agents projects`, but NEVER
+#     touches `agents secrets` (no keychain / Touch ID / broker path)
+#   - depth goes to the cwd's project; every other project collapses to one line
 #   - injection lists projects with milestones + top open tickets
 #   - active cycle is grouped by project
 #   - Your Tasks is routed by Linear's native delegate, per AGENT_SELF, and a
@@ -23,10 +25,30 @@ check_absent()   { if printf '%s' "$2" | grep -qF "$3"; then echo "FAIL - $1: ou
 # --- stubs -------------------------------------------------------------------
 mkdir -p "$SANDBOX/bin"
 
-# agents: must NEVER be called by this hook (no secrets broker path).
+# agents: the hook resolves the cwd's project through `agents projects`, so the
+# binary IS invoked — what must never happen is a SECRETS-shaped invocation,
+# which is the path that can reach the keychain, pop Touch ID, or block on the
+# broker. Any `agents secrets …` call is recorded and fails the run; the
+# read-only `projects` subcommands answer from ~/.agents/projects/*.yaml.
+# (08-inject-repo-inflight.sh already shells `agents sessions --active` from
+# SessionStart on the same budget, so calling the CLI here is established.)
+#
+# `for-cwd` deliberately answers with no match: these fixtures set the cwd by
+# basename, which is what exercises the fallback fuzz. The project-def path gets
+# its own case below.
 cat > "$SANDBOX/bin/agents" <<'STUB'
 #!/usr/bin/env bash
-echo "agents-stub-invoked: $*" >> "$AGENTS_CALLS"
+case "$1" in
+  secrets) echo "agents-secrets-invoked: $*" >> "$AGENTS_CALLS"; exit 1 ;;
+esac
+if [ "$1" = "projects" ] && [ "$2" = "for-cwd" ]; then
+  printf '%s\n' "${AGENTS_FOR_CWD_JSON:-{\"name\":null\}}"
+  exit 0
+fi
+if [ "$1" = "projects" ] && [ "$2" = "list" ]; then
+  printf '%s\n' "${AGENTS_PROJECTS_JSON:-[]}"
+  exit 0
+fi
 exit 1
 STUB
 
@@ -150,6 +172,12 @@ cat > "$CURL_PAYLOAD" <<'JSON'
 }
 JSON
 
+# Pristine copy of the rich fixture. Several cases below write their own JSON
+# over "$CURL_PAYLOAD" *in place* rather than repointing it, so restoring
+# CURL_PAYLOAD to the original PATH does not restore its CONTENT. A later case
+# that needs the rich payload points at this untouched copy instead.
+cp "$CURL_PAYLOAD" "$SANDBOX/payload-rich.json"
+
 cat > "$SANDBOX/bin/curl" <<'STUB'
 #!/usr/bin/env bash
 printf '%s\n' "$*" >> "$CURL_ARGS"
@@ -176,10 +204,11 @@ check_contains "config.json creds: team header"            "$out" "## Team & Age
 check_contains "config.json creds: human listed"           "$out" "Muqsit (m@example.com)"
 check_contains "config.json creds: projects section"       "$out" "## Projects ("
 check_contains "config.json creds: Agents CLI project"     "$out" "### Agents CLI"
-check_contains "config.json creds: cwd marker"             "$out" "★ cwd"
+check_contains "config.json creds: cwd marker"             "$out" "★ this directory"
 check_contains "config.json creds: Agents CLI milestone"   "$out" "Factory converts strategy to shipped outcomes"
-check_contains "config.json creds: Rush App project"       "$out" "### Rush App"
-check_contains "config.json creds: Rush App milestone"     "$out" "First paying users"
+check_contains "off-focus project still listed"            "$out" "**Rush App** — 50%"
+check_absent   "off-focus project gets no heading"         "$out" "### Rush App"
+check_absent   "off-focus milestones are dropped"          "$out" "First paying users"
 check_contains "config.json creds: project top issue"      "$out" "RUSH-1"
 check_contains "config.json creds: cycle header"           "$out" "## Cycle 23"
 check_contains "config.json creds: cycle by project"       "$out" "### Cycle by project"
@@ -223,9 +252,13 @@ check_contains "claude lane: codex issue still in cycle"   "$out" "RUSH-11"
 check_contains "claude lane: other lanes counted by name"  "$out" "Other agent lanes: Codex=1"
 check_absent   "complete sweep prints no sample caveat"    "$out" "Other agent lanes (of the first"
 check_contains "lane sweep asks only for delegate names"   "$(cat "$CURL_ARGS" 2>/dev/null)" "nodes { delegate { name } }"
-# RUSH-12 carries agent:claude but has no delegate — it must NOT be owned, and
-# the leftover label is shown as an ordinary label.
-check_contains "stale agent:* label is inert, shown plain" "$out" "[agent:claude]"
+# RUSH-12 carries agent:claude but has no delegate — it must NOT be owned.
+# It sits in a non-focus project, so it is counted in the roll-up rather than
+# listed; ownership is asserted against the Your Tasks block directly.
+check_absent   "stale agent:* label confers no ownership" "$(printf '%s' "$out" | sed -n '/Your Tasks/,/^### /p')" "RUSH-12"
+check_contains "off-focus cycle work is rolled up"        "$out" "Elsewhere in the cycle:"
+# Labels still render for the focus project, which is what a session acts on.
+check_contains "focus-project labels still render"        "$out" "[engineering]"
 # An issue Your Tasks printed must not be repeated under Cycle-by-project.
 check_absent   "printed issue not repeated in cycle"       "$(printf '%s' "$out" | sed -n '/Cycle by project/,$p')" "RUSH-10"
 
@@ -416,11 +449,37 @@ else
 fi
 [ "$pages" = "1" ] && echo "ok   - sweep page budget is bounded" || { echo "FAIL - sweep page loop changed; re-check the latency budget"; fail=1; }
 
-# --- 7. the agents CLI was never invoked (no secrets broker path) --------------
+# --- 7. no secrets-shaped agents invocation (no keychain / Touch ID path) ------
+# The narrow invariant: credentials come from the plaintext Linear CLI config,
+# never from `agents secrets`, so a SessionStart hook can never pop biometry or
+# block on the broker. Read-only `agents projects` calls are expected.
 if [ -f "$AGENTS_CALLS" ]; then
-  echo "FAIL - hook invoked agents CLI: $(cat "$AGENTS_CALLS")"; fail=1
+  echo "FAIL - hook reached the secrets path: $(cat "$AGENTS_CALLS")"; fail=1
 else
-  echo "ok   - agents CLI never invoked"
+  echo "ok   - agents secrets never invoked"
 fi
+
+# --- 8. a project def resolves the focus project, and scopes the brief ---------
+# The def's linear.name — not the cwd basename — decides which project is
+# expanded. This is the case the basename fuzz cannot serve: the checkout is
+# `agents-cli` while the board calls the work "AGI", so a name comparison finds
+# nothing and every project would render flat.
+# CURL_PAYLOAD is global and the case above overwrote the shared fixture file
+# with an empty-team payload, so point at the pristine copy taken at setup.
+export CURL_PAYLOAD="$SANDBOX/payload-rich.json"
+out=$(LINEAR_CLI_CONFIG="$SANDBOX/config.json" env -u LINEAR_API_KEY -u LINEAR_TEAM_ID \
+  AGENTS_FOR_CWD_JSON='{"name":"agents-cli"}' \
+  AGENTS_PROJECTS_JSON='[{"name":"agents-cli","linear":{"projectId":"lin_1","name":"Agents CLI"}}]' \
+  bash "$HOOK" 2>/dev/null)
+check_contains "project def picks the focus project"  "$out" "★ this directory"
+check_contains "focus project keeps its milestones"   "$out" "**Milestones:**"
+
+# A def whose linear.name matches NOTHING on the board expands nothing, rather
+# than silently falling back to the basename and expanding the wrong project.
+out=$(LINEAR_CLI_CONFIG="$SANDBOX/config.json" env -u LINEAR_API_KEY -u LINEAR_TEAM_ID \
+  AGENTS_FOR_CWD_JSON='{"name":"agents-cli"}' \
+  AGENTS_PROJECTS_JSON='[{"name":"agents-cli","linear":{"projectId":"lin_x","name":"Nothing Named This"}}]' \
+  bash "$HOOK" 2>/dev/null)
+check_absent "an unmatched def expands no project"    "$out" "★ this directory"
 
 exit $fail

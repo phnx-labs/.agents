@@ -29,11 +29,71 @@ export AGENT_SELF="${AGENT_SELF:-claude}"
 AGENT_SELF_SAFE=$(printf '%s' "$AGENT_SELF" | tr -cd 'A-Za-z0-9_-')
 export AGENT_SELF_SAFE="${AGENT_SELF_SAFE:-claude}"
 
-# Candidate names to match the cwd against a Linear project. Git repo name first
-# (stable across subdirs), then the raw cwd basename. Python normalizes both
-# ("agents-cli" and "Agents CLI" -> "agentscli").
+# Portable timeout: macOS ships neither `timeout` nor `gtimeout` by default.
+# Fall back to running the command bare — the manifest-level hook timeout is the
+# real backstop; this helper only tightens the individual calls below.
+_to() {
+  if command -v timeout >/dev/null 2>&1; then timeout "$@"
+  elif command -v gtimeout >/dev/null 2>&1; then gtimeout "$@"
+  else shift; "$@"
+  fi
+}
+
+# Which Linear project is this cwd? `agents projects` owns that mapping — a def
+# under ~/.agents/projects/<name>.yaml binds a root, its repos[].path entries,
+# and a `linear.projectId`/`linear.name`. Ask the CLI rather than re-deriving it:
+# `for-cwd` does longest-match over every bound root and monorepo subpath, so a
+# worktree, a subdir, and two projects sharing one monorepo root all resolve
+# correctly — none of which a basename comparison can do.
+#
+# Cost: two CLI calls, measured 0.28-0.31s each on an idle box. The brief below
+# already budgets 8s of curl and the lane sweep up to 3s against a `timeout: 15`
+# manifest cap, so ~0.6s here stays inside the remaining headroom. Both are
+# bounded and fail open — no `agents` on PATH, no def for this cwd, or a slow
+# call just leaves the fields empty and the basename fallback takes over.
+CWD_PROJECT_DEF=""
+CWD_PROJECT_NAME=""
+OTHER_PROJECT_NAMES=""
+if command -v agents >/dev/null 2>&1; then
+  CWD_PROJECT_DEF=$(_to 3 agents projects for-cwd --json 2>/dev/null | python3 -c '
+import json, sys
+try:
+    print((json.load(sys.stdin) or {}).get("name") or "")
+except Exception:
+    pass
+' 2>/dev/null || true)
+  if [ -n "$CWD_PROJECT_DEF" ]; then
+    # The def name is the LOCAL id ("agents-cli"); linear.name is what the board
+    # calls the work ("AGI"). Several defs may point at one Linear project, so
+    # the board name is the right key for matching the project rows below.
+    CWD_PROJECT_NAME=$(_to 3 agents projects list --json 2>/dev/null | CWD_PROJECT_DEF="$CWD_PROJECT_DEF" python3 -c '
+import json, os, sys
+want = os.environ.get("CWD_PROJECT_DEF") or ""
+try:
+    defs = json.load(sys.stdin)
+except Exception:
+    raise SystemExit
+if not isinstance(defs, list):
+    raise SystemExit
+for d in defs:
+    if (d or {}).get("name") == want:
+        print(((d.get("linear") or {}).get("name")) or "")
+        break
+' 2>/dev/null || true)
+  fi
+fi
+export CWD_PROJECT_NAME
+
+# Fallback only: when no project def claims this cwd, fall back to the old
+# basename fuzz so an unregistered repo still gets its project starred. Git repo
+# name first (stable across subdirs), then the raw cwd basename. Python
+# normalizes both ("agents-cli" and "Agents CLI" -> "agentscli").
 git_root=$(git rev-parse --show-toplevel 2>/dev/null)
-export CWD_PROJECT_HINTS="$(basename "$git_root" 2>/dev/null),$(basename "$PWD" 2>/dev/null)"
+if [ -n "$CWD_PROJECT_NAME" ]; then
+  export CWD_PROJECT_HINTS=""
+else
+  export CWD_PROJECT_HINTS="$(basename "$git_root" 2>/dev/null),$(basename "$PWD" 2>/dev/null)"
+fi
 
 # Resolve credentials: env first, then ~/.linear-cli/config.json. No secrets
 # broker, no keychain — so this can never pop Touch ID or hang.
@@ -166,6 +226,9 @@ import json, sys, os, re
 # be able to carry newlines or markup.
 SELF = os.environ.get('AGENT_SELF_SAFE') or 'claude'
 HINTS = [h for h in os.environ.get('CWD_PROJECT_HINTS', '').split(',') if h.strip()]
+# Set when \`agents projects\` resolved this cwd to a def carrying a linear.name.
+# Authoritative when present: HINTS is then empty and the fuzz never runs.
+CWD_PROJECT = (os.environ.get('CWD_PROJECT_NAME') or '').strip()
 
 def norm(s):
     return re.sub(r'[^a-z0-9]', '', (s or '').lower())
@@ -270,6 +333,11 @@ try:
 
     def is_cwd_match(p):
         pn = norm(p.get('name'))
+        # Definitive: the project def bound to this cwd named its Linear project.
+        # Exact only — the fuzz below exists because a basename is a guess, but
+        # this is the recorded link, so widening it could only add false matches.
+        if CWD_PROJECT:
+            return pn == norm(CWD_PROJECT)
         if pn in hint_norms:
             return True
         for hn in hint_norms:
@@ -287,14 +355,26 @@ try:
 
     if ordered:
         print(f'## Projects ({len(ordered)})')
-        print('_Each project: milestones, then top open tickets by priority. Full board: linear tasks --project <name> --by-milestone._')
+        # Depth goes to the project this cwd belongs to; the rest are one line
+        # each. Printing every project in full was ~13.8KB of injected context
+        # per session, most of it about work this session cannot touch.
+        if focus:
+            print(f'_Depth on **{focus[0].get(\"name\")}** (this working directory). Others are one line — \`linear tasks --project <name> --by-milestone\` for detail._')
+        else:
+            print('_No project def claims this directory, so no project is expanded. Bind one with \`agents projects add\`/\`link\`. Full board: \`linear tasks --project <name> --by-milestone\`._')
         print()
         for p in ordered:
             name = p.get('name') or 'unnamed'
             pct = pct_str(p.get('progress')) or '?'
             state = p.get('state') or ''
-            star = ' ★ cwd' if is_cwd_match(p) else ''
-            print(f'### {name}{star} — {pct} · {state}')
+            if not is_cwd_match(p):
+                # One-line roll-up: enough to know the project exists and roughly
+                # where it stands, without its milestones or ticket list.
+                n_open = len((p.get('issues') or {}).get('nodes', []))
+                open_s = f' · {n_open}+ open' if n_open else ''
+                print(f'- **{name}** — {pct} · {state}{open_s}')
+                continue
+            print(f'### {name} ★ this directory — {pct} · {state}')
 
             ms = (p.get('projectMilestones') or {}).get('nodes', [])
             if ms:
@@ -413,14 +493,22 @@ try:
 
     if by_project:
         print('### Cycle by project')
+        focus_names = {(p.get('name') or '') for p in focus}
+
         # Focus project first if present, then alpha
         def proj_sort_key(name):
-            for p in focus:
-                if (p.get('name') or '') == name:
-                    return (0, name.lower())
-            return (1, name.lower())
+            return (0, name.lower()) if name in focus_names else (1, name.lower())
+
+        # Same scoping rule as the Projects section above: the cwd's project is
+        # listed ticket by ticket, every other project collapses to a count.
+        # Measured before this: 5865 bytes, 54% of the whole injection, and most
+        # of it was cycle tickets for projects this session cannot act on.
+        rolled = []
         for pname in sorted(by_project.keys(), key=proj_sort_key):
             issues = sorted(by_project[pname], key=pri_rank)
+            if focus_names and pname not in focus_names:
+                rolled.append(f'{pname} {len(issues)}')
+                continue
             # Cap per project in the cycle section to protect context
             CAP = 12
             shown = issues[:CAP]
@@ -430,6 +518,9 @@ try:
                 print(fmt_issue_line(n, with_desc=False))
             if more > 0:
                 print(f'- _+{more} more in cycle (see project section / linear tasks --project {pname})_')
+            print()
+        if rolled:
+            print('**Elsewhere in the cycle:** ' + ' · '.join(rolled) + ' open — \`linear tasks --project <name>\`')
             print()
 
     # Other-agent counts only (not full dump — agents already have project view).
