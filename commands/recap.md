@@ -48,26 +48,66 @@ GOOD: "The bug may be in auth module because: (1) error occurs after login,
 Every hypothesis needs evidence. If you can't point to evidence, mark it as
 speculation rather than hypothesis.
 
-## Output
+## Close the loop before you write anything
 
-### Situation
-What was the goal? What's the current state? One paragraph max.
+The recap reports work you already finished — it does not hand work back. Run these
+three in order first, then write the summary around what they produced. Each one is
+a thing the user would otherwise have to do themselves after reading you.
 
-### Completed
-Bullet list of concrete work done. Include file paths where relevant.
+1. **Close every ticket this session delivered.** Post a closing comment naming what
+   changed with the PR link and the screenshot or recording of the outcome, then move
+   it to Done — the `tickets` skill, or the tracker's CLI directly. A shipped ticket
+   left open reads as still in flight to everyone looking at the board.
+2. **File every follow-up as a real ticket, under the project it belongs to.**
+   Anything you were about to write as "we should also…", "worth revisiting…", or a
+   deferred-scope bullet becomes an issue: a scoped title plus a short description
+   naming the file, PR, or error that motivated it. One ticket per unit of delivery,
+   not one per file. The summary then links the ids. If a follow-up doesn't earn a
+   ticket, it doesn't earn a bullet either — drop it.
+3. **Send the owner one short update.** `agents notify --text "…"` delivers to the
+   channel configured in `agents.yaml`. 1-4 lines, leading with whatever needs them,
+   linking the PR or ticket rather than restating it. The harness notifies *you* when
+   the turn ends and never notifies them, so a recap that only exists in this window
+   is a recap nobody reads.
 
-### In Progress
-What's currently being worked on but not finished.
+Scale it to the work: a question answered in-session has no ticket to close, no
+follow-up to file, and nothing worth a notification. These steps apply when the
+session actually delivered something.
 
-### Blocked / Open Questions
-What can't proceed without more information or decisions.
+## Output — write it as a back-from-vacation summary
 
-### Hypotheses
-For anything uncertain, state the hypothesis and the evidence supporting it.
-Format: "[Hypothesis]: [Evidence 1], [Evidence 2], ..."
+Not an engineering status report. Assume the reader has **zero context**: they did not
+watch you work, they don't remember what they asked, they don't know this repo's state.
+Plain language, named things — "the codebase" and "as requested" are useless. Length
+follows the work: a one-line fix gets two lines, a three-hour session gets a short
+structured summary. If it reads like a log, cut it.
 
-### Recommended Next Steps
-Concrete actions to take next. Prioritize by impact.
+### Project
+Which repo or product you were in, by name. One line.
+
+### What you asked for
+The original request in one line, in their words — so the recap visibly tracks it.
+
+### What landed
+The concrete result, at the honest furthest point you actually reached, with the
+artifact: commit, PR, ticket id, deployed URL, installed version. Never claim a later
+link in the chain than you reached — merged is not published, published is not
+installed, a deploy is not a verified deploy.
+
+### What did not land
+Anything dropped, deferred, or blocked, and why. Scope you deliberately cut belongs
+here, named, not silently omitted — and each item is a ticket id you filed above, not
+an intention.
+
+### Still open
+Only if something genuinely is: an unresolved question, or a hypothesis with the
+evidence under it. Format: "[Hypothesis]: [Evidence 1], [Evidence 2], …". Say nothing
+here rather than manufacturing uncertainty.
+
+### Needs you
+What genuinely requires the user — a decision, a credential, a review, a click you
+can't make. If nothing does, say so plainly in one line. This section is governed by
+the filters below.
 
 **One obvious next task on the tracker, no ambiguity?** That's not a bullet to
 list — invoke `/next` (it checks for in-flight duplicates before claiming, so it's
@@ -93,7 +133,7 @@ agents teams add <topic-slug> codex "Specific task 2 with full context" --name t
 agents teams start <topic-slug>
 ```
 
-Only keep items in "Recommended Next Steps" that genuinely need the user's input, credentials, judgment, or authorization (payments, public posts, destructive ops, ambiguous decisions). Everything else — spawn a team, mention the team name in the recap, move on.
+Only keep items in "Needs you" that genuinely need the user's input, credentials, judgment, or authorization (payments, public posts, destructive ops, ambiguous decisions). Everything else — spawn a team, mention the team name in the recap, move on.
 
 "Top up credits on my logged-in browser" → user step. List it.
 "Query the database to check X" → do it yourself. Don't list it.
@@ -101,14 +141,13 @@ Only keep items in "Recommended Next Steps" that genuinely need the user's input
 
 **No wastebasket bullets. Finish trivial loose ends yourself; make low-stakes decisions and note them, use `AskUserQuestion` only for genuine ambiguity.**
 
-A "wastebasket bullet" is anything in Recommended Next Steps that (a) you could just execute, or (b) is a tiny decision you're punting instead of reasoning about and proposing options. Both waste the user's time. Before writing the recap, walk the entire session and close these out.
+A "wastebasket bullet" is anything in "Needs you" that (a) you could just execute, or (b) is a tiny decision you're punting instead of reasoning about and proposing options. Both waste the user's time. Before writing the recap, walk the entire session and close these out.
 
 **Execute first, don't list:**
 
-Anything mechanical that the session's work implies as finishing touches — do it, then land it in "Completed" with the concrete artifact (commit hash, closed issue ID, removed file, updated state). Examples of what this covers (non-exhaustive — the principle is the point, not the list):
+Anything mechanical that the session's work implies as finishing touches — do it, then land it in "What landed" with the concrete artifact (commit hash, closed issue ID, removed file, updated state). This is the same discipline as the close-the-loop steps above, applied to everything they don't name. Examples (non-exhaustive — the principle is the point, not the list):
 
 - Uncommitted work in the tree (whether from this session or a parallel agent's session) → inspect the diff of every changed file, group related changes into logical commits by concern, then commit + push per `/code:commit` (conventional, <72 chars, single line, no co-author trailer). Another agent's uncommitted work is still yours to land — don't leave it dangling.
-- Completed tickets that the session clearly finished → close them via the `tickets` skill (or the project's tracker skill / CLI directly). Post a short completion comment linking to the commit/PR.
 - Satisfied TODOs or in-session task checklists → mark done in their source file.
 - Stale branches, dead feature flags, leftover `.tmp` files that the session's work makes obsolete → remove them.
 - Tests you wrote but didn't run → run them. Report counts.
@@ -126,7 +165,7 @@ If an item reads like "Decide when to X", "Figure out whether Y", "Pick a name f
 
 Never ship a recap with a bullet like "Decide X", "Consider Y", "Think about Z". Those are micro-decisions, not recommendations.
 
-**Only these survive in Recommended Next Steps:**
+**Only these survive in "Needs you":**
 
 - Actions requiring the user's credentials, judgment on strategy, personal accounts, or clicks you can't make (UI smoke tests, browser logins, physical devices, payments, public posts).
 - External waits whose status you already verified (e.g. "PR #892 is open for review — awaiting human review").
@@ -137,7 +176,7 @@ Never ship a recap with a bullet like "Decide X", "Consider Y", "Think about Z".
 - Obviously `.gitignore`-worthy local files (IDE scratch files, OS metadata, local caches) → mention once, do not stage.
 - Diffs you genuinely cannot make sense of after reading them → ask via `AskUserQuestion` ("this looks like it belongs to feature X, commit as Y?") rather than guessing.
 
-The test: every bullet you're about to write in Recommended Next Steps — ask "did I try to execute this?" and "could I have posed this as an AskUserQuestion with 2-3 concrete options instead?" If either answer is yes, the bullet doesn't belong in the recap.
+The test: every bullet you're about to write in "Needs you" — ask "did I try to execute this?" and "could I have posed this as an AskUserQuestion with 2-3 concrete options instead?" If either answer is yes, the bullet doesn't belong in the recap.
 
 ## Historical session
 
@@ -222,3 +261,7 @@ content outside the eight allowed sections. Prefix it with:
 Do not add hypotheses, recommended next steps, new investigation, or claims that
 historical files, tests, services, branches, tickets, or deployments are still in
 the recorded state.
+
+**The close-the-loop steps do not apply here.** This mode transfers context, so do
+not close that session's tickets, file follow-ups from its transcript, or notify the
+owner about work you did not do. Those belong to the session that performed the work.
