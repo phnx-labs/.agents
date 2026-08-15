@@ -38,10 +38,16 @@ say "== contested bare names =="
 NAMES_FILE="$(mktemp)"
 trap 'rm -f "$NAMES_FILE"' EXIT
 
-for f in "$REPO"/skills/*/SKILL.md "$REPO"/plugins/*/skills/*/SKILL.md; do
+# The flat install namespace merges BOTH layers, so a cross-layer collision (user-layer
+# skill shadowing a system one) is the case most worth catching. Scan the user layer too
+# when it exists, so the `browser` entry below is real coverage rather than an inert claim.
+USER_LAYER="${AGENTS_USER_DIR:-$HOME/.agents}"
+for f in "$REPO"/skills/*/SKILL.md "$REPO"/plugins/*/skills/*/SKILL.md \
+         "$USER_LAYER"/skills/*/SKILL.md "$USER_LAYER"/plugins/*/skills/*/SKILL.md; do
   [ -f "$f" ] || continue
-  n=$(awk '/^name:/{sub(/^name:[[:space:]]*/,""); gsub(/["\x27]/,""); print; exit}' "$f")
-  [ -n "$n" ] && printf '%s|%s\n' "$n" "${f#"$REPO"/}" >> "$NAMES_FILE"
+  case "$f" in "$REPO"/*) rel="${f#"$REPO"/}" ;; *) rel="~/${f#"$HOME"/}" ;; esac
+  n=$(awk '/^name:/{sub(/^name:[[:space:]]*/,""); gsub(/["\x27]/,""); sub(/[[:space:]]+$/,""); print; exit}' "$f")
+  [ -n "$n" ] && printf '%s|%s\n' "$n" "$rel" >> "$NAMES_FILE"
 done
 
 sort -o "$NAMES_FILE" "$NAMES_FILE"
@@ -82,7 +88,9 @@ else
   for d in "$REPO"/skills/*/; do
     n=$(basename "$d")
     [ -f "$d/SKILL.md" ] || continue
-    grep -q "\b$n\b" "$README" || { fail "skills/$n is on disk but absent from skills/README.md - invisible to humans"; uncatalogued=1; }
+      # Match the catalog LINK, not the bare word. A word-boundary grep passes on prose:
+    # deleting the real `run` row still passed because "run" appears in the secrets row.
+    grep -q "$n/SKILL.md" "$README" || { fail "skills/$n is on disk but has no catalog row in skills/README.md - invisible to humans"; uncatalogued=1; }
   done
   [ "$uncatalogued" -eq 0 ] && ok "every top-level skill has a README row"
 fi

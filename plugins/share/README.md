@@ -28,7 +28,7 @@ and it renders the card above.
 ## Requirements
 
 - [`agents-cli`](https://github.com/phnx-labs/agents-cli) on `$PATH`.
-- A one-time `agents artifacts share setup` (provisions an R2 bucket + a tiny Worker on your
+- A one-time `agents artifacts setup` (provisions an R2 bucket + a tiny Worker on your
   Cloudflare, read from your `cloudflare.com` secrets bundle) — or
   `agents artifacts share join <baseUrl>` to publish through an existing endpoint.
 - For the public preview cover: a local headless-capable Chromium-family browser.

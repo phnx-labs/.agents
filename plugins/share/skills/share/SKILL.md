@@ -23,7 +23,7 @@ $0). The page is stored in R2, so the link outlives the agent that made it.
 
 `agents artifacts share` needs an endpoint first. Check with `agents artifacts share status`:
 
-- **Empty** → the user must run **`agents artifacts share setup`** once (provisions an R2 bucket
+- **Empty** → the user must run **`agents artifacts setup`** once (provisions an R2 bucket
   + a tiny Worker on their Cloudflare, read from their `cloudflare.com` secrets bundle;
   maps `share.<domain>` if the token owns the zone, else a free `*.workers.dev` URL), or
   **`agents artifacts share join <baseUrl>`** to publish through an existing endpoint with a shared
