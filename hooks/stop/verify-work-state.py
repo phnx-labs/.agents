@@ -25,6 +25,8 @@ import time
 from pathlib import Path
 from typing import Any, Iterable
 
+from visual_readback import inspect_transcript
+
 
 HOOK_ID = "system.verify-work-complete"
 SCHEMA_VERSION = 2
@@ -324,6 +326,11 @@ def extract_evidence(transcript_path: str, start_offset: int = 0) -> dict[str, A
     evidence["prs_observed"].sort()
     evidence["tickets_created"].sort()
     evidence["tickets_observed"].sort()
+    visual = inspect_transcript(transcript_path, start_offset)
+    evidence["visual_artifact_authored"] = visual["visual_authored"]
+    evidence["visual_artifact_delivered"] = visual["visual_delivered"]
+    evidence["visual_artifact_read_back"] = visual["visual_read_back"]
+    evidence["latest_visual_artifact"] = visual["latest_visual"]
     return evidence
 
 
@@ -333,6 +340,7 @@ def classify(evidence: dict[str, Any]) -> tuple[str, bool, str]:
         or evidence["prs_authored"]
         or evidence["prs_operated"]
         or evidence["deployment_started"]
+        or evidence.get("visual_artifact_delivered")
     )
     if delivery:
         return "code-delivery", True, "positive delivery evidence"

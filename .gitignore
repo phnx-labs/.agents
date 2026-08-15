@@ -92,5 +92,7 @@ linear.json
 # an ungitignored one silently blocks every pull, drifting .system behind fleet-wide.
 .mcp.json
 /.worktrees/
-# Agent worktrees, rendered plans, artifacts, and scratch are per-box outputs, not source.
-.agents/
+# Agent worktrees, rendered artifacts, and scratch are per-box outputs. Reviewed
+# implementation plans are durable PR artifacts.
+/.agents/*
+!/.agents/plans/

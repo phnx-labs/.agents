@@ -21,6 +21,12 @@ hooks:
     matcher: Read
     script: pre-tool-use/10-mq-read-nudge.py
     timeout: 5
+  visual-readback-nudge:
+    # Advisory only: reminds once per artifact before a visual leaves the session.
+    events: [PreToolUse]
+    matcher: Bash
+    script: pre-tool-use/11-visual-readback-nudge.py
+    timeout: 5
   session-start-autosync:
     events:
       - SessionStart

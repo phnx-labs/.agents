@@ -28,6 +28,7 @@ def main() -> int:
         spec = importlib.util.spec_from_file_location("verify_work_state", helper)
         if spec is None or spec.loader is None:
             return 0
+        sys.path.insert(0, str(helper.parent))
         module = importlib.util.module_from_spec(spec)
         sys.modules[spec.name] = module
         spec.loader.exec_module(module)

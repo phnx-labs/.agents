@@ -52,10 +52,22 @@
 
 ### Fixed
 
-- **The repository pre-commit hook now refuses every staged path under `.agents/`.**
-  The system mirror no longer tracks a session-specific rendered plan, ignores the whole
-  local `.agents/` tree, and names offending additions or deletions before a commit can
-  distribute per-machine agent output fleet-wide.
+- **Visual delivery read-back (`hooks/stop/visual_readback.py`, `verify-work-state.py`,
+  `verify-delivery-chain.py`, and `00-agent-verify-work-complete.sh`).** A visual artifact
+  authored under `/tmp` and sent with `scp`, `rsync`, `agents share`, or `open` now counts
+  as a delivery. Narrow final-message claims such as “what you're looking at” require a
+  paired image result after the latest render, including on the first
+  `stop_hook_active` retry. The advisory `pre-tool-use/11-visual-readback-nudge.py` names
+  the headless `agents browser` path without blocking transport commands.
+
+- **UI rules now render without stealing focus.** `rules/subrules/ui-work-discipline.md`
+  is included in `rules/rules.yaml`; it directs workers to a bare headless
+  `agents browser` render, screenshot, and read-back. `plan-presentation` now renders and
+  inspects every plan but opens it on the interactive host only when requested.
+
+- **The repository pre-commit hook refuses local output under `.agents/`, while reviewed
+  plans remain trackable under `.agents/plans/`.** It names offending additions or
+  deletions before a commit can distribute per-machine agent output fleet-wide.
 
 - **Stop hook: the command-handback gate stops false-firing on paste-into-a-form and
   send-a-message handoffs.** `00-agent-verify-work-complete.sh` blocked a stop when the

@@ -85,6 +85,7 @@ the live version); show the result, don't narrate it.
 - **Swarm work is blind to the seam between tracks.** "Every track's PR merged green" is not "the composed feature runs where one track calls another" — each teammate's tests and reviewer only saw its own half. Trigger the cross-track flow end-to-end and quote its real output before calling it done; never per-track green.
 - **A gap is a problem to solve, not to report.** Your first move on a ⚠️ / "hung" / "skipped" / untriggered hop is to drive it to done yourself — fix it, work around it (reduce scope, override config, run the command directly), or reach the outcome another way. "Call it unverified" is the last resort after you've genuinely exhausted those; even then, quote the gap and never write "confirmed."
 - **Docs + CHANGELOG are part of done**, not a follow-up the user must request: when a change touches a user-visible surface (a flag, command, API, config, behavior), update the docs that already cover it and add a CHANGELOG line under the next version, in the *same* delivery. Exempt (say so): pure bug fixes, internal refactors, test-only changes, self-evident renames.
+- **A message or application is done only when it is staged where it gets sent.** For a task to reply, reach out, apply, or DM someone, done means the message is sitting in the channel the user actually sends from: a reply draft inside the Gmail/InMail thread, the LinkedIn or application composer with the text already in it. Draft text in a scratch `.md` file or on the clipboard is NOT "send-ready" and must not be called that. "I wrote the reply" is not "the reply is ready to send" (a real miss: recruiter replies left as `.md` files drew *"where do I hit the replies? did you create them as drafts in my Gmail properly as replies to those messages?"*). Stage it in the channel; the only piece you legitimately hand back is the final Send when it genuinely requires the user's own identity.
 - **A "build it / ship it / release" carries through the whole chain:** merge-on-green → publish → tag + push the tag → upgrade every reachable host → verify the installed version. No fresh ask at each hop. **But a status *question* ("did you ship it?", "is it live?") is a request to report, not a go-signal** — quote the phrase back and confirm in one line if intent is genuinely ambiguous.
 - **Independently-shippable surfaces deploy on their own prerequisites** — a landing site is not blocked on an npm publish; gate each on its own readiness, label what's still coming.
 
@@ -685,6 +686,22 @@ re-read up to 34×/session). A follow-up A/B then showed *misused* mq (the dance
 is worse than reading — so the win depends on the discipline above, not on reaching
 for mq blindly.
 
+# UI Work — See It Before "Done", Design It for the Eyes
+
+## Verify UI by looking at it
+
+- A UI or visual change is not verified until you have seen the rendered result and judged it against the intent. A passing build or present bundle strings are proxies, not proof (F3).
+- **One-off HTML and worker-host UI:** render headlessly with a bare `agents browser start --url file://<absolute-path>`, capture it with `agents browser screenshot`, then read and critique the screenshot. On workers, never pass `--profile` or hunt for a browser binary; the machine resolves its configured headless profile.
+- **Webview or web UI:** first check for the repository's preview harness (Vite, Storybook, or a `/preview` route), then use `agents browser` against that real surface and inspect a screenshot.
+- **Native UI:** use `agents computer` in element mode. `describe` returns element refs; `click --id` and `type --id` do not steal foreground focus. Never use `--raise` or coordinate clicks on a machine the user is using. Screenshots are focus-safe.
+- Render and inspect on the machine doing the work. Transfer or `open` the result on the interactive host only when the user explicitly requested it, and never before read-back.
+
+## Design for what the user will see
+
+- Lead with the visible behavior and appearance, then the implementation details.
+- Product mockups must use the product's real layout, components, and visual language. Abstract diagrams do not substitute for a product-faithful mockup.
+- When a genuine design choice exists, show two or three rendered variations with one-line tradeoffs and stop at the design gate for the user's choice.
+
 # Present Plans as Browser-Ready HTML
 
 **Whenever you produce an implementation plan — the harness's native plan mode
@@ -797,14 +814,14 @@ transport — lives in the **`plan-render` skill**. Load it and follow it.
   light editorial house palette only when the product declares no brand.
 - **Light + dark.** Ship the in-page `◐` toggle, defaulting to the OS
   `prefers-color-scheme`, so the plan is readable in bright light and dim alike.
-- **Open it proactively, every time.** Resolve the online macOS device from the
-  **Host & Fleet** context (`agents ssh <host> 'open …'` when remote; local `open` /
-  `xdg-open` otherwise). macOS `open` uses the user's **default browser**. **Never
-  hardcode a host** — resolve it from `agents devices`. If the user is away, the plan is
-  waiting in a tab when they return. Skip only the *open* (never the render) when no
-  browser host is reachable.
+- **Render every time; open only on request.** On a worker, use its headless default with
+  `agents browser start --url file://<absolute-plan-path>` and inspect a screenshot. On
+  the interactive host, still render headlessly so the user's focus is untouched. Copy or
+  `open` the HTML on that host only when the user explicitly asked to see it. Never
+  hardcode a host; resolve the interactive device from `agents devices`.
 
-A plan the user can't see rendered is not presented. Render, open, then discuss.
+A plan the agent has not seen rendered is not presented. Render, inspect, then discuss;
+open it for the user only on request.
 
 ## A multi-step plan also carries a checklist
 

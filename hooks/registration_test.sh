@@ -39,6 +39,7 @@ MANIFEST="${REGISTRATION_MANIFEST:-$HERE/../agents.yaml}"
 # Keep unindented; parsed field-by-field on '|'.
 INTENTIONALLY_UNREGISTERED='
 02-expand-prompt-skill-refs.py|unfinished feature — git log -S over the manifest returns zero commits, so it was never registered; register it or delete it, do not treat it as a regression
+visual_readback.py|shared library imported by the registered verify-work-complete Stop path; it is not an event entry point
 '
 
 fail=0

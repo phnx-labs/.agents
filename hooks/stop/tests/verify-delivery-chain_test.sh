@@ -113,7 +113,18 @@ else
   echo "FAIL: prior goal evidence poisoned the current diagnostic goal:"; echo "$out5"; fail=1
 fi
 
-rm -rf "$d1" "$d2" "$d3" "$d4" "$bare2" "$bare3" "$bare4" "$tr1" "$tr2" "$tr3" "$tr4" "$tr5" 2>/dev/null
+# --- Test 6: a scratch visual shipped without read-back is a real delivery --------
+tr6="$(mktemp)"
+printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Write","input":{"file_path":"/tmp/mockup.html"}}]}}' > "$tr6"
+printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Bash","input":{"command":"scp /tmp/mockup.html zion:/tmp/mockup.html"}}]}}' >> "$tr6"
+out6="$(run_gate "$d1" "$tr6")"
+if printf '%s' "$out6" | grep -q "Visual artifact delivery has no image read-back"; then
+  echo "PASS: scratch visual delivery requires image read-back"
+else
+  echo "FAIL: scratch visual delivery passed without image read-back:"; echo "$out6"; fail=1
+fi
+
+rm -rf "$d1" "$d2" "$d3" "$d4" "$bare2" "$bare3" "$bare4" "$tr1" "$tr2" "$tr3" "$tr4" "$tr5" "$tr6" 2>/dev/null
 
 if [ "$fail" -ne 0 ]; then
   echo "verify-delivery-chain_test: FAILED"; exit 1
