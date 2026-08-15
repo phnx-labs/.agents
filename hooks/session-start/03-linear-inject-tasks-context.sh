@@ -71,7 +71,8 @@ export CWD_PROJECT_NAME
 # The basename fuzz stays armed even when the def resolved. It is the fallback
 # for two cases, and disabling it on a merely-PRESENT linear.name failed closed:
 # a def whose recorded name no longer matches any live project (the CLI only
-# started refreshing it in 1.22.40, so every older def carries a stale label)
+# only started refreshing it in agi-cli#2706 — merged but UNRELEASED, so today
+# every def on every machine still carries whatever label it was written with)
 # expanded NOTHING and claimed no def existed. Python prefers the exact match
 # and only falls back when it finds no project by that name.
 # Git repo name first (stable across subdirs), then the raw cwd basename; python
