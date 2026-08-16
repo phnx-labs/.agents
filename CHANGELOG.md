@@ -4,10 +4,11 @@
 
 ### Added
 
-- **`/bmad` and `/adhd` global planning prompts.** `/bmad` creates a
-  BMAD-style, implementation-ready work package; `/adhd` creates a bounded
-  multi-frame decision preview. Both remain at the approval boundary and use
-  DevSub workflow tools only when those tools and scopes are available.
+- **BMAD and ADHD global workflows.** The portable `bmad` and `adhd` skills
+  create an implementation-ready work package or bounded multi-frame decision
+  preview; `/bmad` and `/adhd` are their Claude-compatible accelerators. Both
+  remain at the approval boundary and use DevSub workflow tools only when those
+  tools and scopes are available.
 
 <<<<<<< HEAD
 - **merge-guard: a non-author review verdict must be ON the PR being merged.**
