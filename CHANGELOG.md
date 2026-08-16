@@ -4,6 +4,11 @@
 
 ### Added
 
+- **`/bmad` and `/adhd` global planning prompts.** `/bmad` creates a
+  BMAD-style, implementation-ready work package; `/adhd` creates a bounded
+  multi-frame decision preview. Both remain at the approval boundary and use
+  DevSub workflow tools only when those tools and scopes are available.
+
 <<<<<<< HEAD
 - **merge-guard: a non-author review verdict must be ON the PR being merged.**
   `gh pr merge` is blocked when the PR has neither a GitHub APPROVED review nor

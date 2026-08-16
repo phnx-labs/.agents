@@ -20,6 +20,8 @@ commands are often thin wrappers that only invoke a skill (harness-friendly).
 
 | Command | What it does |
 |---|---|
+| [`/bmad`](./bmad.md) | Turn a request into a BMAD-style, implementation-ready work package without starting the build |
+| [`/adhd`](./adhd.md) | Explore a decision through bounded independent frames and a critical synthesis without taking external action |
 | [`/plan`](./plan.md) | Plan with grounded design — research, read code, create artifacts, optionally get early review |
 | [`/swarm`](./swarm.md) | Front door to the `swarm` plugin — fan work across parallel agents (`run` by default; or `plan` / `spec` / `debug`) |
 | [`/debug`](./debug.md) | Trace the data path, attribute regressions to the responsible agent/session and explain how they slipped, then have independent agents confirm the root cause (routes to `swarm:debug`) |
