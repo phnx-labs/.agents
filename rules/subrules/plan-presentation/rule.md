@@ -29,8 +29,13 @@ by a keystroke, a flag, or just started planning.
    user to weigh in on. Lead with this — it is the first thing they read.
 4. **Intent.** Restate the user's ask in their own words, so the plan visibly tracks it.
 5. **Current architecture.** How the affected module works **today** — the files
-   involved and how they talk to each other. For an architectural change, show the
-   communication pattern **before and after** as an inline-SVG figure.
+   involved and how they talk to each other, **drawn** as an inline-SVG figure:
+   boxes for the modules, arrows for what calls what. When the plan changes the
+   shape, show the communication pattern **before and after**. `artifacts check`
+   errors on an architecture section with no figure — a table of files lists the
+   parts and drops every relationship between them, which is what the section is
+   for. Keep a table alongside the figure for per-file detail; it does not
+   replace it.
 6. **Implementation shown as real code.** For every file that changes, show the actual
    change as a **diff** — the relevant hunk only (not the whole file), added lines
    green, removed lines red — via the artifacts-cli `code-diff` component (fall back to
