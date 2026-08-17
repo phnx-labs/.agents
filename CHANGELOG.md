@@ -126,6 +126,12 @@
 
 ### Changed
 
+- **The conflict-marker commit gate now explains the lone-separator case.** A bare
+  `=======` is blocked because it is the middle marker of a half-resolved conflict,
+  but the message only said "unresolved merge conflict markers" — misleading for
+  someone who wrote a Markdown setext heading and got blocked. It now names that
+  case and points at `# Heading`.
+
 - **The git guardrails now protect the user's whole PRIMARY working tree, on any
   branch — not just the default branch — and ban `git switch` alongside `git
   checkout`.** Agents were checking out a feature branch in the user's own

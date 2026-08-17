@@ -56,9 +56,16 @@ fi
 # before adding it: `rg -n '^=======$'` matched exactly one line in this repo, the
 # defect itself, so there is no legitimate setext usage to break.
 CONFLICTED=()
+OUTER_SEEN=0
 while IFS= read -r -d '' file; do
-    if git show ":$file" 2>/dev/null | grep -qE '^(<<<<<<< |>>>>>>> |=======$)'; then
+    staged=$(git show ":$file" 2>/dev/null)
+    if printf '%s' "$staged" | grep -qE '^(<<<<<<< |>>>>>>> |=======$)'; then
         CONFLICTED[${#CONFLICTED[@]}]="$file"
+        # Track whether any real outer marker is present, so the setext hint below
+        # is only offered when a lone separator is the ONLY thing that matched.
+        if printf '%s' "$staged" | grep -qE '^(<<<<<<< |>>>>>>> )'; then
+            OUTER_SEEN=1
+        fi
     fi
 done < <(git diff --cached --name-only --diff-filter=ACM -z)
 
@@ -66,6 +73,10 @@ if [[ ${#CONFLICTED[@]} -gt 0 ]]; then
     echo -e "${RED}Commit blocked: unresolved merge conflict markers in staged content.${NC}" >&2
     printf '  %s\n' "${CONFLICTED[@]}" >&2
     echo "Resolve the conflict and restage before committing." >&2
+    if [[ $OUTER_SEEN -eq 0 ]]; then
+        echo "A lone '=======' counts: it is the middle marker of a half-resolved" >&2
+        echo "conflict. If you meant a Markdown setext heading, use '# Heading' instead." >&2
+    fi
     exit 1
 fi
 
