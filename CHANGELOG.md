@@ -17,7 +17,19 @@
   `swarm` report unscored on purpose — their demands leave no signature a
   transcript scan can confirm. Stores a sha256 of the message, never its text.
 
-<<<<<<< HEAD
+- **The repository pre-commit hook now refuses staged content carrying merge
+  conflict markers.** A half-resolved file reached `main` and put raw
+  `<<<<<<< HEAD` / `=======` / `>>>>>>> origin/main` markers into the changelog's
+  Unreleased section, because nothing checked for them. The gate reads the
+  **index** (`git show ":$file"`), so staging a conflicted blob and then cleaning
+  the working copy is still blocked, and it runs before the `yq` bootstrap so it
+  fails fast. A lone `=======` counts: deleting the outer two markers still
+  corrupts the file, and in Markdown that line renders as a setext heading rather
+  than failing loudly. Anchored to line starts with the trailing space git always
+  writes, so prose about conflicts, indented markers inside a code block, and
+  runs of the same characters used as dividers are not blocked. This is local and
+  opt-in — it only fires on a checkout that has `core.hooksPath` set.
+
 - **merge-guard: a non-author review verdict must be ON the PR being merged.**
   `gh pr merge` is blocked when the PR has neither a GitHub APPROVED review nor
   a fresh APPROVE verdict comment — and a comment citing a verdict "carried
@@ -32,7 +44,6 @@
   release-shaped phrases (`chore(release)` / "release PR" / "release:" /
   "release v"). Unverifiable declarations (refactor / no-behavior-change)
   and unreadable diffs keep failing open.
-=======
 - **Argue-past ramp in the verify-work-complete Stop gate.** A retried stop
   (stop_hook_active) used to pass unconditionally — the ramp three sessions used
   on 2026-08-15 to clear blocked stops by restating "correct stopping point" /
@@ -52,7 +63,6 @@
   2026-08-15 directive after an agent wrote into a primary checkout on main.
   main-branch-guard remains the hard enforcement; this keeps the rule in every
   context window.
->>>>>>> origin/main
 
 ### Fixed
 
