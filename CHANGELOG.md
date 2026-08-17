@@ -4,6 +4,12 @@
 
 ### Added
 
+- **The conflict-marker commit gate now explains the lone-separator case.** A bare
+  `=======` is blocked because it is the middle marker of a half-resolved conflict,
+  but the message only said "unresolved merge conflict markers" — misleading for
+  someone who wrote a Markdown setext heading and got blocked. It now names that
+  case and points at `# Heading`.
+
 - **Gate accuracy is measurable: `stop/gate-outcome-backfill.py`.** Derives, for
   every recorded Stop-gate block, whether the agent then did the specific thing
   that gate demanded — a PR actually merged or handed off, a task whose *status*
