@@ -80,8 +80,45 @@ RE_RAN_TMP = re.compile(
     CMD_POS + r"(?:(?:bash|sh|zsh|python3?|node)\s+)?\S*/tmp/\S+\.(?:sh|py|js|mjs)\b"
 )
 WRITE_TOOLS = {"write", "edit", "multiedit", "notebookedit"}
+# The open-PR gate documents four legitimate resolutions, not one
+# (00-agent-verify-work-complete.sh:479-495): merge it, get a non-author review
+# then merge, hand it to a NAMED owner, or name an external blocker plus a durable
+# process. A session that correctly hands a PR off never touches it again — by
+# design — so counting only `gh pr merge` scores that as unmet.
+WATCHER_TOOLS = {"schedulewakeup", "monitor"}
+RE_HANDOFF = re.compile(
+    r"\b(?:handed off|handing (?:it|this|the pr) (?:off|to)|owns? (?:this|the) pr"
+    r"|takes over from here|pr-merge-on-green|will merge on green)\b", re.I
+)
 
-UNSCORABLE = {"self-audit", "swarm"}
+# Gates whose demand leaves no signature a transcript scan can confirm.
+#
+# `delivery` is here after review, not by original design, and the reason matters:
+# STOP GATE (delivery) fires on ANY of five independent conditions
+# (verify-delivery-chain.py:625-635) — an open Linear ticket, open related
+# tickets, missing docs/CHANGELOG, an unreleased shippable change, or missing
+# outcome evidence. A release-command detector can only ever see the fourth.
+# Sampled a real fire: its demand was "RUSH-2476 [Todo] still needs state + proof",
+# which no release regex can ever satisfy, so the agent was scored unmet no matter
+# what it did. Reporting 83.9% unmet from a detector blind to 4 of 5 demands is the
+# exact failure this file warns about — a narrow detector making a working gate
+# look broken. Unscored until each demand shape can be detected on its own.
+UNSCORABLE = {"self-audit", "swarm", "delivery"}
+
+# A recorded fire and its transcript injection are the same event, so their
+# timestamps should agree closely. Anything further apart is a pairing failure,
+# not a slow write.
+PAIR_TOLERANCE_MS = 5 * 60 * 1000
+
+
+# Claude Code delivers several harness artifacts as `type: "user"` with a plain
+# string body — PTY echoes, background-task notifications, slash-command echoes.
+# Counting those as a human stepping in put this field at 88% of all windows,
+# which is not credible. Match the wrappers and exclude them.
+RE_HARNESS_TURN = re.compile(
+    r"</?(?:bash-input|bash-stdout|bash-stderr|task-notification|command-message"
+    r"|command-name|command-args|local-command-stdout|system-reminder)\b"
+)
 
 
 def _blocks(record):
@@ -114,8 +151,20 @@ def load_transcript(session_key: str):
     return records
 
 
+def _record_ms(record):
+    """Epoch ms for a transcript record, or None if it carries no timestamp."""
+    stamp = record.get("timestamp")
+    if not isinstance(stamp, str):
+        return None
+    try:
+        from datetime import datetime
+        return int(datetime.fromisoformat(stamp.replace("Z", "+00:00")).timestamp() * 1000)
+    except Exception:
+        return None
+
+
 def find_fires(records):
-    """Injected gate blocks, in order: (index, gate_name, sha256 of the message that tripped it)."""
+    """Injected gate blocks, in order: (index, gate_name, sha256, epoch_ms|None)."""
     fires = []
     last_text = ""
     for i, record in enumerate(records):
@@ -135,21 +184,26 @@ def find_fires(records):
             gate = next((g for g, marker in GATE_MARKERS.items() if marker in content), None)
             if gate:
                 digest = hashlib.sha256(last_text.encode("utf-8", "replace")).hexdigest()
-                fires.append((i, gate, digest))
+                fires.append((i, gate, digest, _record_ms(record)))
     return fires
 
 
 def score_window(records, start, end, gate):
     """What the agent actually did between this block and the next one."""
     tools = 0
+    handoff = False
     mutated = False
     interjected = False
     satisfied = False
     for record in records[start + 1:end]:
-        if (record.get("type") == "user" and not record.get("isMeta")
-                and isinstance((record.get("message") or {}).get("content"), str)):
-            interjected = True
+        if record.get("type") == "user" and not record.get("isMeta"):
+            body = (record.get("message") or {}).get("content")
+            if isinstance(body, str) and body.strip() and not RE_HARNESS_TURN.search(body):
+                interjected = True
         for block in _blocks(record):
+            if isinstance(block, dict) and block.get("type") == "text" and gate == "open-pr":
+                if RE_HANDOFF.search(str(block.get("text") or "")):
+                    handoff = True
             if not isinstance(block, dict) or block.get("type") != "tool_use":
                 continue
             tools += 1
@@ -158,7 +212,8 @@ def score_window(records, start, end, gate):
             command = str(payload.get("command", ""))
             if name in WRITE_TOOLS or RE_REPO_WRITE.search(command):
                 mutated = True
-            if gate == "open-pr" and RE_MERGED.search(command):
+            if gate == "open-pr" and (RE_MERGED.search(command)
+                                      or name in WATCHER_TOOLS):
                 satisfied = True
             elif gate == "delivery" and RE_RELEASE.search(command):
                 satisfied = True
@@ -169,6 +224,8 @@ def score_window(records, start, end, gate):
                     satisfied = True
             elif gate == "handback" and RE_RAN_TMP.search(command):
                 satisfied = True
+    if gate == "open-pr" and handoff:
+        satisfied = True
     return tools, mutated, interjected, satisfied
 
 
@@ -186,31 +243,57 @@ def main() -> int:
     mode = "" if args.write else "?mode=ro"
     db = sqlite3.connect(f"file:{db_path}{mode}", uri=True)
     rows = db.execute(
-        "SELECT id, session_key, gate_name FROM gate_events WHERE outcome='blocked' ORDER BY id"
+        "SELECT id, session_key, gate_name, created_at_ms FROM gate_events"
+        " WHERE outcome='blocked' ORDER BY id"
     ).fetchall()
 
     by_session: dict[str, list] = {}
-    for gate_event_id, session_key, gate_name in rows:
-        by_session.setdefault(session_key, []).append((gate_event_id, gate_name))
+    for gate_event_id, session_key, gate_name, created_at_ms in rows:
+        by_session.setdefault(session_key, []).append((gate_event_id, gate_name, created_at_ms))
 
-    derived, no_transcript, unmatched = [], 0, 0
+    derived, no_transcript, unmatched, mispaired, unvalidated = [], 0, 0, 0, 0
     now = int(time.time() * 1000)
 
     for session_key, events in by_session.items():
+        seen: dict[str, int] = {}
         records = load_transcript(session_key)
         if records is None:
             no_transcript += len(events)
             continue
         fires = find_fires(records)
-        seen: dict[str, int] = {}
-        for gate_event_id, gate_name in events:
-            nth = seen.get(gate_name, 0)
-            seen[gate_name] = nth + 1
+        for gate_event_id, gate_name, created_at_ms in events:
             matching = [f for f in fires if f[1] == gate_name]
-            if nth >= len(matching):
+            if not matching:
                 unmatched += 1
                 continue
-            index, _, digest = matching[nth]
+            # Pair on the row's OWN timestamp, not on ordinal position. Ordinal
+            # pairing only guards the case where the DB has MORE rows than the
+            # transcript has markers; the opposite — a transcript carrying older
+            # occurrences than gate recording existed for — silently paired rows
+            # to windows hours away from the real one. Measured on two live
+            # sessions: DB rows at 22:29-22:47 were being scored against
+            # occurrences at 08:07-10:04, entirely different work.
+            dated = [f for f in matching if f[3] is not None]
+            index = digest = None
+            if created_at_ms and dated:
+                best = min(dated, key=lambda f: abs(f[3] - created_at_ms))
+                if abs(best[3] - created_at_ms) <= PAIR_TOLERANCE_MS:
+                    index, digest = best[0], best[2]
+                if index is None:
+                    mispaired += 1
+                    continue
+            else:
+                # Nothing to validate against — an older transcript format, or a
+                # row predating created_at_ms. Fall back to ordinal pairing (the
+                # original behaviour) but COUNT it, so the report never presents
+                # an unverified pairing as a verified one.
+                seen[gate_name] = nth = seen.get(gate_name, 0)
+                seen[gate_name] = nth + 1
+                if nth >= len(matching):
+                    unmatched += 1
+                    continue
+                index, digest = matching[nth][0], matching[nth][2]
+                unvalidated += 1
             later = [f[0] for f in fires if f[0] > index]
             end = later[0] if later else len(records)
             refired = 1 if any(f[1] == gate_name for f in fires if f[0] > index) else 0
@@ -253,6 +336,13 @@ def main() -> int:
         print(f"{no_transcript} fire(s) skipped: transcript pruned or on another machine")
     if unmatched:
         print(f"{unmatched} fire(s) skipped: no matching injection found in the transcript")
+    if unvalidated:
+        print(f"{unvalidated} fire(s) paired by position, not verified against a "
+              "timestamp — the transcript records carry none")
+    if mispaired:
+        print(f"{mispaired} fire(s) skipped: no injection within "
+              f"{PAIR_TOLERANCE_MS // 60000}min of the recorded fire time — "
+              "scoring these would use the wrong slice of the conversation")
     print("'unmet' is NOT a false-positive rate. Every gate also accepts an ESCAPE —\n"
           "naming an external blocker, or handing off to a named owner — which this scan\n"
           "cannot detect, so a legitimately-escaped fire counts as unmet. Read it as an\n"
