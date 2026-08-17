@@ -254,6 +254,26 @@ and `agents sync claude@all system`, the installed copy still read `"version": "
 no `agents/` directory. `agents plugins sync code` moved it to `0.10.0` carrying
 `agents/code-reviewer.md`. Verify the **installed** copy's manifest version, not the mirror's.
 
+## The commit gates are opt-in — set `core.hooksPath` once per checkout
+
+`.githooks/pre-commit` is what stops a staged merge-conflict marker or a stray
+`.agents/` path from being committed. Git does not use it unless the checkout has
+been pointed at it:
+
+```bash
+git config core.hooksPath .githooks
+```
+
+Nothing in this repo installs that for you, and there is no CI backstop, so on any
+checkout that never ran it **the gates are inert and a defect they exist to stop can
+land**. That is not hypothetical: raw `<<<<<<<`/`=======`/`>>>>>>>` markers reached
+`main` in `CHANGELOG.md` once already, because nothing was checking.
+
+Run it after cloning, and once in each linked worktree you commit from. Verify with
+`git config --get core.hooksPath`, which must print `.githooks`. Closing this
+properly — installing it fleet-wide or moving the check somewhere unskippable — is
+tracked in RUSH-2762.
+
 ## Tests
 
 Hooks carry `<name>_test.sh` in a `tests/` subdir of their event dir
