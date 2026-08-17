@@ -92,6 +92,22 @@ check_deny "bundle-key get in a capture" \
 check_deny "view reveal plaintext escape" \
   "agents secrets view r2.backups --reveal --plaintext" \
   "secrets.view-reveal-plaintext"
+# The #336 review's bypass repros: a plainly QUOTED eval (no substitution).
+check_deny "eval with double-quoted command" \
+  'eval "agents secrets export prod --plaintext"' \
+  "secrets.export-plaintext"
+check_deny "eval with single-quoted command" \
+  "eval 'agents secrets export prod --plaintext'" \
+  "secrets.export-plaintext"
+check_deny "eval-quoted bundle-key get" \
+  'eval "agents secrets get npmjs.com NPM_TOKEN"' \
+  "secrets.get-bundle-key"
+check_deny "eval-quoted view reveal escape" \
+  'eval "agents secrets view r2.backups --reveal --plaintext"' \
+  "secrets.view-reveal-plaintext"
+check_deny "sh -c wrapping a quoted eval" \
+  "sh -c 'eval \"agents secrets export prod --plaintext\"'" \
+  "secrets.export-plaintext"
 
 # --- allows: transfer modes, injection, human/metadata surfaces -------------
 check_allow "export push to device" \
@@ -112,6 +128,8 @@ check_allow "view --reveal without the escape (CLI TTY gate owns it)" \
   "agents secrets view prod --reveal"
 check_allow "prose mentioning the command (echo, not an agents call)" \
   "echo 'never run agents secrets export prod --plaintext'"
+check_allow "single-quoted prose containing the substitution idiom (RUSH-2760 class)" \
+  "echo 'do not eval \$(agents secrets export prod --plaintext)'"
 check_allow "unrelated command containing the word secrets" \
   "grep -rn 'secrets export' docs/"
 check_allow "secrets list" \

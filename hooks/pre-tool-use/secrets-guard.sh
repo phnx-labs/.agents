@@ -113,17 +113,47 @@ extract_sh_c_inner() {
   return 0
 }
 
+# Raw-string unwrap for a leading `eval "<cmd>"` / `eval '<cmd>'` — the naive
+# whitespace tokenizer glues the opening quote onto the first inner word
+# (`"agents`), so the agents|ag first-token check would silently miss a plainly
+# quoted eval (the bypass the #336 review reproduced). Mirror the sh -c unwrap:
+# strip env prefixes + `eval` + one layer of quotes at the string level, then
+# check the inner as its own command string.
+extract_eval_inner() {  # sets _eval_inner
+  _raw=$(printf '%s' "$1" | sed 's/^[[:space:]]*//')
+  while :; do
+    _pre=$_raw
+    _raw=$(printf '%s' "$_raw" | sed 's/^[A-Za-z_][A-Za-z_0-9]*=[^[:space:]]*[[:space:]][[:space:]]*//')
+    [ "$_raw" = "$_pre" ] && break
+  done
+  case "$_raw" in
+    eval\ *) ;;
+    *) return 1 ;;
+  esac
+  _inner=${_raw#eval }
+  _inner=$(printf '%s' "$_inner" | sed 's/^[[:space:]]*//')
+  case "$_inner" in
+    \"*\") _inner=${_inner#\"}; _inner=${_inner%\"} ;;
+    \'*\') _inner=${_inner#\'}; _inner=${_inner%\'} ;;
+  esac
+  [ -n "$_inner" ] || return 1
+  _eval_inner=$_inner
+  return 0
+}
+
 # One level of $(...) unwrap — the eval-export idiom wraps the real command in a
-# substitution (`eval "$(agents secrets export …)"`), so the outer segment's
-# first token is `eval`, never `agents`. Extract the substitution body and
-# check it as its own command string.
+# substitution (`eval "$(agents secrets export …)"`). Single-quoted spans are
+# scrubbed FIRST: a `$(` inside single quotes never expands, so prose like
+# `echo 'do not eval $(agents secrets export …)'` must not deny (the RUSH-2760
+# false-positive class, reproduced by the #336 review).
 extract_substitution_inner() {  # sets _subst_inner
   _raw=$1
-  case "$_raw" in
+  _scrubbed=$(printf '%s' "$_raw" | sed "s/'[^']*'//g")
+  case "$_scrubbed" in
     *'$('*) ;;
     *) return 1 ;;
   esac
-  _subst_inner=${_raw#*\$\(}
+  _subst_inner=${_scrubbed#*\$\(}
   _subst_inner=${_subst_inner%\)*}
   [ -n "$_subst_inner" ] || return 1
   return 0
@@ -137,6 +167,11 @@ check_segment() {
     return 0
   fi
 
+  if extract_eval_inner "$_seg"; then
+    if ! check_command_string "$_eval_inner"; then return 1; fi
+    return 0
+  fi
+
   if extract_substitution_inner "$_seg"; then
     if ! check_command_string "$_subst_inner"; then return 1; fi
     # Fall through: the outer segment may ALSO be an agents call.
@@ -146,7 +181,8 @@ check_segment() {
   # shellcheck disable=SC2086
   set -- $_seg
 
-  # Skip leading VAR=value assignments and a leading `eval`.
+  # Skip leading VAR=value assignments (a bare unquoted `eval agents …` was
+  # already unwrapped above; a residual `eval` token here covers `eval agents`).
   while [ $# -gt 0 ]; do
     case "$1" in
       *=*) shift ;;
