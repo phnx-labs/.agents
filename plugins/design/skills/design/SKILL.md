@@ -41,7 +41,7 @@ core is what keeps quality consistent across every mode and every user.
 | a slide deck (pitch, talk, teaching) | `deck` | HTML slides (PPTX optional) | none |
 | an OG card, social graphic, logo, icon set, poster, favicon | `asset` | SVG/HTML (raster optional) | none for vector |
 | motion, a micro-interaction, an animated hero | `motion` | CSS/HTML animation | none |
-| "is this any good?", review/critique an existing screen | `critique` | checklist verdict | none |
+| "is this any good?", audit a screen/site, find design inconsistencies | `critique` | ranked findings + fix brief | none |
 | "what happens after this?", fix a dead-end flow, anticipate next action | `anticipate` | before/after ASCII + rationale | none |
 | a photo, illustration, or painterly cover | `asset` (raster) | raster, or spec + placeholder | optional backend |
 
@@ -60,7 +60,11 @@ Each mode file lives beside this one. Read design-core first, then the mode:
 - **`deck.md`** — slide decks (HTML-first, PPTX when asked).
 - **`asset.md`** — OG cards, logos, icons, posters (vector-first); raster with graceful degradation.
 - **`motion.md`** — CSS/HTML motion and micro-interactions.
-- **`critique.md`** — run the design-core checklist on an existing screen or asset.
+- **`critique.md`** — audit an existing screen, site, or app: deterministic checks via
+  `scripts/check-contrast.ts` (WCAG ratios computed, hex/rgb/oklch) and
+  `scripts/check-tells.ts` (anti-tells, offline violations, color-only status), plus the
+  screenshot critique; outputs ranked findings, a paste-ready fix brief, and standing
+  design laws for the project's docs. Direct door: `/design:critique <target>`.
 - **`anticipate.md`** — diagnose a dead-end flow and propose the continuation (before/after ASCII, no implementation).
 
 ## Deliver it (reuse the plan-render/visualize transport)
