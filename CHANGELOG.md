@@ -4,6 +4,32 @@
 
 ### Added
 
+- **Gate accuracy is measurable: `stop/gate-outcome-backfill.py`.** Derives, for
+  every recorded Stop-gate block, whether the agent then did the specific thing
+  that gate demanded — a PR actually merged or handed off, a task whose *status*
+  reached completed, the handed-over script actually executed. Offline and
+  read-only by default; deliberately never on a hook path. Keyed to the demand
+  rather than to any follow-on activity, so an agent that answers a bogus block
+  by ticking one todo does not count as a success. Fires are paired to their
+  transcript block on timestamp and each block is consumed once; a row with no
+  unused injection inside the tolerance is reported unscored rather than scored
+  against the wrong slice of the conversation. `delivery`, `self-audit` and
+  `swarm` report unscored on purpose — their demands leave no signature a
+  transcript scan can confirm. Stores a sha256 of the message, never its text.
+
+- **The repository pre-commit hook now refuses staged content carrying merge
+  conflict markers.** A half-resolved file reached `main` and put raw
+  `<<<<<<< HEAD` / `=======` / `>>>>>>> origin/main` markers into the changelog's
+  Unreleased section, because nothing checked for them. The gate reads the
+  **index** (`git show ":$file"`), so staging a conflicted blob and then cleaning
+  the working copy is still blocked, and it runs before the `yq` bootstrap so it
+  fails fast. A lone `=======` counts: deleting the outer two markers still
+  corrupts the file, and in Markdown that line renders as a setext heading rather
+  than failing loudly. Anchored to line starts with the trailing space git always
+  writes, so prose about conflicts, indented markers inside a code block, and
+  runs of the same characters used as dividers are not blocked. This is local and
+  opt-in — it only fires on a checkout that has `core.hooksPath` set.
+
 - **merge-guard: a non-author review verdict must be ON the PR being merged.**
   `gh pr merge` is blocked when the PR has neither a GitHub APPROVED review nor
   a fresh APPROVE verdict comment — and a comment citing a verdict "carried
@@ -54,9 +80,6 @@
   segment parsing so body lines never register as `git` commands. 15 new
   regression tests cover the compound, chained-variable, heredoc, and
   multiline `-m` shapes.
-- **CHANGELOG: removed committed merge-conflict markers** (`<<<<<<<` /
-  `=======` / `>>>>>>>`) that landed in the Unreleased→Added section on main;
-  both sides were real entries and are kept.
 
 - **Invoked is not armed: watcher escapes now require a successful arm.** Both
   watcher checks (open-PR gate, keep-moving gate) accepted any

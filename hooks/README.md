@@ -111,6 +111,7 @@ register time). See [§Subrule hooks](#subrule-hooks-rules-not-this-tree).
 | [`verify-work-state.py`](./stop/verify-work-state.py) | Goal-scoped positive-evidence classifier, session-owned entity ledger, and structured gate telemetry used by `verify-work-complete` |
 | [`visual_readback.py`](./stop/visual_readback.py) | Shared transcript evidence for authored, delivered, and image-read visual artifacts |
 | [`verify-delivery-chain.py`](./stop/verify-delivery-chain.py) | Goal-scoped delivery-chain verifier invoked by the Stop gate (not registered alone) |
+| [`gate-outcome-backfill.py`](./stop/gate-outcome-backfill.py) | Offline: derives whether each recorded gate block was followed by the specific thing that gate demanded; never on a hook path |
 
 ### `notification/` — Notification
 
