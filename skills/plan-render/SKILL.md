@@ -78,8 +78,8 @@ Architecture diagrams do not substitute for behavior views.
    Follow the planning contract in the `plan-presentation` rule for the section
    order and the pre-present gates. On top of the `plan` template's sections, a plan
    leads with **Focus for review** (what you want weighed in on) and **Intent** (the
-   user's ask restated), and carries a **Current architecture** section (before/after
-   figure for architectural changes):
+   user's ask restated), and carries a **Current architecture** section, drawn as a
+   figure (before and after when the plan changes the shape):
 
    - `## Focus for review` — 2-5 bullets, at the very top
    - `## Intent` — the user's ask in their own words

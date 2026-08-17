@@ -122,7 +122,12 @@
   and drops every relationship between them, which is what a reviewer opened the
   section for. Also fixes the template's `- Ticket: <link>` placeholder, which parsed
   as an HTML `<link>` tag and made the fleet's own plan template fail
-  `artifacts check`.
+  `artifacts check`. The `plan-presentation` rule (and its compiled copy in
+  `rules/AGENTS.md`) drops "for an architectural change" — the figure was never
+  conditional — names the version that enforces it (artifacts-cli 0.3.5+), and
+  reconciles the trivial-change escape hatch with the gate: a trivial plan skips
+  the whole architecture *section*, which only warns; a section that exists must
+  carry a figure at any size. Omit it or draw it; there is no table-shaped middle.
 
 - **Plans without mockups and PRs without run screenshots — the four enforcement
   holes are closed.** A session-transcript trace showed both requirements existed
