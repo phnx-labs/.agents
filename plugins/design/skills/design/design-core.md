@@ -157,6 +157,13 @@ No visual mode is done until you have **rendered it, looked at it, and critiqued
 3. Run the critique checklist below, and the anti-tells list (§6); fix what fails;
    re-render. Repeat until both pass.
 
+For the mechanical half of that pass, use the two scripts in the `critique` mode's
+`scripts/` directory instead of judging by eye: `bun scripts/check-contrast.ts`
+computes the WCAG ratios §3 demands (never guess a ratio), and
+`bun scripts/check-tells.ts <file.html>` flags the §6 tells, §1 offline violations,
+and §3 color-only glyphs that are detectable from markup. The screenshot critique
+stays mandatory — the scripts cover only what markup can prove.
+
 ## The critique checklist (also the standalone `critique` mode)
 
 Score each. Anything failing is a fix, not a nit.

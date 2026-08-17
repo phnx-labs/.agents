@@ -10,10 +10,19 @@
 // A translucent fg is composited over the bg before measuring (matches what
 // the eye sees). Exit 0 = all pass AA; exit 1 = at least one failure.
 
-type RGB = { r: number; g: number; b: number; a: number }; // linear-light 0..1
+// Channels are GAMMA-ENCODED sRGB 0..1 (what CSS declares). Alpha compositing
+// happens in this space — browsers blend gamma-encoded values, and compositing
+// after linearizing skews the result (measured: rgba(17,17,17,.5) on #fafafa
+// came out 1.90:1 instead of the correct 3.51:1). Linearize only inside
+// luminance(), where WCAG needs linear light.
+type RGB = { r: number; g: number; b: number; a: number };
 
 function srgbToLinear(c: number): number {
   return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+}
+
+function linearToSrgb(c: number): number {
+  return c <= 0.0031308 ? 12.92 * c : 1.055 * Math.pow(c, 1 / 2.4) - 0.055;
 }
 
 function parseHex(s: string): RGB | null {
@@ -22,7 +31,7 @@ function parseHex(s: string): RGB | null {
   let h = m[1];
   if (h.length === 3) h = h.split("").map((c) => c + c).join("");
   const n = (i: number) => parseInt(h.slice(i, i + 2), 16) / 255;
-  return { r: srgbToLinear(n(0)), g: srgbToLinear(n(2)), b: srgbToLinear(n(4)), a: h.length === 8 ? n(6) : 1 };
+  return { r: n(0), g: n(2), b: n(4), a: h.length === 8 ? n(6) : 1 };
 }
 
 function parseRgbFunc(s: string): RGB | null {
@@ -30,9 +39,9 @@ function parseRgbFunc(s: string): RGB | null {
   if (!m) return null;
   const a = m[4] ? (m[4].endsWith("%") ? parseFloat(m[4]) / 100 : parseFloat(m[4])) : 1;
   return {
-    r: srgbToLinear(Math.min(255, parseFloat(m[1])) / 255),
-    g: srgbToLinear(Math.min(255, parseFloat(m[2])) / 255),
-    b: srgbToLinear(Math.min(255, parseFloat(m[3])) / 255),
+    r: Math.min(255, parseFloat(m[1])) / 255,
+    g: Math.min(255, parseFloat(m[2])) / 255,
+    b: Math.min(255, parseFloat(m[3])) / 255,
     a,
   };
 }
@@ -52,10 +61,11 @@ function parseOklch(s: string): RGB | null {
   const s_ = L - 0.0894841775 * a - 1.291485548 * b;
   const l3 = l_ ** 3, m3 = m_ ** 3, s3 = s_ ** 3;
   const clamp = (v: number) => Math.min(1, Math.max(0, v));
+  // OKLab yields linear sRGB; encode to gamma so all parsers agree on the space.
   return {
-    r: clamp(4.0767416621 * l3 - 3.3077115913 * m3 + 0.2309699292 * s3),
-    g: clamp(-1.2684380046 * l3 + 2.6097574011 * m3 - 0.3413193965 * s3),
-    b: clamp(-0.0041960863 * l3 - 0.7034186147 * m3 + 1.707614701 * s3),
+    r: linearToSrgb(clamp(4.0767416621 * l3 - 3.3077115913 * m3 + 0.2309699292 * s3)),
+    g: linearToSrgb(clamp(-1.2684380046 * l3 + 2.6097574011 * m3 - 0.3413193965 * s3)),
+    b: linearToSrgb(clamp(-0.0041960863 * l3 - 0.7034186147 * m3 + 1.707614701 * s3)),
     a: alpha,
   };
 }
@@ -72,7 +82,7 @@ function composite(fg: RGB, bg: RGB): RGB {
 }
 
 function luminance(c: RGB): number {
-  return 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b;
+  return 0.2126 * srgbToLinear(c.r) + 0.7152 * srgbToLinear(c.g) + 0.0722 * srgbToLinear(c.b);
 }
 
 function ratio(fg: RGB, bg: RGB): number {
@@ -102,7 +112,13 @@ function check(p: Pair): { line: string; pass: boolean } {
 const args = process.argv.slice(2);
 let pairs: Pair[];
 if (args[0] === "--json") {
-  pairs = JSON.parse(args[1] ?? "[]");
+  try {
+    pairs = JSON.parse(args[1] ?? "[]");
+    if (!Array.isArray(pairs)) throw new Error("not an array");
+  } catch {
+    console.error("usage: check-contrast.ts --json '[{fg,bg,label?,large?}]' — argument must be a JSON array");
+    process.exit(2);
+  }
 } else if (args.length >= 2) {
   pairs = [{ fg: args[0], bg: args[1], large: args.includes("--large") }];
 } else {

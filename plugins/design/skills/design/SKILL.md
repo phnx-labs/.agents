@@ -1,7 +1,7 @@
 ---
 name: design
 description: "One keyless, offline-first front door for design. Routes a design intent to a mode and renders it as self-contained HTML/SVG (no CDN, no paid keys): UI screens and flows, clickable prototypes, design systems and tokens (including brand identity, BRAND.md), architecture/flow/ER diagrams, infographics and data-stories, slide decks, vector assets (OG cards, SVG logos, icon sets, posters), critique of an existing screen, and anticipating a flow's dead-ends. True raster (photo, illustration, painterly cover) is an optional layer that degrades to a spec plus an editable placeholder rather than hard-failing. Every mode loads design-core first (hierarchy, WCAG AA contrast, colorblind-safe palettes, brand-probe, the anti-tells catalog of what makes a design look AI-generated, precise non-marketing copy, render/screenshot/critique verification). Triggers on: design a screen/page/UI, mock up, prototype, design system, tokens, brand, BRAND.md, wireframe, diagram this, infographic, dataviz, slide deck, logo, OG image, social card, icon, poster, critique this design, redesign, is this design any good, anticipate, flow improvement, dead-end."
-allowed-tools: Bash(scp*), Bash(agents ssh*), Bash(agents browser*), Bash(open*), Bash(xdg-open*), Bash(node*), Bash(find*), Bash(cp*), Bash(mkdir*), Bash(test*), Bash(git rev-parse*), Write
+allowed-tools: Bash(scp*), Bash(agents ssh*), Bash(agents browser*), Bash(open*), Bash(xdg-open*), Bash(node*), Bash(bun*), Bash(find*), Bash(cp*), Bash(mkdir*), Bash(test*), Bash(git rev-parse*), Write
 user-invocable: true
 ---
 

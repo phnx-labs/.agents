@@ -24,11 +24,19 @@ type Sev = "HIGH" | "WARN" | "INFO";
 const findings: { sev: Sev; tag: string; line: number; msg: string }[] = [];
 const add = (sev: Sev, tag: string, line: number, msg: string) => findings.push({ sev, tag, line, msg });
 
+// Per-line scan — for declarations that live on one line (CSS properties, links).
 const scan = (re: RegExp, cb: (m: RegExpMatchArray, lineNo: number, text: string) => void) => {
   lines.forEach((text, i) => {
     const m = text.match(re);
     if (m) cb(m, i + 1, text);
   });
+};
+
+// Whole-source scan — for patterns that span line breaks (an <h1> whose content
+// is pretty-printed across lines). Regex must carry the g flag.
+const lineOf = (idx: number) => src.slice(0, idx).split("\n").length;
+const scanSrc = (re: RegExp, cb: (m: RegExpMatchArray, lineNo: number) => void) => {
+  for (const m of src.matchAll(re)) cb(m, lineOf(m.index ?? 0));
 };
 
 // ── offline-first (§1): external network dependencies ────────────────────────
@@ -45,11 +53,11 @@ scan(serifNames, (m, n) =>
   add("WARN", "tell-1", n, `display serif "${m[1]}" — the italic-serif display look is the #1 AI tell; prefer a heavy sans (700/800) or mono display`));
 scan(/font-style\s*:\s*italic/i, (m, n) =>
   add("WARN", "tell-1", n, `font-style:italic — if this styles a headline, quote, or accent word, it is the italic-accent tell; bold or mono-accent instead`));
-scan(/<h[1-3][^>]*>[^<]*<(i|em)\b/i, (m, n) =>
+scanSrc(/<h[1-3][^>]*>(?:(?!<\/h)[\s\S])*?<(i|em)\b/gi, (m, n) =>
   add("WARN", "tell-3", n, `<${m[1]}> inside a heading — italic mid-headline accent is a tell; use weight or color, not italics`));
 
 // ── tell #2: two-tone muted headline ─────────────────────────────────────────
-scan(/<h[12][^>]*>(?:(?!<\/h)[\s\S])*?class="[^"]*\b(?:text-(?:zinc|gray|slate|neutral|stone)-[45]00|muted|sub)\b/i, (m, n) =>
+scanSrc(/<h[12][^>]*>(?:(?!<\/h)[\s\S])*?class="[^"]*\b(?:text-(?:zinc|gray|slate|neutral|stone)-[45]00|muted|sub)\b/gi, (m, n) =>
   add("WARN", "tell-2", n, `muted-tone span inside a headline — the bright/muted two-tone headline is a tell; one tone, hierarchy from size/weight`));
 
 // ── tell #5: latin / typographic section markers ─────────────────────────────
@@ -66,7 +74,7 @@ if (darkWarmBg && warmAccent)
   add("WARN", "tell-6", 0, `warm dark background + warm high-chroma accent (oklch hues 30–90) — the "sodium amber on warm off-black" palette is a tell; consider a real brand color or achromatic base`);
 
 // ── tell #8: strikethrough metaphor headline ─────────────────────────────────
-scan(/<h[12][^>]*>(?:(?!<\/h)[\s\S])*?<(s|del)\b|<h[12][^>]*>(?:(?!<\/h)[\s\S])*?line-through/i, (m, n) =>
+scanSrc(/<h[12][^>]*>(?:(?!<\/h)[\s\S])*?(?:<(?:s|del)\b|line-through)/gi, (m, n) =>
   add("WARN", "tell-8", n, `strikethrough inside a headline — lead with the actual claim in plain language`));
 
 // ── tell #9: lucide feature-card grid ────────────────────────────────────────
@@ -81,8 +89,14 @@ scan(/box-shadow\s*:[^;]*\b(?:[2-9]\d|\d{3,})px[^;]*(?:oklch|rgb|#)[^;]*/i, (m, 
   add("INFO", "tell-11", n, `large colored box-shadow — if it glows a button, drop it`));
 
 // ── §3: meaning by color alone ───────────────────────────────────────────────
-scan(/<(span|i)\s+[^>]*class="[^"]*\b(st|dot|status|lg|badge)\b[^"]*"[^>]*>\s*<\/\1>/i, (m, n) =>
-  add("HIGH", "a11y-color", n, `empty colored glyph (.${m[2]}) — status carried by color alone; pair with a shape or text label (✓ shipped / ◐ partial / ○ open)`));
+// Exact class-token match, not \b — "rounded-lg" and "fa-lg" contain the token
+// "lg" at a \b boundary but are layout/icon classes, not status glyphs.
+const STATUS_TOKENS = new Set(["st", "dot", "status", "lg", "badge"]);
+scanSrc(/<(span|i)\s+[^>]*class="([^"]*)"[^>]*>\s*<\/\1>/gi, (m, n) => {
+  const hit = m[2].toLowerCase().split(/\s+/).find((t) => STATUS_TOKENS.has(t));
+  if (hit)
+    add("HIGH", "a11y-color", n, `empty colored glyph (.${hit}) — status carried by color alone; pair with a shape or text label (✓ shipped / ◐ partial / ○ open)`);
+});
 
 // ── tell #12: em-dash density ────────────────────────────────────────────────
 const emDashes = (src.match(/—/g) ?? []).length;
