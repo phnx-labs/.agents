@@ -27,6 +27,10 @@ check() {
     else fail=$((fail + 1)); echo "FAIL - $1: expected exit [$3], got [$2]"; fi
 }
 commit_status() {
+    # Reset first so each case is hermetic. A blocked commit leaves its file
+    # staged, and without this a later case could pass on a contaminated index
+    # rather than on its own fixture.
+    git -C "$TMP_DIR" reset -q
     git -C "$TMP_DIR" add "$@" >/dev/null 2>&1
     git -C "$TMP_DIR" commit -m "probe" >/dev/null 2>&1
     echo $?
