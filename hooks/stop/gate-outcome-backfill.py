@@ -17,7 +17,8 @@ specific structured thing each gate demanded:
     open-pr      the session actually merged or closed a PR afterwards
     keep-moving  a task actually moved to completed afterwards
     handback     the script it wrote was actually executed afterwards
-    delivery     a release/publish/verify command actually ran afterwards
+    delivery     UNSCORED - it fires on five different demands and no single
+                 signature can confirm them (see UNSCORABLE below)
     self-audit   no honest mechanical demand — see UNSCORED below
     swarm        no honest mechanical demand — see UNSCORED below
 
@@ -188,6 +189,25 @@ def find_fires(records):
     return fires
 
 
+def _completed_ids(payload):
+    """Ids (or contents) of todo entries this TodoWrite call marks completed."""
+    ids = set()
+    for item in (payload.get("todos") or payload.get("items") or []):
+        if isinstance(item, dict) and str(item.get("status") or "") == "completed":
+            ids.add(str(item.get("id") or item.get("content") or ""))
+    return ids
+
+
+def _todo_baseline(records, start):
+    """Which todos were ALREADY completed as of the last TodoWrite before the gate."""
+    for i in range(start, -1, -1):
+        for block in _blocks(records[i]):
+            if (isinstance(block, dict) and block.get("type") == "tool_use"
+                    and str(block.get("name") or "").lower() == "todowrite"):
+                return _completed_ids(block.get("input") or {})
+    return set()
+
+
 def score_window(records, start, end, gate):
     """What the agent actually did between this block and the next one."""
     tools = 0
@@ -195,6 +215,7 @@ def score_window(records, start, end, gate):
     mutated = False
     interjected = False
     satisfied = False
+    baseline = _todo_baseline(records, start)
     for record in records[start + 1:end]:
         if record.get("type") == "user" and not record.get("isMeta"):
             body = (record.get("message") or {}).get("content")
@@ -217,10 +238,17 @@ def score_window(records, start, end, gate):
                 satisfied = True
             elif gate == "delivery" and RE_RELEASE.search(command):
                 satisfied = True
-            elif gate == "keep-moving" and name in ("taskupdate", "todowrite"):
-                # the demand is a task actually moving, not merely being touched
-                blob = json.dumps(payload)
-                if '"completed"' in blob:
+            elif gate == "keep-moving" and name == "taskupdate":
+                # Read the status FIELD. '"completed"' anywhere in the dumped
+                # payload also matches a task whose *content* says "completed"
+                # while its status is in_progress.
+                if str(payload.get("status") or "") == "completed":
+                    satisfied = True
+            elif gate == "keep-moving" and name == "todowrite":
+                # TodoWrite re-emits the whole list, so a completed entry proves
+                # nothing on its own — it may have been completed before the gate
+                # fired. Only an id that was NOT already complete going in counts.
+                if _completed_ids(payload) - baseline:
                     satisfied = True
             elif gate == "handback" and RE_RAN_TMP.search(command):
                 satisfied = True
@@ -251,11 +279,12 @@ def main() -> int:
     for gate_event_id, session_key, gate_name, created_at_ms in rows:
         by_session.setdefault(session_key, []).append((gate_event_id, gate_name, created_at_ms))
 
-    derived, no_transcript, unmatched, mispaired, unvalidated = [], 0, 0, 0, 0
+    derived, no_transcript, unmatched, mispaired = [], 0, 0, 0
     now = int(time.time() * 1000)
 
     for session_key, events in by_session.items():
-        seen: dict[str, int] = {}
+        used: set[int] = set()
+        events.sort(key=lambda e: (e[2] or 0, e[0]))
         records = load_transcript(session_key)
         if records is None:
             no_transcript += len(events)
@@ -273,27 +302,31 @@ def main() -> int:
             # to windows hours away from the real one. Measured on two live
             # sessions: DB rows at 22:29-22:47 were being scored against
             # occurrences at 08:07-10:04, entirely different work.
-            dated = [f for f in matching if f[3] is not None]
+            # Pair on the row's OWN timestamp, and CONSUME the fire so two rows
+            # can never share one window. The hook records a fire even when the
+            # harness never injects the block, so a session routinely holds more
+            # rows than markers (measured: 17 keep-moving rows against 8
+            # injections on one session). Nearest-match alone then attaches every
+            # orphan row to whichever real fire is closest, and scores it against
+            # a window that answered a different block.
             index = digest = None
-            if created_at_ms and dated:
-                best = min(dated, key=lambda f: abs(f[3] - created_at_ms))
-                if abs(best[3] - created_at_ms) <= PAIR_TOLERANCE_MS:
+            if created_at_ms:
+                free = [f for f in matching
+                        if f[3] is not None and f[0] not in used
+                        and abs(f[3] - created_at_ms) <= PAIR_TOLERANCE_MS]
+                if free:
+                    best = min(free, key=lambda f: abs(f[3] - created_at_ms))
                     index, digest = best[0], best[2]
-                if index is None:
-                    mispaired += 1
-                    continue
-            else:
-                # Nothing to validate against — an older transcript format, or a
-                # row predating created_at_ms. Fall back to ordinal pairing (the
-                # original behaviour) but COUNT it, so the report never presents
-                # an unverified pairing as a verified one.
-                seen[gate_name] = nth = seen.get(gate_name, 0)
-                seen[gate_name] = nth + 1
-                if nth >= len(matching):
-                    unmatched += 1
-                    continue
-                index, digest = matching[nth][0], matching[nth][2]
-                unvalidated += 1
+                    used.add(best[0])
+            if index is None:
+                # No timestamp to validate against, or no unused injection inside
+                # the tolerance. Either way there is nothing to score honestly, so
+                # skip and count it. There is deliberately no ordinal fallback:
+                # positional pairing is the silent mis-pair this block exists to
+                # prevent, and reinstating it "just for older transcripts" is the
+                # fallback the repo rules forbid.
+                mispaired += 1
+                continue
             later = [f[0] for f in fires if f[0] > index]
             end = later[0] if later else len(records)
             refired = 1 if any(f[1] == gate_name for f in fires if f[0] > index) else 0
@@ -336,11 +369,8 @@ def main() -> int:
         print(f"{no_transcript} fire(s) skipped: transcript pruned or on another machine")
     if unmatched:
         print(f"{unmatched} fire(s) skipped: no matching injection found in the transcript")
-    if unvalidated:
-        print(f"{unvalidated} fire(s) paired by position, not verified against a "
-              "timestamp — the transcript records carry none")
     if mispaired:
-        print(f"{mispaired} fire(s) skipped: no injection within "
+        print(f"{mispaired} fire(s) skipped: no unused injection within "
               f"{PAIR_TOLERANCE_MS // 60000}min of the recorded fire time — "
               "scoring these would use the wrong slice of the conversation")
     print("'unmet' is NOT a false-positive rate. Every gate also accepts an ESCAPE —\n"
