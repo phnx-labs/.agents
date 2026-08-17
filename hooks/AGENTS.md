@@ -124,10 +124,15 @@ Do not add one generic database per hook invocation or put non-derivable hook st
 only in `sessions.db`; that database is a rebuildable session index. A hook may have
 one namespaced database per device when it genuinely needs durable state.
 
-## One script is present but never fires
+## Scripts that are present but never fire
 
 `user-prompt-submit/02-expand-prompt-skill-refs.py` has no entry in `../agents.yaml`
 and has never had one. Allowlisted in `registration_test.sh`. Register it or delete it.
+
+`stop/gate-outcome-backfill.py` has no entry **by design** — it is offline analysis of
+gate telemetry that was already recorded, not an event handler, so putting it on a hook
+path would make every Stop pay for a whole-corpus scan. Allowlisted in
+`registration_test.sh`. Run it by hand. Do not register it.
 
 `stop/verify-delivery-chain.py` has no entry but **does** run: `stop/00-agent-verify-work-complete.sh`
 pipes into it. "No manifest entry" ≠ dead when a registered script invokes it.
