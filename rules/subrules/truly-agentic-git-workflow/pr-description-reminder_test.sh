@@ -108,8 +108,13 @@ check 0 tool_input "body-file refactor"  "gh pr create -t x --body-file $TMP/ref
 # Declarations only count in the LEAD (title + first 8 body lines) — the word
 # "refactor" buried on line 12 of a feature PR is not a declaration.
 check 2 tool_input "deep declaration does not clear" "gh pr create -t x --body-file $TMP/deep-declaration.md"
-# ...but a declaration in the TITLE does (the "lead with what + type" convention).
+# ...but a declaration in the TITLE does (the "lead with what + type" convention),
+# through every flag form gh accepts: --title "...", -t "...", and a bare token.
 check 0 tool_input "title declaration clears" "gh pr create --title \"refactor: flatten the loop\" --body-file $TMP/no-evidence.md"
+check 0 tool_input "-t short-flag declaration clears" "gh pr create -t \"release v2.0.0\" --body-file $TMP/no-evidence.md"
+check 0 tool_input "bare-token title declaration clears" "gh pr create --title=refactor-pass --body-file $TMP/no-evidence.md"
+# A non-declaration -t placeholder must NOT clear (x is not a magic word).
+check 2 tool_input "-t placeholder does not clear" "gh pr create -t x --body-file $TMP/no-evidence.md"
 
 # --- NUDGE (exit 2): declaration CONTRADICTED by the diff (the PR #2736 gaming) ---
 PATH="$TMP/bin:$PATH" FAKE_PRD_FILES=$'apps/cli/src/lib/browser/identity.ts\napps/cli/src/lib/browser/identity.test.ts' \

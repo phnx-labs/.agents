@@ -119,6 +119,7 @@ fi
 # current/proposed behavior figure, with each state identified as capture or
 # mockup. An unrelated architecture SVG cannot satisfy a CLI/UI plan.
 html_ok=0
+escalated_internal=0
 for scan_root in $scan_roots; do
   [ -d "$scan_root" ] || continue
   while IFS= read -r candidate; do
@@ -137,11 +138,14 @@ for scan_root in $scan_roots; do
     ' "$source" 2>/dev/null | tr '[:upper:]' '[:lower:]' || true)
     # Surface is self-declared, and "internal" is the path of least resistance
     # when the user-visible check blocks. Don't trust it blindly: a plan whose
-    # own source names UI component files is a user-visible plan no matter what
-    # its frontmatter says.
+    # own source ENUMERATES UI component files is a user-visible plan no matter
+    # what its frontmatter says. Scope the probe to list items and table rows —
+    # where files-changed enumerations live — so a prose aside ("App.tsx does
+    # not change") in an architecture section doesn't trip it.
     if [ "$surface" = "internal" ] \
-      && grep -Eq '\.(tsx|jsx|vue|svelte)\b' "$source" 2>/dev/null; then
+      && grep -Eq '^[[:space:]]*[-*+|][^<]*\.(tsx|jsx|vue|svelte)\b' "$source" 2>/dev/null; then
       surface="web"
+      escalated_internal=1
     fi
     case "$surface" in
       internal)
@@ -210,6 +214,13 @@ fi
     echo "  HARD REQUIREMENTS (this gate inspects the Markdown + HTML):"
     echo "    - frontmatter surface: internal|cli|web|native|api|workflow"
     echo "    - internal: ≥1 live drawn SVG"
+    if [ "$escalated_internal" = 1 ]; then
+      echo "    - NOTE: this plan declares 'surface: internal' but its own lists/tables"
+      echo "      name UI component files (.tsx/.jsx/.vue/.svelte), so it is being held"
+      echo "      to the user-visible bar below. Either declare the real surface"
+      echo "      (cli|web|native|...) and add the current/proposed behavior figure, or"
+      echo "      remove the UI file references if the plan is genuinely backend-only."
+    fi
     echo "    - user-visible: .artifact-behavior with current + proposed states"
     echo "      and data-evidence=\"capture\" or \"mockup\" on each state"
     echo "    - fenced code blocks for commands/APIs (not only inline \`code\` pills)"

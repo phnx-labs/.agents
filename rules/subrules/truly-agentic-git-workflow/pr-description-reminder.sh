@@ -134,8 +134,12 @@ if printf '%s' "$hay" | grep -Eqi 'user-attachments/assets|githubusercontent\.co
 #    the whole body let the word "refactor" inside an unrelated code block or link
 #    clear a genuine feature diff — the magic word was a password again, just
 #    hidden deeper.
-title=$(printf '%s\n' "$cmd" | sed -n 's/.*--title[= ]\{1,\}"\([^"]*\)".*/\1/p')
-[ -n "$title" ] || title=$(printf '%s\n' "$cmd" | sed -n "s/.*--title[= ]\{1,\}'\([^']*\)'.*/\1/p")
+#    The title flag is -t or --title (gh pr create -h), quoted or a bare token;
+#    matching only quoted --title false-blocked a legitimate `-t "release v2"`.
+#    The flag must follow whitespace so the -t inside "--sort" etc. can't match.
+title=$(printf '%s\n' "$cmd" | sed -nE 's/.*[[:space:]](--title|-t)[= ]+"([^"]*)".*/\2/p' | head -1)
+[ -n "$title" ] || title=$(printf '%s\n' "$cmd" | sed -nE "s/.*[[:space:]](--title|-t)[= ]+'([^']*)'.*/\2/p" | head -1)
+[ -n "$title" ] || title=$(printf '%s\n' "$cmd" | sed -nE 's/.*[[:space:]](--title|-t)[= ]+([^"'"'"'[:space:]-][^[:space:]]*).*/\2/p' | head -1)
 lead="$title
 $(printf '%s\n' "$body" | head -8)"
 lower=$(printf '%s' "$lead" | tr '[:upper:]' '[:lower:]')
