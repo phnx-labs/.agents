@@ -8,4 +8,4 @@ Invoke the `code:release` skill. Arguments: $ARGUMENTS
 - A version (`1.2.3`, `patch`, `minor`, `major`), a monorepo package path, and `--skip-tests`/`--skip-build`/`--force` are all accepted — see the skill for the full contract.
 - Discovers the repo's actual release script (`scripts/release.sh`, npm scripts, monorepo packages) and runs it rather than reinventing it; scaffolds one only if none exists.
 - Drives the full chain end to end: tests → version/changelog → publish/tag as the repo defines → verify the artifact is actually live (registry version, clean-room install, activated extension, or a health-endpoint `curl` — never just "the command exited 0").
-- Refuses to double-release into a repo with its own serialized release train/lease — hands off to that instead.
+- Refuses to become a *second* releaser when one is verifiably mid-flight (a held `release-lease.sh`, an open `chore(release)` PR with a live driver, a running `release.sh`) — coordinates with that one instead. Nothing auto-ships a merge, so it never defers to a scheduled releaser, and a dead or closed release is not a reason to stop.

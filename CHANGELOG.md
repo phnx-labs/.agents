@@ -2,6 +2,26 @@
 
 ## [Unreleased]
 
+### Changed
+
+- **The last two release-train hand-off instructions are gone.** `commands/next.md`
+  was fixed in #321, but `plugins/code/skills/release/SKILL.md:30-38` and
+  `plugins/code/commands/release.md:11` still told agents to detect "a scheduled
+  release train" and, on finding one, to **stop** and "hand off to it". No such
+  train has ever run — the `release-train` routine measured `enabled: False`,
+  `devices: []`, `lastRun: None`, `nextRun: None`, and has since been deleted and
+  verified absent on all 13 reachable fleet boxes. An instruction to hand off to a
+  mechanism that does not exist is how work sits merged-but-unshipped with every
+  agent believing it is covered.
+
+  The skill's Phase 1.0 becomes a **concurrency** gate rather than a
+  train-detection gate: proceed unless another releaser is *verifiably alive*
+  (held lease, open `chore(release)` PR with a live driver, running `release.sh`).
+  It also names the failure that motivated it — a closed-unmerged release PR and a
+  dead session are **not** an in-flight release, so deferring to one is idling, not
+  coordinating. Where a lease exists, running the script is correct: the lease is
+  the serialization and refuses a second claimant.
+
 ### Added
 
 <<<<<<< HEAD

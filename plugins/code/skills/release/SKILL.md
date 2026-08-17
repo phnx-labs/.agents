@@ -27,17 +27,20 @@ If no version is given, analyze what's needed and suggest one.
 
 Before doing anything, check for project-specific release instructions.
 
-### 1.0 Release-train / lease guard — refuse to double-release
+### 1.0 Concurrency guard — one releaser at a time, but never zero
 
-Before anything else, check whether this repo releases on a **serialized pipeline** — a scheduled release train, a CI publish workflow, or a release script that claims a lease. If it does, a manual publish is a second releaser entering one pipeline — exactly what jammed `agents-cli` on 2026-08-02 (four release attempts, zero published versions). `release-to-fleet` is the authority.
+**Nothing auto-ships a merge.** There is no release train; do not look for one, and never stop because you believe a scheduled releaser will finish it. `release-to-fleet` is the authority.
+
+What you must not become is a *second* releaser while another is genuinely mid-flight — that is what jammed `agents-cli` on 2026-08-02 (four release attempts, zero published versions).
 
 ```bash
-agents routines list | grep -i release             # a scheduled train?
-ls .github/workflows/ | grep -iE 'release|publish'  # a CI publisher?
 grep -rl 'release-lease' scripts/ 2>/dev/null       # a lease = already serialized
+ls .github/workflows/ | grep -iE 'release|publish'  # a CI publisher?
+gh pr list --state open | grep -i 'chore(release)'  # a release already in flight?
+pgrep -af release.sh                                # someone mid-release right now?
 ```
 
-If any of these hit, **stop**: do not run the release script, tag, or publish. Name the train and when it next runs, and hand off to it. Proceed through the rest of this skill only when the repo has **no** train/lease and the release is authorized.
+If the script claims a **lease**, just run it — the lease *is* the serialization and will refuse you if someone else holds it. If a release PR is open or a process is running, verify that releaser is **actually alive** before deferring to it (a closed-unmerged release PR and a dead session are not an in-flight release); if it is alive, watch it to completion rather than walking away. Otherwise the release is yours to drive end to end.
 
 ### 1.1 Check for project-level overrides
 
