@@ -40,7 +40,12 @@ gh pr list --state open | grep -i 'chore(release)'  # a release already in fligh
 pgrep -af release.sh                                # someone mid-release right now?
 ```
 
-If the script claims a **lease**, just run it — the lease *is* the serialization and will refuse you if someone else holds it. If a release PR is open or a process is running, verify that releaser is **actually alive** before deferring to it (a closed-unmerged release PR and a dead session are not an in-flight release); if it is alive, watch it to completion rather than walking away. Otherwise the release is yours to drive end to end.
+Branch on each signal — every one of the four has an answer, and none of them is "ignore it":
+
+- **A lease** (`release-lease.sh`) → just run the script. The lease *is* the serialization and will refuse you if someone else holds it.
+- **A CI publisher** → read its trigger before you decide. A `workflow_dispatch`-only workflow publishes nothing on its own and does not block you. One that fires on a **push/tag event you are about to cause** is a real automated releaser: let it publish, then verify the registry flipped — do not also publish by hand, and do not skip the verification because CI "has it". (Live example: `agents-cli`'s `.github/workflows/agents-dbg-release.yml` runs `scripts/release.sh … --confirm` on `push: tags: agents-dbg-v*`, so pushing that tag *is* triggering the release.)
+- **An open `chore(release)` PR, or a running `release.sh`** → verify that releaser is **actually alive** before deferring to it. A closed-unmerged release PR and a dead session are not an in-flight release. If it is alive, watch it to completion rather than walking away.
+- **None of the above** → the release is yours to drive end to end.
 
 ### 1.1 Check for project-level overrides
 
