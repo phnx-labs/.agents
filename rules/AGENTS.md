@@ -116,7 +116,7 @@ message here is a note in an empty room. Never stop silently.
 - **Never bypass the safety rails at merge:** no `gh pr merge --admin`, never self-approve your own PR (the clearing review must be a non-author — an automated repo reviewer counts), never merge red.
 - **Never transfer credentials or auth files** (tokens, `~/.rush/user.yaml`, keychain exports) to another host without explicit authorization.
 - **Surface irreversible escalations FIRST, don't reach for them silently:** a sandbox-off flag (`--dangerously-bypass-approvals-and-sandbox`), a destructive `pkill` that could kill the user's live sessions, a remote command with a `~`/`$HOME` that expands on the *local* box. Propose; get the OK; then act.
-- **A session transcript is confidential — always.** It can carry secrets, tokens, internal paths, and raw reasoning. Never inline it in a PR/issue/ticket body, never on a public repo or public tracker. Private repo: attach as a **secret gist** and link only. Public repo: omit it, reference the local `<host>:<path>` instead.
+- **A session transcript is confidential — always.** It can carry secrets, tokens, internal paths, and raw reasoning. Never inline it in a PR/issue/ticket body, never on a public repo or public tracker. Private repo: attach as a **secret gist** and link only. Public repo: omit it, reference the local `<host>:<path>` instead. The single exception is `agents sessions share <id>` when a human asks you to send them a session — it publishes the *redacted* render, unlisted and expiring, and it still does not license attaching a transcript to a PR/issue/ticket (see `truly-agentic-git-workflow`).
 
 # Research & Evidence Discipline
 
@@ -332,9 +332,20 @@ and embed it with `![caption](url)`. Use these, in order:
    <baseUrl>` (use an existing one), then re-run. If you truly cannot configure it, hand the
    one-time `agents artifacts setup` to the user and use drag-drop meanwhile. **Public share is
    for shareable visual proof only** — never publish a private or secret asset (a
-   transcript, anything carrying tokens or internal paths) to a public R2 URL; those stay in
+   raw transcript, anything carrying tokens or internal paths) to a public R2 URL; those stay in
    a secret gist or a local path (see the transcript rule below). `--expire 30d` bounds the
    link's life.
+
+   **The one carve-out is `agents sessions share <id>`**, and it is narrow. That command
+   does not publish a raw transcript: it publishes the **redacted render** (`agents sessions
+   render`'s document — credential-shaped values, known secret values, and local home paths
+   masked — plus email masking the raw render does not do), **unlisted** by default, with the
+   30d expiry. Use it when a human deliberately asks you to send them a session. It is **not**
+   an evidence mechanism: it does not license attaching a transcript to a PR, issue, or ticket
+   body, which the transcript rule below still forbids outright — attach a **secret gist** there,
+   or reference `<host>:<path>` on a public repo. And unlisted is **not** access control: R2
+   reads are public, so anyone with the exact URL reads the page. Never call such a link
+   private, encrypted, or access-gated.
 2. **Web drag-drop (browser-only fallback).** When `agents artifacts share` isn't available, open the
    PR/comment box in the browser and drag the image/recording (`.png`/`.gif`/`.mp4`/`.mov`)
    in. GitHub uploads it and inserts a `https://github.com/user-attachments/assets/…` URL

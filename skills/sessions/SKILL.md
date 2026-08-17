@@ -104,6 +104,36 @@ agents sessions --artifacts <session-id>
 agents sessions --artifact <filename> <session-id>
 ```
 
+## Sharing a session with a human
+
+When someone asks you to send them a session, publish it as a link instead of pasting
+the transcript or handing over a `.jsonl` path:
+
+```bash
+agents sessions share <id>                   # → https://share.agents-cli.sh/<you>/session-<shortid>
+agents sessions share <id> --public          # also list it in your public gallery
+agents sessions share <id> --reasoning fold  # keep the reasoning in collapsible sections
+agents sessions share <id> --expire never    # a link that does not decay (default: 30d)
+```
+
+It renders the same redacted document `agents sessions render` writes, wraps it in a
+self-contained page, and publishes it to your share endpoint. The slug is
+`session-<shortid>`, so re-sharing one session updates one URL and keeps the prior page
+as a revision (`agents artifacts share revisions <slug>`). One session per link.
+
+- **Unlisted by default** — kept out of your public gallery and out of `agents artifacts
+  share list`. `--public` opts in.
+- **Unlisted is not access control.** R2 reads are public: anyone with the exact URL reads
+  the page. Never describe such a link as private, encrypted, or access-gated.
+- **Redacted** — credential-shaped values, known secret values, and local home paths, plus
+  email masking the plain render does not do. `--no-redact` exists and must not be used on
+  anything you publish.
+- **Not an evidence mechanism.** This does not license attaching a transcript to a PR,
+  issue, or ticket body — that still takes a **secret gist** on a private repo, or a
+  `<host>:<path>` reference on a public one. See the `truly-agentic-git-workflow` rule.
+- Needs a share endpoint: `agents artifacts share status` reports it, `agents artifacts
+  setup` provisions one.
+
 ## Export & Import (portable recall over the fleet)
 
 Bundle sessions into a portable archive and restore them on another machine — recall that travels over the SSH fleet without depending on cloud sync.

@@ -168,9 +168,20 @@ and embed it with `![caption](url)`. Use these, in order:
    <baseUrl>` (use an existing one), then re-run. If you truly cannot configure it, hand the
    one-time `agents artifacts setup` to the user and use drag-drop meanwhile. **Public share is
    for shareable visual proof only** — never publish a private or secret asset (a
-   transcript, anything carrying tokens or internal paths) to a public R2 URL; those stay in
+   raw transcript, anything carrying tokens or internal paths) to a public R2 URL; those stay in
    a secret gist or a local path (see the transcript rule below). `--expire 30d` bounds the
    link's life.
+
+   **The one carve-out is `agents sessions share <id>`**, and it is narrow. That command
+   does not publish a raw transcript: it publishes the **redacted render** (`agents sessions
+   render`'s document — credential-shaped values, known secret values, and local home paths
+   masked — plus email masking the raw render does not do), **unlisted** by default, with the
+   30d expiry. Use it when a human deliberately asks you to send them a session. It is **not**
+   an evidence mechanism: it does not license attaching a transcript to a PR, issue, or ticket
+   body, which the transcript rule below still forbids outright — attach a **secret gist** there,
+   or reference `<host>:<path>` on a public repo. And unlisted is **not** access control: R2
+   reads are public, so anyone with the exact URL reads the page. Never call such a link
+   private, encrypted, or access-gated.
 2. **Web drag-drop (browser-only fallback).** When `agents artifacts share` isn't available, open the
    PR/comment box in the browser and drag the image/recording (`.png`/`.gif`/`.mp4`/`.mov`)
    in. GitHub uploads it and inserts a `https://github.com/user-attachments/assets/…` URL
