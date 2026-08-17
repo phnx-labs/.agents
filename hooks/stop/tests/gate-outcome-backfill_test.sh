@@ -148,6 +148,133 @@ check "re-running does not duplicate rows" "$(sqlite3 "$DB" "select count(*) fro
 # violation, so assert it exited cleanly too.
 check "the second run exits cleanly rather than crashing" "$rerun_rc" "0"
 
+# --- pairing: one transcript fire may serve exactly one recorded row ----------
+# The hook records a fire even when the harness never injects the block, so a
+# session routinely holds MORE rows than markers. Nearest-timestamp matching
+# without consumption attached every orphan row to the closest real fire and
+# scored it against a window that answered a different block. Three rows, two
+# injections: exactly two may score.
+DB2="$SANDBOX/pair.db"
+HOME2="$SANDBOX/home2"
+PROJ2="$HOME2/.agents/.history/versions/claude/v1/home/.claude/projects/p"
+mkdir -p "$PROJ2"
+VERIFY_WORK_STATE_DB="$DB2" python3 "$STATE" record-prompt >/dev/null 2>&1 <<<'{"session_id":"bf-2","agent":"claude","launch_id":"L2","prompt":"x"}'
+VERIFY_WORK_STATE_DB="$DB2" python3 "$STATE" record-gates \
+  "keep-moving:blocked:a" "keep-moving:blocked:b" "keep-moving:blocked:c" \
+  >/dev/null 2>&1 <<<'{"session_id":"bf-2","agent":"claude","launch_id":"L2","prompt":"x"}'
+
+python3 - "$PROJ2/bf-2.jsonl" <<'PYEOF'
+import json, sys
+from datetime import datetime, timezone
+now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+fire = {"type": "user", "isMeta": True, "timestamp": now, "message": {"role": "user",
+        "content": "Stop hook feedback:\nSTOP GATE (keep moving): unfinished"}}
+done = {"type": "assistant", "timestamp": now, "message": {"role": "assistant", "content":
+        [{"type": "tool_use", "id": "t", "name": "TaskUpdate",
+          "input": {"taskId": "1", "status": "completed"}}]}}
+with open(sys.argv[1], "w") as out:
+    for record in (fire, done, fire, done):      # two injections, two responses
+        out.write(json.dumps(record) + "\n")
+PYEOF
+
+HOME="$HOME2" python3 "$BF" --db "$DB2" --write > "$SANDBOX/pair.out" 2>&1
+check "three recorded rows against two injections derive only two" \
+  "$(sqlite3 "$DB2" "select count(*) from gate_outcomes;")" "2"
+check "the row with no unused injection is reported as skipped" \
+  "$(grep -c 'no unused injection within' "$SANDBOX/pair.out")" "1"
+
+# --- no timestamp means no honest pairing: skip, never fall back to position ----
+DB3="$SANDBOX/nots.db"
+HOME3="$SANDBOX/home3"
+PROJ3="$HOME3/.agents/.history/versions/claude/v1/home/.claude/projects/p"
+mkdir -p "$PROJ3"
+VERIFY_WORK_STATE_DB="$DB3" python3 "$STATE" record-prompt >/dev/null 2>&1 <<<'{"session_id":"bf-3","agent":"claude","launch_id":"L3","prompt":"x"}'
+VERIFY_WORK_STATE_DB="$DB3" python3 "$STATE" record-gates "keep-moving:blocked:a" \
+  >/dev/null 2>&1 <<<'{"session_id":"bf-3","agent":"claude","launch_id":"L3","prompt":"x"}'
+cat > "$PROJ3/bf-3.jsonl" <<'JSONL'
+{"type":"user","isMeta":true,"message":{"role":"user","content":"Stop hook feedback:\nSTOP GATE (keep moving): unfinished"}}
+{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"t","name":"TaskUpdate","input":{"taskId":"1","status":"completed"}}]}}
+JSONL
+HOME="$HOME3" python3 "$BF" --db "$DB3" --write >/dev/null 2>&1
+check "an untimestamped transcript scores nothing rather than guessing by position" \
+  "$(sqlite3 "$DB3" "select count(*) from gate_outcomes;")" "0"
+
+# --- the demand detector reads the status FIELD, not the dumped payload --------
+det=$(python3 - "$BF" <<'PYEOF'
+import importlib.util, sys
+spec = importlib.util.spec_from_file_location("bf", sys.argv[1])
+bf = importlib.util.module_from_spec(spec); spec.loader.exec_module(bf)
+
+def sat(tool, payload, before=None):
+    fire = {"type": "user", "isMeta": True, "message": {"role": "user",
+            "content": "Stop hook feedback:\nSTOP GATE (keep moving): unfinished"}}
+    call = {"type": "assistant", "message": {"role": "assistant", "content":
+            [{"type": "tool_use", "id": "t", "name": tool, "input": payload}]}}
+    records = []
+    if before is not None:
+        records.append({"type": "assistant", "message": {"role": "assistant", "content":
+            [{"type": "tool_use", "id": "b", "name": "TodoWrite", "input": before}]}})
+    start = len(records)
+    records += [fire, call]
+    return int(bf.score_window(records, start, len(records), "keep-moving")[3])
+
+print("content=%d status=%d reemit=%d newdone=%d" % (
+    sat("TaskUpdate", {"taskId": "1", "status": "in_progress", "content": "completed the audit"}),
+    sat("TaskUpdate", {"taskId": "1", "status": "completed"}),
+    sat("TodoWrite", {"todos": [{"id": "1", "status": "completed"}]},
+        before={"todos": [{"id": "1", "status": "completed"}]}),
+    sat("TodoWrite", {"todos": [{"id": "1", "status": "completed"}, {"id": "2", "status": "completed"}]},
+        before={"todos": [{"id": "1", "status": "completed"}]})))
+PYEOF
+)
+check "a task whose CONTENT says completed does not satisfy the demand" \
+  "$(printf '%s' "$det" | grep -o 'content=[01]')" "content=0"
+check "a task whose STATUS is completed does satisfy it" \
+  "$(printf '%s' "$det" | grep -o 'status=[01]')" "status=1"
+check "TodoWrite re-emitting an already-complete todo does not satisfy it" \
+  "$(printf '%s' "$det" | grep -o 'reemit=[01]')" "reemit=0"
+check "TodoWrite completing a NEW todo does satisfy it" \
+  "$(printf '%s' "$det" | grep -o 'newdone=[01]')" "newdone=1"
+
+# --- the tolerance itself: a fire far from any injection must not be scored ----
+# Every other fixture stamps its records at "now", the same moment the rows are
+# recorded, so nothing is ever outside PAIR_TOLERANCE_MS and deleting the bound
+# changed no result. This backdates the recorded row an hour past its injection.
+DB4="$SANDBOX/tol.db"
+HOME4="$SANDBOX/home4"
+PROJ4="$HOME4/.agents/.history/versions/claude/v1/home/.claude/projects/p"
+mkdir -p "$PROJ4"
+VERIFY_WORK_STATE_DB="$DB4" python3 "$STATE" record-prompt >/dev/null 2>&1 <<<'{"session_id":"bf-4","agent":"claude","launch_id":"L4","prompt":"x"}'
+VERIFY_WORK_STATE_DB="$DB4" python3 "$STATE" record-gates "keep-moving:blocked:a" \
+  >/dev/null 2>&1 <<<'{"session_id":"bf-4","agent":"claude","launch_id":"L4","prompt":"x"}'
+sqlite3 "$DB4" "update gate_events set created_at_ms = created_at_ms - 3600000;"
+
+python3 - "$PROJ4/bf-4.jsonl" <<'PYEOF'
+import json, sys
+from datetime import datetime, timezone
+now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+records = [
+    {"type": "user", "isMeta": True, "timestamp": now, "message": {"role": "user",
+     "content": "Stop hook feedback:\nSTOP GATE (keep moving): unfinished"}},
+    {"type": "assistant", "timestamp": now, "message": {"role": "assistant", "content":
+     [{"type": "tool_use", "id": "t", "name": "TaskUpdate",
+       "input": {"taskId": "1", "status": "completed"}}]}},
+]
+with open(sys.argv[1], "w") as out:
+    for record in records:
+        out.write(json.dumps(record) + "\n")
+PYEOF
+
+HOME="$HOME4" python3 "$BF" --db "$DB4" --write > "$SANDBOX/tol.out" 2>&1
+check "a fire an hour from its only injection is not scored" \
+  "$(sqlite3 "$DB4" "select count(*) from gate_outcomes;")" "0"
+# ...and the same row DOES score once it is inside the window, so the assertion
+# above is testing the bound rather than some unrelated failure to load.
+sqlite3 "$DB4" "update gate_events set created_at_ms = created_at_ms + 3600000;"
+HOME="$HOME4" python3 "$BF" --db "$DB4" --write >/dev/null 2>&1
+check "the same row scores once it falls inside the window" \
+  "$(sqlite3 "$DB4" "select count(*) from gate_outcomes;")" "1"
+
 # Unscorable gates must never be reported as satisfied — a proxy there would
 # inflate the success rate for demands no transcript scan can confirm.
 unscorable=$(python3 - "$BF" <<'PYEOF'
