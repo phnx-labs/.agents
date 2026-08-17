@@ -254,6 +254,40 @@ and `agents sync claude@all system`, the installed copy still read `"version": "
 no `agents/` directory. `agents plugins sync code` moved it to `0.10.0` carrying
 `agents/code-reviewer.md`. Verify the **installed** copy's manifest version, not the mirror's.
 
+## The commit gates are opt-in — make sure this checkout runs them
+
+`.githooks/pre-commit` is what stops a staged merge-conflict marker or a stray
+`.agents/` path from being committed. Git only runs it if the checkout has been
+pointed at it, and there are **two** ways to do that — either is enough:
+
+```bash
+git config core.hooksPath .githooks                        # config form
+ln -s ../../.githooks/pre-commit .git/hooks/pre-commit     # symlink form
+```
+
+**Verify by what git will actually run, not by one config key.** The config form is
+the better-known one, but this repo and the user layer are both installed the
+symlink way, so a `core.hooksPath` check alone reports a protected checkout as
+unprotected:
+
+```bash
+ls -l "$(git rev-parse --git-path hooks)/pre-commit"   # symlink form shows here
+git config --get core.hooksPath                        # config form shows here
+```
+
+Either one present means the gates run. Both absent means they do not, and a commit
+carrying conflict markers will go straight in — measured, exit 0. That is not
+hypothetical: raw `<<<<<<<`/`=======`/`>>>>>>>` markers reached `main` in
+`CHANGELOG.md` once already, because nothing was checking.
+
+Linked worktrees are covered by whichever form the main checkout uses — shared
+config for the config form, a shared common hooks dir for the symlink form — so you
+do not repeat this per worktree.
+
+Nothing installs either form for you and there is no CI backstop, so a fresh clone
+starts unprotected. Closing that properly — installing it from the sync path, or
+moving the check somewhere unskippable — is tracked in RUSH-2762.
+
 ## Tests
 
 Hooks carry `<name>_test.sh` in a `tests/` subdir of their event dir
