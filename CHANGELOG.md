@@ -4,7 +4,6 @@
 
 ### Added
 
-<<<<<<< HEAD
 - **merge-guard: a non-author review verdict must be ON the PR being merged.**
   `gh pr merge` is blocked when the PR has neither a GitHub APPROVED review nor
   a fresh APPROVE verdict comment — and a comment citing a verdict "carried
@@ -19,7 +18,6 @@
   release-shaped phrases (`chore(release)` / "release PR" / "release:" /
   "release v"). Unverifiable declarations (refactor / no-behavior-change)
   and unreadable diffs keep failing open.
-=======
 - **Argue-past ramp in the verify-work-complete Stop gate.** A retried stop
   (stop_hook_active) used to pass unconditionally — the ramp three sessions used
   on 2026-08-15 to clear blocked stops by restating "correct stopping point" /
@@ -39,7 +37,6 @@
   2026-08-15 directive after an agent wrote into a primary checkout on main.
   main-branch-guard remains the hard enforcement; this keeps the rule in every
   context window.
->>>>>>> origin/main
 
 ### Fixed
 
