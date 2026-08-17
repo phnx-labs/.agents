@@ -43,13 +43,6 @@ out-of-band) — after the self-unblock ladder is exhausted.
 | [`learn`](./learn/SKILL.md) | Reflect on a finished session and write the durable lessons back into skills, rules, or memory |
 | [`tickets`](./tickets/SKILL.md) | Work with the project's issue tracker — auto-detect Linear/GitHub/Jira (skill/CLI/repo signal), then list/claim/comment/close/create/search with proof; drives the check-first/close-on-delivery lifecycle |
 
-## Planning and decisions
-
-| Skill | What it does |
-|---|---|
-| [`bmad`](./bmad/SKILL.md) | Produce a BMAD-style, evidence-backed work package without starting implementation |
-| [`adhd`](./adhd/SKILL.md) | Explore a decision through bounded independent frames and a critical synthesis without external action |
-
 ## Producing output for humans
 
 | Skill | What it does |
