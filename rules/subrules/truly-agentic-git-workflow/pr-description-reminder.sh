@@ -115,17 +115,30 @@ $body"
 # only on a real run result OR an explicit no-run declaration; otherwise nudge.
 
 # 1) A real run result — a screenshot / GIF / recording, inline or as an uploaded
-#    asset. This is the proof that the agent ran it and observed the outcome.
-case "$hay" in
-  *"!["*|*".png"*|*".jpg"*|*".jpeg"*|*".gif"*|*".webp"*|\
-  *".mp4"*|*".mov"*|*".webm"*|*".svg"*|\
-  *"user-attachments/assets"*|*"githubusercontent.com"*|*"/assets/"*) exit 0 ;;
-esac
+#    asset, that a reviewer can actually OPEN. Evidence is a REMOTE URL: an
+#    image/video embed of one, a media-extension URL, or a known upload/share
+#    host. A bare local path that happens to end in ".png" is not evidence —
+#    2026-08-17, PR #317 cleared the old substring check with
+#    "zion:/tmp/gate-recording-run.txt.png", a fleet-local path nobody on GitHub
+#    can render, and #329 shipped a gist link while a repo file list full of
+#    ".svg" names would also have cleared it.
+if printf '%s' "$hay" | grep -Eq '!\[[^]]*\]\(https?://'; then exit 0; fi
+if printf '%s' "$hay" | grep -Eqi 'https?://[^[:space:]<>")]+\.(png|jpe?g|gif|webp|mp4|mov|webm|svg)([?#).,">[:space:]]|$)'; then exit 0; fi
+if printf '%s' "$hay" | grep -Eqi 'user-attachments/assets|githubusercontent\.com|://share\.'; then exit 0; fi
 # 2) An explicit no-run DECLARATION (case-insensitive): the two PR kinds that need no
 #    run (a RELEASE or a pure DOC edit), or a no-visible-surface / non-behavioral
 #    declaration (refactor / test-only). A Linear ticket or plan link is CONTEXT, not
 #    evidence — it does NOT clear the run-result requirement on its own.
-lower=$(printf '%s' "$hay" | tr '[:upper:]' '[:lower:]')
+#    A declaration only counts in the PR's LEAD — the title plus the body's first
+#    8 lines (the repo convention is "lead with a one-line what + type"). Matching
+#    the whole body let the word "refactor" inside an unrelated code block or link
+#    clear a genuine feature diff — the magic word was a password again, just
+#    hidden deeper.
+title=$(printf '%s\n' "$cmd" | sed -n 's/.*--title[= ]\{1,\}"\([^"]*\)".*/\1/p')
+[ -n "$title" ] || title=$(printf '%s\n' "$cmd" | sed -n "s/.*--title[= ]\{1,\}'\([^']*\)'.*/\1/p")
+lead="$title
+$(printf '%s\n' "$body" | head -8)"
+lower=$(printf '%s' "$lead" | tr '[:upper:]' '[:lower:]')
 case "$lower" in
   *"chore(release)"*|*"release pr"*|*"release:"*|*"release v"*|*"docs:"*|\
   *"no behavior change"*|*"no-behavior-change"*|*"no visible surface"*|*"no user-visible"*|\

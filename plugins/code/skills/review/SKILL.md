@@ -371,6 +371,9 @@ WHAT YOU MUST CHECK (in this order, stop at first BLOCKER)
 2. End-to-end evidence — does the PR description include proof the changed flow runs?
    Real output: curl response, test log, screenshot, deploy URL — not "build passes."
    For UI changes, a screenshot is required. If missing, name what's missing.
+   **Missing run evidence on a user-visible change is a BLOCKER, not a style nit** —
+   same severity floor as a confirmed security finding. The fix is cheap (run it,
+   capture it, attach it), so do not downgrade it to SHOULD to get to READY TO MERGE.
 
 3. Docs — for each changed surface, is there a corresponding doc update? CHANGELOG.md
    entry, runbook section if ops behavior changed, README/AGENTS.md/CLAUDE.md if
