@@ -66,6 +66,21 @@
 
 ### Fixed
 
+- **main-branch-guard: `-C` targets are resolved, never blamed on the session
+  cwd (RUSH-2743).** `git -C "$WT" commit` in a compound command reached the
+  guard with the variable unexpanded; the resulting `<cwd>/$WT` never exists,
+  and git-facts' nearest-existing-ancestor walk collapsed it to the session
+  cwd — denying a linked-worktree commit as a PRIMARY-tree commit (two real
+  false blocks, 2026-08-15). The guard now expands leading `$NAME`/`${NAME}`
+  from literal assignments in the same command string (`$(git rev-parse
+  --show-toplevel)` / `$(pwd)` resolve to the session cwd, so the recipe idiom
+  still denies in a primary checkout); an unresolvable or nonexistent `-C`
+  target is judged as the parsed target and allowed — git itself errors there,
+  nothing can be mutated. Terminated heredoc bodies are stripped before
+  segment parsing so body lines never register as `git` commands. 15 new
+  regression tests cover the compound, chained-variable, heredoc, and
+  multiline `-m` shapes.
+
 - **Invoked is not armed: watcher escapes now require a successful arm.** Both
   watcher checks (open-PR gate, keep-moving gate) accepted any
   ScheduleWakeup/Monitor *tool_use* as a live watcher without looking at its
