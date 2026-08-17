@@ -109,6 +109,21 @@
 
 ### Fixed
 
+- **The plan template had no architecture section, so agents drew the architecture
+  as a table.** `skills/plan-render/SKILL.md` lists `## Current architecture` in its
+  section order, but `skills/plan-render/template.md` shipped only Purpose, Proposed
+  Changes, Public Interface, Validation, Risks, and Tracking — the two structures it
+  modelled were the Validation and Risks **tables**, and the one figure it scaffolded
+  sat under Proposed Changes. An agent filling in the missing section copied what was
+  in front of it, and `artifacts check` accepted the result because its figure
+  requirement was document-scoped. The template now carries `## Current architecture`
+  scaffolded as a labelled module-and-arrow figure, and SKILL.md's quality bar names
+  the section-scoped gate (artifacts-cli PR #59) — a table of files lists the parts
+  and drops every relationship between them, which is what a reviewer opened the
+  section for. Also fixes the template's `- Ticket: <link>` placeholder, which parsed
+  as an HTML `<link>` tag and made the fleet's own plan template fail
+  `artifacts check`.
+
 - **Plans without mockups and PRs without run screenshots — the four enforcement
   holes are closed.** A session-transcript trace showed both requirements existed
   only as prose for the most common paths.
