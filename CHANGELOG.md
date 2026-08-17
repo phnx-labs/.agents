@@ -4,7 +4,6 @@
 
 ### Added
 
-<<<<<<< HEAD
 - **merge-guard: a non-author review verdict must be ON the PR being merged.**
   `gh pr merge` is blocked when the PR has neither a GitHub APPROVED review nor
   a fresh APPROVE verdict comment — and a comment citing a verdict "carried
@@ -19,7 +18,6 @@
   release-shaped phrases (`chore(release)` / "release PR" / "release:" /
   "release v"). Unverifiable declarations (refactor / no-behavior-change)
   and unreadable diffs keep failing open.
-=======
 - **Argue-past ramp in the verify-work-complete Stop gate.** A retried stop
   (stop_hook_active) used to pass unconditionally — the ramp three sessions used
   on 2026-08-15 to clear blocked stops by restating "correct stopping point" /
@@ -39,9 +37,26 @@
   2026-08-15 directive after an agent wrote into a primary checkout on main.
   main-branch-guard remains the hard enforcement; this keeps the rule in every
   context window.
->>>>>>> origin/main
 
 ### Fixed
+
+- **main-branch-guard: `-C` targets are resolved, never blamed on the session
+  cwd (RUSH-2743).** `git -C "$WT" commit` in a compound command reached the
+  guard with the variable unexpanded; the resulting `<cwd>/$WT` never exists,
+  and git-facts' nearest-existing-ancestor walk collapsed it to the session
+  cwd — denying a linked-worktree commit as a PRIMARY-tree commit (two real
+  false blocks, 2026-08-15). The guard now expands leading `$NAME`/`${NAME}`
+  from literal assignments in the same command string (`$(git rev-parse
+  --show-toplevel)` / `$(pwd)` resolve to the session cwd, so the recipe idiom
+  still denies in a primary checkout); an unresolvable or nonexistent `-C`
+  target is judged as the parsed target and allowed — git itself errors there,
+  nothing can be mutated. Terminated heredoc bodies are stripped before
+  segment parsing so body lines never register as `git` commands. 15 new
+  regression tests cover the compound, chained-variable, heredoc, and
+  multiline `-m` shapes.
+- **CHANGELOG: removed committed merge-conflict markers** (`<<<<<<<` /
+  `=======` / `>>>>>>>`) that landed in the Unreleased→Added section on main;
+  both sides were real entries and are kept.
 
 - **Invoked is not armed: watcher escapes now require a successful arm.** Both
   watcher checks (open-PR gate, keep-moving gate) accepted any

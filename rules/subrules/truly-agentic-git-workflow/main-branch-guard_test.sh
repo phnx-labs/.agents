@@ -270,6 +270,68 @@ AGENTS_WORKTREE_FETCH_MAX_AGE_SEC=0 run_guard 0 "worktree add -b, age gate disab
 touch "$_REF_PATH" 2>/dev/null
 touch "$_FH_PATH" 2>/dev/null
 
+# --- -C variable resolution (RUSH-2743): compound/heredoc/multiline -m -------
+# Real false blocks (2026-08-15): `git -C "$WT" commit` in a compound command
+# was judged against the SESSION CWD because the unexpanded `$WT` produced a
+# nonexistent path and git_facts_load's ancestor walk collapsed it to cwd.
+# ALLOW: var -C pointing at a linked worktree, assignment in the same command.
+run_guard 0 "var -C to linked worktree (compound)" "$(bj "WT=$WT_LINK
+git -C \"\$WT\" commit -m x" "$MAIN_REPO")" "$MAIN_REPO"
+# ALLOW: chained assignments (WT=\$T/...) resolve through the store.
+run_guard 0 "chained var -C to linked worktree" "$(bj "T=$TMP
+WT=\$T/wt_link
+git -C \"\$WT\" commit -m x" "$MAIN_REPO")" "$MAIN_REPO"
+# ALLOW: braced form \${WT}.
+run_guard 0 "braced var -C to linked worktree" "$(bj "WT=$WT_LINK
+git -C \"\${WT}\" commit -m x" "$MAIN_REPO")" "$MAIN_REPO"
+# ALLOW: multiline -m in a compound command with a var -C (the da27ed6f shape).
+run_guard 0 "var -C + multiline -m to linked worktree" "$(bj "WT=$WT_LINK
+git -C \"\$WT\" commit -m \"fix: subject
+
+- body line one
+- body line two\"" "$MAIN_REPO")" "$MAIN_REPO"
+# ALLOW: heredoc in the chain; body must not parse as commands, and the var -C
+# commit after it must resolve. The body line is a literal `git commit` that
+# would deny against the primary cwd if not stripped.
+run_guard 0 "heredoc chain + var -C commit" "$(bj "WT=$WT_LINK
+cat > $TMP/hd.txt <<EOF
+git commit -m body-line-not-a-command
+EOF
+git -C \"\$WT\" commit -m x" "$MAIN_REPO")" "$MAIN_REPO"
+# DENY: an UNTERMINATED heredoc keeps its lines (conservative — fail toward
+# the old behavior), so a body `git commit` still gates against cwd.
+run_guard 2 "unterminated heredoc body still parsed" "$(bj "cat <<EOF
+git commit -m x" "$MAIN_REPO")" "$MAIN_REPO"
+# DENY: var -C pointing AT a primary tree — real expansion, not cwd blame:
+# cwd here is TMP (not a repo), so only expansion can produce this deny.
+run_guard 2 "var -C to PRIMARY tree denies from non-repo cwd" "$(bj "REPO=$MAIN_REPO
+git -C \"\$REPO\" commit -m x" "$TMP")" "$TMP"
+# DENY: \$(git rev-parse --show-toplevel) / \$(pwd) are cwd-equivalent — the
+# recipe idiom must still deny in a primary checkout.
+run_guard 2 "rev-parse toplevel var -C in primary cwd" "$(bj "REPO=\$(git rev-parse --show-toplevel)
+git -C \"\$REPO\" commit -m x" "$MAIN_REPO")" "$MAIN_REPO"
+run_guard 2 "pwd var -C in primary cwd" "$(bj "REPO=\$(pwd)
+git -C \"\$REPO\" commit -m x" "$MAIN_REPO")" "$MAIN_REPO"
+# ALLOW: unresolvable command-substitution var — fail toward the parsed
+# target, never the session cwd (git itself errors on the bogus path).
+run_guard 0 "unresolvable \$(mktemp) var -C" "$(bj "WT=\$(mktemp -d)
+git -C \"\$WT\" commit -m x" "$MAIN_REPO")" "$MAIN_REPO"
+# ALLOW: undefined var -C (set outside the command string).
+run_guard 0 "undefined var -C" "$(bj "git -C \"\$UNDEFINED_MBG_X\" commit -m x" "$MAIN_REPO")" "$MAIN_REPO"
+# ALLOW: nonexistent literal -C target — the parsed target rules, not cwd.
+run_guard 0 "nonexistent literal -C" "$(bj "git -C /nonexistent/mbg-2743 commit -m x" "$MAIN_REPO")" "$MAIN_REPO"
+# DENY: last assignment wins — a literal overwritten by an unresolvable one
+# tombstones the name (allow), and the reverse re-resolves; lock the former.
+run_guard 0 "last assignment wins (tombstone)" "$(bj "REPO=$MAIN_REPO
+REPO=\$(mktemp -d)
+git -C \"\$REPO\" commit -m x" "$MAIN_REPO")" "$MAIN_REPO"
+# DENY: env-prefix form is NOT an assignment segment — unchanged behavior.
+run_guard 2 "env-prefix git commit still gated" "$(bj "FOO=1 git commit -m x" "$MAIN_REPO")" "$MAIN_REPO"
+# DENY: var -C + worktree add with an implicit base — expansion feeds the
+# worktree gate too, so the shape-based deny still fires.
+run_guard 2 "var -C worktree add -b implicit base" "$(bj "REPO=$CLONE
+git -C \"\$REPO\" worktree add -b feat/v2743 $TMP/wt_v2743" "$TMP")" "$TMP"
+
 # --- Harness portability: Grok CLI camelCase payloads (toolName/toolInput) ---
 # The old snake_case-only extraction resolved empty under Grok and fail-OPEN'd,
 # killing the default-branch choke point. These must behave exactly like their

@@ -44,6 +44,14 @@
 # base64-decoded commands. The commit gate is defense in depth, not the sole
 # barrier — the file-tool block already stops an agent authoring content on the
 # default branch through Write/Edit/NotebookEdit.
+#
+# -C resolution (RUSH-2743): a `git -C "$VAR" commit|add|stage` target is
+# expanded from literal `NAME=value` assignments earlier in the same command
+# string (`$(git rev-parse --show-toplevel)` / `$(pwd)` count as the session
+# cwd). A target that stays unresolvable, or that does not exist, is judged as
+# the PARSED target — the gate allows (git itself errors; nothing mutates) and
+# never falls back to blaming the session cwd, which false-blocked linked-
+# worktree commits in compound/heredoc/multiline `-m` commands.
 
 set -eu
 
@@ -298,6 +306,159 @@ extract_sh_c_inner() {
   return 0
 }
 
+# --- `-C <path>` variable resolution (RUSH-2743) -----------------------------
+# The guard parses command STRINGS, so `git -C "$REPO" commit` reaches it with
+# the variable unexpanded. resolve_repo_dir used to emit `<cwd>/$REPO` — a path
+# that never exists — and git_facts_load's nearest-existing-ancestor walk then
+# collapsed it to the session cwd, blaming the PRIMARY tree for a commit aimed
+# at a linked worktree (two real false blocks in one session, 2026-08-15).
+#
+# Resolution is best-effort and static: a literal `NAME=value` assignment seen
+# earlier in the SAME command string is recorded and substituted into a leading
+# `$NAME` / `${NAME}` of a later -C target. `$(git rev-parse --show-toplevel)`
+# and `$(pwd)` count as the session cwd — the recipe idiom, and exactly what
+# they evaluate to where the command runs. Anything else that stays
+# unresolvable (an env var set outside this string, another command
+# substitution) marks the target UNRESOLVABLE and the commit gate FAILS TOWARD
+# THE PARSED TARGET — it allows rather than blaming the cwd the agent
+# explicitly steered away from. git itself errors on a bogus -C, so nothing
+# can be mutated; a false block, by contrast, teaches agents to work around
+# the guard. Runtime obfuscation is already out of scope (see header).
+_MBG_VARS=""
+_MBG_UNRESOLVED="<mbg:unresolved>"
+
+_mbg_var_record() { # $1=name  $2=value (may be the tombstone sentinel)
+  _MBG_VARS="${_MBG_VARS}
+$1=$2"
+}
+
+_mbg_var_get() { # $1=name -> prints value; rc 1 when unknown or tombstoned
+  [ -n "$_MBG_VARS" ] || return 1
+  _vg=$(printf '%s\n' "$_MBG_VARS" | awk -v n="$1" '
+    index($0, n "=") == 1 { v = substr($0, length(n) + 2); found = 1 }
+    END { if (found) printf "%s", v }')
+  [ -n "$_vg" ] || return 1
+  [ "$_vg" = "$_MBG_UNRESOLVED" ] && return 1
+  printf '%s' "$_vg"
+}
+
+# _mbg_expand_leading_var <string> — substitute a LEADING `$NAME`/`${NAME}`
+# from the recorded assignments, iterating so `WT=$REPO/sub` chains resolve.
+# Prints the (possibly unchanged) string; rc 1 when a leading variable exists
+# but cannot be resolved.
+_mbg_expand_leading_var() {
+  _ev=$1
+  _evi=0
+  while [ "$_evi" -lt 8 ]; do
+    case "$_ev" in
+      '${'*)
+        _en=${_ev#'${'}
+        _en=${_en%%\}*}
+        _erest=${_ev#'${'"$_en"\}} ;;
+      '$'*)
+        _et=${_ev#'$'}
+        _en=$(printf '%s' "$_et" | sed 's/[^A-Za-z0-9_].*$//')
+        [ -n "$_en" ] || return 1
+        _erest=${_et#"$_en"} ;;
+      *)
+        printf '%s' "$_ev"
+        return 0 ;;
+    esac
+    _eval=$(_mbg_var_get "$_en") || return 1
+    _ev="$_eval$_erest"
+    _evi=$((_evi + 1))
+  done
+  return 1
+}
+
+# _mbg_note_assignment <segment> — record a segment that is a plain
+# `NAME=value` assignment. rc 0 when the segment WAS an assignment (recorded
+# or tombstoned — either way it is not a command to gate); rc 1 otherwise.
+_mbg_note_assignment() {
+  _seg_a=$1
+  case "$_seg_a" in
+    [A-Za-z_]*=*) ;;
+    *) return 1 ;;
+  esac
+  _an=${_seg_a%%=*}
+  case "$_an" in *[!A-Za-z_0-9]*) return 1 ;; esac
+  _av=${_seg_a#*=}
+  case "$_av" in
+    \"*\") _av=${_av#\"}; _av=${_av%\"} ;;
+    \'*\') _av=${_av#\'}; _av=${_av%\'} ;;
+  esac
+  # cwd-equivalent substitutions (the worktree-recipe idiom): they evaluate to
+  # the toplevel/cwd where the command runs, so resolve them to the session
+  # cwd. This keeps `REPO=$(git rev-parse --show-toplevel); git -C "$REPO"
+  # commit` in a primary checkout a DENY, not an unresolvable-allow.
+  case "$_av" in
+    '$(git rev-parse --show-toplevel)'|'$(pwd)')
+      _mbg_var_record "$_an" "${cwd:-.}"
+      return 0 ;;
+  esac
+  # A value that is ENTIRELY a command substitution (`X=$(anything)`, spaces
+  # included) is a real assignment we cannot evaluate → tombstone, so a later
+  # literal for the same name cannot leak through (last assignment wins).
+  case "$_av" in
+    '$('*')'|'`'*'`')
+      _mbg_var_record "$_an" "$_MBG_UNRESOLVED"
+      return 0 ;;
+  esac
+  # Any other value with whitespace is an env-prefixed command (`FOO=1 git …`,
+  # `FOO=$(x) git commit …`) — NOT a plain assignment segment; leave it to
+  # check_segment's prefix stripping so the command itself is still gated.
+  case "$_av" in *[[:space:]]*) return 1 ;; esac
+  case "$_av" in
+    *'$('*|*'`'*)
+      _mbg_var_record "$_an" "$_MBG_UNRESOLVED"
+      return 0 ;;
+  esac
+  if _avx=$(_mbg_expand_leading_var "$_av"); then
+    _av=$_avx
+  else
+    _mbg_var_record "$_an" "$_MBG_UNRESOLVED"
+    return 0
+  fi
+  case "$_av" in
+    *'$'*) _mbg_var_record "$_an" "$_MBG_UNRESOLVED" ;;
+    *)     _mbg_var_record "$_an" "$_av" ;;
+  esac
+  return 0
+}
+
+# _mbg_strip_heredoc_bodies — drop TERMINATED heredoc bodies from a command
+# string so body lines are never parsed as commands (a heredoc body is data;
+# splitting it into segments produced false `git …` matches). Conservative:
+# an unterminated heredoc keeps its lines (fail toward the old behavior), and
+# here-strings (`<<<`) are neutralized before scanning.
+_mbg_strip_heredoc_bodies() {
+  awk '
+    BEGIN { tag = ""; nbuf = 0; q = sprintf("%c", 39); dq = "\"" }
+    function flushbuf(  i) { for (i = 1; i <= nbuf; i++) print buf[i]; nbuf = 0 }
+    {
+      if (tag != "") {
+        line = $0
+        if (strip_tabs) sub(/^\t+/, "", line)
+        if (line == tag) { tag = ""; nbuf = 0; next }
+        nbuf++; buf[nbuf] = $0
+        next
+      }
+      scan = $0
+      gsub(/<<</, " ", scan)
+      re = "<<-?[ \t]*[" dq q "]?[A-Za-z_][A-Za-z_0-9]*"
+      if (match(scan, re)) {
+        m = substr(scan, RSTART, RLENGTH)
+        strip_tabs = (substr(m, 3, 1) == "-")
+        sub(/^<<-?[ \t]*/, "", m)
+        gsub("[" dq q "]", "", m)
+        tag = m
+      }
+      print
+    }
+    END { flushbuf() }
+  '
+}
+
 # Resolve the repo dir a git segment operates on: the `-C <path>` argument if
 # present (relative resolves against cwd), else the session cwd.
 resolve_repo_dir() {
@@ -494,11 +655,36 @@ check_segment() {
   done
   [ $# -eq 0 ] && return 0
 
+  # Expand a leading `$NAME`/`${NAME}` in the -C target from assignments seen
+  # earlier in this command string (RUSH-2743). If a `$` survives, the target
+  # is unresolvable — the gates below must fail toward the PARSED target,
+  # never fall back to the session cwd.
+  _c_unres=0
+  case "$cpath" in
+    *'$'*)
+      if _cpx=$(_mbg_expand_leading_var "$cpath"); then
+        cpath=$_cpx
+        case "$cpath" in *'$'*) _c_unres=1 ;; esac
+      else
+        _c_unres=1
+      fi ;;
+  esac
+
   sub=$1
   shift
   case "$sub" in
     commit|add|stage)
+      # RUSH-2743: an explicit -C target that is unresolvable or nonexistent
+      # never falls back to the session cwd. Before this rule, the
+      # nearest-existing-ancestor walk in git_facts_load collapsed
+      # `<cwd>/$REPO` to the cwd itself and blamed the primary tree for a
+      # commit aimed at a linked worktree. git errors on a bogus -C, so
+      # nothing can be mutated — allow.
+      [ "$_c_unres" -eq 1 ] && return 0
       _repo=$(resolve_repo_dir "$cpath")
+      if [ -n "$cpath" ] && [ ! -d "$_repo" ]; then
+        return 0
+      fi
       if in_primary_tree "$_repo"; then
         set_deny_reason "\`git $sub\`"
         return 1
@@ -517,6 +703,11 @@ check_segment() {
 
 check_command_string() {
   _input=$1
+  # Heredoc bodies are data, not commands — drop terminated ones before the
+  # segment split so body lines never parse as `git …` segments (RUSH-2743).
+  case "$_input" in
+    *'<<'*) _input=$(printf '%s\n' "$_input" | _mbg_strip_heredoc_bodies) ;;
+  esac
   IFS=$(printf ' \t\n.'); IFS=${IFS%.}
   _chains=$(printf '%s' "$_input" | sed 's/&&/\
 /g; s/||/\
@@ -530,6 +721,9 @@ check_command_string() {
   for seg in $_chains; do
     seg=$(printf '%s' "$seg" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')
     [ -z "$seg" ] && continue
+    # A plain `NAME=value` segment feeds later `-C "$NAME"` resolution; it is
+    # not itself a command to gate (RUSH-2743).
+    if _mbg_note_assignment "$seg"; then continue; fi
     if ! check_segment "$seg"; then
       IFS=$OLDIFS
       return 1
