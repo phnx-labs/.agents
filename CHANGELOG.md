@@ -52,7 +52,8 @@
   than failing loudly. Anchored to line starts with the trailing space git always
   writes, so prose about conflicts, indented markers inside a code block, and
   runs of the same characters used as dividers are not blocked. This is local and
-  opt-in — it only fires on a checkout that has `core.hooksPath` set.
+  opt-in — it only fires on a checkout that installs the hook, either via
+  `core.hooksPath` or a `.git/hooks/pre-commit` symlink.
 
 - **merge-guard: a non-author review verdict must be ON the PR being merged.**
   `gh pr merge` is blocked when the PR has neither a GitHub APPROVED review nor

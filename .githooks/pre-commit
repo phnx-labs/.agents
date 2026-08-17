@@ -1,9 +1,10 @@
 #!/bin/bash
 # Pre-commit hook: validate YAML in skills and configs
-# Install: git config core.hooksPath .githooks
-# Without that, git never runs this file and every gate below is inert.
-# See AGENTS.md, "The commit gates are opt-in" - either core.hooksPath or a
-# .git/hooks symlink works, and this repo uses the symlink.
+# Install EITHER form - both make git run this file:
+#   git config core.hooksPath .githooks
+#   ln -s ../../.githooks/pre-commit .git/hooks/pre-commit   # what this repo uses
+# With neither, git never runs this file and every gate below is inert.
+# See AGENTS.md, "The commit gates are opt-in", for how to verify which is live.
 
 set -e
 
