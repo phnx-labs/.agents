@@ -51,7 +51,11 @@
 # cwd). A target that stays unresolvable, or that does not exist, is judged as
 # the PARSED target — the gate allows (git itself errors; nothing mutates) and
 # never falls back to blaming the session cwd, which false-blocked linked-
-# worktree commits in compound/heredoc/multiline `-m` commands.
+# worktree commits in compound/heredoc/multiline `-m` commands. Heredoc
+# detection is quote-parity aware (a `<<TAG` inside an open quote is data, not
+# an opener), but ESCAPED quotes (`echo "a \"<<EOF\""`) defeat the parity
+# count — the same static-parser limit as the subshell class above; a sandbox,
+# not more regex, is the answer there.
 
 set -eu
 
