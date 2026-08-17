@@ -66,6 +66,8 @@ if [[ ${#CONFLICTED[@]} -gt 0 ]]; then
     echo -e "${RED}Commit blocked: unresolved merge conflict markers in staged content.${NC}" >&2
     printf '  %s\n' "${CONFLICTED[@]}" >&2
     echo "Resolve the conflict and restage before committing." >&2
+    echo "A lone '=======' counts: it is the middle marker of a half-resolved" >&2
+    echo "conflict. If you meant a Markdown setext heading, use '# Heading' instead." >&2
     exit 1
 fi
 
