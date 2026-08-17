@@ -109,9 +109,27 @@ surface: internal
 ---
 
 ## Purpose
-Rework src/components/Dashboard.tsx and the login screen.
+Rework the dashboard.
+
+## Proposed Changes
+- src/components/Dashboard.tsx — rebuild the layout
 EOF
-run 2 "internal-declared plan touching .tsx, architecture SVG only -> block" "$EPM"
+run 2 "internal-declared plan listing .tsx, architecture SVG only -> block" "$EPM"
+
+# 2f-b. A PROSE mention of a .tsx path (an out-of-scope aside) does NOT escalate —
+# only list items / table rows (files-changed enumerations) do.
+rm -f "$SCAN"/*
+write_figure_html "$SCAN/plan-backend.html"
+cat > "$SCAN/plan-backend.md" <<'EOF'
+---
+kind: plan
+surface: internal
+---
+
+## Purpose
+Migrate the queue to Postgres. Out of scope: the dashboard's App.tsx does not change.
+EOF
+run 0 "internal plan with prose-only .tsx aside, SVG present -> allow" "$EPM"
 
 # 2g. The same UI-touching plan WITH the behavior figure clears.
 rm -f "$SCAN"/*
@@ -123,9 +141,12 @@ surface: internal
 ---
 
 ## Purpose
-Rework src/components/Dashboard.tsx and the login screen.
+Rework the dashboard.
+
+## Proposed Changes
+- src/components/Dashboard.tsx — rebuild the layout
 EOF
-run 0 "internal-declared plan touching .tsx, behavior evidence -> allow" "$EPM"
+run 0 "internal-declared plan listing .tsx, behavior evidence -> allow" "$EPM"
 
 # 3. ExitPlanMode with the scratchpad <slug>-plan.html convention (nested) -> ALLOW.
 rm -f "$SCAN"/*.html
