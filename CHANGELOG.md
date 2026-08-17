@@ -4,6 +4,24 @@
 
 ### Added
 
+- **`design` 0.3.0 — critique becomes a real audit, with deterministic checkers and its
+  own door.** The `critique` mode
+  (`plugins/design/skills/design/critique.md`) now audits an existing surface — URL,
+  local HTML, screenshot, several pages of one site, or a native app — instead of only
+  scoring a single screen: it captures both themes, checks the page against the
+  product's own brand tokens, diffs pages against each other for drift, and routes its
+  findings into a paste-ready **fix brief** plus standing **design laws** appended to
+  the project's docs (state a complaint once; every future agent inherits it). Two bun
+  scripts in `plugins/design/skills/design/scripts/` make the mechanical half
+  computable instead of guessable: `check-contrast.ts` (WCAG 2.x ratios for
+  hex/rgb/oklch, translucent fg composited, AA/AAA verdicts) and `check-tells.ts` (the
+  design-core §6 anti-tells catalog, §1 offline/CDN violations, and §3 color-only
+  status glyphs, with line numbers). New `/design:critique` command routes straight to
+  the mode — auditing is a different verb from producing, the same split as
+  `code:review` vs `code:loop`. Verified on a real artifact: the linter found 40
+  high-severity issues (3 CDN font loads, 37 color-only status glyphs) and 4 distinct
+  tells in a doc that had passed eyeball review.
+
 - **BMAD and ADHD global workflows.** The portable `bmad` and `adhd` skills
   create an implementation-ready work package or bounded multi-frame decision
   preview; `/bmad` and `/adhd` are their Claude-compatible accelerators. Both

@@ -19,12 +19,31 @@ optional, never required.
 | `deck` | slide decks | HTML (PPTX optional) | none |
 | `asset` | OG cards, logos, icons, posters | SVG/HTML (raster optional) | none for vector |
 | `motion` | UI motion, micro-interactions | CSS/HTML | none |
-| `critique` | review an existing screen | checklist verdict | none |
+| `critique` | audit a screen/site/app; find inconsistencies | ranked findings + fix brief + design laws | none |
 | `anticipate` | diagnose a dead-end flow, propose the continuation | before/after ASCII + rationale | none |
 
 There is no separate `brand` mode — brand identity is part of `system` (see
 `skills/design/system.md`), since it is the identity layer a design system is
 built from, not a distinct deliverable.
+
+## Commands
+
+| Command | Routes to |
+| --- | --- |
+| `/design` | the front door — reads the intent, picks a mode |
+| `/design:critique <url\|file\|screenshot\|pages…>` | the `critique` mode directly — auditing is a different verb from producing (review vs build, the same split as `code:review` vs `code:loop`), so it earns its own door |
+
+## Deterministic checkers (`skills/design/scripts/`)
+
+The critique mode (and every mode's §9 self-verification) leans on two bun scripts so
+quality claims are computed, never guessed:
+
+- **`check-contrast.ts`** — WCAG 2.x ratios for hex / rgb() / oklch() pairs, translucent
+  foregrounds composited; AA/AAA verdicts, exit 1 on failure. Design-core §3 says "state
+  the ratio; do not guess it" — this is the tool that makes that possible.
+- **`check-tells.ts`** — static linter over an HTML file for the anti-tells catalog (§6),
+  external-CDN/offline violations (§1), and empty color-only status glyphs (§3), each
+  finding with line numbers. Heuristic by design: findings are lines to open and judge.
 
 ## Why offline-first
 
