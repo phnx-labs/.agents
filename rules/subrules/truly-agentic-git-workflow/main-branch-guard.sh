@@ -447,11 +447,20 @@ _mbg_strip_heredoc_bodies() {
       gsub(/<<</, " ", scan)
       re = "<<-?[ \t]*[" dq q "]?[A-Za-z_][A-Za-z_0-9]*"
       if (match(scan, re)) {
-        m = substr(scan, RSTART, RLENGTH)
-        strip_tabs = (substr(m, 3, 1) == "-")
-        sub(/^<<-?[ \t]*/, "", m)
-        gsub("[" dq q "]", "", m)
-        tag = m
+        # Quote parity: a << inside an open quote on this line (echo "x <<EOF")
+        # is string data, not a heredoc opener. Odd count of preceding quotes
+        # -> skip; the line (and what follows) keeps the old conservative
+        # parse instead of being swallowed into a phantom body.
+        pre = substr(scan, 1, RSTART - 1)
+        t1 = pre; ndq = gsub(dq, "&", t1)
+        t2 = pre; nsq = gsub("[" q "]", "&", t2)
+        if (ndq % 2 == 0 && nsq % 2 == 0) {
+          m = substr(scan, RSTART, RLENGTH)
+          strip_tabs = (substr(m, 3, 1) == "-")
+          sub(/^<<-?[ \t]*/, "", m)
+          gsub("[" dq q "]", "", m)
+          tag = m
+        }
       }
       print
     }

@@ -298,6 +298,13 @@ cat > $TMP/hd.txt <<EOF
 git commit -m body-line-not-a-command
 EOF
 git -C \"\$WT\" commit -m x" "$MAIN_REPO")" "$MAIN_REPO"
+# DENY: a QUOTED `<<TAG` is string data, not a heredoc opener — it must not
+# swallow the `git commit` that follows (reviewer finding on #329: the
+# quote-unaware stripper turned this deny into an allow).
+run_guard 2 "quoted <<TAG does not open a heredoc" "$(bj "echo \"text <<EOF\" > $TMP/q.txt
+git commit -m x" "$MAIN_REPO")" "$MAIN_REPO"
+run_guard 2 "single-quoted <<TAG does not open a heredoc" "$(bj "echo 'text <<EOF' > $TMP/q2.txt
+git commit -m x" "$MAIN_REPO")" "$MAIN_REPO"
 # DENY: an UNTERMINATED heredoc keeps its lines (conservative — fail toward
 # the old behavior), so a body `git commit` still gates against cwd.
 run_guard 2 "unterminated heredoc body still parsed" "$(bj "cat <<EOF
