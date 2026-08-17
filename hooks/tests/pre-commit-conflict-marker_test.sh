@@ -89,9 +89,25 @@ check "a clean worktree does not excuse a dirty index" "$?" "1"
 # --- F: a lone separator, the middle marker of a half-resolution --------------
 # Deleting the outer two markers and leaving '=======' still corrupts the file,
 # and in Markdown it renders as a setext H1 rather than failing loudly.
-git -C "$TMP_DIR" reset -q
 printf 'Heading text\n=======\nbody\n' > "$TMP_DIR/half.md"
 check "a lone separator left by a half-resolution is blocked" "$(commit_status half.md)" "1"
+
+# --- G: the setext hint is targeted, not printed at every block ----------------
+# A genuine three-marker conflict must NOT be told "if you meant a setext heading",
+# advice that does not apply to it; a lone separator must still get the hint.
+printf 'a\n<<<<<<< HEAD\nx\n=======\ny\n>>>>>>> other\nb\n' > "$TMP_DIR/full.md"
+git -C "$TMP_DIR" reset -q
+git -C "$TMP_DIR" add full.md >/dev/null 2>&1
+full_msg=$(git -C "$TMP_DIR" commit -m "probe" 2>&1)
+check "a real conflict is not offered the setext hint" \
+  "$(printf '%s' "$full_msg" | grep -c 'setext')" "0"
+
+printf 'Heading\n=======\nbody\n' > "$TMP_DIR/lone.md"
+git -C "$TMP_DIR" reset -q
+git -C "$TMP_DIR" add lone.md >/dev/null 2>&1
+lone_msg=$(git -C "$TMP_DIR" commit -m "probe" 2>&1)
+check "a lone separator IS offered the setext hint" \
+  "$(printf '%s' "$lone_msg" | grep -c 'setext')" "1"
 
 echo "$pass passed, $fail failed"
 [[ $fail -eq 0 ]]
