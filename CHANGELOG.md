@@ -4,6 +4,22 @@
 
 ### Added
 
+- **`agents sessions share` — teach the new verb, and carve it out of the
+  never-publish-a-transcript rule.** agents-cli PR #2771 (RUSH-2784) adds
+  `agents sessions share <id>`, which publishes a session's **redacted** render to
+  the R2 share Worker, unlisted and expiring. Taken literally,
+  `truly-agentic-git-workflow`'s "never publish a private or secret asset (a
+  transcript…) to a public R2 URL" banned the command outright, so every agent
+  reading the rule would have refused to use the feature it was asked to use. The
+  rule now says *raw* transcript and states the carve-out explicitly, and F5's
+  transcript line points at it. The carve-out is deliberately narrow: it covers a
+  human asking you to send them a session, and it does **not** license attaching a
+  transcript to a PR/issue/ticket body — that still takes a secret gist, or a
+  `<host>:<path>` reference on a public repo. `skills/sessions/SKILL.md` gains a
+  "Sharing a session with a human" section carrying the same boundary plus the
+  honesty framing the `share` skill already uses: unlisted is not access control,
+  R2 reads are public, never call such a link private or encrypted.
+
 - **`design` 0.3.0 — critique becomes a real audit, with deterministic checkers and its
   own door.** The `critique` mode
   (`plugins/design/skills/design/critique.md`) now audits an existing surface — URL,
