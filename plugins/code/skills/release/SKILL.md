@@ -27,17 +27,25 @@ If no version is given, analyze what's needed and suggest one.
 
 Before doing anything, check for project-specific release instructions.
 
-### 1.0 Release-train / lease guard — refuse to double-release
+### 1.0 Concurrency guard — one releaser at a time, but never zero
 
-Before anything else, check whether this repo releases on a **serialized pipeline** — a scheduled release train, a CI publish workflow, or a release script that claims a lease. If it does, a manual publish is a second releaser entering one pipeline — exactly what jammed `agents-cli` on 2026-08-02 (four release attempts, zero published versions). `release-to-fleet` is the authority.
+**Nothing auto-ships a merge.** There is no release train; do not look for one, and never stop because you believe a scheduled releaser will finish it. `release-to-fleet` is the authority.
+
+What you must not become is a *second* releaser while another is genuinely mid-flight — that is what jammed `agents-cli` on 2026-08-02 (four release attempts, zero published versions).
 
 ```bash
-agents routines list | grep -i release             # a scheduled train?
-ls .github/workflows/ | grep -iE 'release|publish'  # a CI publisher?
 grep -rl 'release-lease' scripts/ 2>/dev/null       # a lease = already serialized
+ls .github/workflows/ | grep -iE 'release|publish'  # a CI publisher?
+gh pr list --state open | grep -i 'chore(release)'  # a release already in flight?
+pgrep -af release.sh                                # someone mid-release right now?
 ```
 
-If any of these hit, **stop**: do not run the release script, tag, or publish. Name the train and when it next runs, and hand off to it. Proceed through the rest of this skill only when the repo has **no** train/lease and the release is authorized.
+Branch on each signal — every one of the four has an answer, and none of them is "ignore it":
+
+- **A lease** (`release-lease.sh`) → just run the script. The lease *is* the serialization and will refuse you if someone else holds it.
+- **A CI publisher** → read its trigger before you decide. A `workflow_dispatch`-only workflow publishes nothing on its own and does not block you. One that fires on a **push/tag event you are about to cause** is a real automated releaser: let it publish, then verify the registry flipped — do not also publish by hand, and do not skip the verification because CI "has it". (Live example: `agents-cli`'s `.github/workflows/agents-dbg-release.yml` runs `scripts/release.sh … --confirm` on `push: tags: agents-dbg-v*`, so pushing that tag *is* triggering the release.)
+- **An open `chore(release)` PR, or a running `release.sh`** → verify that releaser is **actually alive** before deferring to it. A closed-unmerged release PR and a dead session are not an in-flight release. If it is alive, watch it to completion rather than walking away.
+- **None of the above** → the release is yours to drive end to end.
 
 ### 1.1 Check for project-level overrides
 

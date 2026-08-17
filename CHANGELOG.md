@@ -10,7 +10,50 @@
   remain at the approval boundary and use DevSub workflow tools only when those
   tools and scopes are available.
 
-<<<<<<< HEAD
+- **The last two release-train hand-off instructions are gone.** `commands/next.md`
+  was fixed in #321, but `plugins/code/skills/release/SKILL.md:30-38` and
+  `plugins/code/commands/release.md:11` still told agents to detect "a scheduled
+  release train" and, on finding one, to **stop** and "hand off to it". No such
+  train has ever run — the `release-train` routine measured `enabled: False`,
+  `devices: []`, `lastRun: None`, `nextRun: None`, and has since been deleted and
+  verified absent on all 13 reachable fleet boxes. An instruction to hand off to a
+  mechanism that does not exist is how work sits merged-but-unshipped with every
+  agent believing it is covered.
+
+  The skill's Phase 1.0 becomes a **concurrency** gate rather than a
+  train-detection gate: proceed unless another releaser is *verifiably alive*
+  (held lease, open `chore(release)` PR with a live driver, running `release.sh`).
+  It also names the failure that motivated it — a closed-unmerged release PR and a
+  dead session are **not** an in-flight release, so deferring to one is idling, not
+  coordinating. Where a lease exists, running the script is correct: the lease is
+  the serialization and refuses a second claimant.
+
+- **Gate accuracy is measurable: `stop/gate-outcome-backfill.py`.** Derives, for
+  every recorded Stop-gate block, whether the agent then did the specific thing
+  that gate demanded — a PR actually merged or handed off, a task whose *status*
+  reached completed, the handed-over script actually executed. Offline and
+  read-only by default; deliberately never on a hook path. Keyed to the demand
+  rather than to any follow-on activity, so an agent that answers a bogus block
+  by ticking one todo does not count as a success. Fires are paired to their
+  transcript block on timestamp and each block is consumed once; a row with no
+  unused injection inside the tolerance is reported unscored rather than scored
+  against the wrong slice of the conversation. `delivery`, `self-audit` and
+  `swarm` report unscored on purpose — their demands leave no signature a
+  transcript scan can confirm. Stores a sha256 of the message, never its text.
+
+- **The repository pre-commit hook now refuses staged content carrying merge
+  conflict markers.** A half-resolved file reached `main` and put raw
+  `<<<<<<< HEAD` / `=======` / `>>>>>>> origin/main` markers into the changelog's
+  Unreleased section, because nothing checked for them. The gate reads the
+  **index** (`git show ":$file"`), so staging a conflicted blob and then cleaning
+  the working copy is still blocked, and it runs before the `yq` bootstrap so it
+  fails fast. A lone `=======` counts: deleting the outer two markers still
+  corrupts the file, and in Markdown that line renders as a setext heading rather
+  than failing loudly. Anchored to line starts with the trailing space git always
+  writes, so prose about conflicts, indented markers inside a code block, and
+  runs of the same characters used as dividers are not blocked. This is local and
+  opt-in — it only fires on a checkout that has `core.hooksPath` set.
+
 - **merge-guard: a non-author review verdict must be ON the PR being merged.**
   `gh pr merge` is blocked when the PR has neither a GitHub APPROVED review nor
   a fresh APPROVE verdict comment — and a comment citing a verdict "carried
@@ -25,7 +68,6 @@
   release-shaped phrases (`chore(release)` / "release PR" / "release:" /
   "release v"). Unverifiable declarations (refactor / no-behavior-change)
   and unreadable diffs keep failing open.
-=======
 - **Argue-past ramp in the verify-work-complete Stop gate.** A retried stop
   (stop_hook_active) used to pass unconditionally — the ramp three sessions used
   on 2026-08-15 to clear blocked stops by restating "correct stopping point" /
@@ -45,9 +87,23 @@
   2026-08-15 directive after an agent wrote into a primary checkout on main.
   main-branch-guard remains the hard enforcement; this keeps the rule in every
   context window.
->>>>>>> origin/main
 
 ### Fixed
+
+- **main-branch-guard: `-C` targets are resolved, never blamed on the session
+  cwd (RUSH-2743).** `git -C "$WT" commit` in a compound command reached the
+  guard with the variable unexpanded; the resulting `<cwd>/$WT` never exists,
+  and git-facts' nearest-existing-ancestor walk collapsed it to the session
+  cwd — denying a linked-worktree commit as a PRIMARY-tree commit (two real
+  false blocks, 2026-08-15). The guard now expands leading `$NAME`/`${NAME}`
+  from literal assignments in the same command string (`$(git rev-parse
+  --show-toplevel)` / `$(pwd)` resolve to the session cwd, so the recipe idiom
+  still denies in a primary checkout); an unresolvable or nonexistent `-C`
+  target is judged as the parsed target and allowed — git itself errors there,
+  nothing can be mutated. Terminated heredoc bodies are stripped before
+  segment parsing so body lines never register as `git` commands. 15 new
+  regression tests cover the compound, chained-variable, heredoc, and
+  multiline `-m` shapes.
 
 - **Invoked is not armed: watcher escapes now require a successful arm.** Both
   watcher checks (open-PR gate, keep-moving gate) accepted any
@@ -93,6 +149,12 @@
 - **Removed the readback Stop hard-block that over-fired on ordinary work (RUSH-2712 follow-up).** PR #308 exit-2 blocked any session that edited a .html/.png/.svg/.pdf file and used a common visual phrase even with nothing delivered; an independent review reproduced it on a routine routing-bug fix. The advisory PreToolUse nudge, the properly-scoped delivery-chain check, and the rules/preset changes from #308 are kept; only the Stop hard-block is removed, along with only its visual-gate test fixture. Re-landing the claim check with the 66-transcript corpus-replay validation the plan required is deferred.
 
 ### Changed
+
+- **The conflict-marker commit gate now explains the lone-separator case.** A bare
+  `=======` is blocked because it is the middle marker of a half-resolved conflict,
+  but the message only said "unresolved merge conflict markers" — misleading for
+  someone who wrote a Markdown setext heading and got blocked. It now names that
+  case and points at `# Heading`.
 
 - **The git guardrails now protect the user's whole PRIMARY working tree, on any
   branch — not just the default branch — and ban `git switch` alongside `git
