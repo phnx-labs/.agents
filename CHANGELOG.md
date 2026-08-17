@@ -4,6 +4,19 @@
 
 ### Added
 
+- **Gate accuracy is measurable: `stop/gate-outcome-backfill.py`.** Derives, for
+  every recorded Stop-gate block, whether the agent then did the specific thing
+  that gate demanded — a PR actually merged or handed off, a task whose *status*
+  reached completed, the handed-over script actually executed. Offline and
+  read-only by default; deliberately never on a hook path. Keyed to the demand
+  rather than to any follow-on activity, so an agent that answers a bogus block
+  by ticking one todo does not count as a success. Fires are paired to their
+  transcript block on timestamp and each block is consumed once; a row with no
+  unused injection inside the tolerance is reported unscored rather than scored
+  against the wrong slice of the conversation. `delivery`, `self-audit` and
+  `swarm` report unscored on purpose — their demands leave no signature a
+  transcript scan can confirm. Stores a sha256 of the message, never its text.
+
 - **The repository pre-commit hook now refuses staged content carrying merge
   conflict markers.** A half-resolved file reached `main` and put raw
   `<<<<<<< HEAD` / `=======` / `>>>>>>> origin/main` markers into the changelog's
