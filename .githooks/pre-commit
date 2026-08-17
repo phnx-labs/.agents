@@ -47,6 +47,23 @@ if [[ ${#AGENTS_PATHS[@]} -gt 0 ]]; then
     exit 1
 fi
 
+# An unresolved merge conflict reached main in CHANGELOG.md (markers committed at
+# lines 7/22/42) because nothing here looked for them. Check the staged CONTENT,
+# not the working tree, so a partial `git add` of a half-resolved file is caught.
+CONFLICTED=()
+while IFS= read -r -d '' file; do
+    if git show ":$file" 2>/dev/null | grep -qE '^(<<<<<<< |>>>>>>> )'; then
+        CONFLICTED[${#CONFLICTED[@]}]="$file"
+    fi
+done < <(git diff --cached --name-only --diff-filter=ACM -z)
+
+if [[ ${#CONFLICTED[@]} -gt 0 ]]; then
+    echo -e "${RED}Commit blocked: unresolved merge conflict markers in staged content.${NC}" >&2
+    printf '  %s\n' "${CONFLICTED[@]}" >&2
+    echo "Resolve the conflict and restage before committing." >&2
+    exit 1
+fi
+
 ensure_yq
 
 # Extension validation applies only to staged files that still exist.
