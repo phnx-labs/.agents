@@ -50,9 +50,14 @@ fi
 # An unresolved merge conflict reached main in CHANGELOG.md (markers committed at
 # lines 7/22/42) because nothing here looked for them. Check the staged CONTENT,
 # not the working tree, so a partial `git add` of a half-resolved file is caught.
+# A lone '=======' is caught too: a half-resolution that deletes the outer two
+# markers still corrupts the file, and in Markdown a bare '=======' is a setext H1
+# underline, so it renders as a heading rather than failing loudly. Measured cost
+# before adding it: `rg -n '^=======$'` matched exactly one line in this repo, the
+# defect itself, so there is no legitimate setext usage to break.
 CONFLICTED=()
 while IFS= read -r -d '' file; do
-    if git show ":$file" 2>/dev/null | grep -qE '^(<<<<<<< |>>>>>>> )'; then
+    if git show ":$file" 2>/dev/null | grep -qE '^(<<<<<<< |>>>>>>> |=======$)'; then
         CONFLICTED[${#CONFLICTED[@]}]="$file"
     fi
 done < <(git diff --cached --name-only --diff-filter=ACM -z)
