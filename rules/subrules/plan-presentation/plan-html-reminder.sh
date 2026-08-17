@@ -125,13 +125,24 @@ for scan_root in $scan_roots; do
     [ -n "$candidate" ] || continue
     source=${candidate%.html}.md
     [ -r "$source" ] || continue
+    # Lowercase the declared surface — the artifacts-cli validator lowercases
+    # before comparing, so "surface: CLI" passed the validator while silently
+    # falling through this case unmatched.
     surface=$(awk '
       NR == 1 && $0 == "---" { frontmatter=1; next }
       frontmatter && $0 == "---" { exit }
       frontmatter && $0 ~ /^surface:[[:space:]]*/ {
         sub(/^surface:[[:space:]]*/, ""); gsub(/["'\''[:space:]]/, ""); print; exit
       }
-    ' "$source" 2>/dev/null || true)
+    ' "$source" 2>/dev/null | tr '[:upper:]' '[:lower:]' || true)
+    # Surface is self-declared, and "internal" is the path of least resistance
+    # when the user-visible check blocks. Don't trust it blindly: a plan whose
+    # own source names UI component files is a user-visible plan no matter what
+    # its frontmatter says.
+    if [ "$surface" = "internal" ] \
+      && grep -Eq '\.(tsx|jsx|vue|svelte)\b' "$source" 2>/dev/null; then
+      surface="web"
+    fi
     case "$surface" in
       internal)
         if grep -Eqi '<svg\b' "$candidate" 2>/dev/null \

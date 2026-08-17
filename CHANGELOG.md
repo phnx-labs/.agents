@@ -91,6 +91,33 @@
 
 ### Fixed
 
+- **Plans without mockups and PRs without run screenshots — the four enforcement
+  holes are closed.** A session-transcript trace showed both requirements existed
+  only as prose for the most common paths.
+  (1) **Plan-turn detection**: the plan-presentation gate only recognized native
+  `ExitPlanMode`, Codex's plan mode, or a `<!-- agents-plan -->` marker that no
+  entry point ever emitted — so `/plan` and `/swarm:plan` run in a normal
+  auto/edit session escaped the render/mockup checks entirely. `commands/plan.md`
+  and `plugins/swarm/skills/plan/SKILL.md` now instruct ending the final plan
+  message with the marker, `swarm:plan`'s mock-up step requires real
+  product-faithful mockups in the `artifact-behavior` current/proposed markup the
+  gate actually greps for (fenced ASCII never satisfied it), and
+  `plan-html-reminder.sh` lowercases the declared `surface` (`surface: CLI`
+  passed the validator but fell through the hook's case-sensitive match) and no
+  longer trusts `surface: internal` when the plan's own source names UI component
+  files (`.tsx`/`.jsx`/`.vue`/`.svelte` → the user-visible bar applies).
+  (2) **PR evidence**: `pr-description-reminder.sh`'s evidence check was a bare
+  substring match — PR #317 cleared it with a fleet-local
+  `zion:/tmp/gate-recording-run.txt.png` nobody on GitHub can open. Evidence is
+  now a remote URL a reviewer can render (a `![…](https://…)` embed, a media-
+  extension URL, or `user-attachments` / `githubusercontent` / a `share.` host);
+  and the unverifiable no-run declarations (`refactor`, `docs:`, release-shaped
+  phrases, `no behavior change`) only count in the PR's **lead** (title + first 8
+  body lines), so the word "refactor" buried in an unrelated code block no longer
+  clears a feature diff. `plugins/code/skills/review/SKILL.md` pins missing run
+  evidence on a user-visible change as a BLOCKER, not a downgradable nit. Both
+  hook test suites extended (41 and 26 cases, all passing).
+
 - **main-branch-guard: `-C` targets are resolved, never blamed on the session
   cwd (RUSH-2743).** `git -C "$WT" commit` in a compound command reached the
   guard with the variable unexpanded; the resulting `<cwd>/$WT` never exists,

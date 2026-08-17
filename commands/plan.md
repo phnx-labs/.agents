@@ -340,6 +340,12 @@ reference this step.
 3. **Tell the user** the plan opened in their browser, with a 2-3 line spoken summary
    and the source path. Then proceed to the design questions / `ExitPlanMode` as usual.
 
+4. **End the final plan message with the literal marker `<!-- agents-plan -->` on its
+   own line.** The plan-presentation gate detects a plan turn by the native
+   `ExitPlanMode` call, the harness's plan mode, **or this marker** — `/plan` invoked
+   in a normal auto/edit session produces neither of the first two, so without the
+   marker the render/mockup checks silently never run.
+
 Skip this only when there is no reachable browser host (headless-only fleet) — still
 render the Markdown + HTML, then present the plan inline and say why the browser
 open was skipped.

@@ -89,6 +89,44 @@ rm -f "$SCAN"/*
 write_behavior_html "$SCAN/plan-cli-behavior.html"
 run 0 "CLI plan, current/proposed capture-or-mockup evidence -> allow" "$EPM"
 
+# 2e. Surface is matched case-insensitively — "surface: CLI" passed the
+# artifacts-cli validator (which lowercases) but fell through this hook's
+# case-sensitive match unchecked.
+rm -f "$SCAN"/*
+write_behavior_html "$SCAN/plan-upper.html"
+sed -i.bak 's/^surface: cli$/surface: CLI/' "$SCAN/plan-upper.md" && rm -f "$SCAN/plan-upper.md.bak"
+run 0 "uppercase surface: CLI, behavior evidence -> allow (normalized)" "$EPM"
+
+# 2f. "surface: internal" is not trusted when the plan's own source names UI
+# component files — the internal downgrade was the path of least resistance
+# around the user-visible mockup requirement.
+rm -f "$SCAN"/*
+write_figure_html "$SCAN/plan-sneaky.html"
+cat > "$SCAN/plan-sneaky.md" <<'EOF'
+---
+kind: plan
+surface: internal
+---
+
+## Purpose
+Rework src/components/Dashboard.tsx and the login screen.
+EOF
+run 2 "internal-declared plan touching .tsx, architecture SVG only -> block" "$EPM"
+
+# 2g. The same UI-touching plan WITH the behavior figure clears.
+rm -f "$SCAN"/*
+write_behavior_html "$SCAN/plan-sneaky2.html"
+cat > "$SCAN/plan-sneaky2.md" <<'EOF'
+---
+kind: plan
+surface: internal
+---
+
+## Purpose
+Rework src/components/Dashboard.tsx and the login screen.
+EOF
+run 0 "internal-declared plan touching .tsx, behavior evidence -> allow" "$EPM"
+
 # 3. ExitPlanMode with the scratchpad <slug>-plan.html convention (nested) -> ALLOW.
 rm -f "$SCAN"/*.html
 mkdir -p "$SCAN/a/b/scratchpad"

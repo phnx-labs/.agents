@@ -38,8 +38,9 @@ esac
 STUB
 chmod +x "$TMP/bin/git"
 printf 'Just a real change with no proof of a run.\n'          > "$TMP/no-evidence.md"
-printf 'Ran it, here is the result: ![out](result.png)\n'     > "$TMP/with-image.md"
+printf 'Ran it: ![out](https://share.example.com/u/run-shot)\n' > "$TMP/with-image.md"
 printf 'Pure refactor, no behavior change.\n'                  > "$TMP/refactor.md"
+printf 'A real feature change.\n\n\n\n\n\n\n\n\n\n\nBTW this touches the refactor helper.\n' > "$TMP/deep-declaration.md"
 mkdir -p "$TMP/dir with space"
 printf 'Just a real change, no proof.\n'                       > "$TMP/dir with space/body.md"
 
@@ -77,12 +78,22 @@ check 2 tool_input "-F space form"            "gh pr create -t x -F $TMP/no-evid
 check 2 tool_input "-F= equals form"          "gh pr create -t x -F=$TMP/no-evidence.md"
 check 2 tool_input "body-file then flag"      "gh pr create -t x --body-file $TMP/no-evidence.md --draft"
 
-# --- ALLOW (exit 0): a real run result (screenshot / recording / asset) ---
-check 0 tool_input "markdown image"      'gh pr create -t x -b "![result](shot.png)"'
-check 0 tool_input "png path"            'gh pr create -t x -b "ran it, see /tmp/out.png"'
-check 0 tool_input "recording file"      'gh pr create -t x -b "flow recording: demo.mp4"'
+# --- ALLOW (exit 0): a real run result a reviewer can OPEN (remote URL) ---
+check 0 tool_input "remote embed"        'gh pr create -t x -b "![result](https://share.example.com/u/run-shot)"'
+check 0 tool_input "remote media url"    'gh pr create -t x -b "recording: https://cdn.example.com/demo.mp4"'
 check 0 toolInput  "gh asset url"        'gh pr create -t x -b "https://github.com/o/r/assets/12/ab.gif"'
+check 0 tool_input "user-attachments"    'gh pr create -t x -b "https://github.com/user-attachments/assets/ab12"'
+check 0 tool_input "share host url"      'gh pr create -t x -b "run output: https://share.agents-cli.sh/u/design-run-1"'
 check 0 tool_input "body-file image"     "gh pr create -t x --body-file $TMP/with-image.md"
+
+# --- NUDGE (exit 2): things that LOOK like evidence but nobody on GitHub can open ---
+# (2026-08-17: PR #317 cleared the old substring check with a fleet-local
+# "zion:/tmp/gate-recording-run.txt.png"; a local ![](result.png) embed and a bare
+# "demo.mp4" filename cleared it the same way.)
+check 2 tool_input "local png path"      'gh pr create -t x -b "ran it, see zion:/tmp/out.png"'
+check 2 tool_input "local embed"         'gh pr create -t x -b "![result](shot.png)"'
+check 2 tool_input "bare recording name" 'gh pr create -t x -b "flow recording: demo.mp4"'
+check 2 tool_input "gist link only"      'gh pr create -t x -b "log: https://gist.github.com/u/abc123"'
 
 # --- ALLOW (exit 0): explicit no-run declaration (release / docs / refactor / test) ---
 # Checkable declarations (test-only / docs-only) are verified against the branch
@@ -94,6 +105,11 @@ check 0 tool_input "refactor"            'gh pr create -t x -b "pure refactor, n
 PATH="$TMP/bin:$PATH" FAKE_PRD_FILES=$'src/widget.test.ts\ntests/e2e_test.sh' \
   check 0 tool_input "test-only (diff matches)"  'gh pr create -t x -b "test-only coverage bump"'
 check 0 tool_input "body-file refactor"  "gh pr create -t x --body-file $TMP/refactor.md"
+# Declarations only count in the LEAD (title + first 8 body lines) — the word
+# "refactor" buried on line 12 of a feature PR is not a declaration.
+check 2 tool_input "deep declaration does not clear" "gh pr create -t x --body-file $TMP/deep-declaration.md"
+# ...but a declaration in the TITLE does (the "lead with what + type" convention).
+check 0 tool_input "title declaration clears" "gh pr create --title \"refactor: flatten the loop\" --body-file $TMP/no-evidence.md"
 
 # --- NUDGE (exit 2): declaration CONTRADICTED by the diff (the PR #2736 gaming) ---
 PATH="$TMP/bin:$PATH" FAKE_PRD_FILES=$'apps/cli/src/lib/browser/identity.ts\napps/cli/src/lib/browser/identity.test.ts' \

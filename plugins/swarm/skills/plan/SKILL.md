@@ -43,13 +43,21 @@ state, error state, or multi-step user journey:
 
 1. **User flow** — numbered steps from intent → done (happy path + the 1–2 failure paths
    that matter).
-2. **ASCII mock-ups** of **every** distinct screen/state (not just the hero). Label
-   primary actions, empty states, and error copy. Prefer the target product's real
-   labels over placeholder lorem.
+2. **Real mock-ups** of **every** distinct screen/state (not just the hero) — built to
+   read like the actual product (probe the repo for its tokens/brand), not ASCII
+   wireframes and not generic box diagrams. Label primary actions, empty states, and
+   error copy with the target product's real labels, never placeholder lorem.
 3. **Before / after** when replacing an existing surface — stills side by side, not a
    prose diff of "we'll improve the layout".
-4. Put the mock-ups **in the proposal and in the HTML review artifact** (inline SVG or
-   fenced ASCII that survives render). Do not leave them only in chat.
+4. Put the mock-ups **in the proposal and in the HTML review artifact**. For a
+   user-visible surface the artifact must carry the current/proposed behavior figure
+   in the `artifact-behavior` markup (`data-state="current|proposed"`,
+   `data-evidence="capture|mockup"`) — that markup is what `artifacts check` and the
+   plan-presentation gate actually verify; fenced ASCII does **not** satisfy it. Do
+   not leave mock-ups only in chat.
+5. **End the final plan message with the literal marker `<!-- agents-plan -->` on its
+   own line** — it is how the plan-presentation gate recognizes a plan turn when this
+   skill runs outside the harness's native plan mode.
 
 If the change is pure library/backend with **no** user-visible surface, say so explicitly
 under Design (`no UI surface`) and skip mock-ups — do not invent a fake screen.
