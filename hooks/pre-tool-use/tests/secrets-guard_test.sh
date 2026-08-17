@@ -17,8 +17,10 @@ trap 'rm -rf "$SANDBOX"' EXIT
 pass=0; fail=0
 
 json_escape() {
+  # Tabs must become \t like a real harness payload — a raw control char is
+  # invalid JSON and would exercise the fail-closed branch instead of the case.
   printf '%s' "$1" \
-    | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g' \
+    | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g' -e "s/$(printf '\t')/\\\\t/g" \
     | sed -e ':a' -e 'N' -e '$!ba' -e 's/\n/\\n/g'
 }
 
@@ -107,6 +109,9 @@ check_deny "eval-quoted view reveal escape" \
   "secrets.view-reveal-plaintext"
 check_deny "sh -c wrapping a quoted eval" \
   "sh -c 'eval \"agents secrets export prod --plaintext\"'" \
+  "secrets.export-plaintext"
+check_deny "tab-separated eval (the #336 re-review residual)" \
+  "$(printf 'eval\t"agents secrets export prod --plaintext"')" \
   "secrets.export-plaintext"
 
 # --- allows: transfer modes, injection, human/metadata surfaces -------------

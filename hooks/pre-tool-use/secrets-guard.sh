@@ -127,10 +127,10 @@ extract_eval_inner() {  # sets _eval_inner
     [ "$_raw" = "$_pre" ] && break
   done
   case "$_raw" in
-    eval\ *) ;;
+    eval\ *|eval"$(printf '\t')"*) ;;
     *) return 1 ;;
   esac
-  _inner=${_raw#eval }
+  _inner=${_raw#eval?}
   _inner=$(printf '%s' "$_inner" | sed 's/^[[:space:]]*//')
   case "$_inner" in
     \"*\") _inner=${_inner#\"}; _inner=${_inner%\"} ;;
