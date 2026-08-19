@@ -17,6 +17,8 @@
 /clis/              @muqsitnawaz
 /monitors/          @muqsitnawaz
 /permissions/       @muqsitnawaz
+/routines/          @muqsitnawaz
+/webhooks/          @muqsitnawaz
 /agents.yaml        @muqsitnawaz
 
 # Instruction surface — becomes system-prompt content for every agent.
@@ -24,4 +26,5 @@
 /skills/            @muqsitnawaz
 /commands/          @muqsitnawaz
 /plugins/           @muqsitnawaz
+/subagents/         @muqsitnawaz
 /.claude-plugin/    @muqsitnawaz
