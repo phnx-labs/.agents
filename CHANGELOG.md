@@ -38,12 +38,6 @@
   high-severity issues (3 CDN font loads, 37 color-only status glyphs) and 4 distinct
   tells in a doc that had passed eyeball review.
 
-- **BMAD and ADHD global workflows.** The portable `bmad` and `adhd` skills
-  create an implementation-ready work package or bounded multi-frame decision
-  preview; `/bmad` and `/adhd` are their Claude-compatible accelerators. Both
-  remain at the approval boundary and use DevSub workflow tools only when those
-  tools and scopes are available.
-
 - **The last two release-train hand-off instructions are gone.** `commands/next.md`
   was fixed in #321, but `plugins/code/skills/release/SKILL.md:30-38` and
   `plugins/code/commands/release.md:11` still told agents to detect "a scheduled
