@@ -150,7 +150,13 @@ Architecture diagrams do not substitute for behavior views.
 
 8. **Deliver it to the user's machine.**
 
-   Resolve the online macOS device from the Host & Fleet context (never hardcode). Copy the HTML over, then show it in **one reused browser tab** with `agents browser navigate` — re-presenting an updated plan refreshes the SAME tab in place instead of piling up a new duplicate tab every time (a raw `open` opens a fresh tab per call):
+   Resolve the online macOS device from the Host & Fleet context (never hardcode). Show it in **one reused browser tab** with `agents browser navigate` — re-presenting an updated plan refreshes the SAME tab in place instead of piling up a new duplicate tab every time (a raw `open` opens a fresh tab per call). If you are already on that machine, navigate directly (no scp/ssh needed):
+
+   ```bash
+   agents browser navigate --url "file://$ARTIFACTS_DIR/plan-<slug>.html"
+   ```
+
+   Otherwise copy the HTML over first, then navigate on that host:
 
    ```bash
    scp "$ARTIFACTS_DIR/plan-<slug>.html" <host>:/tmp/plan-<slug>.html

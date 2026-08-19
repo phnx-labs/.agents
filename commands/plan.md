@@ -326,16 +326,21 @@ reference this step.
    at session start (the online macOS device is where the user sits — pick the one
    marked online + direct if there are several Macs; if genuinely ambiguous, ask
    once). Then:
+   Show it in **one reused browser tab** with `agents browser navigate` — re-presenting
+   an updated plan refreshes the SAME tab in place instead of piling up a duplicate tab
+   every call (a raw `open` opens a fresh tab per call).
    - **If you are already on that host** (its name == your `hostname`):
-     `open .agents/artifacts/yyyy-mm-dd/plan-<slug>.html` (macOS) / `xdg-open` (Linux).
+     `agents browser navigate --url "file://$PWD/.agents/artifacts/yyyy-mm-dd/plan-<slug>.html"`.
    - **If you are on a different host** (e.g. a remote Linux node): copy the file
-     over and open it there, reusing the same SSH path the fleet uses —
+     over, then navigate on that host, reusing the same SSH path the fleet uses —
      ```bash
      scp .agents/artifacts/yyyy-mm-dd/plan-<slug>.html <browser-host>:/tmp/ \
-       && agents ssh <browser-host> 'open /tmp/plan-<slug>.html'
+       && agents ssh <browser-host> 'agents browser navigate --url file:///tmp/plan-<slug>.html'
      ```
      (`agents ssh` resolves the device and auth from `agents devices`; plain
      `ssh <browser-host>` also works if the registry was rendered to ssh_config.)
+     Fall back to a single `open`/`xdg-open` only when that host has no drivable
+     browser profile.
 
 3. **Tell the user** the plan opened in their browser, with a 2-3 line spoken summary
    and the source path. Then proceed to the design questions / `ExitPlanMode` as usual.
