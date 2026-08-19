@@ -206,6 +206,18 @@
 
 ### Changed
 
+- **Showing the user a review doc / plan / visual now reuses ONE browser tab
+  instead of piling up duplicates (agents-cli #2779 / #2778).** The device-topology
+  SessionStart hook and the `plan-render` / `visualize` skills told agents to display
+  an artifact on the interactive host with a raw `agents ssh <host> 'open <file>'`,
+  which spawns a brand-new tab every call with no handle — re-showing an updated doc
+  left a pile of duplicate tabs. They now teach `agents browser navigate --url
+  file://<path>`, which the daemon resolves to the caller's task and refreshes in
+  place (one tab, verified: three navigates → one tab id on real headless Brave),
+  falling back to a single `open` only when the host has no drivable browser profile.
+  Pairs with agents-cli PR #2778, which also makes `agents browser` refuse to drive
+  Arc (not CDP-drivable) rather than crash it.
+
 - **The conflict-marker commit gate now explains the lone-separator case.** A bare
   `=======` is blocked because it is the middle marker of a half-resolved conflict,
   but the message only said "unresolved merge conflict markers" — misleading for

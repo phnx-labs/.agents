@@ -150,10 +150,16 @@ Architecture diagrams do not substitute for behavior views.
 
 8. **Deliver it to the user's machine.**
 
-   Resolve the online macOS device from the Host & Fleet context (never hardcode). If already on that machine, open directly; otherwise copy the HTML over:
+   Resolve the online macOS device from the Host & Fleet context (never hardcode). Copy the HTML over, then show it in **one reused browser tab** with `agents browser navigate` — re-presenting an updated plan refreshes the SAME tab in place instead of piling up a new duplicate tab every time (a raw `open` opens a fresh tab per call):
 
    ```bash
    scp "$ARTIFACTS_DIR/plan-<slug>.html" <host>:/tmp/plan-<slug>.html
+   agents ssh <host> 'agents browser navigate --url file:///tmp/plan-<slug>.html'
+   ```
+
+   Fall back to a single `open` only when that host has no drivable browser profile (`agents ssh <host> 'agents browser profiles list'` is empty and `agents browser start` can't auto-pick one):
+
+   ```bash
    agents ssh <host> 'open /tmp/plan-<slug>.html'
    ```
 
