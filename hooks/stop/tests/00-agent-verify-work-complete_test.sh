@@ -391,7 +391,7 @@ grep -q "STOP GATE (swarm)" "$SANDBOX/stderr" && { echo "FAIL - swarm gate false
 NT="$SANDBOX/noise-transcript.jsonl"
 {
   echo '{"type":"user","message":{"role":"user","content":"<bash-input>j agents-cli</bash-input>"}}'
-  echo '{"type":"user","message":{"role":"user","content":"<bash-stdout>/home/muqsit/src/agents-cli</bash-stdout><bash-stderr></bash-stderr>"}}'
+  echo '{"type":"user","message":{"role":"user","content":"<bash-stdout>/home/user/src/agents-cli</bash-stdout><bash-stderr></bash-stderr>"}}'
   echo '{"type":"user","message":{"role":"user","content":"<system-reminder>The user named this session AGI Factory.</system-reminder>"}}'
   echo '{"type":"user","message":{"role":"user","content":"[Request interrupted by user]"}}'
   echo '{"type":"user","message":{"role":"user","content":"Please refactor the auth module and add end-to-end tests for the login flow."}}'
