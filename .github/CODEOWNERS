@@ -1,0 +1,27 @@
+# Every path in this repo is synced onto every machine in the fleet: `hooks/`,
+# `rules/`, and `.githooks/` run as shell on every tool call, and `AGENTS.md`,
+# `skills/`, `commands/`, and `plugins/` become system-prompt text for every
+# agent. An unreviewed merge here is fleet-wide code and instruction execution.
+#
+# This file exists because PR #325 was merged from an outside fork with zero
+# reviews. Paired with the "main: outside contributions require review" ruleset,
+# it forces owner review on outside PRs. Repository admins bypass the ruleset,
+# so the owner's own PRs are unaffected.
+
+*                   @muqsitnawaz
+
+# Executable surface — runs as a hook on every agent tool call.
+/hooks/             @muqsitnawaz
+/rules/             @muqsitnawaz
+/.githooks/         @muqsitnawaz
+/clis/              @muqsitnawaz
+/monitors/          @muqsitnawaz
+/permissions/       @muqsitnawaz
+/agents.yaml        @muqsitnawaz
+
+# Instruction surface — becomes system-prompt content for every agent.
+/AGENTS.md          @muqsitnawaz
+/skills/            @muqsitnawaz
+/commands/          @muqsitnawaz
+/plugins/           @muqsitnawaz
+/.claude-plugin/    @muqsitnawaz
