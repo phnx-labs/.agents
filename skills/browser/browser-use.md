@@ -12,8 +12,8 @@ agents browser profiles create my-profile -b chrome -e cdp://localhost:9222
 agents browser start --profile my-profile
 # -> quiet-falcon-summit-a743161a
 
-# Navigate and interact
-agents browser tab add --url https://example.com --task <handle>
+# Navigate and interact — `navigate` reuses the current tab; `tab add` opens a new one
+agents browser navigate --url https://example.com --task <handle>
 agents browser refs --task <handle>
 agents browser click <ref> --task <handle>
 agents browser type <ref> --text "hello" --task <handle>
@@ -87,18 +87,25 @@ agents browser tab close [tabId]    # close specific tab, or all if omitted
 
 ### Showing a document: navigate, never a fresh `open`
 
-To put a plan, report, or review doc in front of the user, use `navigate` — it
-reuses ONE tab and refreshes in place. A raw `open <file>`, or a `tab add` per
-render, spawns a duplicate every single call.
+To put a plan, report, or review doc in front of the user, use `navigate` — once the
+task owns a tab it refreshes that SAME tab in place. A raw `open <file>`, or a
+`tab add` per render, spawns a duplicate every single call.
 
 ```bash
-# once per session
-export AGENTS_BROWSER_TASK=$(agents browser start --profile <name>)
+agents browser start --profile <name> --url "file:///abs/path/report.html"
+# -> prints the task handle; pass it explicitly on every later call (see Quick Start)
 
-# show it — same tab every time, even after regenerating the file
-agents browser navigate --url "file:///abs/path/report.html"
-agents browser navigate --url "file:///abs/path/report.html"   # refreshes, no 2nd tab
+agents browser navigate --url "file:///abs/path/report.html" --task <handle>
+agents browser navigate --url "file:///abs/path/report.html" --task <handle>
+# same tab both times — the doc refreshes, no second tab
 ```
+
+Seed the tab with `start --url` as above. `navigate` reuses `task.currentTabId`, so
+the FIRST navigate into a task that owns no tab yet has to obtain one — on Chrome,
+Comet, Chromium and Brave it just opens one, but **on Arc it cannot**: Arc crashes on
+`Target.createTarget`, so the first navigate only succeeds if a tab is already blank
+or already showing that exact URL, and otherwise errors rather than taking over a page
+you are reading. Starting with `--url` avoids the whole question.
 
 This is not a style preference. Measured on one machine after a day of agent
 activity: 58 tabs in a single window, 16 of them agent-opened `file://` docs,
@@ -208,7 +215,7 @@ agents browser evaluate --expression 'document.execCommand("insertText", false, 
 ```bash
 agents browser profiles create remote-mac -b comet -e ssh://user@hostname?port=9222
 agents browser start --profile remote-mac      # prints the task handle
-agents browser tab add --url https://example.com --task <handle>
+agents browser navigate --url https://example.com --task <handle>
 ```
 
 The SSH driver launches the browser on the remote host and tunnels CDP back.
