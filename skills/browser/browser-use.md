@@ -92,7 +92,7 @@ task owns a tab it refreshes that SAME tab in place. A raw `open <file>`, or a
 `tab add` per render, spawns a duplicate every single call.
 
 ```bash
-agents browser start --profile <name> --url "file:///abs/path/report.html"
+agents browser start --profile <name>
 # -> prints the task handle; pass it explicitly on every later call (see Quick Start)
 
 agents browser navigate --url "file:///abs/path/report.html" --task <handle>
@@ -100,12 +100,18 @@ agents browser navigate --url "file:///abs/path/report.html" --task <handle>
 # same tab both times — the doc refreshes, no second tab
 ```
 
-Seed the tab with `start --url` as above. `navigate` reuses `task.currentTabId`, so
-the FIRST navigate into a task that owns no tab yet has to obtain one — on Chrome,
-Comet, Chromium and Brave it just opens one, but **on Arc it cannot**: Arc crashes on
-`Target.createTarget`, so the first navigate only succeeds if a tab is already blank
-or already showing that exact URL, and otherwise errors rather than taking over a page
-you are reading. Starting with `--url` avoids the whole question.
+`navigate` reuses `task.currentTabId`, so the FIRST navigate into a task that owns no
+tab yet has to obtain one. On Chrome, Comet, Chromium and Brave it simply opens one.
+**On Arc it cannot** — Arc crashes on `Target.createTarget` — so that first call
+succeeds only against a tab that is already blank or already showing that exact URL,
+and otherwise errors rather than taking over a page you are reading.
+
+Note the deliberate `start` WITHOUT `--url` above. On Arc that is the better order:
+`start --url` resolves its tab through a narrower path that matches only an exact-URL
+tab held by an abandoned task, with no blank-tab fallback, so on a first-ever render it
+goes straight to the create call and fails. Bare `start` then `navigate` at least
+reaches the blank-tab fallback. If Arc has no blank tab and the doc is not already
+open, open one blank tab first — or use a Comet/Chrome profile for agent-driven work.
 
 This is not a style preference. Measured on one machine after a day of agent
 activity: 58 tabs in a single window, 16 of them agent-opened `file://` docs,
