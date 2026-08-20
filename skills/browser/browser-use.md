@@ -110,8 +110,14 @@ Note the deliberate `start` WITHOUT `--url` above. On Arc that is the better ord
 `start --url` resolves its tab through a narrower path that matches only an exact-URL
 tab held by an abandoned task, with no blank-tab fallback, so on a first-ever render it
 goes straight to the create call and fails. Bare `start` then `navigate` at least
-reaches the blank-tab fallback. If Arc has no blank tab and the doc is not already
-open, open one blank tab first — or use a Comet/Chrome profile for agent-driven work.
+reaches the blank-tab fallback — provided Arc already has at least one page target.
+(Bare `start` only creates a tab when the browser is otherwise EMPTY, and that create
+throws on Arc too, so a freshly-launched Arc with no window open fails at `start`.)
+
+If Arc has no blank tab and the doc is not already open, the agent cannot fix this
+itself: `tab add` throws on Arc as well, so opening a tab is a HUMAN action in the Arc
+window. The agent-executable option is a Comet/Chrome profile — prefer that for
+agent-driven work, and keep Arc for what you are reading yourself.
 
 This is not a style preference. Measured on one machine after a day of agent
 activity: 58 tabs in a single window, 16 of them agent-opened `file://` docs,
