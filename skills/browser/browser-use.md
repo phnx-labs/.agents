@@ -78,12 +78,44 @@ agents browser stop          # stop without saving to history
 ## Tabs
 
 ```bash
-agents browser tab add --url <url>  # open URL in new tab (becomes current)
+agents browser navigate --url <url> # PREFER THIS: reuse the current tab in place
+agents browser tab add --url <url>  # open URL in a NEW tab (becomes current)
 agents browser tabs                 # list open tabs
 agents browser tab focus <tabId>    # switch to tab (by ID, prefix, or URL substring)
 agents browser tab close [tabId]    # close specific tab, or all if omitted
-agents browser navigate --url <url> # navigate current tab in place (no new tab)
 ```
+
+### Showing a document: navigate, never a fresh `open`
+
+To put a plan, report, or review doc in front of the user, use `navigate` — it
+reuses ONE tab and refreshes in place. A raw `open <file>`, or a `tab add` per
+render, spawns a duplicate every single call.
+
+```bash
+# once per session
+export AGENTS_BROWSER_TASK=$(agents browser start --profile <name>)
+
+# show it — same tab every time, even after regenerating the file
+agents browser navigate --url "file:///abs/path/report.html"
+agents browser navigate --url "file:///abs/path/report.html"   # refreshes, no 2nd tab
+```
+
+This is not a style preference. Measured on one machine after a day of agent
+activity: 58 tabs in a single window, 16 of them agent-opened `file://` docs,
+with the same document open three times. Reach for `tab add` only when you
+genuinely need two pages side by side.
+
+On a remote interactive host, copy the file over and run the same command there:
+
+```bash
+scp report.html <host>:/tmp/report.html
+agents ssh <host> "agents browser navigate --url file:///tmp/report.html"
+```
+
+Fall back to a one-shot `open` ONLY when the host has no drivable browser profile
+(`agents browser profiles list` is empty and `agents browser start` cannot
+auto-pick one) — showing something beats showing nothing, but it is the tab-spam
+path.
 
 ## DOM Interaction
 
@@ -185,7 +217,7 @@ The SSH driver launches the browser on the remote host and tunnels CDP back.
 
 1. **Create profile** (one-time): `agents browser profiles create …`
 2. **Start**: `agents browser start --profile <name>` — remember the printed handle; pass `--task <handle>` on every call
-3. **Open tab**: `agents browser tab add --url <url>`
+3. **Show the page**: `agents browser navigate --url <url>` — reuses the current tab. Use `tab add` only when you need a SECOND page open at the same time.
 4. **Wait** for page to load (`--state networkidle` or `--selector`)
 5. **Refs** to see clickable elements
 6. **Click / type / press** using refs
