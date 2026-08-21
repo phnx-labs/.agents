@@ -137,12 +137,14 @@
   — never "ask the user." The safety rails the original contract was reaching for
   are kept and stated: never `--admin`, never self-approve, never merge red. The
   parked row is narrowed from "needs human review" to a real product/scope/
-  credential decision. Six surfaces advertised the same wrong contract and now
+  credential decision. Eight surfaces advertised the same wrong contract and now
   match: both `/loop` command files (`commands/loop.md` and
   `plugins/work/commands/loop.md`), `commands/README.md`,
   `plugins/work/commands/dispatch.md`'s routing table, `plugins/work/README.md`
-  (both its skill table and its "stops at PR open by default" compose note), and
-  the root README row.
+  (both its skill table and its "stops at PR open by default" compose note), the
+  root README row, and the two plugin manifests that carry the `work` plugin's
+  own description — `plugins/work/.claude-plugin/plugin.json` and
+  `.claude-plugin/marketplace.json`, which is what the marketplace listing shows.
 
 - **Plans without mockups and PRs without run screenshots — the four enforcement
   holes are closed.** A session-transcript trace showed both requirements existed
