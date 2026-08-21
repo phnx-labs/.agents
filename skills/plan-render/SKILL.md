@@ -20,6 +20,7 @@ Both the compiler and the cross-harness presentation gate enforce this:
 | `surface` frontmatter | The validator must know whether architecture or product behavior is the review surface | `artifacts check` **error** |
 | Current + proposed product views for non-`internal` plans | Reviewers see the actual behavior change, not a prose approximation | `artifacts check` **error**; plan-html-reminder checks semantic HTML |
 | ≥1 **live** drawn SVG for `internal` plans | Reviewers need a real architecture/flow/state figure | `artifacts check` **error** |
+| A drawn figure **inside** every `## …architecture…` section | A row-per-module table lists the parts and drops every relationship between them — which module calls which, where a contract is duplicated, what the change moves. The check is scoped to the section, so a figure under `## Proposed Changes` does not cover it; a `###` subsection inside it does | `artifacts check` **error** |
 | ≥1 Markdown **table** (files / risks / validation) | Scanability | `artifacts check` warning |
 | ≥1 **fenced** code block for commands/APIs | Inline `` `code` `` alone has no highlighting surface | `artifacts check` warning |
 | ≥1 `artifact-callout` | Load-bearing takeaway | `artifacts check` warning |
@@ -77,12 +78,16 @@ Architecture diagrams do not substitute for behavior views.
    Follow the planning contract in the `plan-presentation` rule for the section
    order and the pre-present gates. On top of the `plan` template's sections, a plan
    leads with **Focus for review** (what you want weighed in on) and **Intent** (the
-   user's ask restated), and carries a **Current architecture** section (before/after
-   figure for architectural changes):
+   user's ask restated), and carries a **Current architecture** section, drawn as a
+   figure (before and after when the plan changes the shape):
 
    - `## Focus for review` — 2-5 bullets, at the very top
    - `## Intent` — the user's ask in their own words
-   - `## Current architecture` — how the module works today (+ before/after figure)
+   - `## Current architecture` — how the modules work today and how they talk to each
+     other, **drawn** (boxes for the modules, arrows for what calls what; before/after
+     when the plan changes the shape). `artifacts check` errors when this section has
+     no figure — a table of files is not an architecture. Keep a table alongside the
+     figure for per-file detail if it helps; it does not replace the figure.
    - `## Purpose` — what's broken or needed
    - `## Proposed Changes` — the change, with a **per-file diff** of each change
      (use the `code-diff` component: collapsible, +/- coloured, line numbers — see below)
