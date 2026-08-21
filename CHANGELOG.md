@@ -4,6 +4,15 @@
 
 ### Fixed
 
+- **The `run` skill now describes the live `--device auto` contract
+  (RUSH-2961).** It no longer calls explicit automatic placement a 14-day
+  affinity choice or promises a silent local fallback. The guidance now matches
+  agents-cli: choose the least-loaded healthy device from the worker pool, fail
+  loud when none qualifies, keep signed-out devices available only when a
+  trailing-`@` picker can offer its login path while excluding throttled-only
+  devices, and configure the pool through `agents devices role` / `auto.pool`
+  rather than the retired extension-local preference flags.
+
 - **`pr-merge-on-green` can actually select a PR (RUSH-2848).** The built-in
   poll was `gh pr list --author @me` with no `--repo`, so `gh` inferred the
   repository from cwd. The daemon evaluates monitors from a non-repo directory,
