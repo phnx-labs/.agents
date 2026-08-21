@@ -2,6 +2,22 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- **`pr-merge-on-green` can actually select a PR (RUSH-2848).** The built-in
+  poll was `gh pr list --author @me` with no `--repo`, so `gh` inferred the
+  repository from cwd. The daemon evaluates monitors from a non-repo directory,
+  and every tick failed with `fatal: not a git repository` — 2,133 polls, zero
+  PRs. It also filtered `reviewDecision == "APPROVED"`, which misses this
+  fleet's non-author reviewers (they post an APPROVE *comment*, not a formal
+  GitHub review). The poll is now `monitors/pr-merge-on-green.sh`: `gh search
+  prs` (cwd-independent) plus `gh pr view --repo <owner/name>`, and the verdict
+  is `rules/subrules/gh-merge-guard/pr-verdict.py` — the same check
+  `merge-guard.sh` already used. The action prompt no longer embeds a literal
+  `gh pr merge` / `--admin`, which tripped merge-guard when registering the
+  monitor (RUSH-2760). Tests: `monitors/pr-merge-on-green_test.sh`,
+  `rules/subrules/gh-merge-guard/pr-verdict_test.sh`.
+
 ### Added
 
 - **`agents sessions share` — teach the new verb, and carve it out of the
