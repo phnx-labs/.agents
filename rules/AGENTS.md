@@ -19,7 +19,7 @@ Agents idling on those phrases have burned hundreds of hours of the user's time.
 If you catch yourself typing one, delete it and do the thing.
 
 You own the entire lifecycle — the built thing, not the plan of it: design →
-**get the design approved** (the one real gate) → implement → test → **verify
+**get the design approved** (the one real approval) → implement → test → **verify
 end-to-end** → docs → CHANGELOG → PR → address every review comment → fix CI →
 rebase → **merge → ship → verify the live artifact again**. "PR opened" is not done; "tests pass locally" is not done.
 Conflicts, CI failures, and reviewer pushback are the work, not reasons to stop.
@@ -358,6 +358,11 @@ delete the footer line and retry — don't work around the guard.
 - **No locally built CLIs** — install globally.
 - **No background shells left running** without an explicit finish signal.
 - **No toasts.** Silent success, inline errors.
+- **`/tmp` is banned for anything you produce.** The user comes back to agent
+  output later, and `/tmp` gets wiped. Everything lands in the repo's
+  `.agents/` workspace: `.agents/scratch/` for working files, screenshots, and
+  one-shot scripts; `.agents/artifacts/yyyy-mm-dd/` for durable outputs (plans,
+  reports, rendered HTML). Outside a repo, use `~/.agents/scratch/`.
 - **No unsolicited .md files.** (Updating existing docs + CHANGELOG for a real
   user-visible change is required, not this — see F3.)
 - **Permissions:** add permanent agent permissions to settings once; don't
@@ -365,7 +370,7 @@ delete the footer line and retry — don't work around the guard.
 - **Images:** include the full file path so the user can click to preview.
 - **Handing off a command the user must run**, in order: (1) clipboard
   (`pbcopy` / `xclip -selection clipboard` / `wl-copy`) — quote what you copied;
-  (2) a one-shot script at a temp path, `chmod +x`, point them at it; (3)
+  (2) a one-shot script in `.agents/scratch/`, `chmod +x`, point them at it; (3)
   inline only as a last resort. Multi-line commands always go to a script.
 - **Don't:** start/kill dev servers without asking; add unrequested
   backwards-compat shims; reach for `find` when `fd` is available.
@@ -527,7 +532,7 @@ Office as well as md/html/pdf. Install: `agents cli install mq`.
 ## Verify UI by looking at it
 
 - A UI or visual change is not verified until you have seen the rendered result and judged it against the intent. A passing build or present bundle strings are proxies, not proof (F3).
-- **One-off HTML and worker-host UI:** render headlessly with a bare `agents browser start --url file://<absolute-path>`, capture it with `agents browser screenshot -o /tmp/<name>.png`, then read that exact path with `view_image` and critique it. On workers, never pass `--profile` or hunt for a browser binary; the machine resolves its configured headless profile.
+- **One-off HTML and worker-host UI:** render headlessly with a bare `agents browser start --url file://<absolute-path>`, capture it with `agents browser screenshot -o .agents/scratch/<name>.png`, then read that exact path with `view_image` and critique it. On workers, never pass `--profile` or hunt for a browser binary; the machine resolves its configured headless profile.
 - **Webview or web UI:** first check for the repository's preview harness (Vite, Storybook, or a `/preview` route), then use `agents browser` against that real surface and inspect a screenshot.
 - **Native UI:** use `agents computer` in element mode. `describe` returns element refs; `click --id` and `type --id` do not steal foreground focus. Never use `--raise` or coordinate clicks on a machine the user is using. Screenshots are focus-safe.
 - Render and inspect on the machine doing the work. Transfer or `open` the result on the interactive host only when the user explicitly requested it, and never before read-back.
@@ -536,7 +541,7 @@ Office as well as md/html/pdf. Install: `agents cli install mq`.
 
 - Lead with the visible behavior and appearance, then the implementation details.
 - Product mockups must use the product's real layout, components, and visual language. Abstract diagrams do not substitute for a product-faithful mockup.
-- When a genuine design choice exists, show two or three rendered variations with one-line tradeoffs and stop at the design gate for the user's choice.
+- When a genuine design choice exists, show two or three rendered variations with one-line tradeoffs and stop for the user's choice.
 
 # Present Plans as Browser-Ready HTML
 
@@ -564,7 +569,7 @@ spec if one exists.
 5. **A rendered to-do checklist** (also created via `TaskCreate` — see
    `task-checklists`).
 
-**Two gates before presenting:** an adversarial non-author review for any
+**Two checks before presenting:** an adversarial non-author review for any
 API/CLI-surface or architecture change (a subagent checks the surface is clean
 and follows existing conventions); and render + inspect the HTML.
 
@@ -587,7 +592,7 @@ rendered next to the source. One dated layout, no kind subdirs.
   machine only on request.
 
 A multi-step plan also carries a `TaskCreate` checklist before you present. The
-`plan-html-reminder` hook gates both; trivial single-step plans are exempt.
+`plan-html-reminder` hook enforces both; trivial single-step plans are exempt.
 
 # Task Checklists — Keep One for Real Work, Bound to the Ticket
 
@@ -685,7 +690,7 @@ agents run <agent> "<prompt>" --device <box> --remote-cwd <ABS repo path> --mode
   harnesses is the point of the fleet, not more clones of yourself.
 
 **Probe with the operation you will actually perform.** A `--mode plan` ping
-proves install + login, nothing more — capability is gated per operation class.
+proves install + login, nothing more — capability differs per operation class.
 If the work writes, probe a real write (`git fetch` + `git worktree add`); a PR
 → probe a commit; a credential → a real authenticated request. Known trap:
 codex cannot write anywhere on this fleet (bwrap uid-map failure on Linux,

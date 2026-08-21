@@ -18,7 +18,7 @@ agents run <agent> "<prompt>" --device <box> --remote-cwd <ABS repo path> --mode
   harnesses is the point of the fleet, not more clones of yourself.
 
 **Probe with the operation you will actually perform.** A `--mode plan` ping
-proves install + login, nothing more — capability is gated per operation class.
+proves install + login, nothing more — capability differs per operation class.
 If the work writes, probe a real write (`git fetch` + `git worktree add`); a PR
 → probe a commit; a credential → a real authenticated request. Known trap:
 codex cannot write anywhere on this fleet (bwrap uid-map failure on Linux,

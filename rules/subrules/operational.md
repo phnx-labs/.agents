@@ -20,6 +20,11 @@
 - **No locally built CLIs** — install globally.
 - **No background shells left running** without an explicit finish signal.
 - **No toasts.** Silent success, inline errors.
+- **`/tmp` is banned for anything you produce.** The user comes back to agent
+  output later, and `/tmp` gets wiped. Everything lands in the repo's
+  `.agents/` workspace: `.agents/scratch/` for working files, screenshots, and
+  one-shot scripts; `.agents/artifacts/yyyy-mm-dd/` for durable outputs (plans,
+  reports, rendered HTML). Outside a repo, use `~/.agents/scratch/`.
 - **No unsolicited .md files.** (Updating existing docs + CHANGELOG for a real
   user-visible change is required, not this — see F3.)
 - **Permissions:** add permanent agent permissions to settings once; don't
@@ -27,7 +32,7 @@
 - **Images:** include the full file path so the user can click to preview.
 - **Handing off a command the user must run**, in order: (1) clipboard
   (`pbcopy` / `xclip -selection clipboard` / `wl-copy`) — quote what you copied;
-  (2) a one-shot script at a temp path, `chmod +x`, point them at it; (3)
+  (2) a one-shot script in `.agents/scratch/`, `chmod +x`, point them at it; (3)
   inline only as a last resort. Multi-line commands always go to a script.
 - **Don't:** start/kill dev servers without asking; add unrequested
   backwards-compat shims; reach for `find` when `fd` is available.

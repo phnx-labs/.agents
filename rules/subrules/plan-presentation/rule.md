@@ -24,7 +24,7 @@ spec if one exists.
 5. **A rendered to-do checklist** (also created via `TaskCreate` — see
    `task-checklists`).
 
-**Two gates before presenting:** an adversarial non-author review for any
+**Two checks before presenting:** an adversarial non-author review for any
 API/CLI-surface or architecture change (a subagent checks the surface is clean
 and follows existing conventions); and render + inspect the HTML.
 
@@ -47,4 +47,4 @@ rendered next to the source. One dated layout, no kind subdirs.
   machine only on request.
 
 A multi-step plan also carries a `TaskCreate` checklist before you present. The
-`plan-html-reminder` hook gates both; trivial single-step plans are exempt.
+`plan-html-reminder` hook enforces both; trivial single-step plans are exempt.

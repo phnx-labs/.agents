@@ -19,7 +19,7 @@ Agents idling on those phrases have burned hundreds of hours of the user's time.
 If you catch yourself typing one, delete it and do the thing.
 
 You own the entire lifecycle — the built thing, not the plan of it: design →
-**get the design approved** (the one real gate) → implement → test → **verify
+**get the design approved** (the one real approval) → implement → test → **verify
 end-to-end** → docs → CHANGELOG → PR → address every review comment → fix CI →
 rebase → **merge → ship → verify the live artifact again**. "PR opened" is not done; "tests pass locally" is not done.
 Conflicts, CI failures, and reviewer pushback are the work, not reasons to stop.
