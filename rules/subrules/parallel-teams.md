@@ -72,13 +72,9 @@ actually alive, not a command that returned 0.
 
 Spawning is not delivering. The single most expensive orchestrator failure on this
 fleet is: start teammates, announce "I'll keep watch", then idle while nobody tracks
-whether the work is moving — or whether the teammates spawned at all.
-
-Measured, session `ea913c60` (2026-08-15): the orchestrator backgrounded a
-`while true; do … done` poll and told the user *"the background poll re-invokes me
-when the team settles."* `ps` showed **no such process**. Four teammates were still
-`RUNNING` with nothing watching them. The claim was false and the session was idle —
-exactly what it promised it was not.
+whether the work is moving — or whether the teammates spawned at all. (Measured,
+session `ea913c60`: a backgrounded `while true` poll announced as "re-invokes me
+when the team settles" — `ps` showed no such process, four teammates orphaned.)
 
 Five obligations, all mechanical:
 
@@ -100,13 +96,8 @@ Five obligations, all mechanical:
    keep the monitor as a backstop. **If you cannot show the watcher is alive, do not
    tell the user you are watching.**
 3. **When you park on a watcher, hand the user a receipt they can check.** A healthy
-   wait and a dead one look identical from the outside — an idle session and a shell
-   that may or may not still be running — so the owner ends up pinging every session
-   one by one to find out which is which. Measured 2026-08-15, three sessions that were
-   visually indistinguishable: `6805bf66` was **healthy** (watcher pid alive, builder
-   `RUNNING · 21.0 minutes · 294 tools` waiting on CI shards); `ea913c60` was **dead**
-   (watcher process gone, four teammates orphaned); `pr306-land` was **decorative** (fire
-   logged `ok`, action `skipped`, nothing spawned). Never write the unfalsifiable form
+   wait and a dead one look identical from the outside, so the owner ends up pinging
+   every session to find out which is which. Never write the unfalsifiable form
    ("I'll be re-invoked when it settles") — write what can be checked at a glance:
    *"watcher pid 43234 alive; builder RUNNING 21m/294 tools on PR #2694; blocked on CI
    shards 1-2."* If you cannot produce those numbers, you do not have a watcher.

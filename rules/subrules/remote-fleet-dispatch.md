@@ -55,20 +55,17 @@ operation under test certifies nothing:
 | `--mode edit` running `uname -a` | no **write** sandbox (read-only cmd) | nothing |
 | `--mode edit` running `git fetch` + `git worktree add` | the real write path | this is the answer |
 
-Measured 2026-08-06: `--mode plan` and `--mode edit`+`uname -a` both returned OK on
-yosemite-m2 and yosemite-m4; the same boxes then failed every real write with
-`bwrap: setting up uid map: Permission denied`. Five dispatches were burned "verifying"
-boxes that could not run the job. **If the work writes, probe with a write.** If it
-opens a PR, probe a commit. If it needs a credential, probe an authenticated request.
+Measured: `--mode plan` and `--mode edit`+`uname -a` both returned OK on boxes that
+then failed every real write (`bwrap: setting up uid map: Permission denied`).
+**If the work writes, probe with a write.** If it opens a PR, probe a commit. If it
+needs a credential, probe an authenticated request.
 
-**Known trap — codex cannot write anywhere on this fleet.** Its sandbox fails on Linux
-(`bwrap: setting up uid map: Permission denied`, m2 and m4 alike, with healthy
-`max_user_namespaces` — not a resource limit) and on macOS (mac-mini reaches
-`sandbox: workspace-write` and then dies on `cannot open '.git/FETCH_HEAD': Operation
-not permitted`). The dispatch still **exits 0**, so the job looks successful and
-produced nothing. For write-heavy work (worktree, edits, PR) dispatch **claude** to a
-box where it is signed in, confirmed by a real write probe. Codex remains fine for
-read-only/analysis dispatch.
+**Known trap — codex cannot write anywhere on this fleet.** Its sandbox fails on
+Linux (`bwrap` uid map) and on macOS (`cannot open '.git/FETCH_HEAD': Operation not
+permitted`), and the dispatch still **exits 0** — the job looks successful and
+produced nothing. For write-heavy work (worktree, edits, PR) dispatch **claude** to
+a box where it is signed in, confirmed by a real write probe. Codex remains fine
+for read-only/analysis dispatch.
 
 Do **not** silently escalate to `--mode skip` / `--dangerously-bypass-approvals-and-sandbox`
 to dodge a sandbox failure — that's the same security escalation as any sandbox-off flag.
@@ -84,16 +81,13 @@ an agent's tool call).
 
 Because nobody is tailing it, the on-disk dispatch record at
 `~/.agents/.cache/hosts/<id>.json` **stays `"status": "running"` after the agent has
-exited**, until something reconciles it. `agents devices ps` does that reconciliation — it
-reads the run's **remote `.exit` file** and writes the real outcome back. Verified on
-zion: two finished runs read `running` in the raw JSON, and after `agents devices ps` both
-read `completed`.
+exited**, until `agents devices ps` reconciles it by reading the run's **remote
+`.exit` file** and writing the real outcome back.
 
-**But reconciliation only works if the remote `.exit` was written.** A run whose process
-was killed, or whose box rebooted, never writes one — and then *no command rescues it*.
-Verified on yosemite-s1: four records (`273148b7`, `4663ce92`, `a281c096`, `8450cd2c`)
-still report `running` with PIDs confirmed dead by `ssh <host> 'ps -p <pid>'`, and
-`273148b7` has no `.exit` on either side. `agents devices ps` leaves all four `running`.
+**But reconciliation only works if the remote `.exit` was written.** A run whose
+process was killed, or whose box rebooted, never writes one — then *no command
+rescues it*: the record reports `running` forever (verified: four dead PIDs on
+yosemite-s1 that `agents devices ps` still lists as `running`).
 
 So:
 

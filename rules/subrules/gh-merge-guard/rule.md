@@ -2,7 +2,7 @@
 
 Authorization to do the work carries through to the merge — an in-session "build it / open a PR / fix this" authorizes a **rebase-merge on green**, no fresh ask needed. What still needs explicit authorization is merging *past* the safety rails: never bypass branch protection, never rubber-stamp your own code, never merge red.
 
-- **Merge autonomously on green; ask only on red.** A non-author review **and** passing CI = rebase-merge without asking (see `truly-agentic-git-workflow`). Fall back to `AskUserQuestion` (merge / iterate / close) only when the review finds problems, tests fail, or the merge conflicts. "Green" means a genuine independent review + CI, never a rubber stamp. Do **not** open the PR for the user or ask them to click merge on an ordinary green PR.
+- **Merge autonomously on green; ask only on red.** A non-author review **and** passing CI = rebase-merge without asking (see `truly-agentic-git-workflow`). "Green" means a genuine independent review + CI, never a rubber stamp. Do **not** open the PR for the user or ask them to click merge on an ordinary green PR.
 - **The verdict must be ON the PR you are merging.** `merge-guard.sh` blocks a
   `gh pr merge` whose PR carries neither a GitHub APPROVED review nor a fresh
   APPROVE verdict comment; a verdict "carried from" another PR satisfies

@@ -41,11 +41,6 @@ reading the file — worse than doing nothing. Skip `.tree`; extract in one call
 
 `mq` handles **source code (ts/py/go/rust/…), JSON/YAML/CSV, and Office
 (xlsx/docx/pptx)** as well as md/html/pdf. Use it on the `.ts`/`.py` file you were
-about to `cat`. Full recipe: the `mq` skill. Required host CLI (`agents doctor` →
-Host CLIs; `agents cli install mq`).
-
-**Why this exists:** a fleet audit found `mq` invoked 0 times across 835 sessions
-in 3 days while 62% of tool calls were context reads (whole-file dumps; same file
-re-read up to 34×/session). A follow-up A/B then showed *misused* mq (the dance)
-is worse than reading — so the win depends on the discipline above, not on reaching
-for mq blindly.
+about to `cat`. Full recipe: the `mq` skill (`agents cli install mq` if missing).
+The win depends on the discipline above — a measured A/B showed *misused* mq (the
+dance) is worse than just reading.

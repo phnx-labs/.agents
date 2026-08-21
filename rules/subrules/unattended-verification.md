@@ -47,26 +47,21 @@ to prevent.
 
 A probe that skips the operation under test certifies nothing. Read-only probes pass on
 machines that cannot write; unauthenticated paths pass where credentials are missing;
-a dry-run passes where real delivery fails. Concretely: `--mode plan` needs no sandbox
-and `uname -a` needs no *write* sandbox, so both pass on a box where `git fetch` dies
-(see `remote-fleet-dispatch`). If the job writes, probe a write. If it needs a
-credential, fire a real authenticated request and check for 401. If it must deliver a
-message, check the send result — a `--dry-run` only proves the address resolved.
+a dry-run passes where real delivery fails (`remote-fleet-dispatch` has the measured
+probe table). If the job writes, probe a write. If it needs a credential, fire a real
+authenticated request and check for 401. If it must deliver a message, check the send
+result — a `--dry-run` only proves the address resolved.
 
 ## Read status through the command surface — and still bound the wait
 
 Cache and state files under `~/.agents/.cache/` are written by whichever process last
 touched them, so they go stale without any error. Ask the CLI (`agents devices ps`,
-`agents sessions`, `gh pr view`), which reconciles on demand. A guard or loop built on a
-raw cache file inherits that staleness and can wedge permanently.
-
-**Reconciliation is not a liveness check, so a status query alone is never enough.** It
-works by reading an artifact the finished process left behind, and a process that was
-killed — or whose box rebooted — leaves nothing to read. That record then reports
-`running` forever, and no amount of re-querying changes it (see `remote-fleet-dispatch`
-for the measured case). Every wait therefore carries a concrete ceiling derived from the
-job's expected runtime, after which the thing is treated as dead rather than slow. When
-you need certainty instead of a timeout, probe the process directly.
+`agents sessions`, `gh pr view`), which reconciles on demand — but reconciliation is
+not a liveness check: a killed process or rebooted box leaves no `.exit` artifact, and
+that record reports `running` forever (`remote-fleet-dispatch` has the measured case).
+Every wait therefore carries a concrete ceiling derived from the job's expected
+runtime, after which the thing is treated as dead rather than slow; for certainty,
+probe the process directly.
 
 ## Cross-run state: namespace it, and never read it without a completion marker
 

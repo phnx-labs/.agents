@@ -1,17 +1,16 @@
 # Truly Agentic Git Workflow
 
-**The user's primary working tree is untouchable — on ANY branch. Every change is
-a LINKED worktree + PR. Always.**
+**The user's primary working tree is untouchable — on ANY branch (F5). Every
+change is a LINKED worktree + PR. Always.**
 
 Never create, edit, or delete a tracked file with the agent's file tools
-(Write/Edit/NotebookEdit), and never `git add`/`git commit`, while the target is
-inside a repo's **primary working tree** — the user's own checkout — regardless of
-which branch it is on. This is **mechanically enforced** by the bundled
-`main-branch-guard` (PreToolUse), which protects the whole primary tree, not just
-the default branch. The reason it is the whole tree: agents were checking out a
-feature branch *in the user's main checkout* and never switching back, stranding
-it on a branch and dozens of commits behind (the `review-2704` trap) — blocking
-only the default branch let that through.
+(Write/Edit/NotebookEdit), and never `git add`/`git commit`, inside a repo's
+**primary working tree** — the user's own checkout — on any branch. Mechanically
+enforced by the bundled `main-branch-guard` (PreToolUse), which protects the
+whole tree, not just the default branch: branch-only blocking let agents strand
+the checkout on a feature branch (the `review-2704` trap). `git switch` and
+`git checkout` are both banned for the agent (`git-guard`) — never switch
+branches in place; make a worktree first (recipe below).
 
 The ONLY place an agent writes, adds, or commits is a **linked worktree**
 (`git worktree add` under `<repo>/.agents/worktrees/<slug>/`). Linked worktrees,
@@ -21,22 +20,11 @@ gitignored file never dirties the tracked tree or lands in a PR. The guard gates
 only the agent's tool calls — the user's own editor and `!`-prefixed session
 commands are never blocked.
 
-`git switch` and `git checkout` are **both banned** for the agent (enforced by
-`git-guard`): switching the primary checkout onto another branch is exactly the
-strand-the-tree trap. Never switch branches in place — create a linked worktree.
-
-If you catch yourself about to edit a file in the primary checkout (any branch),
-stop and make a worktree first (recipe below).
-
-**Diagnose on the latest code, not your working-tree HEAD.** Before you read a
-codebase to call something a bug, claim a regression, or open a "fix" PR,
-`git fetch origin` and check how far behind you are
-(`git rev-list --count HEAD..origin/<default>`). Your local checkout goes stale
-the moment another agent pushes — on this fleet, constantly — and a fix built on
-stale code is itself the regression (a real miss: a merged PR "restored" a routine
-a newer commit had deliberately superseded, because the diagnosis ran against a
-tree ~90 min / 39 commits behind). This is the same fetch-first discipline the
-worktree recipe enforces for *writing*, applied to *reading*. See
+**Diagnose on the latest code, not your working-tree HEAD.** Before you call
+something a bug, claim a regression, or open a "fix" PR, `git fetch origin` and
+check how far behind you are (`git rev-list --count HEAD..origin/<default>`) —
+a fix built on a stale tree is itself the regression. Same fetch-first
+discipline as the worktree recipe, applied to *reading*. See
 `research-discipline` (current-code anchoring).
 
 ## Allowed vs off-limits git ops
@@ -138,20 +126,14 @@ The body carries **the actual run result, not a description of it**:
   shared — a **shareable link to the plan file**. The same screenshot/recording also goes
   on the ticket when you close it (see `conventions`).
 
-The bundled `pr-description-reminder` (PreToolUse) is the backstop, and it **reads the body
-you actually ship** — an inline `--body`/`-b` and the file behind `--body-file`/`-F` alike
-(the common multi-line path, and the hole that used to let evidence-free feature PRs through).
-It nudges — a satisfiable block, `exit 2` — when that body shows **no run result** (no
-image / recording / uploaded asset), and it is **not** cleared by a code block, a table, or a
-bare ticket/plan link: those are context, not proof you ran it. It clears on a real run result
-**or** an explicit no-run declaration — and a **checkable declaration is verified against the
-branch's changed files**: `test-only` with non-test files changed, or `docs-only` with code
-changed, **blocks** instead of clearing (2026-08-15, PR #2736 declared "test-only." on a
-fifteen-file `fix(browser)` diff), and bare `release` only counts in release-shaped phrases
-(`chore(release)` / "release PR" / "release:" / "release v"). Unverifiable declarations
-(`refactor` / no-behavior-change) clear as before. It still **fails open** on a `--fill` /
-`--template` / editor body it cannot read, on an unreadable `--body-file`, and on an
-unreadable branch diff — a reminder must never block a legit PR.
+The bundled `pr-description-reminder` (PreToolUse) is the backstop. It reads the
+body you actually ship (inline `--body` and `--body-file` alike) and blocks when
+it shows **no run result** — a code block, a table, or a bare ticket/plan link
+does not clear it; those are context, not proof you ran it. It clears on a real
+run result or an explicit no-run declaration, and checkable declarations are
+verified against the branch's changed files: `test-only` with non-test files
+changed, or `docs-only` with code changed, blocks instead of clearing. It fails
+open on a body or diff it cannot read — a reminder must never block a legit PR.
 
 ### Attaching evidence on GitHub — the mechanics
 
@@ -159,111 +141,76 @@ unreadable branch diff — a reminder must never block a legit PR.
 local screenshot path in the body does **not** render on GitHub. Get the asset a public URL
 and embed it with `![caption](url)`. Use these, in order:
 
-1. **`agents artifacts share <file>` — the primary mechanic.** It publishes any static asset (a
-   `.png`/`.jpg`/`.gif` screenshot, a `.mp4`/`.mov`/`.webm` recording, a `.pdf`) to your own
-   Cloudflare R2 and prints a public URL that renders inline via `![caption](url)`. No
-   browser and no manual drag-drop, so it works **headlessly** — the default way an agent
-   attaches media. Not configured on this box? `agents artifacts share status` says so; configure it
-   once with `agents artifacts setup` (provision your own endpoint) or `agents artifacts share join
-   <baseUrl>` (use an existing one), then re-run. If you truly cannot configure it, hand the
-   one-time `agents artifacts setup` to the user and use drag-drop meanwhile. **Public share is
-   for shareable visual proof only** — never publish a private or secret asset (a
-   raw transcript, anything carrying tokens or internal paths) to a public R2 URL; those stay in
-   a secret gist or a local path (see the transcript rule below). `--expire 30d` bounds the
-   link's life.
+1. **`agents artifacts share <file>` — the primary mechanic.** Publishes any static asset
+   (screenshot, recording, `.pdf`) to your own Cloudflare R2 and prints a public URL that
+   renders inline via `![caption](url)` — headless, no browser, no drag-drop. Not configured
+   on this box? `agents artifacts share status` says so; set it up once with
+   `agents artifacts setup` or `agents artifacts share join <baseUrl>`, then re-run.
+   **Public share is for shareable visual proof only** — never publish a private or secret
+   asset (a raw transcript, anything carrying tokens or internal paths); those stay in a
+   secret gist or a local path (transcript rule below). `--expire 30d` bounds the link's life.
 
-   **The one carve-out is `agents sessions share <id>`**, and it is narrow. That command
-   does not publish a raw transcript: it publishes the **redacted render** (`agents sessions
-   render`'s document — credential-shaped values, known secret values, and local home paths
-   masked — plus email masking the raw render does not do), **unlisted** by default, with the
-   30d expiry. Use it when a human deliberately asks you to send them a session. It is **not**
-   an evidence mechanism: it does not license attaching a transcript to a PR, issue, or ticket
-   body, which the transcript rule below still forbids outright — attach a **secret gist** there,
-   or reference `<host>:<path>` on a public repo. And unlisted is **not** access control: R2
-   reads are public, so anyone with the exact URL reads the page. Never call such a link
-   private, encrypted, or access-gated.
-2. **Web drag-drop (browser-only fallback).** When `agents artifacts share` isn't available, open the
-   PR/comment box in the browser and drag the image/recording (`.png`/`.gif`/`.mp4`/`.mov`)
-   in. GitHub uploads it and inserts a `https://github.com/user-attachments/assets/…` URL
-   that renders inline via `![](…)`. Open the PR on the user's Mac to do it (`agents ssh
-   <mac> 'open <pr-url>'`), or drive the upload with the `browser` skill.
-3. **Comment after the fact.** Once you have a public URL (an `agents artifacts share` link or a
-   `user-attachments` URL), `gh pr comment <pr> --body '![result](<url>)'` adds it without
-   touching the body.
-4. **Path fallback (fleet-local only).** If you genuinely can't upload anywhere, reference
+   **The one carve-out is `agents sessions share <id>`**, and it is narrow: it publishes the
+   **redacted render** (credential-shaped values, known secrets, home paths, and emails
+   masked), unlisted, with the 30d expiry — for when a human deliberately asks you to send
+   them a session. It is **not** an evidence mechanism and does not license attaching a
+   transcript to a PR/issue/ticket body. And unlisted is **not** access control: R2 reads
+   are public, so anyone with the exact URL reads the page — never call such a link private,
+   encrypted, or access-gated.
+2. **Web drag-drop (browser-only fallback).** Open the PR/comment box in the browser and
+   drag the image/recording in; GitHub inserts a
+   `https://github.com/user-attachments/assets/…` URL that renders via `![](…)`. Once you
+   have a public URL either way, `gh pr comment <pr> --body '![result](<url>)'` adds it
+   without touching the body.
+3. **Path fallback (fleet-local only).** If you genuinely can't upload anywhere, reference
    the artifact by **full host:path** (`<host>:/abs/path.png`) and `open` it on the user's
-   machine so they see it. It won't render on GitHub, but a teammate on the fleet can open
-   it. Say plainly that it's a path, not an embed.
+   machine. It won't render on GitHub — say plainly that it's a path, not an embed.
 
 Never commit a screenshot into the repo just to embed it — that is clutter; use `agents
 share` or the upload flow.
 
 Every `gh pr create` / `gh issue create` / ticket-open carries:
 
-- **Screenshots and relevant materials of the user-visible outcome** — the rendered
-  UI, the passing test run, the `curl`'d health response, a before/after. If you
-  produced a visual while verifying end-to-end (F3), it belongs in
-  the body. Publish it with `agents artifacts share <file>` and embed the URL (or drag it into the
-  web UI); reference on-disk images by **full path** so the reviewer can click to preview.
-- **A session transcript — kept confidential, always.** The transcript can carry
-  secrets, tokens, internal paths, and raw reasoning, so it **never** goes inline in
-  a PR/issue/ticket body and **never** touches a public repo or public tracker. On a
-  **private** repo / internal tracker, attach it as a **secret gist** and link only:
-  `gh gist create --secret <session-id>.jsonl` → paste the returned URL. On a
-  **public** repo, omit the transcript entirely and instead reference the local path
-  (`<host>:<session-dir>/<session-id>.jsonl`) so a teammate on the fleet can open it.
-  Never paste transcript text anywhere it could be indexed or cached.
+- **The user-visible outcome as a visual** — if you produced a screenshot or
+  recording while verifying end-to-end (F3), it belongs in the body; reference
+  on-disk images by **full path** so the reviewer can click to preview.
+- **A session transcript — kept confidential, always** (F5). It can carry
+  secrets, tokens, internal paths, and raw reasoning, so it never goes inline in
+  a PR/issue/ticket body. Private repo / internal tracker: attach a **secret
+  gist** (`gh gist create --secret <session-id>.jsonl`) and link only. Public
+  repo: omit it entirely; reference the local path
+  (`<host>:<session-dir>/<session-id>.jsonl`) instead. Never paste transcript
+  text anywhere it could be indexed or cached.
 
 ## PR open is NOT done — drive review + merge yourself
 
-Opening a PR is not a stopping point and **not a handoff**. Do **not** open the
-PR URL in the user's browser, drop a "please review + merge" link, or wait for
-them to click anything. Authorization to do the work already carries through to
-**rebase-merge on green** (see `gh-merge-guard`). You own CI, non-author review,
-and the merge.
-
-### Right after `gh pr create` — two tracks in parallel
+Opening a PR is not a stopping point and **not a handoff** — no PR links for the
+user to click, no waiting for them to merge. Authorization to do the work
+already carries through to **rebase-merge on green** (see `gh-merge-guard`).
+Right after `gh pr create`, two tracks in parallel:
 
 1. **Watch CI** with the background-command + finish-echo pattern (never
-   `Monitor`, `ScheduleWakeup`, or `until` loops — they fail silently):
+   `Monitor`, `ScheduleWakeup`, or `until` loops — they fail silently), run with
+   `run_in_background: true` so the harness re-invokes you when checks settle:
 
 ```
 (gh pr checks <pr> --watch --fail-fast; echo "CI settled rc=$? — next: non-author review, then merge on green")
 ```
 
-   run with `run_in_background: true` — the harness re-invokes you when checks
-   settle. If the PR has no checks configured, skip the watch and go to review.
-
-2. **Check whether the automated code reviewer is functioning** — do this
-   immediately, do not wait for CI to finish first:
-
-   - **Is one configured?** Look for a checked-in config (this stack:
-     `.github/rush.yml` declaring a `prix/code-reviewer` agent that posts as
-     `prix-cloud` on `opened`/`reopened`/`synchronize`). A workflow listing alone
-     is not enough — read the config file.
-   - **Is it alive on this PR?** After open (and again after a short settle if
-     needed), check for its review or comment (`gh pr view <n> --json
-     reviews,comments` / `gh api repos/.../pulls/<n>/comments`). A prior PR on
-     the same repo that got a bot review is weak evidence of config; **this PR's
-     thread** is the live signal.
-
-**If the automated reviewer is configured and posting** — wait for its verdict;
-do not spawn a redundant subagent on top of a working bot.
-
-**If it is missing, silent, down, or the repo has no automated reviewer** — do
-**not** wait and do **not** hand the merge to the user. Spawn a non-author
-subagent review **as soon as possible** (`code:review` / the review skill, or an
-in-session `Agent` that did not author the PR). That subagent's clear verdict is
-the non-author review that clears merge-on-green.
+2. **Line up the non-author review immediately** — do not wait for CI first.
+   Check whether the repo's automated reviewer is configured (a checked-in
+   config file, e.g. `.github/rush.yml`) AND alive on **this PR's thread**
+   (`gh pr view <n> --json reviews,comments`); `gh-merge-guard` has the
+   decision rule. Configured and posting → wait for its verdict. Missing,
+   silent, or unconfigured → spawn a non-author subagent review right away
+   (`code:review`, or an `Agent` that did not author the PR).
 
 A non-author review **and** green CI = rebase-merge without asking; fall back to
 `AskUserQuestion` only when the review finds problems, tests fail, or the merge
-conflicts. Don't remove the worktree or delete the branch until merge. Never
-stop with a limp "okay, I'll wait" or a PR link for the user to open.
-
-The only real user handoff at this boundary is a **governance / product / identity
-sign-off only they can give** (not "please merge this ordinary PR"). Park that
-decision with F4; keep driving everything else.
+conflicts. Don't remove the worktree or delete the branch until merge. The only
+real user handoff at this boundary is a **governance / product / identity
+sign-off only they can give** (not "please merge this ordinary PR") — park that
+with F4; keep driving everything else.
 
 ## Reconcile with rebase; never `reset --hard`; never stash
 
