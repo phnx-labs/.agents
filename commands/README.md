@@ -59,7 +59,7 @@ alias); `/fork` is [`/sessions:fork`](../plugins/sessions/README.md).
 |---|---|
 | [`/triage`](./triage.md) | Sweep the whole board — ground in real product goals, then force every item to keep-and-schedule-this-cycle or cancel. Never Backlog |
 | [`/dispatch`](./dispatch.md) | Take one task from idea to a working agent — understand the repo, spec fast, debug-skill for bugs, quick plan, file the ticket, dispatch |
-| [`/loop`](./loop.md) | Alias of `/work:loop` — unattended multi-project work drain (any kind; spread load; no review gate; browser/computer ok) |
+| [`/loop`](./loop.md) | Alias of `/work:loop` — unattended multi-project work drain (any kind; spread load; merges on green behind a non-author review; browser/computer ok) |
 | [`/next`](./next.md) | Drive the current task to delivered (verify E2E, docs, commit, PR, release gate, close the ticket — the old `/finish`), then surface (and if clear, claim) the next related task; checks in-flight PRs/sessions first so it never duplicates work |
 | [`/teams`](./teams.md) | Spawn parallel agents to work on a task together |
 

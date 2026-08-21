@@ -1,5 +1,5 @@
 ---
-description: Alias for /work:loop — unattended multi-project work drain (spread load, browser/computer ok, no review gate)
+description: Alias for /work:loop — unattended multi-project work drain (spread load, browser/computer ok, drives each item to landed and merges on green behind a non-author review)
 argument-hint: "[empty = all clear work | overnight | project/filter]"
 ---
 
