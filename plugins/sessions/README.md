@@ -12,7 +12,7 @@ bodies) still get the full procedure.
 | Skill | Use when |
 | --- | --- |
 | `sessions:continue` | Resume one (or a group of) prior session(s) **in this window** — load transcript, verify what landed, finish the work. Reattach only on a genuine live interactive signal. Also the engine behind post-crash **finish-headlessly** recovery (`/continue recover`). |
-| `sessions:insights` | Analyze how you and your agents work. **Conductor** over `agents insights`, `agents trends`, `agents perf`, and `agents sessions stats` — returns evidence-backed actions. No separate `/trends` or `/perf` plugin commands. |
+| `sessions:insights` | Analyze how you and your agents work. **Conductor** over `agents insights`, `agents insights mix`, `agents perf`, and `agents sessions stats` — returns evidence-backed actions. No separate `/trends` or `/perf` plugin commands. |
 | `sessions:restore` | Re-open sessions killed by a crash/reboot as **terminal windows**, each resuming its real transcript. Not "finish the work here". |
 | `sessions:fork` | Fork this conversation into a NEW, independent session and open it in a fresh terminal — the "git branch" of sessions (the original is untouched). Bare = fork the current session; `<id>` = fork a specific one. |
 
@@ -49,7 +49,7 @@ insights          →  orchestrate local analytics engines → actions
 ## Requirements
 
 - [`agents-cli`](https://github.com/phnx-labs/agents-cli) on `$PATH` with `agents sessions`,
-  `agents insights`, `agents trends`, `agents perf` available for the surfaces you invoke.
+  `agents insights`, `agents insights mix`, `agents perf` available for the surfaces you invoke.
 - Optional: Ghostty (or another terminal emulator) on the interactive Mac for
   `sessions:restore` window relaunch.
 
