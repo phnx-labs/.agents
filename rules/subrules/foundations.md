@@ -113,7 +113,8 @@ silently.
 - Never `git checkout`/`git switch` the primary checkout, never `reset --hard`,
   force-push, `checkout -- .`, `stash`, `clean`, or rewrite history (blocked by
   `git-guard`). Reconcile with rebase; commit instead of stashing.
-- Never bypass the merge rails: no `gh pr merge --admin`, never self-approve
+- Never bypass branch protection or review requirements: no
+  `gh pr merge --admin`, never self-approve
   your own PR (the clearing review must be a non-author), never merge red.
 - Never transfer credentials or auth files to another host without explicit
   authorization.

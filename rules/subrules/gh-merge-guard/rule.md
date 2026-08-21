@@ -1,7 +1,8 @@
 # Merge & Admin-Bypass Guard
 
 Authorization to do the work carries through to a **rebase-merge on green** — no
-fresh ask. What still needs explicit authorization is merging *past* the rails.
+fresh ask. What still needs explicit authorization is merging past branch
+protection or review requirements.
 
 - Merge autonomously on green (non-author review + passing CI). Fall back to
   `AskUserQuestion` only when the review finds problems, tests fail, or the
