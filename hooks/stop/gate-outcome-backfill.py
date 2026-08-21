@@ -56,13 +56,16 @@ FEEDBACK_PREFIX = "Stop hook feedback:"
 # substrings of the gate messages themselves, so they move if the messages do —
 # a mismatch shows up as unmatched fires in the report rather than silently
 # scoring zero.
+# Each gate matches on any of its anchors: the legacy "STOP GATE (...)" prefix
+# for transcripts written before the message rewrite, plus a phrase present in
+# the current message text.
 GATE_MARKERS = {
-    "open-pr": "pull request(s) that are still OPEN",
-    "keep-moving": "STOP GATE (keep moving)",
-    "handback": "STOP GATE (handback)",
-    "delivery": "STOP GATE (delivery)",
-    "self-audit": "you must verify before stopping",
-    "swarm": "STOP GATE (swarm)",
+    "open-pr": ("pull request(s) that are still OPEN",),
+    "keep-moving": ("STOP GATE (keep moving)", "your task list still has"),
+    "handback": ("STOP GATE (handback)", "you wrote a runnable script"),
+    "delivery": ("STOP GATE (delivery)", "close out the delivery"),
+    "self-audit": ("you must verify before stopping",),
+    "swarm": ("STOP GATE (swarm)", "edit-mode swarm and are claiming"),
 }
 
 CMD_POS = r"(?:^|[\n;&|]\s*|\$\(\s*)"
@@ -182,7 +185,7 @@ def find_fires(records):
                 last_text = text
         if (record.get("type") == "user" and record.get("isMeta") is True
                 and isinstance(content, str) and content.startswith(FEEDBACK_PREFIX)):
-            gate = next((g for g, marker in GATE_MARKERS.items() if marker in content), None)
+            gate = next((g for g, markers in GATE_MARKERS.items() if any(m in content for m in markers)), None)
             if gate:
                 digest = hashlib.sha256(last_text.encode("utf-8", "replace")).hexdigest()
                 fires.append((i, gate, digest, _record_ms(record)))

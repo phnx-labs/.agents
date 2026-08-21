@@ -4,16 +4,28 @@
 
 ### Changed
 
-- **Rules corpus cut 58% (14,695 → 6,242 words) with no rule dropped.** Every
-  system subrule is rewritten to state the rule, the recipe, and the
-  non-derivable gotchas — and nothing else. Cut: repeated F1–F5 restatements,
-  measured-incident essays, session-id anecdotes, and hook-implementation
-  narration (the guard names stay; the guard scripts are unchanged). The goal
-  is signal density: an agent under token pressure reads "own the task
-  end-to-end, verify the real outcome, use the tools you already have" without
-  mining 92KB of prose for it. `feed-status-posts` and `ui-work-discipline`
-  were already lean and are untouched; `rules/AGENTS.md` is the regenerated
+- **Rules corpus cut ~60% (14,695 → 6042 words) with no rule dropped.** Every
+  subrule rewritten to state the rule, the recipe, and the non-derivable facts
+  only; cut the repeated F1–F5 restatements, incident essays, and
+  hook-implementation narration. Obligations are stated positively (no
+  "release train" mentions), metaphor vocabulary is gone ("gate", "rails"),
+  the opener names the role (an agent — an agent manager — not a chatbot, get
+  the work done, execute instead of describing), F2 teaches self-orientation
+  from prior sessions/repo/web and change-approach-on-repeat-failure, and the
+  lifecycle chain verifies end-to-end before merge AND the live artifact after
+  ship. `/tmp` is banned for agent output — `.agents/scratch/` and
+  `.agents/artifacts/yyyy-mm-dd/` instead. `context-query-mq` is removed from
+  the preset (unused in practice). Dispatch mechanics live in the `run`/`teams`
+  skills; the rule keeps the traps. `rules/AGENTS.md` is the regenerated
   composition.
+
+- **Stop-hook messages rewritten as short instructions.** All six
+  `verify-work-complete` block messages (open-PR, swarm, handback, keep-moving,
+  done-claim, argue-past) and the delivery message drop the "STOP GATE"
+  vocabulary and shrink ~60% — same detection logic, same clearing conditions,
+  147 assertions + 29 suites green. `gate-outcome-backfill` matches legacy and
+  new message anchors so historical scoring still works. The `mq` read nudge is
+  removed; the visual read-back nudge points at `.agents/scratch/`.
 
 ### Added
 

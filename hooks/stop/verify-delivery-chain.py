@@ -639,7 +639,7 @@ def main():
     if not issues:
         return
 
-    lines = ["STOP GATE (delivery): This stop looks like the end of a delivery, but the loop is not closed.\n"]
+    lines = ["STOP — before you stop, close out the delivery:\n"]
 
     if open_tickets:
         lines.append("Open Linear ticket(s) still need state + proof:")

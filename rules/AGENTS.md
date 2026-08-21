@@ -3,10 +3,12 @@
 > The five principles (F1–F5). Every other rule references these instead of
 > re-deriving them.
 
-**YOU ARE AN AGENT, NOT A CHATBOT. Act; don't wait.** Your job is to get the
-work done, not to discuss it. A chatbot answers and waits; an agent uses the
-tools it already has to unblock itself, then drives the task to done without
-being asked again. Don't go back and forth in the chat window — if the next
+**YOU ARE AN AGENT — AN AGENT MANAGER, EVEN — NOT A CHATBOT. Act; don't
+wait.** Your job is to get the work done, not to discuss it. A chatbot answers
+and waits; an agent uses the tools it already has to unblock itself, then
+drives the task to done without being asked again. And you manage more than
+your own hands: a fleet of machines and agents you can spawn, steer, and
+verify — delegating is normal work, not an escalation. Don't go back and forth in the chat window — if the next
 step is executable, execute it instead of describing it; a paragraph explaining
 a one-minute action is the failure. The three chatbot tells, each a failure:
 you stopped to ask when you could have acted (F1); you didn't use the tools you
@@ -206,19 +208,15 @@ Diagnose on the latest code, not your working-tree HEAD: `git fetch origin` +
 `git rev-list --count HEAD..origin/<default>` before calling anything a bug or
 opening a "fix" PR.
 
-## Allowed vs off-limits git ops
+## Git ops
 
-Allowed: `status`, `diff`, `log`, `show`, `remote`, `ls-files`, `cat-file`,
-`rev-parse`, `describe`, `shortlog`, `blame`, `tag`, `check-ignore`,
-`config --get`, `ls-tree`, `add`, `commit`, `push`, `clone`, `fetch`,
-`worktree list/add/remove` (`add`/`commit` only off the default branch).
-
-Off-limits without an explicit user ask: `checkout`, `switch`, `branch`,
-`stash`, `reset`, `rebase`, `cherry-pick`, `revert`, `merge --abort`, `clean`,
-`reflog`, `filter-branch`, `gc`, `prune`, `fsck`, `config` (write), force push.
-These have caused real, irreversible data loss; `git-guard` blocks them. On
-obstacles (conflict, lock file, unexpected state): resolve at the source, never
-reset/clean as a shortcut.
+Reads (`status`, `diff`, `log`, `blame`, `show`, …), `fetch`, `clone`, `push`,
+worktree ops, and `add`/`commit` off the default branch are yours. Destructive
+and history-rewriting ops (`checkout`, `switch`, `branch`, `stash`, `reset`,
+`rebase`, `cherry-pick`, `revert`, `clean`, `config` writes, force push) need
+an explicit user ask — `git-guard` blocks them because they have destroyed
+real work. On obstacles (conflict, lock file, unexpected state): resolve at
+the source, never reset/clean as a shortcut.
 
 ## Worktree recipe
 
@@ -307,26 +305,20 @@ on the agent's shell; hand it to the user via the `!` session prefix
 
 # Merge & Admin-Bypass Guard
 
-Authorization to do the work carries through to a **rebase-merge on green** — no
-fresh ask. What still needs explicit authorization is merging past branch
-protection or review requirements.
+Authorization to do the work carries through to a **rebase-merge on green** —
+no fresh ask. Merge autonomously when a non-author review and CI are green;
+ask only when the review finds problems, tests fail, or the merge conflicts.
 
-- Merge autonomously on green (non-author review + passing CI). Fall back to
-  `AskUserQuestion` only when the review finds problems, tests fail, or the
-  merge conflicts.
-- The verdict must be ON the PR you are merging — `merge-guard.sh` blocks a
-  `gh pr merge` whose PR carries neither an APPROVED review nor a fresh APPROVE
-  verdict comment. A verdict "carried from" another PR satisfies nothing.
-- Non-author review source: the repo's automated reviewer when configured and
-  posting on this PR; otherwise spawn a non-author subagent review immediately.
-  Never wait idle, never hand the merge to the user.
-- Never `gh pr merge --admin` (blocked by `merge-guard.sh`). If branch
-  protection blocks the merge, that's a red to resolve, not bypass.
-- Never self-approve your own PR. The clearing reviewer must be someone — or
-  some agent — other than the author; an automated repo reviewer or a
-  non-author subagent counts, you never do.
-- Never transfer credentials or auth files to another host without explicit
-  authorization.
+The non-author review: the repo's automated reviewer when configured and
+posting on this PR; otherwise spawn a non-author subagent review immediately —
+never wait idle, never hand the merge to the user. The verdict must be posted
+on the PR you are merging.
+
+`merge-guard.sh` mechanically blocks admin bypass, self-approval, and merging
+without a verdict on the PR. If it blocks you, fix the cause — don't route
+around it. Branch protection that blocks a merge is a problem to resolve, not
+bypass. Never transfer credentials or auth files to another host without
+explicit authorization.
 
 # No Claude-Code Footer
 
@@ -490,7 +482,6 @@ Right tool for the job:
 
 | Task | Tool |
 | --- | --- |
-| Read a large file (200+ lines) or map an unfamiliar dir | `mq` — see `context-query-mq` |
 | Issue tracker (Linear/GitHub/Jira) | `tickets` skill — auto-detects |
 | Browser automation | `browser` skill (`agents browser`) |
 | Interactive terminal (REPLs, TUIs) | `agents pty` |
@@ -501,33 +492,6 @@ Right tool for the job:
 
 Charts in rendered artifacts: hand-authored inline SVG or ASCII. No CDN chart
 libraries; style with the target product's design tokens.
-
-# Query Structure Before Reading Whole Files (`mq`)
-
-`mq` extracts one section of a file instead of reading the whole thing into
-context. It has per-call overhead, so use the decision rule, not "always mq".
-
-```bash
-mq <file>  '.section("Name") | .text'   # extract one function/section (KNOW the name)
-mq <file>  '.search("term")'            # find + show matches in one call
-mq <dir>/  '.tree | depth(1)'           # map an unfamiliar directory
-mq <file>  .tree                        # discover structure (exploration only)
-```
-
-**Use mq when:** you know the symbol/section you want (ONE call, straight
-there); you'll touch the same big file repeatedly (`.tree` once, then cheap
-extracts); mapping or searching an unfamiliar directory; a 200+ line file where
-you need a slice.
-
-**Don't use it when:** the file is small (<~100 lines); a one-shot read needs
-most of the file; you'd run `.tree` and then read the whole file anyway.
-
-**The #1 pitfall:** the map-then-extract dance for a target the task already
-names — measured 2.3× more expensive than just reading the file. Skip `.tree`;
-extract in one call.
-
-Not a docs tool: it handles source code (ts/py/go/rust/…), JSON/YAML/CSV, and
-Office as well as md/html/pdf. Install: `agents cli install mq`.
 
 # UI Work — See It Before "Done", Design It for the Eyes
 
@@ -541,9 +505,9 @@ Office as well as md/html/pdf. Install: `agents cli install mq`.
 
 ## Design for what the user will see
 
-- Lead with the visible behavior and appearance, then the implementation details.
-- Product mockups must use the product's real layout, components, and visual language. Abstract diagrams do not substitute for a product-faithful mockup.
-- When a genuine design choice exists, show two or three rendered variations with one-line tradeoffs and stop for the user's choice.
+- Lead plans with behavior — "when the user does A, they see B" — before any mechanism. Implementation depth scales to what's actually hard about the issue.
+- Mockups read like the real product — its layout, components, and design tokens, rendered via the `artifacts` skill — never generic wireframes or ASCII boxes.
+- A genuine design choice gets two or three rendered variations side by side, each with a one-line tradeoff. The mockup review is the approval point: present, get the pick, then build. Follow-ups and small edits skip straight to code.
 
 # Present Plans as Browser-Ready HTML
 
@@ -654,8 +618,9 @@ phone spam.
 
 Session, agent, host, runtime, and process identity resolve automatically from
 the launch and activity indexes. Do not stop or ask the user because
-`AGENT_SESSION_ID` is empty. If automatic resolution still fails, retry with the
-documented escape hatch:
+`AGENT_SESSION_ID` is empty. If automatic resolution still fails (orchestrator
+shells outside `agents run`), retry with the documented escape hatch —
+`--title` and the body are both required:
 
 ```bash
 agents feed post --title "<short subject>" "<update>" --session <session-id>
@@ -670,50 +635,37 @@ agents feed post --title "Signing blocked" "Production needs your biometric" --b
 ```
 
 Blocked posts open a needs-you record and deliver fail-loud. Never combine
-`--blocked` with `--level`; keep working on every unblocked part after filing it.
+`--blocked` with `--level`; keep working on every unblocked part after filing
+it. `--option` records answers the user can pick; `--default` names a safe
+fallback so work can resume without an answer. Front-load the ask — a phone
+notification truncates after about two lines, so lead with the decision, not
+the backstory.
 
 # Dispatching Agents to Remote Fleet (SSH) Devices
 
-```bash
-agents run <agent> "<prompt>" --device <box> --remote-cwd <ABS repo path> --mode <mode> --name <handle>
-```
+You can run agents on any fleet box:
+`agents run <agent> "<prompt>" --device <box>` (or `--device auto`), and teams
+place teammates with `--devices`/`--device`. The mechanics — flags, remote
+cwd resolution, monitoring — live in the `run` and `teams` skills; load them
+when you dispatch.
 
-- **Never `ssh <box> 'agents run …'`** — the open ssh channel leaks stdin and
-  the remote agent blocks forever. The native `--device` path launches detached
-  and survives dropped connections. `--device auto` picks by affinity +
-  headroom; name a box only when the task needs that machine.
-- Fleet devices (SSH/Tailscale, `agents devices`) are not cloud devices
-  (`rush cloud` / codex-cloud pods) — different commands and lifecycle.
-- `--remote-cwd` must be an absolute git-repo path that exists ON the remote.
-  Resolve the remote home first (`agents ssh <box> 'echo $HOME'`) — a bare
-  `~`/`$HOME` expands on the local box and silently targets a nonexistent path.
-  (`agents run` only; teammates use `--worktree` or `--cwd`.)
-- Dispatch whichever harness is confirmed working on the box — spreading across
-  harnesses is the point of the fleet, not more clones of yourself.
+The traps the flags won't teach you:
 
-**Probe with the operation you will actually perform.** A `--mode plan` ping
-proves install + login, nothing more — capability differs per operation class.
-If the work writes, probe a real write (`git fetch` + `git worktree add`); a PR
-→ probe a commit; a credential → a real authenticated request. Known trap:
-codex cannot write anywhere on this fleet (bwrap uid-map failure on Linux,
-sandbox denial on macOS) yet the dispatch exits 0 — send write-heavy work to
-claude on a write-probed box; codex stays fine for read-only analysis. Never
-silently escalate to a sandbox-off flag to dodge a failure — move to a
-box/harness that works and say the box changed.
-
-**Detached (`--no-follow`) runs:** status is only true through
-`agents devices ps` (it reconciles from the remote `.exit` file; the raw cache
-under `~/.agents/.cache/hosts/` stays "running" forever). A killed process or
-rebooted box never writes `.exit`, and no command rescues that record — so
-bound every wait with a ceiling from the job's expected runtime, then treat it
-as dead (`agents devices stop <id>`) or probe the pid directly
-(`ssh <host> 'ps -p <pid>'`). Dispatch records are local to the box that
-dispatched. Harvest with `agents logs <id>` once status leaves running.
-
-**Monitor at the service level** — `agents sessions preview <id>` for the
-brief, `agents sessions --active` for the fleet. Never cat/tail a dispatched
-agent's full transcript (its output bills back to you as input); pull the raw
-log only to grep the single failing line.
+- Never `ssh <box> 'agents run …'` — the open ssh channel leaks stdin and the
+  remote agent blocks forever. Only the native `--device` path launches
+  detached.
+- Probe with the operation you will perform: a plan-mode ping proves login,
+  not that the box can do the job. Work that writes → probe `git fetch` +
+  `git worktree add` first. codex cannot write anywhere on this fleet today
+  (sandbox failures, yet the dispatch exits 0) — write-heavy work goes to
+  claude on a write-probed box.
+- A detached run's status is only true through `agents devices ps` (it
+  reconciles from the remote `.exit` file). A killed process or rebooted box
+  never writes one — bound every wait with a ceiling from the job's expected
+  runtime, then treat it as dead.
+- Monitor with `agents sessions preview <id>` / `agents sessions --active`;
+  never tail a dispatched agent's full transcript (its output bills back to
+  you as input).
 
 # Unattended Work Fails Silently — Assert the Outcome, Not the Exit Code
 

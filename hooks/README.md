@@ -91,7 +91,6 @@ register time). See [§Subrule hooks](#subrule-hooks-rules-not-this-tree).
 | [`large-file-add-guard.sh`](./pre-tool-use/large-file-add-guard.sh) | Blocks `git add` of a file over 5 MiB |
 | [`01-git-require-clean-tree.sh`](./pre-tool-use/01-git-require-clean-tree.sh) | Blocks `git pull` / `rebase` / autostash while the tree is dirty |
 | [`09-mailbox-inject.py`](./pre-tool-use/09-mailbox-inject.py) | Delivers queued messages into a running session |
-| [`10-mq-read-nudge.py`](./pre-tool-use/10-mq-read-nudge.py) | On a large whole-file `Read`, suggests `mq` |
 | [`11-visual-readback-nudge.py`](./pre-tool-use/11-visual-readback-nudge.py) | Advises rendering and reading back a visual artifact before it leaves the session |
 
 ### `user-prompt-submit/` — UserPromptSubmit

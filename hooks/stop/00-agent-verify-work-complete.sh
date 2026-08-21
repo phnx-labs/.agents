@@ -141,12 +141,9 @@ repeat_guidance() {   # $1 = human name of the repeated item, $2 = prior count
   local n="${2:-0}"
   [ "$n" -lt 2 ] && return 0
   cat >&2 <<GUIDANCE
-NOTE — this gate has now fired $((n + 1)) times this session on $1. Re-check the
-live state and choose the most useful next move toward the user's goal. If the
-same approach is not working, change tactics. Possibilities include retrying
-differently, using your tools to unblock yourself, advancing another in-scope
-item, coordinating ownership, or escalating a genuinely human-only step. Use
-the actual context to decide; these are suggestions, not a fixed route.
+NOTE — this is block number $((n + 1)) this session for $1. The same
+approach is not working: change tactics — unblock yourself, advance another
+in-scope item, coordinate ownership, or escalate a genuinely human-only step.
 
 GUIDANCE
 }
@@ -193,31 +190,22 @@ evading = any(re.search(p, msg) for p in PHRASES) and not any(re.search(p, msg) 
 print('yes' if evading else 'no')
 " 2>/dev/null || echo no)
   if [ "$evasion" = "yes" ]; then
-    n=$(prior_fires 'STOP GATE (argue-past)')
+    n=$(prior_fires 'stand-down phrase')
     if [ "${n:-0}" -lt 2 ]; then
       record_gate argue-past restated-standdown-on-retry
       cat >&2 <<'MSG'
-STOP GATE (argue-past): This stop was already blocked, and the retry RESTATES a
-stand-down phrase instead of closing the loop. Re-asserting "correct stopping
-point" / "not mine to close" / "someone else owns it" is not evidence — it is
-the exact evasion this gate exists to catch.
-
-Do ONE of these, with verifiable evidence in your final message:
-1. Close the loop: drive the remaining step (release, ticket, deploy, PR) and
-   quote the real output (registry version, ticket state, URL).
-2. Defer to another owner ONLY with a live probe quoted: the owning process
-   (`pgrep`/lease state), the PR updated within minutes, or the owning session
-   actually running — plus a bounded watch on the outcome you have armed.
-3. Name a genuine user-only blocker (biometric, interactive login) and quote the
-   distinct attempts you made first.
-
-A claim without a probe will be blocked again.
+STOP — this stop was already blocked, and the retry restates a stand-down phrase
+instead of closing the loop. A claim is not evidence. Either finish the
+remaining step and quote its real output; or defer to another owner with a live
+probe quoted (`pgrep`/lease, the PR updated minutes ago, the owning session
+running) plus a bounded watch you armed; or name a genuine user-only blocker
+and the attempts you made. A claim without a probe will be blocked again.
 MSG
       exit 2
     fi
     if [ "${n:-0}" -eq 2 ]; then
       sid=$(echo "$INPUT_JSON" | python3 -c "import json,sys; print(json.load(sys.stdin).get('session_id',''))" 2>/dev/null)
-      _to 5 agents feed post --session "${sid:-unknown}" --title "Stop-gate evasion: argued past 3 blocks" "Session restated a stand-down phrase after repeated delivery blocks and was allowed to stop. Transcript: $TRANSCRIPT_PATH" --blocked >/dev/null 2>&1 || true
+      _to 5 agents feed post --session "${sid:-unknown}" --title "Argued past 3 stop blocks" "Session restated a stand-down phrase after repeated delivery blocks and was allowed to stop. Transcript: $TRANSCRIPT_PATH" --blocked >/dev/null 2>&1 || true
     fi
   fi
   exit 0
@@ -472,34 +460,23 @@ print('yes' if ok else 'no')
       if [ "$has_handoff" != "yes" ]; then
         repeat_guidance "an open pull request (${open_prs%%$'\n'*})" "$(prior_fires 'pull request(s) that are still OPEN')"
         cat >&2 <<PRGATE
-STOP GATE: This session created OR worked pull request(s) that are still OPEN:
+STOP — this session created or worked pull request(s) that are still OPEN:
 
 $open_prs
-An open PR is not a finished task — merged-or-handed-off is done. Before
-stopping you must do ONE of:
-1. Keep driving it: set a native \`ScheduleWakeup\`/\`Monitor\` to re-invoke you
-   when CI settles, or enable the built-in \`pr-merge-on-green\` monitor
-   (\`agents monitors enable pr-merge-on-green\`) — the daemon owns it, so it
-   outlives this agent. Get the non-author review and merge on green. Do NOT
-   background \`gh pr checks --watch\` — that child dies when a headless agent
-   exits and strands the PR (RUSH-2394). Do NOT open the PR link for the user
-   or ask them to click merge.
-2. Non-author review path: if the automated code reviewer is configured and
-   posting (e.g. prix-cloud), wait for it. If it is missing, silent, down, or
-   the repo has none — spawn a non-author subagent review NOW (code:review /
-   Agent that is not the author). Do not wait, and do not hand the merge to
-   the user because the bot is down.
-3. Hand it off EXPLICITLY only when someone/something else truly owns it: name
-   who or what now owns the PR (a person, a session, a durable monitor) in your
-   final message. "Needs you to merge" / "open the PR" is NOT a handoff.
-4. If stopping is genuinely correct — a GENUINE external blocker you cannot
-   resolve — name it ("blocked on <what>") AND point to either a DURABLE process
-   that will finish it (a native \`ScheduleWakeup\`/\`Monitor\` re-invoke, or the
-   \`pr-merge-on-green\` monitor — "will merge on green") or an action only your
-   biometric can do ("your Touch ID"). A background \`gh pr checks --watch\` is
-   NOT durable. Wanting a human REVIEW is NOT this
-   case: keep driving it (spawn a reviewer) or hand it off explicitly by naming
-   the owner (option 3) — "awaiting your review" will NOT pass this gate.
+An open PR is not done — merged-or-handed-off is. Do ONE of:
+1. Keep driving: arm a durable watcher (native \`ScheduleWakeup\`/\`Monitor\`, or
+   \`agents monitors enable pr-merge-on-green\` — the daemon owns it) and merge
+   on green. A backgrounded \`gh pr checks --watch\` dies with a headless agent
+   (RUSH-2394). Don't open the PR link for the user or ask them to click merge.
+2. Non-author review: wait for the configured bot (e.g. prix-cloud) if it's
+   posting; otherwise spawn a non-author subagent review now — don't hand the
+   merge to the user because the bot is down.
+3. Hand off EXPLICITLY: name who or what now owns the PR (a person, a session,
+   a durable monitor). "Needs you to merge" is not a handoff.
+4. Genuinely blocked: say "blocked on <what>" plus the durable process that
+   finishes it ("will merge on green") or the user-only action ("your Touch
+   ID"). Wanting a human review is not a blocker — spawn a reviewer or hand
+   off by name.
 
 Then finish your final message and stop again.
 PRGATE
@@ -590,24 +567,14 @@ print('yes' if any(re.search(p, msg) for p in pats) else 'no')
 " 2>/dev/null || echo "no")
 
   if [ "$swarm_done" = "yes" ]; then
-    repeat_guidance "an edit-mode swarm's cross-track seam" "$(prior_fires 'STOP GATE (swarm)')"
+    repeat_guidance "an edit-mode swarm's cross-track seam" "$(prior_fires 'edit-mode swarm')"
     cat >&2 <<SWARMGATE
-STOP GATE (swarm): You ran an edit-mode swarm and are claiming it is done.
-Every track's PR merging green is NOT proof the composed feature works — each
-teammate's tests and reviewer only ever saw that teammate's own diff. The seam
-BETWEEN tracks (where one track calls what another built) is the one thing no
-track verified, and it is exactly where the feature breaks.
-
-Before you can stop, you MUST:
-1. List every seam where one track calls/imports/hits what another track built.
-2. For each seam, TRIGGER the composed cross-track flow against where the
-   feature actually runs (the running daemon / installed binary / deployed
-   service — merged to main is NOT deployed) and QUOTE the real output.
-3. If a seam genuinely cannot be exercised, name that hop as UNVERIFIED — do
-   not fold it into a "done end-to-end" claim.
-
-"All PRs merged" / a table of green checkmarks is a report of merges, not proof
-of a working feature. Go run the composed flow, then report with quoted output.
+STOP — you ran an edit-mode swarm and are claiming it is done. Per-track green
+PRs don't verify the seams BETWEEN tracks — the one thing no track's tests saw.
+List every seam (where one track calls what another built), trigger the
+composed flow where the feature actually runs (installed binary / daemon —
+merged is not deployed), and QUOTE the real output. A seam you cannot exercise
+is named UNVERIFIED, never folded into "done end-to-end".
 SWARMGATE
     record_gate swarm composed-flow-unverified
     exit 2
@@ -713,24 +680,12 @@ print('yes' if (RUN.search(msg) and not EXEMPT.search(msg) and not FORM_PASTE.se
 
   if [ "$directs_user_to_run" = "yes" ]; then
     cat >&2 <<'HBGATE'
-STOP GATE (handback): You wrote a runnable script to a temp path and your final
-message tells the user to run it. You have the SAME shell + ssh the user does —
-handing them a command you could run yourself is the hand-back this repo exists
-to prevent ("No, you release it..").
-
-Before you can stop, do ONE of:
-1. RUN IT YOURSELF (the default — you almost always can). Execute the script or
-   command you just prepared, then report the real result.
-2. If a step genuinely needs the USER (a biometric, an interactive login on their
-   own machine), say so explicitly ("needs your Touch ID" / "interactive login")
-   — that phrasing clears this gate.
-3. If you are blocked and it is NOT a user-only gate, do NOT stop in this window:
-   reach the user OUT-OF-BAND (message them) so you get their attention, keep
-   working every other thread meanwhile, and escalate if they do not reply. A
-   chat message in this window is a note in an empty room — the user is not
-   watching it.
-
-Then finish your final message and stop again.
+STOP — you wrote a runnable script to a temp path and your final message tells
+the user to run it. You have the same shell + ssh: run it yourself and report
+the real result. Only a genuinely user-only step is theirs — say it explicitly
+("needs your Touch ID" / "interactive login"). Otherwise reach the user
+out-of-band and keep working; a chat message in this window is a note in an
+empty room.
 HBGATE
     record_gate handback runnable-not-executed
     exit 2
@@ -864,29 +819,17 @@ try:
 except Exception:
     print(0)
 " 2>/dev/null || echo 0)
-  repeat_guidance "unfinished checklist items" "$(prior_fires 'STOP GATE (keep moving)')"
+  repeat_guidance "unfinished checklist items" "$(prior_fires 'our task list still has')"
   cat >&2 <<TASKGATE
-STOP GATE (keep moving): Your task list still has ${task_remaining} unfinished
-item(s). The next one to advance is:
+STOP — your task list still has ${task_remaining} unfinished item(s). Next:
 
   "${task_next}"
 
-A checklist is your acceptance rubric — you are done when every item is completed,
-not before. Recognizing a background watcher on one item is not permission to stop
-the rest. Before stopping, do ONE of:
-1. Advance the next item now — do the work, then mark it completed (TaskUpdate
-   status=completed). Then move to the following item; stop only when nothing is
-   left to advance.
-2. If the item is genuinely owned by someone/something else — a live background
-   watcher, another session, or a person — name that owner explicitly in your
-   final message (that hands it off).
-3. If it is blocked on a genuine external step you cannot do (a biometric, an
-   interactive login), name the blocker ("blocked on <what>") and what will
-   finish it.
-4. If the item is no longer needed, delete it (TaskUpdate status=deleted) so the
-   list reflects reality.
-
-Do not stop with unfinished items and no owner named.
+Advance it now and mark it completed (TaskUpdate), or: name the owner that has
+it (a live watcher, session, or person); name a genuine external blocker
+("blocked on <what>") and what finishes it; or delete items no longer needed
+(TaskUpdate status=deleted). Don't stop with unfinished items and no owner
+named.
 TASKGATE
   record_gate keep-moving unfinished-checklist
   exit 2
@@ -1213,53 +1156,23 @@ if [ -z "$first_user_msg" ]; then
 fi
 
 # Block and inject self-audit prompt
-repeat_guidance "a done-claim (full goal re-audit)" "$(prior_fires 'You claimed this work is done')"
+repeat_guidance "a done-claim (full goal re-audit)" "$(prior_fires 'ou claimed this work is done')"
 cat >&2 <<GATE
-STOP GATE: You claimed this work is done, but you must verify before stopping.
+STOP — you claimed this work is done, but you must verify before stopping.
 
-The user's request(s) this session — re-read the FULL conversation for the rest,
-including any later corrections:
+The user's request(s) this session (re-read the full conversation for the rest,
+including later corrections):
 "$first_user_msg"
 
-Before you can stop, you MUST:
-1. Re-read the full conversation from the beginning
-2. List EVERY goal, requirement, and question the user raised
-3. For each goal, state one of:
-   - DONE and TESTED end-to-end (cite the tangible output — test result, screenshot, live behavior)
-   - DONE but UNTESTED (state what verification is missing, then go do it)
-   - NOT DONE (continue working on it now)
-4. If ANY goal is UNTESTED or NOT DONE, keep working. Do not stop.
-5. Once EVERY goal is DONE and verified, close out in this order:
-   a. New follow-up ideas, improvements, or issues you noticed along the way that
-      are out of scope for this session: FILE them as tickets via the project's
-      tracker right now, with real context (what you found, why it's out of
-      scope, any evidence) — not a one-line stub. Do not just mention an idea
-      and wait ('say the word', 'let me know if you want this') — either do it,
-      file it as tracked work, or drop it. A dangling optional idea is not a
-      finished session.
-   b. Clean up loose ends: commit and push any stray uncommitted work, remove
-      worktrees and branches this session no longer needs, and confirm every
-      ticket this session actually finished is closed with proof (not left
-      Todo because it slipped your mind).
-   c. Post ONE quick status update the way you would update a human manager — the
-      headline outcome + the one link/next-step, not a transcript:
-       agents feed post --title "<short outcome>" "<what you delivered + the one next step>" --level important
-      This records the completion and marks this phone-worthy successful update
-      for owner delivery.
-   d. This session is now genuinely finished. If this is a headless, dispatched,
-      or background run — not a live terminal a person might be actively
-      watching right now — run /done as your very last action: its own Step 1
-      builds the real handoff recap (the /recap discipline — facts, what's
-      done, tests actually run, nothing left dangling) as your final message,
-      THEN its Step 2 self-exits via the guarded SIGTERM (do not hand-roll a
-      bare SIGTERM, and do not skip straight to Step 2 — a self-exit with no
-      recap first is not a clean handoff). If you are unsure, or this looks
-      like an interactive session someone is driving, run /recap instead (same
-      handoff discipline, no self-exit) and then just stop.
-
-Only stop when every goal has tangible, verified results, any real follow-ups are
-filed with context (not dangled or stubbed), loose ends are cleaned up, and — if
-applicable — the session has recapped and cleanly exited itself.
+List every goal the user raised and mark each: DONE and verified (cite the
+tangible output), DONE but unverified (go verify now), or NOT DONE (keep
+working). Stop only when all are verified. Then close out: file real follow-ups
+as tickets with context (don't dangle "say the word" ideas); clean up loose
+ends (stray commits, worktrees, ticket states); and post one manager-style
+update:
+  agents feed post --title "<short outcome>" "<delivered + the one next step>" --level important
+Headless or dispatched runs finish with /done (recap first, then its guarded
+self-exit — never a bare SIGTERM); interactive sessions use /recap and stop.
 GATE
 record_gate self-audit completion-unverified
 exit 2

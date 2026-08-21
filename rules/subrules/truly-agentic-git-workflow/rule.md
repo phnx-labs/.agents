@@ -16,19 +16,15 @@ Diagnose on the latest code, not your working-tree HEAD: `git fetch origin` +
 `git rev-list --count HEAD..origin/<default>` before calling anything a bug or
 opening a "fix" PR.
 
-## Allowed vs off-limits git ops
+## Git ops
 
-Allowed: `status`, `diff`, `log`, `show`, `remote`, `ls-files`, `cat-file`,
-`rev-parse`, `describe`, `shortlog`, `blame`, `tag`, `check-ignore`,
-`config --get`, `ls-tree`, `add`, `commit`, `push`, `clone`, `fetch`,
-`worktree list/add/remove` (`add`/`commit` only off the default branch).
-
-Off-limits without an explicit user ask: `checkout`, `switch`, `branch`,
-`stash`, `reset`, `rebase`, `cherry-pick`, `revert`, `merge --abort`, `clean`,
-`reflog`, `filter-branch`, `gc`, `prune`, `fsck`, `config` (write), force push.
-These have caused real, irreversible data loss; `git-guard` blocks them. On
-obstacles (conflict, lock file, unexpected state): resolve at the source, never
-reset/clean as a shortcut.
+Reads (`status`, `diff`, `log`, `blame`, `show`, …), `fetch`, `clone`, `push`,
+worktree ops, and `add`/`commit` off the default branch are yours. Destructive
+and history-rewriting ops (`checkout`, `switch`, `branch`, `stash`, `reset`,
+`rebase`, `cherry-pick`, `revert`, `clean`, `config` writes, force push) need
+an explicit user ask — `git-guard` blocks them because they have destroyed
+real work. On obstacles (conflict, lock file, unexpected state): resolve at
+the source, never reset/clean as a shortcut.
 
 ## Worktree recipe
 

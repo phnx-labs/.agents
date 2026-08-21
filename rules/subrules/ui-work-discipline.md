@@ -10,6 +10,6 @@
 
 ## Design for what the user will see
 
-- Lead with the visible behavior and appearance, then the implementation details.
-- Product mockups must use the product's real layout, components, and visual language. Abstract diagrams do not substitute for a product-faithful mockup.
-- When a genuine design choice exists, show two or three rendered variations with one-line tradeoffs and stop for the user's choice.
+- Lead plans with behavior — "when the user does A, they see B" — before any mechanism. Implementation depth scales to what's actually hard about the issue.
+- Mockups read like the real product — its layout, components, and design tokens, rendered via the `artifacts` skill — never generic wireframes or ASCII boxes.
+- A genuine design choice gets two or three rendered variations side by side, each with a one-line tradeoff. The mockup review is the approval point: present, get the pick, then build. Follow-ups and small edits skip straight to code.

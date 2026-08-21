@@ -4,7 +4,6 @@ Right tool for the job:
 
 | Task | Tool |
 | --- | --- |
-| Read a large file (200+ lines) or map an unfamiliar dir | `mq` — see `context-query-mq` |
 | Issue tracker (Linear/GitHub/Jira) | `tickets` skill — auto-detects |
 | Browser automation | `browser` skill (`agents browser`) |
 | Interactive terminal (REPLs, TUIs) | `agents pty` |
