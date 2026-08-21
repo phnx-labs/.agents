@@ -9,7 +9,7 @@ the fleet holds browser + computer + secrets.
 
 | Command | Use when |
 | --- | --- |
-| `/work:loop` | **Unattended drain** of many items across projects. Spreads load (`agents teams` + balanced accounts + worker hosts). Uses browser/computer when the task needs it. **No review/merge gate** — finish agent-doable work, open PRs for the human to review later. Top-level alias: `/loop`. |
+| `/work:loop` | **Unattended drain** of many items across projects. Spreads load (`agents teams` + balanced accounts + worker hosts). Uses browser/computer when the task needs it. **Drives each item to landed** — engineering merges on green behind a non-author review; you are asked only for a real product/credential decision. Top-level alias: `/loop`. |
 | `/work:dispatch` | **ONE** unit of work — ticket, described task, or "next on `<project>`". Classify coding vs non-coding, file clean if needed, route to the right executor, drive to done. Single-target; not a board sweep. |
 | `/work:output` | **Fleet-wide token-burn + output report** — runs `agents output` across every device, folds in relay-only machines, renders an HTML dashboard, drops a PDF in Downloads, and opens it. Was the top-level `/output`. |
 
@@ -17,7 +17,7 @@ the fleet holds browser + computer + secrets.
 
 | Skill | Role |
 | --- | --- |
-| `work:loop` | Orchestrator for overnight / multi-item drain. Compose engineering patterns from `code:loop` without its merge-review completion. |
+| `work:loop` | Orchestrator for overnight / multi-item drain. Composes engineering patterns from `code:loop`, including its merge-on-green completion. |
 | (dispatch is command-first today) | One-item path in `commands/dispatch.md`. |
 
 ## How the pieces fit
@@ -30,9 +30,9 @@ the fleet holds browser + computer + secrets.
 ```
 
 - **`/triage`** — board decisions. `work:loop` skips items that need cancel/taste.
-- **`/code:loop`** — engineering drain with merge-oriented "done". `work:loop` may
-  reuse its worktree/claim patterns but **stops at PR open** by default (human reviews
-  later). Do not run `code:review` merge from `work:loop`.
+- **`/code:loop`** — engineering drain with merge-oriented "done". `work:loop` reuses its
+  worktree/claim patterns **and its completion bar**: engineering items land **merged** on
+  green behind a non-author review, never parked on the user as an open PR.
 - **`/loop`** — short alias of `/work:loop`.
 
 ## Load-spreading (why this exists)

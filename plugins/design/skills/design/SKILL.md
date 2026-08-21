@@ -71,9 +71,12 @@ Each mode file lives beside this one. Read design-core first, then the mode:
 
 Write the artifact self-contained. Pick its home once: if the repo has an `.agents/` dir,
 `"$ROOT/.agents/design/<slug>.html"`; else `/tmp/<slug>.html`. Then render it, **look at
-the screenshot**, run the critique checklist, and open it on the machine the user sits at
-(resolve the online device from the Host and Fleet context; `open`/`xdg-open` locally,
-`agents ssh <host> 'open …'` when remote). For a shareable asset, also drop a PDF/PNG in
+the screenshot**, run the critique checklist, and show it on the machine the user sits at
+(resolve the online device from the Host and Fleet context; show it in one reused browser
+tab with `agents browser navigate --url file://<path>` locally, or
+`agents ssh <host> 'agents browser navigate --url file://…'` when remote — a raw `open`
+spawns a duplicate tab every call; fall back to `open`/`xdg-open` only if no drivable
+browser profile exists). For a shareable asset, also drop a PDF/PNG in
 `~/Downloads`. See `plan-render/SKILL.md` for the full delivery and PDF steps; do not
 re-derive them.
 

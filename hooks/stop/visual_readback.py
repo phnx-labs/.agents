@@ -15,7 +15,17 @@ VISUAL_CLAIMS = (
     "here’s the mockup", "here's the tour", "here’s the tour", "on the left",
     "the header shows", "renders as", "here's what you'll see", "here’s what you’ll see",
 )
-SHIP_RE = re.compile(r"\b(?:scp|rsync|agents\s+share|open|xdg-open)\b|agents\s+ssh\b[^\n]*\bopen\b", re.I)
+SHIP_RE = re.compile(
+    r"\b(?:scp|rsync|agents\s+share|open|xdg-open)\b"
+    r"|agents\s+ssh\b[^\n]*\bopen\b"
+    # `agents browser navigate --url file://<artifact>` (and `browser start --url`)
+    # is now the recommended way to show the user a rendered plan/visual in one
+    # reused tab instead of a raw `open`. Delivery is still only registered when
+    # the command references a visual path (see `_derived_paths` below), so this
+    # never false-positives on a bare `browser start` that shows no artifact.
+    r"|agents\s+browser\s+(?:navigate|start)\b",
+    re.I,
+)
 PATH_RE = re.compile(r"(?:file://)?(?P<path>(?:/|\.?\.?/)?[^\s'\"<>|;&]+\.(?:html|png|jpe?g|svg|pdf))", re.I)
 WRITE_NAMES = {"write", "edit", "multiedit", "notebookedit", "apply_patch", "applypatch"}
 

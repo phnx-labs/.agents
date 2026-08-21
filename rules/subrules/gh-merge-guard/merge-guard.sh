@@ -199,32 +199,9 @@ case "$norm" in
       _reviews=$(_to 3 gh api "repos/$_pr_repo/pulls/$_pr_num/reviews" --cache 60s 2>/dev/null) || _reviews="__API_ERR__"
       _comments=$(_to 3 gh api "repos/$_pr_repo/issues/$_pr_num/comments" --cache 60s 2>/dev/null) || _comments="__API_ERR__"
       if [ "$_reviews" != "__API_ERR__" ] && [ "$_comments" != "__API_ERR__" ]; then
-        _verdict=$(printf '%s\n---AGENTS-SPLIT---\n%s' "$_reviews" "$_comments" | python3 -c '
-import json, re, sys
-raw = sys.stdin.read().split("---AGENTS-SPLIT---")
-ok = False
-try:
-    reviews = json.loads(raw[0])
-    if isinstance(reviews, list) and any(r.get("state") == "APPROVED" for r in reviews):
-        ok = True
-except Exception:
-    pass
-if not ok:
-    try:
-        comments = json.loads(raw[1])
-        for c in (comments if isinstance(comments, list) else []):
-            body = c.get("body") or ""
-            if not re.search(r"\bAPPROVE\b", body):
-                continue
-            # A verdict that only points at another PR is laundering, not review.
-            if re.search(r"\bcarried\s+(?:over\s+)?from\b|\bAPPROVE\s+(?:on|from)\s+#\d+", body):
-                continue
-            ok = True
-            break
-    except Exception:
-        pass
-print("ok" if ok else "missing")
-' 2>/dev/null) || _verdict="ok"
+        # Same verdict as pr-merge-on-green: reuse pr-verdict.py, do not re-inline.
+        _GUARD_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+        _verdict=$(printf '%s\n---AGENTS-SPLIT---\n%s' "$_reviews" "$_comments" | python3 "$_GUARD_DIR/pr-verdict.py" 2>/dev/null) || _verdict="ok"
         if [ "$_verdict" = "missing" ]; then
           printf '%s\n' "Blocked: no non-author review verdict found ON this PR ($_pr_repo#$_pr_num). A GitHub APPROVED review or an APPROVE verdict comment must be posted on the PR being merged — a verdict 'carried from' another PR satisfies nothing (the #2736 laundering pattern). Get the automated reviewer's verdict or spawn a non-author subagent review on THIS PR, then retry." >&2
           exit 2

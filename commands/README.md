@@ -20,8 +20,6 @@ commands are often thin wrappers that only invoke a skill (harness-friendly).
 
 | Command | What it does |
 |---|---|
-| [`/bmad`](./bmad.md) | Turn a request into a BMAD-style, implementation-ready work package without starting the build |
-| [`/adhd`](./adhd.md) | Explore a decision through bounded independent frames and a critical synthesis without taking external action |
 | [`/plan`](./plan.md) | Plan with grounded design — research, read code, create artifacts, optionally get early review |
 | [`/swarm`](./swarm.md) | Front door to the `swarm` plugin — fan work across parallel agents (`run` by default; or `plan` / `spec` / `debug`) |
 | [`/debug`](./debug.md) | Trace the data path, attribute regressions to the responsible agent/session and explain how they slipped, then have independent agents confirm the root cause (routes to `swarm:debug`) |
@@ -61,7 +59,7 @@ alias); `/fork` is [`/sessions:fork`](../plugins/sessions/README.md).
 |---|---|
 | [`/triage`](./triage.md) | Sweep the whole board — ground in real product goals, then force every item to keep-and-schedule-this-cycle or cancel. Never Backlog |
 | [`/dispatch`](./dispatch.md) | Take one task from idea to a working agent — understand the repo, spec fast, debug-skill for bugs, quick plan, file the ticket, dispatch |
-| [`/loop`](./loop.md) | Alias of `/work:loop` — unattended multi-project work drain (any kind; spread load; no review gate; browser/computer ok) |
+| [`/loop`](./loop.md) | Alias of `/work:loop` — unattended multi-project work drain (any kind; spread load; merges on green behind a non-author review; browser/computer ok) |
 | [`/next`](./next.md) | Drive the current task to delivered (verify E2E, docs, commit, PR, release gate, close the ticket — the old `/finish`), then surface (and if clear, claim) the next related task; checks in-flight PRs/sessions first so it never duplicates work |
 | [`/teams`](./teams.md) | Spawn parallel agents to work on a task together |
 

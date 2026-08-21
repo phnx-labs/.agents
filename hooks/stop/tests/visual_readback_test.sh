@@ -40,6 +40,18 @@ sed -i '2i {"type":"assistant","message":{"content":[{"type":"tool_use","id":"c1
 out=$(inspect "$disciplined")
 check "disciplined session records paired image read-back" "$(printf '%s' "$out" | python3 -c 'import json,sys; print(json.load(sys.stdin)["visual_read_back"])')" "True"
 
+# `agents browser navigate --url file://<artifact>` is now the recommended way to
+# show the user a rendered plan/visual (one reused tab, not a raw `open`). It must
+# count as delivery, or the read-back gate silently stops firing for that path.
+navigate_blind="$SANDBOX/navigate_blind.jsonl"
+cat > "$navigate_blind" <<'EOF'
+{"type":"assistant","message":{"content":[{"type":"tool_use","id":"w1","name":"Write","input":{"file_path":"/tmp/plan.html"}}]}}
+{"type":"assistant","message":{"content":[{"type":"tool_use","id":"n1","name":"Bash","input":{"command":"scp /tmp/plan.html zion:/tmp/ && agents ssh zion 'agents browser navigate --url file:///tmp/plan.html'"}}]}}
+EOF
+out=$(inspect "$navigate_blind")
+check "browser navigate of a visual counts as delivery" "$(printf '%s' "$out" | python3 -c 'import json,sys; print(json.load(sys.stdin)["visual_delivered"])')" "True"
+check "browser navigate delivery with no read-back is caught" "$(printf '%s' "$out" | python3 -c 'import json,sys; print(json.load(sys.stdin)["visual_read_back"])')" "False"
+
 overwritten="$SANDBOX/overwritten.jsonl"
 cp "$disciplined" "$overwritten"
 printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"w2","name":"Write","input":{"file_path":"/tmp/mockup.png"}}]}}' >> "$overwritten"

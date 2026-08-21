@@ -1,0 +1,13 @@
+{
+  "number": 9,
+  "url": "https://github.com/acme/widgets/pull/9",
+  "repository": { "nameWithOwner": "acme/widgets" },
+  "reviewDecision": "",
+  "statusCheckRollup": [
+    { "name": "test", "conclusion": "SUCCESS", "state": "COMPLETED" }
+  ],
+  "reviews": [],
+  "comments": [
+    { "author": { "login": "someone" }, "body": "looks big, did not review" }
+  ]
+}

@@ -116,6 +116,12 @@ hooks:
     matcher: Bash
     script: pre-tool-use/rm-guard.sh
     timeout: 5
+  secrets-guard:
+    events:
+      - PreToolUse
+    matcher: Bash
+    script: pre-tool-use/secrets-guard.sh
+    timeout: 5
   git-require-clean-tree:
     events:
       - PreToolUse
