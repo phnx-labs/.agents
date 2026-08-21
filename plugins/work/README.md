@@ -17,7 +17,7 @@ the fleet holds browser + computer + secrets.
 
 | Skill | Role |
 | --- | --- |
-| `work:loop` | Orchestrator for overnight / multi-item drain. Compose engineering patterns from `code:loop` without its merge-review completion. |
+| `work:loop` | Orchestrator for overnight / multi-item drain. Composes engineering patterns from `code:loop`, including its merge-on-green completion. |
 | (dispatch is command-first today) | One-item path in `commands/dispatch.md`. |
 
 ## How the pieces fit
@@ -30,9 +30,9 @@ the fleet holds browser + computer + secrets.
 ```
 
 - **`/triage`** — board decisions. `work:loop` skips items that need cancel/taste.
-- **`/code:loop`** — engineering drain with merge-oriented "done". `work:loop` may
-  reuse its worktree/claim patterns but **stops at PR open** by default (human reviews
-  later). Do not run `code:review` merge from `work:loop`.
+- **`/code:loop`** — engineering drain with merge-oriented "done". `work:loop` reuses its
+  worktree/claim patterns **and its completion bar**: engineering items land **merged** on
+  green behind a non-author review, never parked on the user as an open PR.
 - **`/loop`** — short alias of `/work:loop`.
 
 ## Load-spreading (why this exists)
