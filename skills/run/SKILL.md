@@ -249,13 +249,14 @@ agents logs <id> -f          # re-attach to a running one and follow
 
 ## Automatic fleet placement
 
-`--device auto` lets the CLI choose the least-loaded reachable machine from its
-automatic-placement pool. For a named harness, the machine must have that
-harness installed and a healthy signed-in account. An interactive trailing-`@`
-picker launch also retains installed devices whose accounts need login, so the
-chosen machine can offer its `launch to sign in` row; a machine whose picker
-would contain only throttled accounts stays excluded. If no machine is eligible,
-the command fails loud; it never silently degrades to the local machine.
+`--device auto` lets the CLI choose a reachable machine from its
+automatic-placement pool. For a named harness, placement prefers a device with
+a healthy signed-in account, then the device with lower live load. An
+interactive trailing-`@` picker launch also admits installed devices with a
+selectable signed-out or revoked-account login target, while still ranking a
+ready signed-in device first; a device whose picker would contain only
+throttled accounts stays excluded. If no machine is eligible, the command fails
+loud; it never silently degrades to the local machine.
 
 ```bash
 agents run claude "fix the flaky test" --device auto
