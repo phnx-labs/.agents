@@ -1,6 +1,6 @@
 ---
 name: review
-description: "Review PRs and repo health with one skill, three modes. Default: recap the session's goal, discover every PR it opened, and review/merge each in dependency order. Given PR number(s): a deep sub-agent review (not the author) with file:line grounding, an architecture rubric (reuse, cross-cutting-at-source, no duplicate surfaces, doc-asserted invariants), and a security pass on risk-touching diffs. Given `repo` / a path / `--since <date>`: a read-only whole-repo architecture-and-quality diagnostic (four orthogonal categories, HTML report, no merge verdict). Triggers on: 'review the PR', 'code review', 'review #N', 'before I merge', 'gate this PR', 'security review', 'what's wrong with this branch', 'health check', 'parallel implementations', 'audit drift'."
+description: "Review PRs and repo health with one skill, three modes. Default: recap the session's goal, discover every PR it opened, and review/merge each in dependency order. Given PR number(s): a deep sub-agent review (not the author) with file:line grounding, an architecture rubric (reuse, cross-cutting-at-source, no duplicate surfaces, doc-asserted invariants), and a security pass on risk-touching diffs. Given `repo` / a path / `--since <date>`: a read-only whole-repo architecture-and-quality diagnostic (four orthogonal categories, HTML report, no merge verdict). Triggers on: 'review the PR', 'code review', 'review #N', 'before I merge', 'block this PR', 'security review', 'what's wrong with this branch', 'health check', 'parallel implementations', 'audit drift'."
 argument-hint: "[empty=session PRs | #PR [#PR...] | repo | <path> | --commits N | --since <date> | --branch] [--single|--team] [--security] [dry-run|no-merge]"
 allowed-tools: Bash(gh *), Bash(git *), Bash(rg *), Bash(fd *), Bash(ls *), Bash(wc *), Bash(jq *), Bash(agents *), Bash(go vet*), Bash(tsc*), Bash(staticcheck*), Bash(gocyclo*), Bash(biome*), Bash(shellcheck*), Bash(mcporter*), Bash(printenv*), Bash(sqlite3*), Bash(bun*), Bash(./*/scripts/sandbox.sh*), Bash(open*), Bash(xdg-open*), Bash(mkdir*), Bash(rush *), Read(*), Write(*), Edit(*), Agent(*)
 user-invocable: true
@@ -652,7 +652,7 @@ Return file:line quotes for every claim. Do NOT paraphrase. If you can't quote i
 
 Capture the subagent's stdout, convert JSONL → JSON array, write to
 `$RUN_DIR/findings/architecture.json`. `wait` for all five bash passes plus the subagent —
-wall-clock is gated by the slowest (usually the subagent).
+wall-clock is bounded by the slowest (usually the subagent).
 
 ### C4. Aggregate
 
@@ -713,7 +713,7 @@ in the HTML footer (F1: act with what's available). Don't fan out via `agents te
 is a sub-90-second diagnostic, teams are for multi-surface implementation. Don't include
 Halstead / Maintainability Index thresholds — the skipped-checks footer explains why.
 Don't return a merge/request-changes verdict or a non-zero exit — Mode C is read-only,
-never a gate. Don't modify code — the HTML report's clipboard actions are how fixes flow,
+never a merge block. Don't modify code — the HTML report's clipboard actions are how fixes flow,
 through `/code:loop` or `/code:commit`. Don't write to `/tmp` — output lands in
 `<repo>/.agents/artifacts/<ts>-review/`.
 

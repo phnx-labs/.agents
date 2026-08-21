@@ -28,13 +28,13 @@ A swarm earns its cost only when there are **≥2 genuinely independent tracks**
 - If you can't find ≥2 independent tracks, this is **not** a swarm task. Say so and drop to a single `agents run`, or just do it inline. Don't fan out one job into three agents that step on each other.
 - If the task touches the state of the world (a library API, a framework capability, a pricing tier, a model id), **WebSearch with the current year** and fold the citation into each brief — your weights are stale.
 
-## 2. Distribute — plan, gate, spawn
+## 2. Distribute — plan, checkpoint, spawn
 
 Follow `swarm:orchestrate` exactly:
 
 1. **Discover providers** — `agents teams doctor` / `agents view --json`. Mix across the ones that are installed AND signed in; diversity across claude/codex/antigravity is the point. If only one is up, say so and proceed single-provider.
 2. **Size by judgment** — no fixed table. Wide/gnarly/cross-cutting work gets more tracks; a narrow job gets one (or none). Spend agents where uncertainty is highest.
-3. **Show the Swarm Distribution Plan** as a checkpoint, then create the team and proceed. Only stop for genuine scope/design ambiguity, not for a permission gate.
+3. **Show the Swarm Distribution Plan** as a checkpoint, then create the team and proceed. Only stop for genuine scope/design ambiguity, not to ask permission.
 4. **`--mode plan`** for read-only tracks (research, audit, analysis); **`--mode edit`** only for tracks that change code. Isolate every edit-mode track so two tracks never write the same file.
 5. Every `add` gets the full teammate brief (Mission / Full scope / Your assignment / Boundary contract / Pattern to apply / Success criteria), ending with the exact line:
    > `Return file:line quotes for every claim. Do NOT paraphrase. If you can't quote it, don't claim it.`

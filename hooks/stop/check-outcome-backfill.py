@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
-"""Derive gate outcomes from the transcripts. OFFLINE — never on a hook path.
+"""Derive check outcomes from the transcripts. OFFLINE — never on a hook path.
 
-`gate_events` records that a gate fired. It cannot say whether firing was RIGHT.
+`check_events` records that a check fired. It cannot say whether firing was RIGHT.
 That is the whole measurement gap: for the life of the table every row read
-`blocked`, so no gate had a false-positive rate and no change to gate logic could
+`blocked`, so no check had a false-positive rate and no change to check logic could
 be shown to be an improvement.
 
-This fills `gate_outcomes` by replaying what the agent did AFTER each block.
+This fills `check_outcomes` by replaying what the agent did AFTER each block.
 
 The headline field is `demand_satisfied`, and it is deliberately not
 `followon_mutated`. Counting any follow-on activity would score an agent that
 answers a bogus `keep-moving` by ticking one todo as a success — certifying the
 exact false positives the metric exists to find. `demand_satisfied` keys on the
-specific structured thing each gate demanded:
+specific structured thing each check demanded:
 
     open-pr      the session actually merged or closed a PR afterwards
     keep-moving  a task actually moved to completed afterwards
@@ -52,17 +52,20 @@ VERSIONS = Path(os.path.expanduser("~/.agents/.history/versions"))
 
 FEEDBACK_PREFIX = "Stop hook feedback:"
 
-# Anchors that identify which gate an injected block came from. These are
-# substrings of the gate messages themselves, so they move if the messages do —
+# Anchors that identify which check an injected block came from. These are
+# substrings of the check messages themselves, so they move if the messages do —
 # a mismatch shows up as unmatched fires in the report rather than silently
 # scoring zero.
-GATE_MARKERS = {
-    "open-pr": "pull request(s) that are still OPEN",
-    "keep-moving": "STOP GATE (keep moving)",
-    "handback": "STOP GATE (handback)",
-    "delivery": "STOP GATE (delivery)",
-    "self-audit": "you must verify before stopping",
-    "swarm": "STOP GATE (swarm)",
+# Each check matches on any of its anchors: the legacy "STOP GATE (...)" prefix
+# for transcripts written before the message rewrite, plus a phrase present in
+# the current message text.
+CHECK_MARKERS = {
+    "open-pr": ("pull request(s) that are still OPEN",),
+    "keep-moving": ("STOP GATE (keep moving)", "your task list still has"),
+    "handback": ("STOP GATE (handback)", "you wrote a runnable script"),
+    "delivery": ("STOP GATE (delivery)", "close out the delivery"),
+    "self-audit": ("you must verify before stopping",),
+    "swarm": ("STOP GATE (swarm)", "edit-mode swarm and are claiming"),
 }
 
 CMD_POS = r"(?:^|[\n;&|]\s*|\$\(\s*)"
@@ -81,7 +84,7 @@ RE_RAN_TMP = re.compile(
     CMD_POS + r"(?:(?:bash|sh|zsh|python3?|node)\s+)?\S*/tmp/\S+\.(?:sh|py|js|mjs)\b"
 )
 WRITE_TOOLS = {"write", "edit", "multiedit", "notebookedit"}
-# The open-PR gate documents four legitimate resolutions, not one
+# The open-PR check documents four legitimate resolutions, not one
 # (00-agent-verify-work-complete.sh:479-495): merge it, get a non-author review
 # then merge, hand it to a NAMED owner, or name an external blocker plus a durable
 # process. A session that correctly hands a PR off never touches it again — by
@@ -92,17 +95,17 @@ RE_HANDOFF = re.compile(
     r"|takes over from here|pr-merge-on-green|will merge on green)\b", re.I
 )
 
-# Gates whose demand leaves no signature a transcript scan can confirm.
+# Checks whose demand leaves no signature a transcript scan can confirm.
 #
 # `delivery` is here after review, not by original design, and the reason matters:
-# STOP GATE (delivery) fires on ANY of five independent conditions
+# The delivery check fires on ANY of five independent conditions
 # (verify-delivery-chain.py:625-635) — an open Linear ticket, open related
 # tickets, missing docs/CHANGELOG, an unreleased shippable change, or missing
 # outcome evidence. A release-command detector can only ever see the fourth.
 # Sampled a real fire: its demand was "RUSH-2476 [Todo] still needs state + proof",
 # which no release regex can ever satisfy, so the agent was scored unmet no matter
 # what it did. Reporting 83.9% unmet from a detector blind to 4 of 5 demands is the
-# exact failure this file warns about — a narrow detector making a working gate
+# exact failure this file warns about — a narrow detector making a working check
 # look broken. Unscored until each demand shape can be detected on its own.
 UNSCORABLE = {"self-audit", "swarm", "delivery"}
 
@@ -165,7 +168,7 @@ def _record_ms(record):
 
 
 def find_fires(records):
-    """Injected gate blocks, in order: (index, gate_name, sha256, epoch_ms|None)."""
+    """Injected check blocks, in order: (index, check_name, sha256, epoch_ms|None)."""
     fires = []
     last_text = ""
     for i, record in enumerate(records):
@@ -182,10 +185,10 @@ def find_fires(records):
                 last_text = text
         if (record.get("type") == "user" and record.get("isMeta") is True
                 and isinstance(content, str) and content.startswith(FEEDBACK_PREFIX)):
-            gate = next((g for g, marker in GATE_MARKERS.items() if marker in content), None)
-            if gate:
+            check = next((g for g, markers in CHECK_MARKERS.items() if any(m in content for m in markers)), None)
+            if check:
                 digest = hashlib.sha256(last_text.encode("utf-8", "replace")).hexdigest()
-                fires.append((i, gate, digest, _record_ms(record)))
+                fires.append((i, check, digest, _record_ms(record)))
     return fires
 
 
@@ -199,7 +202,7 @@ def _completed_ids(payload):
 
 
 def _todo_baseline(records, start):
-    """Which todos were ALREADY completed as of the last TodoWrite before the gate."""
+    """Which todos were ALREADY completed as of the last TodoWrite before the check."""
     for i in range(start, -1, -1):
         for block in _blocks(records[i]):
             if (isinstance(block, dict) and block.get("type") == "tool_use"
@@ -208,7 +211,7 @@ def _todo_baseline(records, start):
     return set()
 
 
-def score_window(records, start, end, gate):
+def score_window(records, start, end, check):
     """What the agent actually did between this block and the next one."""
     tools = 0
     handoff = False
@@ -222,7 +225,7 @@ def score_window(records, start, end, gate):
             if isinstance(body, str) and body.strip() and not RE_HARNESS_TURN.search(body):
                 interjected = True
         for block in _blocks(record):
-            if isinstance(block, dict) and block.get("type") == "text" and gate == "open-pr":
+            if isinstance(block, dict) and block.get("type") == "text" and check == "open-pr":
                 if RE_HANDOFF.search(str(block.get("text") or "")):
                     handoff = True
             if not isinstance(block, dict) or block.get("type") != "tool_use":
@@ -233,26 +236,26 @@ def score_window(records, start, end, gate):
             command = str(payload.get("command", ""))
             if name in WRITE_TOOLS or RE_REPO_WRITE.search(command):
                 mutated = True
-            if gate == "open-pr" and (RE_MERGED.search(command)
+            if check == "open-pr" and (RE_MERGED.search(command)
                                       or name in WATCHER_TOOLS):
                 satisfied = True
-            elif gate == "delivery" and RE_RELEASE.search(command):
+            elif check == "delivery" and RE_RELEASE.search(command):
                 satisfied = True
-            elif gate == "keep-moving" and name == "taskupdate":
+            elif check == "keep-moving" and name == "taskupdate":
                 # Read the status FIELD. '"completed"' anywhere in the dumped
                 # payload also matches a task whose *content* says "completed"
                 # while its status is in_progress.
                 if str(payload.get("status") or "") == "completed":
                     satisfied = True
-            elif gate == "keep-moving" and name == "todowrite":
+            elif check == "keep-moving" and name == "todowrite":
                 # TodoWrite re-emits the whole list, so a completed entry proves
-                # nothing on its own — it may have been completed before the gate
+                # nothing on its own — it may have been completed before the check
                 # fired. Only an id that was NOT already complete going in counts.
                 if _completed_ids(payload) - baseline:
                     satisfied = True
-            elif gate == "handback" and RE_RAN_TMP.search(command):
+            elif check == "handback" and RE_RAN_TMP.search(command):
                 satisfied = True
-    if gate == "open-pr" and handoff:
+    if check == "open-pr" and handoff:
         satisfied = True
     return tools, mutated, interjected, satisfied
 
@@ -271,13 +274,13 @@ def main() -> int:
     mode = "" if args.write else "?mode=ro"
     db = sqlite3.connect(f"file:{db_path}{mode}", uri=True)
     rows = db.execute(
-        "SELECT id, session_key, gate_name, created_at_ms FROM gate_events"
+        "SELECT id, session_key, check_name, created_at_ms FROM check_events"
         " WHERE outcome='blocked' ORDER BY id"
     ).fetchall()
 
     by_session: dict[str, list] = {}
-    for gate_event_id, session_key, gate_name, created_at_ms in rows:
-        by_session.setdefault(session_key, []).append((gate_event_id, gate_name, created_at_ms))
+    for check_event_id, session_key, check_name, created_at_ms in rows:
+        by_session.setdefault(session_key, []).append((check_event_id, check_name, created_at_ms))
 
     derived, no_transcript, unmatched, mispaired = [], 0, 0, 0
     now = int(time.time() * 1000)
@@ -290,15 +293,15 @@ def main() -> int:
             no_transcript += len(events)
             continue
         fires = find_fires(records)
-        for gate_event_id, gate_name, created_at_ms in events:
-            matching = [f for f in fires if f[1] == gate_name]
+        for check_event_id, check_name, created_at_ms in events:
+            matching = [f for f in fires if f[1] == check_name]
             if not matching:
                 unmatched += 1
                 continue
             # Pair on the row's OWN timestamp, not on ordinal position. Ordinal
             # pairing only guards the case where the DB has MORE rows than the
             # transcript has markers; the opposite — a transcript carrying older
-            # occurrences than gate recording existed for — silently paired rows
+            # occurrences than check recording existed for — silently paired rows
             # to windows hours away from the real one. Measured on two live
             # sessions: DB rows at 22:29-22:47 were being scored against
             # occurrences at 08:07-10:04, entirely different work.
@@ -329,39 +332,39 @@ def main() -> int:
                 continue
             later = [f[0] for f in fires if f[0] > index]
             end = later[0] if later else len(records)
-            refired = 1 if any(f[1] == gate_name for f in fires if f[0] > index) else 0
-            tools, mutated, interjected, satisfied = score_window(records, index, end, gate_name)
-            if gate_name in UNSCORABLE:
+            refired = 1 if any(f[1] == check_name for f in fires if f[0] > index) else 0
+            tools, mutated, interjected, satisfied = score_window(records, index, end, check_name)
+            if check_name in UNSCORABLE:
                 satisfied = False
-            derived.append((gate_event_id, tools, int(mutated), int(satisfied),
+            derived.append((check_event_id, tools, int(mutated), int(satisfied),
                             refired, int(interjected), digest, now))
 
     if args.write:
         db.executemany(
-            "INSERT OR REPLACE INTO gate_outcomes(gate_event_id,followon_tools,followon_mutated,"
+            "INSERT OR REPLACE INTO check_outcomes(check_event_id,followon_tools,followon_mutated,"
             "demand_satisfied,refired,user_interjected,msg_sha256,derived_at_ms)"
             " VALUES(?,?,?,?,?,?,?,?)",
             derived,
         )
         db.commit()
 
-    per_gate: dict[str, list[int]] = {}
-    for gate_event_id, tools, mutated, satisfied, refired, interjected, _, _ in derived:
-        gate = next(g for i, g in [(r[0], r[2]) for r in rows] if i == gate_event_id)
-        bucket = per_gate.setdefault(gate, [0, 0, 0])
+    per_check: dict[str, list[int]] = {}
+    for check_event_id, tools, mutated, satisfied, refired, interjected, _, _ in derived:
+        check = next(g for i, g in [(r[0], r[2]) for r in rows] if i == check_event_id)
+        bucket = per_check.setdefault(check, [0, 0, 0])
         bucket[0] += 1
         bucket[1] += satisfied
         bucket[2] += refired
 
-    print(f"{'gate':<13} {'blocked':>8} {'satisfied':>10} {'refired':>8}   {'unmet':>8}")
+    print(f"{'check':<13} {'blocked':>8} {'satisfied':>10} {'refired':>8}   {'unmet':>8}")
     print("-" * 54)
-    for gate in sorted(per_gate):
-        total, satisfied, refired = per_gate[gate]
-        if gate in UNSCORABLE:
-            print(f"{gate:<13} {total:>8} {'—':>10} {refired:>8}   {'unscored':>8}")
+    for check in sorted(per_check):
+        total, satisfied, refired = per_check[check]
+        if check in UNSCORABLE:
+            print(f"{check:<13} {total:>8} {'—':>10} {refired:>8}   {'unscored':>8}")
             continue
         rate = 100.0 * (total - satisfied) / total if total else 0.0
-        print(f"{gate:<13} {total:>8} {satisfied:>10} {refired:>8}   {rate:>7.1f}%")
+        print(f"{check:<13} {total:>8} {satisfied:>10} {refired:>8}   {rate:>7.1f}%")
     print("-" * 54)
     print(f"derived {len(derived)} outcome(s)"
           f"{' (written)' if args.write else ' (dry run — pass --write to persist)'}")
@@ -373,7 +376,7 @@ def main() -> int:
         print(f"{mispaired} fire(s) skipped: no unused injection within "
               f"{PAIR_TOLERANCE_MS // 60000}min of the recorded fire time — "
               "scoring these would use the wrong slice of the conversation")
-    print("'unmet' is NOT a false-positive rate. Every gate also accepts an ESCAPE —\n"
+    print("'unmet' is NOT a false-positive rate. Every check also accepts an ESCAPE —\n"
           "naming an external blocker, or handing off to a named owner — which this scan\n"
           "cannot detect, so a legitimately-escaped fire counts as unmet. Read it as an\n"
           "upper bound on wrongness, and the refired column as the harder signal.")

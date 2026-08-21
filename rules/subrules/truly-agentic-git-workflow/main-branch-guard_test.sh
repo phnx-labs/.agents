@@ -201,11 +201,11 @@ run_guard 2 "git -C clone(trunk) commit"         "$(bj "git -C $CLONE commit -m 
 run_guard 2 "sh -c wrapped commit on main"       "$(bj "sh -c \"git -C $MAIN_REPO commit -m x\"")"
 run_guard 2 "chained cd/commit on main"          "$(bj "echo hi && git commit -m x" "$MAIN_REPO")"
 
-# --- Bash git commit/add: PRIMARY tree on ANY branch DENIED; non-gated ops allowed ---
+# --- Bash git commit/add: PRIMARY tree on ANY branch DENIED; non-checked ops allowed ---
 run_guard 2 "git -C primary-tree feature branch commit is BLOCKED"       "$(bj "git -C $FEAT_REPO commit -m x")"
 run_guard 2 "git commit on clone primary-tree feature branch is BLOCKED" "$(bj "git commit -m x" "$CLONE_FEAT")"
-run_guard 0 "git status on main (not gated)"     "$(bj "git status" "$MAIN_REPO")"
-run_guard 0 "git push on main (not gated here)"  "$(bj "git push" "$MAIN_REPO")"
+run_guard 0 "git status on main (not checked)"     "$(bj "git status" "$MAIN_REPO")"
+run_guard 0 "git push on main (not checked here)"  "$(bj "git push" "$MAIN_REPO")"
 run_guard 0 "git commit in non-git cwd"          "$(bj "git commit -m x" "$NOGIT")"
 run_guard 0 "non-git bash on main (fast path)"   "$(bj "echo hello" "$MAIN_REPO")"
 run_guard 0 "ls with no git token"               "$(bj "ls -la" "$MAIN_REPO")"
@@ -226,7 +226,7 @@ run_guard 2 "worktree add -B, local-branch base"   "$(bj "git -C $CLONE worktree
 # ALLOW: new-branch worktree based on a remote-tracking ref (the required form).
 # Clone just created origin/trunk — mtime is fresh under the default 900s max age.
 run_guard 0 "worktree add -b, origin/ base"        "$(bj "git -C $CLONE worktree add -b feat/z4 $TMP/wt_remote origin/trunk")"
-# ALLOW: non-creating worktree add (materialize an existing ref) is not gated.
+# ALLOW: non-creating worktree add (materialize an existing ref) is not checked.
 run_guard 0 "worktree add (no -b) existing ref"    "$(bj "git -C $CLONE worktree add $TMP/wt_nob origin/trunk")"
 # ALLOW: worktree list / other subcommands untouched.
 run_guard 0 "worktree list"                        "$(bj "git -C $CLONE worktree list")"
@@ -261,10 +261,10 @@ run_guard 2 "worktree add -b, stale origin/ base"  "$(bj "git -C $CLONE worktree
 touch "$_REF_PATH" 2>/dev/null
 touch "$_FH_PATH" 2>/dev/null
 run_guard 0 "worktree add -b, origin/ after refresh" "$(bj "git -C $CLONE worktree add -b feat/fresh $TMP/wt_fresh origin/trunk")"
-# AGENTS_WORKTREE_FETCH_MAX_AGE_SEC=0 disables the age gate (form-only escape).
+# AGENTS_WORKTREE_FETCH_MAX_AGE_SEC=0 disables the age check (form-only escape).
 [ -f "$_REF_PATH" ] && touch -t 202001011200 "$_REF_PATH"
 [ -f "$_FH_PATH" ] && touch -t 202001011200 "$_FH_PATH"
-AGENTS_WORKTREE_FETCH_MAX_AGE_SEC=0 run_guard 0 "worktree add -b, age gate disabled" \
+AGENTS_WORKTREE_FETCH_MAX_AGE_SEC=0 run_guard 0 "worktree add -b, age check disabled" \
   "$(bj "git -C $CLONE worktree add -b feat/age0 $TMP/wt_age0 origin/trunk")"
 # Restore fresh mtimes so later origin/* ALLOW cases (camelCase suite) stay green.
 touch "$_REF_PATH" 2>/dev/null
@@ -311,7 +311,7 @@ run_guard 2 "single-quoted <<TAG does not open a heredoc" "$(bj "echo 'text <<EO
 git commit -m x
 EOF" "$MAIN_REPO")" "$MAIN_REPO"
 # DENY: an UNTERMINATED heredoc keeps its lines (conservative — fail toward
-# the old behavior), so a body `git commit` still gates against cwd.
+# the old behavior), so a body `git commit` still checks against cwd.
 run_guard 2 "unterminated heredoc body still parsed" "$(bj "cat <<EOF
 git commit -m x" "$MAIN_REPO")" "$MAIN_REPO"
 # DENY: var -C pointing AT a primary tree — real expansion, not cwd blame:
@@ -338,9 +338,9 @@ run_guard 0 "last assignment wins (tombstone)" "$(bj "REPO=$MAIN_REPO
 REPO=\$(mktemp -d)
 git -C \"\$REPO\" commit -m x" "$MAIN_REPO")" "$MAIN_REPO"
 # DENY: env-prefix form is NOT an assignment segment — unchanged behavior.
-run_guard 2 "env-prefix git commit still gated" "$(bj "FOO=1 git commit -m x" "$MAIN_REPO")" "$MAIN_REPO"
+run_guard 2 "env-prefix git commit still checked" "$(bj "FOO=1 git commit -m x" "$MAIN_REPO")" "$MAIN_REPO"
 # DENY: var -C + worktree add with an implicit base — expansion feeds the
-# worktree gate too, so the shape-based deny still fires.
+# worktree check too, so the shape-based deny still fires.
 run_guard 2 "var -C worktree add -b implicit base" "$(bj "REPO=$CLONE
 git -C \"\$REPO\" worktree add -b feat/v2743 $TMP/wt_v2743" "$TMP")" "$TMP"
 

@@ -124,7 +124,7 @@ as a revision (`agents artifacts share revisions <slug>`). One session per link.
 - **Unlisted by default** — kept out of your public gallery and out of `agents artifacts
   share list`. `--public` opts in.
 - **Unlisted is not access control.** R2 reads are public: anyone with the exact URL reads
-  the page. Never describe such a link as private, encrypted, or access-gated.
+  the page. Never describe such a link as private, encrypted, or access-restricted.
 - **Redacted** — credential-shaped values, known secret values, and local home paths, plus
   email masking the plain render does not do. `--no-redact` exists and must not be used on
   anything you publish.

@@ -1,5 +1,5 @@
 #!/bin/sh
-# Tests for plan-html-reminder.sh — cross-harness plan presentation gate.
+# Tests for plan-html-reminder.sh — cross-harness plan presentation check.
 # Run: sh plan-html-reminder_test.sh   (no mocks; drives the real hook via stdin)
 set -eu
 
@@ -29,7 +29,7 @@ EPM='{"tool_name":"ExitPlanMode","tool_input":{"plan":"x"}}'
 rm -f "$SCAN"/*.html 2>/dev/null || true
 run 2 "ExitPlanMode, no rendered plan -> block" "$EPM"
 
-# Minimal figure-bearing HTML that satisfies the quality gate.
+# Minimal figure-bearing HTML that satisfies the quality check.
 write_figure_html() {
   cat > "$1" <<'HTML'
 <!doctype html><html><body>
@@ -71,7 +71,7 @@ write_figure_html "$SCAN/plan-my-feature.html"
 run 0 "ExitPlanMode, canonical plan-<slug>.html with SVG figure -> allow" "$EPM"
 
 # 2b. Fresh HTML with NO svg (prose-only shell) -> BLOCK. This is the regression
-# that let wall-of-text plans clear the gate and open in the browser unreadable.
+# that let wall-of-text plans clear the check and open in the browser unreadable.
 rm -f "$SCAN"/*.html
 printf '%s\n' '<!doctype html><html><body><h1>Prose only</h1><p>no figure</p></body></html>' \
   > "$SCAN/plan-prose-only.html"
@@ -84,7 +84,7 @@ write_figure_html "$SCAN/plan-cli-architecture.html"
 write_source "$SCAN/plan-cli-architecture.html" cli
 run 2 "CLI plan, architecture SVG without behavior states -> block" "$EPM"
 
-# 2d. A current capture + proposed faithful mockup satisfies the behavior gate.
+# 2d. A current capture + proposed faithful mockup satisfies the behavior check.
 rm -f "$SCAN"/*
 write_behavior_html "$SCAN/plan-cli-behavior.html"
 run 0 "CLI plan, current/proposed capture-or-mockup evidence -> allow" "$EPM"
@@ -154,20 +154,20 @@ mkdir -p "$SCAN/a/b/scratchpad"
 write_figure_html "$SCAN/a/b/scratchpad/remote-run-plan.html"
 run 0 "ExitPlanMode, nested <slug>-plan.html with SVG figure -> allow" "$EPM"
 
-# 4. A stale render (>90 min old) does NOT satisfy the gate -> block.
+# 4. A stale render (>90 min old) does NOT satisfy the check -> block.
 rm -rf "$SCAN"/* 2>/dev/null || true
 : > "$SCAN/plan-old.html"
 touch -d '2 hours ago' "$SCAN/plan-old.html" 2>/dev/null || touch -t 200001010000 "$SCAN/plan-old.html"
 run 2 "ExitPlanMode, only a stale plan html -> block" "$EPM"
 
-# 5. A non-ExitPlanMode tool is never gated -> allow, even with an empty root.
+# 5. A non-ExitPlanMode tool is never checked -> allow, even with an empty root.
 rm -f "$SCAN"/*.html 2>/dev/null || true
-run 0 "Write tool -> allow (not gated)" '{"tool_name":"Write","tool_input":{"file_path":"/x"}}'
+run 0 "Write tool -> allow (not checked)" '{"tool_name":"Write","tool_input":{"file_path":"/x"}}'
 
 # --- Harness portability: Grok CLI camelCase payloads ---
 # Grok sends camelCase `toolName` and names plan-exit `exit_plan_mode`.
 
-# 6. Grok exit_plan_mode with an empty scan root -> BLOCK (the gate must still fire).
+# 6. Grok exit_plan_mode with an empty scan root -> BLOCK (the check must still fire).
 rm -f "$SCAN"/*.html 2>/dev/null || true
 run 2 "Grok exit_plan_mode, no rendered plan -> block" \
   '{"toolName":"exit_plan_mode","toolInput":{"plan":"x"}}'
@@ -249,7 +249,7 @@ run_no_override 0 "ExitPlanMode, legacy /tmp fallback with SVG outside repo -> a
 rm -f "$LEGACY"
 rm -rf "$OUTSIDE"
 
-# --- Part B: checklist gate for multi-step plans -------------------------------
+# --- Part B: checklist check for multi-step plans -------------------------------
 # These need a fresh HTML present so part A always passes and we isolate part B.
 TX="$SCAN/transcript.jsonl"
 mkfile_nocl() {  # human turn, no checklist tool
@@ -279,9 +279,9 @@ mkfile_cl
 run 0 "multi-step plan, checklist created -> allow" \
   '{"tool_name":"ExitPlanMode","tool_input":{"plan":"'"$MULTI"'"},"transcript_path":"'"$TX"'"}'
 
-# 11. trivial plan (no steps), no checklist, fresh HTML -> ALLOW (gate skipped).
+# 11. trivial plan (no steps), no checklist, fresh HTML -> ALLOW (check skipped).
 mkfile_nocl
-run 0 "trivial plan -> allow (checklist gate skipped)" \
+run 0 "trivial plan -> allow (checklist check skipped)" \
   '{"tool_name":"ExitPlanMode","tool_input":{"plan":"x"},"transcript_path":"'"$TX"'"}'
 
 # 12. multi-step plan, NO transcript_path -> ALLOW (fail open).

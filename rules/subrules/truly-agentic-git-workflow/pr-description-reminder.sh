@@ -150,7 +150,7 @@ case "$lower" in
 esac
 
 # Declaration-vs-diff cross-check (2026-08-15, PR #2736): "test-only." on a
-# +1,519/-200 fifteen-file fix(browser) diff cleared this gate — the magic word
+# +1,519/-200 fifteen-file fix(browser) diff cleared this check — the magic word
 # had become a password. A checkable declaration (test-only / docs-only) is now
 # verified against the branch's actual changed files; a contradicted
 # declaration BLOCKS instead of clearing. Unverifiable declarations (release /
@@ -195,7 +195,7 @@ PRDIFF
     echo "Non-$declared files changed on this branch:"
     printf '%s' "$_bad"
     echo
-    echo "A no-run declaration is only for a diff that genuinely matches it — declaring 'test-only' on a behavior change is how an evidence-free PR walks past this gate (PR #2736). Either fix the declaration and attach a real run result (screenshot / recording / uploaded output), or split the PR so the declaration is true."
+    echo "A no-run declaration is only for a diff that genuinely matches it — declaring 'test-only' on a behavior change is how an evidence-free PR walks past this check (PR #2736). Either fix the declaration and attach a real run result (screenshot / recording / uploaded output), or split the PR so the declaration is true."
   } >&2
   exit 2
 fi

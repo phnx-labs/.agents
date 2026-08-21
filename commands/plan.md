@@ -116,7 +116,7 @@ ASCII wireframe, not a generic box diagram. Probe the repo for its design tokens
 (Tailwind config, CSS variables, brand colors, an existing component) and build the
 mockup with the `artifacts` CLI so it could pass for a screenshot of the real thing.
 When there is a genuine design choice, show **2-3 variations side by side**, each
-labeled with its one-line tradeoff, and treat that review as the design gate — the
+labeled with its one-line tradeoff, and treat that review as the design checkpoint — the
 pick is the user's.
 
 ASCII wireframes are not acceptable for a UI surface: the user judges look-and-feel
@@ -346,7 +346,7 @@ reference this step.
    and the source path. Then proceed to the design questions / `ExitPlanMode` as usual.
 
 4. **End the final plan message with the literal marker `<!-- agents-plan -->` on its
-   own line.** The plan-presentation gate detects a plan turn by the native
+   own line.** The plan-presentation check detects a plan turn by the native
    `ExitPlanMode` call, the harness's plan mode, **or this marker** — `/plan` invoked
    in a normal auto/edit session produces neither of the first two, so without the
    marker the render/mockup checks silently never run.

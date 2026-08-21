@@ -7,7 +7,7 @@ user-invocable: true
 
 # design — one keyless front door for design
 
-Design work is scattered and often gated behind paid image backends. This plugin is the
+Design work is scattered and often locked behind paid image backends. This plugin is the
 single, brand-agnostic entry: `/design` reads the intent, picks a mode, and renders the
 result on the **offline HTML/SVG substrate** (the `visualize`/`plan-render` engine —
 self-contained, inline CSS/SVG, no CDN, no keys). It ships in the default distribution, so

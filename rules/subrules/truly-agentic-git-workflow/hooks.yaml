@@ -2,8 +2,8 @@
 # into the hook manifest (collectSubruleHooks) and registers it as a PreToolUse
 # guard. The script resolves relative to this directory.
 #
-# One entry, one script, one combined matcher: the guard fires on Bash (to gate
-# `git commit|add`) and on the file tools (to gate create/update/delete), and
+# One entry, one script, one combined matcher: the guard fires on Bash (to block
+# `git commit|add`) and on the file tools (to block create/update/delete), and
 # dispatches internally on tool_name.
 # Co-located with this subrule (NOT under hooks/<event>/). agents-cli
 # collectSubruleHooks rewrites script: to an absolute path under this dir.

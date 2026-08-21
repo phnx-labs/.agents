@@ -52,8 +52,8 @@ agents artifacts share report.html --expire 7d   # auto-expire (30d / 12h / 2026
   Permanent unless `--expire`. Anyone with the URL can read it — that's the point.
 - **Private** (`/share:private`): `--no-cover --expire 7d` — unlisted, auto-expiring, no
   card. **Be honest**: this is *unlisted, not authenticated*. R2 reads are public, so
-  anyone with the exact URL can still read it. Never call it encrypted or access-gated.
-  True view-gating (a viewer token) is a future Worker enhancement.
+  anyone with the exact URL can still read it. Never call it encrypted or access-restricted.
+  True view restriction (a viewer token) is a future Worker enhancement.
 
 ## Cost
 

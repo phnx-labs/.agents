@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# hooks/run_tests.sh — the pre-PR gate for this repo's hooks and guard rules.
+# hooks/run_tests.sh — the pre-PR check for this repo's hooks and guard rules.
 #
 # Runs every `*_test.sh` in hooks/ and in rules/subrules/*/ (which includes
 # registration_test.sh — the integrity check that a hook script has not silently
@@ -53,9 +53,9 @@ for t in "$HERE"/*/tests/*_test.sh; do
 done
 
 # The skills namespace check. It lives outside hooks/ because it tests skills,
-# but it is a pre-PR integrity gate exactly like registration_test.sh — and an
+# but it is a pre-PR integrity check exactly like registration_test.sh — and an
 # un-run test rots the same way the flat-namespace bug it catches did. Ship it
-# inside the gate rather than hoping someone types it by hand.
+# inside this runner rather than hoping someone types it by hand.
 for t in "$ROOT"/skills/*_test.sh; do
   [ -e "$t" ] || continue
   run_one "$t"

@@ -1,5 +1,5 @@
 #!/bin/sh
-# plan-html-reminder — plan presentation gate at plan-exit and Stop.
+# plan-html-reminder — plan presentation check at plan-exit and Stop.
 #
 # Enforces the plan-presentation rule: a plan must be RENDERED as a self-contained
 # HTML doc (plan-render skill) before it is presented, so the user reviews it in the
@@ -8,7 +8,7 @@
 # The source of truth is Markdown under the repo's dated artifact layout:
 #   `.agents/artifacts/yyyy-mm-dd/<artifact-title>.md`
 # (plans: `.../plan-<slug>.md`). `artifacts render ...` produces the
-# HTML next to the source. The gate detects a fresh rendered plan HTML under
+# HTML next to the source. The check detects a fresh rendered plan HTML under
 # `.agents/artifacts/`.
 #
 # Mechanism: harnesses with a plan-exit tool are checked before that tool runs.
@@ -16,21 +16,21 @@
 # tool call, are checked at Stop after the script proves the current turn is a
 # plan turn from the final message or transcript. Non-plan Stop events fail open.
 #
-# The gate is on the RENDER (a file we can detect). Opening on the Mac and theming are
+# The check is on the RENDER (a file we can detect). Opening on the Mac and theming are
 # driven by the always-on rule text — a headless fleet still renders the file (allowed)
 # even when it cannot open a browser.
 #
-# Exits 0 (allow) or 2 (block, message on stderr). Only gates the AGENT's tool call;
+# Exits 0 (allow) or 2 (block, message on stderr). Only checks the AGENT's tool call;
 # the user's own actions are unaffected.
 
 set -eu
 
 input=$(cat)
 
-# Prove this is a plan presentation before gating. PreToolUse supplies a plan-exit
+# Prove this is a plan presentation before checking. PreToolUse supplies a plan-exit
 # tool name. Stop has no matcher, so inspect the final response and the latest
 # collaboration mode recorded in the transcript. This keeps ordinary answers out
-# of the gate while covering Codex, which never emits ExitPlanMode.
+# of the check while covering Codex, which never emits ExitPlanMode.
 tool=$(printf '%s' "$input" | jq -r '(.tool_name // .toolName) // empty' 2>/dev/null) || tool=""
 event=$(printf '%s' "$input" | jq -r '(.hook_event_name // .hookEventName) // empty' 2>/dev/null) || event=""
 tp=$(printf '%s' "$input" | jq -r '(.transcript_path // .transcriptPath) // empty' 2>/dev/null) || tp=""
@@ -83,7 +83,7 @@ fi
 
 [ "$is_plan" = 1 ] || exit 0
 
-# The gate has TWO parts, both checked before we allow the plan to be presented:
+# This check has TWO parts, both checked before we allow the plan to be presented:
 #   (A) a fresh plan HTML was rendered (browser-reviewable), and
 #   (B) for a MULTI-STEP plan, a task checklist was created (the acceptance rubric
 #       that then shows in `agents sessions` and drives the watchdog/feed).
@@ -95,10 +95,10 @@ fi
 # A fresh plan HTML rendered in the last 90 min satisfies this. The canonical
 # location is `<repo>/.agents/artifacts/yyyy-mm-dd/` (per plan-presentation /
 # plan-render). Scan the whole `.agents/artifacts/` tree so dated day dirs and
-# any transitional layout still clear the gate. Scan root is overridable for
+# any transitional layout still clear the check. Scan root is overridable for
 # tests via PLAN_HTML_SCAN_ROOT.
 # -L: follow symlinks. On macOS /tmp is a symlink to /private/tmp, and BSD find
-# will NOT descend a symlinked start path without -L — so the gate could never
+# will NOT descend a symlinked start path without -L — so the check could never
 # detect a rendered plan on a Mac and blocked ExitPlanMode indefinitely.
 scan_roots=""
 if [ -n "${PLAN_HTML_SCAN_ROOT:-}" ]; then
@@ -211,7 +211,7 @@ fi
     echo "  then:"
     echo "    DATE=\$(date +%F)"
     echo "    artifacts render .agents/artifacts/\$DATE/plan-<slug>.md"
-    echo "  HARD REQUIREMENTS (this gate inspects the Markdown + HTML):"
+    echo "  HARD REQUIREMENTS (this check inspects the Markdown + HTML):"
     echo "    - frontmatter surface: internal|cli|web|native|api|workflow"
     echo "    - internal: ≥1 live drawn SVG"
     if [ "$escalated_internal" = 1 ]; then

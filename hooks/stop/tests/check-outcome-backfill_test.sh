@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# Tests for gate-outcome-backfill.py. Real sqlite, real transcript JSONL on disk,
+# Tests for check-outcome-backfill.py. Real sqlite, real transcript JSONL on disk,
 # no mocking — the script's whole job is reading those two things.
 set -u
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
-BF="$HERE/../gate-outcome-backfill.py"
+BF="$HERE/../check-outcome-backfill.py"
 STATE="$HERE/../verify-work-state.py"
 SANDBOX="$(mktemp -d)"
 trap 'rm -rf "$SANDBOX"' EXIT
@@ -35,7 +35,7 @@ JSONL
 
 payload='{"session_id":"bf-1","agent":"claude","launch_id":"L1","prompt":"do the thing"}'
 printf '%s' "$payload" | python3 "$STATE" record-prompt >/dev/null 2>&1
-printf '%s' "$payload" | python3 "$STATE" record-gates "keep-moving:blocked:unfinished-checklist" "handback:blocked:runnable-not-executed" >/dev/null 2>&1
+printf '%s' "$payload" | python3 "$STATE" record-checks "keep-moving:blocked:unfinished-checklist" "handback:blocked:runnable-not-executed" >/dev/null 2>&1
 
 # The backfill resolves transcripts under ~/.agents/.history/versions/<harness>/…,
 # which a sandbox cannot fake, so point it at the fixture through the module.
@@ -51,19 +51,19 @@ for line in open(sys.argv[3]):
         records.append(json.loads(line))
 fires = bf.find_fires(records)
 print("fires=%d" % len(fires))
-print("gates=%s" % ",".join(f[1] for f in fires))
-for idx, gate, digest, _ts in fires:
+print("checks=%s" % ",".join(f[1] for f in fires))
+for idx, check, digest, _ts in fires:
     later = [f[0] for f in fires if f[0] > idx]
     end = later[0] if later else len(records)
-    tools, mutated, interjected, satisfied = bf.score_window(records, idx, end, gate)
-    print("%s satisfied=%d tools=%d" % (gate, int(satisfied), tools))
+    tools, mutated, interjected, satisfied = bf.score_window(records, idx, end, check)
+    print("%s satisfied=%d tools=%d" % (check, int(satisfied), tools))
     import re as _re
-    print("%s hexok=%d" % (gate, 1 if _re.fullmatch(r"[0-9a-f]{64}", digest) else 0))
+    print("%s hexok=%d" % (check, 1 if _re.fullmatch(r"[0-9a-f]{64}", digest) else 0))
 PY
 
 out=$(cat "$SANDBOX/out.txt")
-check "both injected blocks are matched to a gate" "$(printf '%s' "$out" | grep '^fires=' | cut -d= -f2)" "2"
-check "gates are identified by their markers" "$(printf '%s' "$out" | grep '^gates=' | cut -d= -f2)" "keep-moving,handback"
+check "both injected blocks are matched to a check" "$(printf '%s' "$out" | grep '^fires=' | cut -d= -f2)" "2"
+check "checks are identified by their markers" "$(printf '%s' "$out" | grep '^checks=' | cut -d= -f2)" "keep-moving,handback"
 # A task moving to completed is the keep-moving demand; merely touching one is not.
 check "keep-moving counts a task reaching completed" \
   "$(printf '%s' "$out" | grep '^keep-moving satisfied' | grep -o 'satisfied=[01]')" "satisfied=1"
@@ -93,11 +93,11 @@ bf = importlib.util.module_from_spec(spec); spec.loader.exec_module(bf)
 records = [json.loads(l) for l in open(sys.argv[2]) if l.strip()]
 fires = bf.find_fires(records)
 out = []
-for idx, gate, _digest, _ts in fires:
+for idx, check, _digest, _ts in fires:
     later = [f[0] for f in fires if f[0] > idx]
     end = later[0] if later else len(records)
-    tools, mutated, _inter, satisfied = bf.score_window(records, idx, end, gate)
-    out.append("%s:sat=%d,tools=%d" % (gate, int(satisfied), tools))
+    tools, mutated, _inter, satisfied = bf.score_window(records, idx, end, check)
+    out.append("%s:sat=%d,tools=%d" % (check, int(satisfied), tools))
 print(" ".join(out))
 PYEOF
 )
@@ -122,7 +122,7 @@ python3 - "$TR" "$PROJ/bf-1.jsonl" <<'PYEOF'
 import json, sys, time
 from datetime import datetime, timezone
 # Stamp the fixture at "now" so it lands inside the pairing tolerance of the
-# gate_events rows recorded moments ago — the validated path, not the fallback.
+# check_events rows recorded moments ago — the validated path, not the fallback.
 now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 with open(sys.argv[2], "w") as out:
     for line in open(sys.argv[1]):
@@ -132,18 +132,18 @@ with open(sys.argv[2], "w") as out:
             out.write(json.dumps(record) + "\n")
 PYEOF
 
-before=$(sqlite3 "$DB" "select count(*) from gate_outcomes;")
+before=$(sqlite3 "$DB" "select count(*) from check_outcomes;")
 HOME="$FAKE_HOME" python3 "$BF" --db "$DB" >/dev/null 2>&1
-check "a default run writes nothing" "$(sqlite3 "$DB" "select count(*) from gate_outcomes;")" "$before"
+check "a default run writes nothing" "$(sqlite3 "$DB" "select count(*) from check_outcomes;")" "$before"
 
 HOME="$FAKE_HOME" python3 "$BF" --db "$DB" --write >/dev/null 2>&1
-first=$(sqlite3 "$DB" "select count(*) from gate_outcomes;")
+first=$(sqlite3 "$DB" "select count(*) from check_outcomes;")
 check "--write derives a row per matched fire" "$first" "2"
-check "the demand each gate asked for is scored satisfied" \
-  "$(sqlite3 "$DB" "select count(*) from gate_outcomes where demand_satisfied=1;")" "2"
+check "the demand each check asked for is scored satisfied" \
+  "$(sqlite3 "$DB" "select count(*) from check_outcomes where demand_satisfied=1;")" "2"
 
 HOME="$FAKE_HOME" python3 "$BF" --db "$DB" --write >/dev/null 2>&1; rerun_rc=$?
-check "re-running does not duplicate rows" "$(sqlite3 "$DB" "select count(*) from gate_outcomes;")" "$first"
+check "re-running does not duplicate rows" "$(sqlite3 "$DB" "select count(*) from check_outcomes;")" "$first"
 # An unchanged row count also happens when the second run CRASHES on a UNIQUE
 # violation, so assert it exited cleanly too.
 check "the second run exits cleanly rather than crashing" "$rerun_rc" "0"
@@ -159,7 +159,7 @@ HOME2="$SANDBOX/home2"
 PROJ2="$HOME2/.agents/.history/versions/claude/v1/home/.claude/projects/p"
 mkdir -p "$PROJ2"
 VERIFY_WORK_STATE_DB="$DB2" python3 "$STATE" record-prompt >/dev/null 2>&1 <<<'{"session_id":"bf-2","agent":"claude","launch_id":"L2","prompt":"x"}'
-VERIFY_WORK_STATE_DB="$DB2" python3 "$STATE" record-gates \
+VERIFY_WORK_STATE_DB="$DB2" python3 "$STATE" record-checks \
   "keep-moving:blocked:a" "keep-moving:blocked:b" "keep-moving:blocked:c" \
   >/dev/null 2>&1 <<<'{"session_id":"bf-2","agent":"claude","launch_id":"L2","prompt":"x"}'
 
@@ -179,7 +179,7 @@ PYEOF
 
 HOME="$HOME2" python3 "$BF" --db "$DB2" --write > "$SANDBOX/pair.out" 2>&1
 check "three recorded rows against two injections derive only two" \
-  "$(sqlite3 "$DB2" "select count(*) from gate_outcomes;")" "2"
+  "$(sqlite3 "$DB2" "select count(*) from check_outcomes;")" "2"
 check "the row with no unused injection is reported as skipped" \
   "$(grep -c 'no unused injection within' "$SANDBOX/pair.out")" "1"
 
@@ -189,7 +189,7 @@ HOME3="$SANDBOX/home3"
 PROJ3="$HOME3/.agents/.history/versions/claude/v1/home/.claude/projects/p"
 mkdir -p "$PROJ3"
 VERIFY_WORK_STATE_DB="$DB3" python3 "$STATE" record-prompt >/dev/null 2>&1 <<<'{"session_id":"bf-3","agent":"claude","launch_id":"L3","prompt":"x"}'
-VERIFY_WORK_STATE_DB="$DB3" python3 "$STATE" record-gates "keep-moving:blocked:a" \
+VERIFY_WORK_STATE_DB="$DB3" python3 "$STATE" record-checks "keep-moving:blocked:a" \
   >/dev/null 2>&1 <<<'{"session_id":"bf-3","agent":"claude","launch_id":"L3","prompt":"x"}'
 cat > "$PROJ3/bf-3.jsonl" <<'JSONL'
 {"type":"user","isMeta":true,"message":{"role":"user","content":"Stop hook feedback:\nSTOP GATE (keep moving): unfinished"}}
@@ -197,7 +197,7 @@ cat > "$PROJ3/bf-3.jsonl" <<'JSONL'
 JSONL
 HOME="$HOME3" python3 "$BF" --db "$DB3" --write >/dev/null 2>&1
 check "an untimestamped transcript scores nothing rather than guessing by position" \
-  "$(sqlite3 "$DB3" "select count(*) from gate_outcomes;")" "0"
+  "$(sqlite3 "$DB3" "select count(*) from check_outcomes;")" "0"
 
 # --- the demand detector reads the status FIELD, not the dumped payload --------
 det=$(python3 - "$BF" <<'PYEOF'
@@ -245,9 +245,9 @@ HOME4="$SANDBOX/home4"
 PROJ4="$HOME4/.agents/.history/versions/claude/v1/home/.claude/projects/p"
 mkdir -p "$PROJ4"
 VERIFY_WORK_STATE_DB="$DB4" python3 "$STATE" record-prompt >/dev/null 2>&1 <<<'{"session_id":"bf-4","agent":"claude","launch_id":"L4","prompt":"x"}'
-VERIFY_WORK_STATE_DB="$DB4" python3 "$STATE" record-gates "keep-moving:blocked:a" \
+VERIFY_WORK_STATE_DB="$DB4" python3 "$STATE" record-checks "keep-moving:blocked:a" \
   >/dev/null 2>&1 <<<'{"session_id":"bf-4","agent":"claude","launch_id":"L4","prompt":"x"}'
-sqlite3 "$DB4" "update gate_events set created_at_ms = created_at_ms - 3600000;"
+sqlite3 "$DB4" "update check_events set created_at_ms = created_at_ms - 3600000;"
 
 python3 - "$PROJ4/bf-4.jsonl" <<'PYEOF'
 import json, sys
@@ -267,15 +267,15 @@ PYEOF
 
 HOME="$HOME4" python3 "$BF" --db "$DB4" --write > "$SANDBOX/tol.out" 2>&1
 check "a fire an hour from its only injection is not scored" \
-  "$(sqlite3 "$DB4" "select count(*) from gate_outcomes;")" "0"
+  "$(sqlite3 "$DB4" "select count(*) from check_outcomes;")" "0"
 # ...and the same row DOES score once it is inside the window, so the assertion
 # above is testing the bound rather than some unrelated failure to load.
-sqlite3 "$DB4" "update gate_events set created_at_ms = created_at_ms + 3600000;"
+sqlite3 "$DB4" "update check_events set created_at_ms = created_at_ms + 3600000;"
 HOME="$HOME4" python3 "$BF" --db "$DB4" --write >/dev/null 2>&1
 check "the same row scores once it falls inside the window" \
-  "$(sqlite3 "$DB4" "select count(*) from gate_outcomes;")" "1"
+  "$(sqlite3 "$DB4" "select count(*) from check_outcomes;")" "1"
 
-# Unscorable gates must never be reported as satisfied — a proxy there would
+# Unscorable checks must never be reported as satisfied — a proxy there would
 # inflate the success rate for demands no transcript scan can confirm.
 unscorable=$(python3 - "$BF" <<'PYEOF'
 import importlib.util, sys
@@ -286,7 +286,7 @@ PYEOF
 )
 # delivery joined the set after review: STOP GATE (delivery) fires on five
 # independent demands and a release-command detector can see only one of them,
-# so scoring it at all would report a working gate as broken.
+# so scoring it at all would report a working check as broken.
 check "delivery, self-audit and swarm are unscorable" "$unscorable" "delivery,self-audit,swarm"
 
 echo "$pass passed, $fail failed"

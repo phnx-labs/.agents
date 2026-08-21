@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
-"""Tests for hooks/09-mailbox-inject.py — run: python3 hooks/tests/test_09_mailbox_inject.py
+"""Tests for hooks/pre-tool-use/09-mailbox-inject.py — run: python3 hooks/tests/test_09_mailbox_inject.py
 Black-box: invokes the hook as a subprocess with a crafted box + PreToolUse
 stdin, asserts the injected additionalContext and the on-disk drain result.
 .agents-system has no CI test runner, so this is a self-checking script."""
 import os, sys, json, tempfile, subprocess, shutil
 
-HOOK = os.path.join(os.path.dirname(__file__), "..", "09-mailbox-inject.py")
+HOOK = os.path.join(os.path.dirname(__file__), "..", "pre-tool-use", "09-mailbox-inject.py")
 
 
 def run(box, payload):
@@ -48,7 +48,7 @@ def test_drain_and_inject():
     assert ctx(run(box, {"tool_name": "Bash"})) is None
 
 
-def test_subagent_gate():
+def test_subagent_scope():
     box = mkbox("boxB")
     put_inbox(box, "1-a.json", msg("boxB", "should NOT drain in subagent"))
     out = run(box, {"tool_name": "Bash", "agent_type": "general-purpose", "agent_id": "x"})

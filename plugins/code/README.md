@@ -70,7 +70,7 @@ skills. They're gone, not renamed:
 
 1. New task arrives → pick the primitive directly (`agents run`, `agents teams`, `cloud:run`) and set up the worktree.
 2. Agent runs.
-3. Agent claims done → identify the changed surfaces and run each one's canonical test inline, quoting real output (F3's closing gate — see `code:loop`).
+3. Agent claims done → identify the changed surfaces and run each one's canonical test inline, quoting real output (F3's closing check — see `code:loop`).
 4. PASS → `/code:review` the PR, then merge. FAIL → file the failing line back to the agent.
 5. Merged a **distributable** (extension / CLI / web app)? → `/code:release` publishes it, confirms it's live for users, activates and verifies it. Merge is the middle, not the end.
 

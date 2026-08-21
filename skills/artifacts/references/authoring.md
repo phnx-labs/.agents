@@ -145,7 +145,7 @@ Example:
   transform, motion, and paint animation are supported.
 - Do not animate URL-bearing attributes such as `href`.
 
-## Plan quality gate
+## Plan quality checks
 
 For `kind: plan`, validation is not optional chrome. The goal is a **pleasant,
 reviewable** page — not a wall of bullets.

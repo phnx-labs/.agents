@@ -202,7 +202,7 @@ Each directory has a `README.md` for humans (a catalog of everything in it) and 
 | [`commands/`](commands/README.md) | Slash commands — `/loop`, `/code:loop`, `/swarm`, `/continue`, `/code:release`, … (see guide above) |
 | [`skills/`](skills/README.md) | Skills — multi-file capabilities like `browser`, `teams`, `sessions`, `mq` |
 | [`plugins/`](plugins/README.md) | Plugins — `work` (drain any kind), `code`, `swarm`, `sessions`, `fleet`, `share`, `design`, … |
-| [`hooks/`](hooks/README.md) | Lifecycle scripts — session-start context injection, prompt expansion, Stop-gates, guards |
+| [`hooks/`](hooks/README.md) | Lifecycle scripts — session-start context injection, prompt expansion, Stop checks, guards |
 | [`rules/`](rules/README.md) | The ruleset every agent gets as its memory file, composed from `subrules/` |
 | [`permissions/`](permissions/README.md) | Canonical YAML permission rules, translated per agent |
 | [`clis/`](clis/README.md) | Manifests for host CLIs (`mq`, `jq`, `linear`) that agents-cli installs |

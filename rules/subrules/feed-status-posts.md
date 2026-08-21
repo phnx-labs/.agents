@@ -41,8 +41,9 @@ phone spam.
 
 Session, agent, host, runtime, and process identity resolve automatically from
 the launch and activity indexes. Do not stop or ask the user because
-`AGENT_SESSION_ID` is empty. If automatic resolution still fails, retry with the
-documented escape hatch:
+`AGENT_SESSION_ID` is empty. If automatic resolution still fails (orchestrator
+shells outside `agents run`), retry with the documented escape hatch —
+`--title` and the body are both required:
 
 ```bash
 agents feed post --title "<short subject>" "<update>" --session <session-id>
@@ -57,4 +58,8 @@ agents feed post --title "Signing blocked" "Production needs your biometric" --b
 ```
 
 Blocked posts open a needs-you record and deliver fail-loud. Never combine
-`--blocked` with `--level`; keep working on every unblocked part after filing it.
+`--blocked` with `--level`; keep working on every unblocked part after filing
+it. `--option` records answers the user can pick; `--default` names a safe
+fallback so work can resume without an answer. Front-load the ask — a phone
+notification truncates after about two lines, so lead with the decision, not
+the backstory.

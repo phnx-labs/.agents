@@ -39,5 +39,5 @@ and it renders the card above.
 `public` is meant to be posted: it has a preview card and is permanent by default.
 `private` is for discreet sharing: no card, auto-expires, unguessable slug. Note that
 R2 reads are public, so anyone with the exact URL can view a "private" link — it's
-unlisted, not access-controlled. True view-gating (a viewer token) is a future Worker
+unlisted, not access-controlled. True view restriction (a viewer token) is a future Worker
 enhancement.

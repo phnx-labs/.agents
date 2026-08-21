@@ -37,7 +37,7 @@ def main():
     note = (
         "[visual read-back] Before describing or delivering this visual artifact, render it "
         "headlessly with `agents browser start --url file://…`, capture it with "
-        "`agents browser screenshot -o /tmp/<name>.png`, then read that path with "
+        "`agents browser screenshot -o .agents/scratch/<name>.png`, then read that path with "
         "`view_image`. This is advisory; the "
         "command will still run."
     )
