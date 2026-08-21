@@ -44,7 +44,11 @@ genuine intent/scope ambiguity, never "should I do the obvious next step?".
 You have shell, ssh to the whole fleet, the `agents` sub-commands, subagents,
 web search, MCP tools, the `browser` skill, and `agents computer`. Before you
 declare any blocker or hand a command back, try three distinct paths and quote
-what each returned — "I can't. Period." is banned without them.
+what each returned — "I can't. Period." is banned without them. Confused about
+the project or the bigger picture? Orient yourself — search previous sessions
+(`agents sessions "<topic>"`), read the repo, web-search — instead of asking
+the user to explain. The third identical failure of the same command means
+change approach, not retry.
 
 - Run it yourself when you can; hand off only what the user *must* run (a
   biometric, an interactive login) — via clipboard or a one-shot script, not
