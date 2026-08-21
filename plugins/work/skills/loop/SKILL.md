@@ -1,6 +1,6 @@
 ---
 name: loop
-description: "General-purpose unattended work drain across every project and kind — code, browser, outreach, design, portal tasks. Spreads load with agents teams + balanced account rotation so one logout or rate-limit does not kill the night. No review/merge gate: finish agent-doable work, open PRs for the human to review later. Triggers on: 'work loop', '/work:loop', '/loop', 'overnight drain', 'drain the board', 'finish everything unattended', 'keep moving on all projects'."
+description: "General-purpose unattended work drain across every project and kind — code, browser, outreach, design, portal tasks. Spreads load with agents teams + balanced account rotation so one logout or rate-limit does not kill the night. Drives each item to landed — engineering merges on green behind a non-author review, never waiting on the user to click merge. Triggers on: 'work loop', '/work:loop', '/loop', 'overnight drain', 'drain the board', 'finish everything unattended', 'keep moving on all projects'."
 argument-hint: "[empty = all open clear work | project/filter | overnight]"
 allowed-tools: Bash(agents *), Bash(gh *), Bash(git *), Bash(linear *), Bash(rg *), Bash(fd *), Bash(ls *), Bash(cat *), Bash(jq *), Bash(curl *), Read(*), Write(*), Edit(*), Task(*), WebSearch(*), WebFetch(*)
 user-invocable: true
@@ -11,24 +11,28 @@ user-invocable: true
 
 You are the **orchestrator of a general-purpose drain**. The board is every open, clear,
 unblocked item across the user's projects — not one repo, not engineering only. Your job
-is to **finish as much agent-doable work as possible without involving the user**, leave
-what needs their eyes for later, and **never pin the night on a single account or host**.
+is to **drive every agent-doable item to landed without involving the user**, park only
+what genuinely needs their judgment, and **never pin the night on a single account or
+host**.
 
-This is the kind-agnostic sibling of `code:loop`. For pure engineering mechanics (worktrees,
-claim/dedup, PR shape) you may **compose** `code:loop` ideas and patterns — but this skill
-owns the overnight / multi-project / multi-kind contract. Do **not** run a merge-review
-gate (`code:review` merge loop is off by default).
+This is the kind-agnostic sibling of `code:loop`. For pure engineering mechanics
+(worktrees, claim/dedup, PR shape, **merge-on-green**) you **compose** `code:loop` — this
+skill owns the overnight / multi-project / multi-kind contract, and it inherits
+`code:loop`'s completion bar rather than lowering it.
 
 ## Mindset (load-bearing)
 
 1. **Done without the user.** Never call `AskUserQuestion`. Never wait for approval. If a
    decision is genuinely product/taste-only, park the item with a comment and continue.
-2. **Maximize finished work.** Prefer opening a solid PR, sending the outreach, filling
+2. **Maximize finished work.** Prefer landing a solid PR, sending the outreach, filling
    the form, publishing the asset — over perfecting a plan or waiting for review.
-3. **No review flow.** Do not spawn a non-author review-and-merge loop. For engineering:
-   implement → test → open PR → leave it for the human to review later. Note CI status in
-   the ticket; do not idle on green for a merge click. For non-coding: complete the real
-   outcome (message sent, form submitted, report filed) when the agent can do it alone.
+3. **Unattended means you own the merge, not that you skip it.** The user is asleep or
+   running fifty other agents; a PR left for them to review is work parked on the one
+   person who cannot get to it. For engineering: implement → test → open PR → get a
+   **non-author** review → **merge on green** → clean up → close the ticket. The review
+   is the repo's automated reviewer where one is configured and posting, otherwise a
+   subagent that did not author the PR. For non-coding: complete the real outcome
+   (message sent, form submitted, report filed) when the agent can do it alone.
 4. **Spread load always.** One Claude logout or rate-limit must not collapse the night
    (real failure mode: m-box logouts and bwrap failures re-homing everything onto s0/s1).
    Default to `agents teams` / multiple `agents run` with **`--strategy balanced`**, mixed
@@ -110,7 +114,7 @@ tiny). Still unattended.
 
 | Kind | How you finish (unattended) |
 |---|---|
-| **Engineering** | Worktree off `origin/$BASE`; implement; run real tests; **open PR**; comment on ticket with PR link. **Do not** run `code:review` merge. **Do not** wait for the user to review. Optional: note CI. For a pure multi-ticket *code-only* slice you may hand a sub-queue to `code:loop` **only if** you override completion to "PR open, no merge-review" — otherwise keep engineering inside this skill so the no-review contract is not violated. |
+| **Engineering** | Worktree off `origin/$BASE`; implement; run real tests; **open PR**; comment on ticket with PR link; then **land it** — watch CI, get a non-author review, **rebase-merge on green**, remove the worktree, delete the branch, close the ticket with PR link + merge SHA. Hand a pure multi-ticket *code-only* slice to `code:loop`, which owns exactly this spine. |
 | **Browser / portal / order / sign-in web** | `browser` + secrets; complete the real flow; screenshot or quoted UI state as proof; close ticket with proof. |
 | **Native app** | `computer` skill; same proof bar. |
 | **Design / assets** | `design` plugin / image skills; attach artifact. |
@@ -123,13 +127,22 @@ tiny). Still unattended.
 
 | Outcome | Counts as done for this loop |
 |---|---|
-| Engineering | PR open with id in title, ticket commented, CI noted if known |
+| Engineering | PR **merged** on green behind a non-author review, worktree removed, branch deleted, ticket closed with PR link + merge SHA. A distributable (published CLI, extension, deployed app) is not done at merge — route it through `/code:release`. |
 | Non-coding agent-complete | Real-world action finished + proof (screenshot path, URL, send receipt) |
 | Blocked | Ticket parked with *exact* missing decision/credential; continue others |
-| Needs human review | Already the default for PRs — leave them; do not ping for merge |
+| Genuinely the user's call | A product/scope/taste decision, a credential only they hold, or a governance sign-off — park it with the decision stated in one line, and keep draining the rest |
 
-Queue empty or only parked items → short recap: finished · PRs waiting on human · parked ·
-what re-homed because of limits/logouts.
+**"PR open" is not an outcome.** It is the middle of the engineering row. An unattended
+loop that ends the night with a stack of open PRs has moved the whole queue onto the one
+person who was not there — the exact failure this skill exists to prevent.
+
+The four things that still stop a merge, all of them red, none of them "ask the user":
+CI red (fix the cause), a review that found real problems (address it, push, re-request),
+a merge conflict (rebase onto fresh `origin/$BASE`), or branch protection refusing the
+merge. Never `gh pr merge --admin`, never approve your own PR, never merge red.
+
+Queue empty or only parked items → short recap: merged · shipped · parked (with whose
+call each one is) · what re-homed because of limits/logouts.
 
 **Every row above is a postcondition you must CHECK, not infer.** A dispatched agent that
 hit a wall, explained it, and exited is an `exit 0` with zero work done — the most common
@@ -151,7 +164,9 @@ not done — park it with the gap named. See `unattended-verification`.
 
 - Running the whole night as one Claude session on one host
 - Pinning a single account until it rate-limits, then stopping
-- Invoking `code:review` / merge-on-green and waiting for the user
+- Ending the drain with open PRs and naming the user as the one who reviews and merges
+- Treating a green CI + clean review as a reason to stop rather than a reason to merge
+- Waiting on the user for anything that is not a real product/scope/credential decision
 - Skipping browser/computer when the ticket is clearly a web/native task
 - Asking the user for context that sessions, comments, or code already hold
 - Flooding the interactive laptop with teammates
@@ -166,7 +181,8 @@ not done — park it with the gap named. See `unattended-verification`.
 | Need | Use |
 |---|---|
 | Single clear item now | `/work:dispatch` (or this skill with a one-item queue) |
-| Engineering patterns (worktree, claim) | Align with `code:loop`; **no** its merge/review completion |
+| Engineering patterns (worktree, claim, review, merge-on-green) | `code:loop` — including its "done means merged" completion |
+| Post-merge publish for a distributable | `/code:release` — merge is the middle for anything users install or visit |
 | Board keep/cancel decisions | `/triage` — do not invent cancels unattended |
 | Parallel fan-out mechanics | `swarm:orchestrate` / `agents teams` |
 | Schedule every night | `agents routines` YAML calling this skill unattended |
