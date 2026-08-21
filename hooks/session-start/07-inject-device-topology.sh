@@ -134,21 +134,26 @@ if devices:
         lines.append(
             f"The user sits at **{interactive}** (interactive host). To show them anything "
             f"visual (an HTML plan, a screenshot, a dashboard), deliver it THERE: "
-            f"`scp <file> {interactive}:/tmp/` then `agents ssh {interactive} "
-            f"'"'"'open /tmp/<file>'"'"'`, or drive their browser with `agents ssh {interactive} "
-            f"'"'"'agents browser start'"'"'`. "
+            f"`scp <file> {interactive}:/tmp/` then show it in ONE reused browser tab — "
+            f"`agents ssh {interactive} '"'"'agents browser navigate --url file:///tmp/<file>'"'"'`. "
+            f"Re-run that to refresh the SAME tab in place; a raw `open` spawns a new "
+            f"duplicate tab every call. Fall back to `agents ssh {interactive} "
+            f"'"'"'open /tmp/<file>'"'"'` only if that host has no drivable browser profile. "
             f"Do not open it locally — the user is not watching this machine."
         )
     elif interactive:
         lines.append(
-            "The user sits at THIS machine (interactive host) — open visual artifacts "
-            "locally with `open <file>`."
+            "The user sits at THIS machine (interactive host) — show visual artifacts in "
+            "ONE reused browser tab with `agents browser navigate --url file://<file>` "
+            "(re-run to refresh in place, no tab pile-up), falling back to `open <file>` "
+            "only if no drivable browser profile exists."
         )
     else:
         lines.append(
-            "To show the user something visual (an HTML plan, a screenshot), open it on "
-            "the online macOS device (where they sit) — SSH the file over and open it "
-            "there if you are remote."
+            "To show the user something visual (an HTML plan, a screenshot), display it on "
+            "the online macOS device (where they sit) — SSH the file over, then "
+            "`agents browser navigate --url file://<file>` on that host so it reuses one "
+            "tab (fall back to `open <file>` only if it has no drivable browser profile)."
         )
 
     # Operator config for this machine (newer CLIs only): caps and notes set via
