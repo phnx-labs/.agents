@@ -20,7 +20,7 @@
     {
       "name": "work",
       "source": "./plugins/work",
-      "description": "work — general-purpose work across the fleet, not just code. `/work:loop` (alias `/drain`) is the unattended multi-project drain: spreads load with agents teams + balanced accounts, uses browser/computer/secrets for non-coding, opens PRs without a review/merge gate so the human reviews later. `/work:dispatch` is ONE unit of work (coding or not) routed to the right executor. Kind-agnostic layer above `code:loop`.",
+      "description": "work — general-purpose work across the fleet, not just code. `/work:loop` (alias `/drain`) is the unattended multi-project drain: spreads load with agents teams + balanced accounts, uses browser/computer/secrets for non-coding, drives each item to landed, merging engineering PRs on green behind a non-author review. `/work:dispatch` is ONE unit of work (coding or not) routed to the right executor. Kind-agnostic layer above `code:loop`.",
       "version": "0.2.0",
       "author": {
         "name": "Muqsit Nawaz",

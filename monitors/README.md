@@ -18,7 +18,7 @@ built-in, so you can customize one per box without editing this repo.
 
 | Monitor | Source | What it does |
 |---|---|---|
-| [`pr-merge-on-green`](./pr-merge-on-green.yml) | poll `gh pr list --author @me`, every 5 min | Rebase-merges this machine's own open PRs once CI is green **and** a non-author has approved them — dispatches `claude` to `gh pr merge <n> --rebase --delete-branch` (never `--admin`, never self-approve). Opt-in; disabled until enabled. |
+| [`pr-merge-on-green`](./pr-merge-on-green.yml) | poll `pr-merge-on-green.sh` (`gh search prs` + `gh pr view --repo`), every 5 min | Rebase-merges this machine's own open PRs once CI is green **and** a non-author verdict is on the same PR (a GitHub APPROVED review or an APPROVE comment; same check as `merge-guard.sh`). Opt-in; disabled until enabled. |
 
 ## Using them
 
@@ -30,8 +30,10 @@ agents monitors pause pr-merge-on-green      # temporarily stop it
 ```
 
 `pr-merge-on-green` needs `gh` authenticated on the box. It scopes to your own
-GitHub user (`--author @me`), so enable it on the one box you want to own merges
-from — enabling it on several boxes has each daemon race to merge the same PRs.
+GitHub user (`gh search prs --author @me`) and names `--repo` on every per-PR
+`gh` call, so it still evaluates when the daemon's cwd is not a git checkout
+(RUSH-2848). Enable it on the one box you want to own merges from — enabling it
+on several boxes has each daemon race to merge the same PRs.
 
 **Version note:** the system-layer monitors mechanism ships in agents-cli
 1.22.36. On an older CLI the built-in is inert (not discovered) — harmless, since

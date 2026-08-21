@@ -79,7 +79,7 @@ to type.
 
 | I want to… | Run | Plugin / notes |
 |---|---|---|
-| **Drain everything overnight** (any project, code *or* browser/outreach) without waiting on me | `/loop` or `/work:loop` | [`work`](plugins/work/README.md) — spreads load across accounts/hosts; opens PRs for you to review later; **no** merge-review gate |
+| **Drain everything overnight** (any project, code *or* browser/outreach) without waiting on me | `/loop` or `/work:loop` | [`work`](plugins/work/README.md) — spreads load across accounts/hosts; **merges on green** behind a non-author review instead of leaving PRs for you |
 | Finish a **queue of engineering tickets** (merge-oriented) | `/code:loop` | [`code`](plugins/code/README.md) — worktrees, CI, review/merge |
 | **One** clear task (any kind) to an agent | `/work:dispatch` or `/dispatch` | `work` for kind-agnostic; top-level `/dispatch` leans engineering |
 | Decide keep/cancel/priority on the **whole board** | `/triage` | Not a builder — decision layer only |

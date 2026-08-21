@@ -27,6 +27,22 @@
   new message anchors so historical scoring still works. The `mq` read nudge is
   removed; the visual read-back nudge points at `.agents/scratch/`.
 
+### Fixed
+
+- **`pr-merge-on-green` can actually select a PR (RUSH-2848).** The built-in
+  poll was `gh pr list --author @me` with no `--repo`, so `gh` inferred the
+  repository from cwd. The daemon evaluates monitors from a non-repo directory,
+  and every tick failed with `fatal: not a git repository` — 2,133 polls, zero
+  PRs. It also filtered `reviewDecision == "APPROVED"`, which misses this
+  fleet's non-author reviewers (they post an APPROVE *comment*, not a formal
+  GitHub review). The poll is now `monitors/pr-merge-on-green.sh`: `gh search
+  prs` (cwd-independent) plus `gh pr view --repo <owner/name>`, and the verdict
+  is `rules/subrules/gh-merge-guard/pr-verdict.py` — the same check
+  `merge-guard.sh` already used. The action prompt no longer embeds a literal
+  `gh pr merge` / `--admin`, which tripped merge-guard when registering the
+  monitor (RUSH-2760). Tests: `monitors/pr-merge-on-green_test.sh`,
+  `rules/subrules/gh-merge-guard/pr-verdict_test.sh`.
+
 ### Added
 
 - **`agents sessions share` — teach the new verb, and carve it out of the
@@ -144,6 +160,33 @@
 
 ### Fixed
 
+- **`/work:loop` told agents to leave every PR for Muqsit to review and merge —
+  the skill was the banned stop, not the agent.** An overnight drain ended with
+  *"Owner of the one open thread: Muqsit reviews and merges PR #2833. Nothing else
+  is pending on me,"* and the agent was quoting its own contract: the skill stated
+  a no-merge-review gate in eight places (frontmatter, intro, mindset rule 3, the
+  routing table, two rows of the done table, the anti-patterns, the compose map),
+  down to an anti-pattern that forbade *"invoking `code:review` / merge-on-green."*
+  So F1's "merging on green is the work, not a decision to punt" lost to a
+  specific, local instruction that said the opposite — and every `/loop` invocation
+  parked its whole engineering queue on the one person running fifty other agents.
+  The skill now inherits `code:loop`'s bar instead of lowering it: implement →
+  test → open PR → **non-author review** → **merge on green** → clean up → close
+  the ticket with PR link + merge SHA, with `/code:release` named for
+  distributables. The four things that still stop a merge are enumerated and all
+  of them are red (CI, a review with real findings, a conflict, branch protection)
+  — never "ask the user." The safety rails the original contract was reaching for
+  are kept and stated: never `--admin`, never self-approve, never merge red. The
+  parked row is narrowed from "needs human review" to a real product/scope/
+  credential decision. Eight surfaces advertised the same wrong contract and now
+  match: both `/loop` command files (`commands/loop.md` and
+  `plugins/work/commands/loop.md`), `commands/README.md`,
+  `plugins/work/commands/dispatch.md`'s routing table, `plugins/work/README.md`
+  (both its skill table and its "stops at PR open by default" compose note), the
+  root README row, and the two plugin manifests that carry the `work` plugin's
+  own description — `plugins/work/.claude-plugin/plugin.json` and
+  `.claude-plugin/marketplace.json`, which is what the marketplace listing shows.
+
 - **Plans without mockups and PRs without run screenshots — the four enforcement
   holes are closed.** A session-transcript trace showed both requirements existed
   only as prose for the most common paths.
@@ -230,6 +273,22 @@
 - **Removed the readback Stop hard-block that over-fired on ordinary work (RUSH-2712 follow-up).** PR #308 exit-2 blocked any session that edited a .html/.png/.svg/.pdf file and used a common visual phrase even with nothing delivered; an independent review reproduced it on a routine routing-bug fix. The advisory PreToolUse nudge, the properly-scoped delivery-chain check, and the rules/preset changes from #308 are kept; only the Stop hard-block is removed, along with only its visual-gate test fixture. Re-landing the claim check with the 66-transcript corpus-replay validation the plan required is deferred.
 
 ### Changed
+
+- **Showing the user a review doc / plan / visual now reuses ONE browser tab
+  instead of piling up duplicates (agents-cli #2779 / #2778).** The device-topology
+  SessionStart hook, the `plan-render` / `visualize` skills, `commands/plan.md`, and
+  the `design` plugin skill told agents to display an artifact on the interactive host
+  with a raw `agents ssh <host> 'open <file>'`, which spawns a brand-new tab every call
+  with no handle — re-showing an updated doc left a pile of duplicate tabs. They now
+  teach `agents browser navigate --url file://<path>`, which the daemon resolves to the
+  caller's task and refreshes in place (one tab, verified: three navigates → one tab id
+  on real headless Brave), falling back to a single `open` only when the host has no
+  drivable browser profile. The visual-readback stop-gate (`hooks/stop/visual_readback.py`
+  `SHIP_RE`) now recognizes `agents browser navigate` / `browser start` as visual
+  delivery, so the "look at what you shipped" read-back discipline keeps firing for the
+  new command instead of being silently bypassed (covered by a new
+  `visual_readback_test.sh` fixture). Pairs with agents-cli PR #2778, which also makes
+  `agents browser` refuse to drive Arc (not CDP-drivable) rather than crash it.
 
 - **The conflict-marker commit gate now explains the lone-separator case.** A bare
   `=======` is blocked because it is the middle marker of a half-resolved conflict,

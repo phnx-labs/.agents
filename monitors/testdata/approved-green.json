@@ -1,0 +1,11 @@
+{
+  "number": 7,
+  "url": "https://github.com/acme/widgets/pull/7",
+  "repository": { "nameWithOwner": "acme/widgets" },
+  "statusCheckRollup": [
+    { "name": "test", "conclusion": "SUCCESS", "state": "COMPLETED" },
+    { "name": "lint", "conclusion": "SKIPPED", "state": "COMPLETED" }
+  ],
+  "reviews": [{ "state": "APPROVED", "author": { "login": "reviewer" } }],
+  "comments": []
+}

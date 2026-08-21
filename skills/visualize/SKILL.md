@@ -116,10 +116,22 @@ The source of truth is **Markdown**; the rendering is handled by `artifacts-cli`
 
 8. **Deliver it to the user's machine.**
 
-   Resolve the online macOS device from the Host & Fleet context (never hardcode). If already on that machine, open directly; otherwise copy the HTML over:
+   Resolve the online macOS device from the Host & Fleet context (never hardcode). Show it in **one reused browser tab** with `agents browser navigate` — re-presenting an updated visual refreshes the SAME tab in place instead of piling up a new duplicate tab every time (a raw `open` opens a fresh tab per call). If you are already on that machine, navigate directly (no scp/ssh needed):
+
+   ```bash
+   agents browser navigate --url "file://$ARTIFACTS_DIR/<slug>.html"
+   ```
+
+   Otherwise copy the HTML over first, then navigate on that host:
 
    ```bash
    scp "$ARTIFACTS_DIR/<slug>.html" <host>:/tmp/<slug>.html
+   agents ssh <host> 'agents browser navigate --url file:///tmp/<slug>.html'
+   ```
+
+   Fall back to a single `open` only when that host has no drivable browser profile (`agents ssh <host> 'agents browser profiles list'` is empty and `agents browser start` can't auto-pick one):
+
+   ```bash
    agents ssh <host> 'open /tmp/<slug>.html'
    ```
 

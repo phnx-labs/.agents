@@ -153,10 +153,10 @@ agents secrets add x.com GETONRUSH_PASSWORD --type password \
 
 Key naming: uppercase the handle, replace non-alphanumerics with `_`, suffix `_USERNAME` / `_PASSWORD` (plus `_EMAIL` for the login email and `_TOTP_SECRET` for 2FA accounts).
 
-To pick an account, run `agents secrets view x.com` — notes print in the clear while values stay masked. Reveal only the pair you need:
+To pick an account, run `agents secrets view x.com` — notes print in the clear while values stay masked. Never print the values (RUSH-2774: the plaintext export is removed); run the consuming command with just that account's pair injected:
 
 ```bash
-agents secrets export x.com --plaintext | grep '^GETONRUSH_'
+agents secrets exec x.com --keys GETONRUSH_USERNAME,GETONRUSH_PASSWORD -- ./login-helper
 ```
 
 For browser logins, bind the bundle to a profile so it injects at browser start: `agents browser profiles create x --browser chrome --secrets x.com`.
