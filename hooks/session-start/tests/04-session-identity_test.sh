@@ -3,7 +3,7 @@
 # three jobs against each agent's documented SessionStart delivery shape:
 #   1) session metadata write (former 04)
 #   2) per-pid registry enrichment (former 08)
-#   3) Claude-harness-gated stdout injection (former 07)
+#   3) Claude-harness-scoped stdout injection (former 07)
 #
 # The hook is run via `bash "$HOOK"` so its `$PPID` resolves to THIS test shell
 # (matching how Claude invokes the executable directly), letting us assert the
@@ -104,7 +104,7 @@ check "no prior entry: grok inferred"     "$(python3 -c 'import json,sys;print(j
 check "no prior entry: id recorded"       "$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1])).get("sessionId",""))' "$NEW" 2>/dev/null)" "sid-g2"
 [ -n "$newf" ] && rm -f "$NEW"
 
-# --- Job 3: Claude-harness-gated stdout injection -------------------------
+# --- Job 3: Claude-harness-scoped stdout injection -------------------------
 # I1: CLAUDECODE set -> emit additionalContext carrying the session id.
 cleanup
 out="$(echo '{"session_id":"sid-inject","transcript_path":"/t.jsonl"}' | CLAUDECODE=1 bash "$HOOK")"

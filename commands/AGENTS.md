@@ -47,7 +47,7 @@ Plugin commands are namespaced `<plugin>:<command>` and live under
 `plugins/<plugin>/commands/`, never here. This directory holds the unnamespaced top-level
 set only.
 
-## Do not gate on the user
+## Do not block on the user
 
 Commands that ask for permission before acting on their own verdict violate F1 of the
 ruleset. `/code:review` merges on green; `/code:refactor` lands its reversible tier without asking; `/next` drives the current task to delivered.

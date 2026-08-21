@@ -87,7 +87,7 @@ Then tell the user the report is open and give a 2–3 line spoken summary (the 
 
 ### Step 4 — Apply only what's approved
 
-Wait for the user's call. They either paste back the `/learn apply …` brief from the report or tell you which to take. Then apply **only the approved fixes** — and apply them through the rest of this skill: each fix still passes the **four gates** (Phase 3), routes to its home (Phase 4), edits **without downgrading** (Phase 5), and **verifies + ships** via worktree + PR (Phase 6). The audit changes *what you fix* (problems mined from real sessions, not this conversation); it does not relax *how* you fix it.
+Wait for the user's call. They either paste back the `/learn apply …` brief from the report or tell you which to take. Then apply **only the approved fixes** — and apply them through the rest of this skill: each fix still passes the **four filters** (Phase 3), routes to its home (Phase 4), edits **without downgrading** (Phase 5), and **verifies + ships** via worktree + PR (Phase 6). The audit changes *what you fix* (problems mined from real sessions, not this conversation); it does not relax *how* you fix it.
 
 ---
 
@@ -143,7 +143,7 @@ If a plugin has one (e.g. `code:learn`), **read it and follow its domain-specifi
 
 ## Phase 3 — Distill, then filter hard
 
-Write each candidate lesson as one line. Then put every candidate through four gates. A candidate must pass **all four** to earn a durable edit:
+Write each candidate lesson as one line. Then put every candidate through four filters. A candidate must pass **all four** to earn a durable edit:
 
 1. **Generalization.** Name 2-3 *different future* situations where this lesson would help. If the only situation you can name is the one that just happened, it's an incident, not a pattern.
 2. **Recurrence.** Has this bitten before, or is it likely to bite again? A service that was down, a one-time flake, a typo — transient and environmental one-offs don't earn permanent edits.
@@ -152,14 +152,14 @@ Write each candidate lesson as one line. Then put every candidate through four g
 
 Then, **in reflection mode, rank the survivors by outcome leverage** (the Phase 0 lens;
 target-audit mode has no Phase 0 and ranks by the report's own severity instead). Among
-lessons that clear all four gates, the ones that unblock or accelerate a **slipping
+lessons that clear all four filters, the ones that unblock or accelerate a **slipping
 milestone**, or that lift the weak delivery metric (throughput / cost-per-PR / merge
 rate), come first and earn the most care and prominence. An equally-general lesson on a
 surface tied to no active goal is real but lower-leverage — still encode it, just later
 and more briefly. Leverage sets ordering and effort only: a lesson that cleared the four
-gates is never dropped for low leverage, and leverage never lets a lesson skip the gates.
+filters is never dropped for low leverage, and leverage never lets a lesson skip the filters.
 
-**Show your rejects.** List the candidates you dropped and which gate they failed. A learn pass that encodes every candidate isn't thorough — it's overfitting. The rejects are proof the filter ran.
+**Show your rejects.** List the candidates you dropped and which filter they failed. A learn pass that encodes every candidate isn't thorough — it's overfitting. The rejects are proof the filter ran.
 
 ## Phase 4 — Route each survivor to its home
 

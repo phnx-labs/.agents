@@ -1,5 +1,5 @@
 #!/bin/bash
-# Tests the pre-commit conflict-marker gate. Real git, real merge conflicts, the
+# Tests the pre-commit conflict-marker check. Real git, real merge conflicts, the
 # real hook — no mocking. Mirrors pre-commit-agents-path-policy_test.sh's scaffold.
 #
 # The thing most needing a pin is the ANCHOR. Loosening the pattern to a bare

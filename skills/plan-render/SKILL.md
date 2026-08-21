@@ -13,7 +13,7 @@ Every implementation plan should be a beautiful, reviewable HTML page that opens
 ## Non-negotiable quality bar (read this first)
 
 A plan HTML that is **only prose + inline `code` pills** is a failed delivery.
-Both the compiler and the cross-harness presentation gate enforce this:
+Both the compiler and the cross-harness presentation check enforce this:
 
 | Must have | Why | Enforced by |
 | --- | --- | --- |
@@ -76,7 +76,7 @@ Architecture diagrams do not substitute for behavior views.
    ```
 
    Follow the planning contract in the `plan-presentation` rule for the section
-   order and the pre-present gates. On top of the `plan` template's sections, a plan
+   order and the pre-present requirements. On top of the `plan` template's sections, a plan
    leads with **Focus for review** (what you want weighed in on) and **Intent** (the
    user's ask restated), and carries a **Current architecture** section, drawn as a
    figure (before and after when the plan changes the shape):

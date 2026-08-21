@@ -5,7 +5,7 @@
 # reach, so it can dispatch work to a peer (`agents ssh <name>`) or surface an
 # artifact on the machine the user actually sits at. The device list comes from
 # `agents devices` (tailscale-backed, populated by the autosync). This hook is
-# always-on and NOT gated on any keyword — it is pure context.
+# always-on and NOT triggered by any keyword — it is pure context.
 #
 # We inject two things from `agents devices list`:
 #   1. Reachability (from `--json`, always fast) — where each box is and whether

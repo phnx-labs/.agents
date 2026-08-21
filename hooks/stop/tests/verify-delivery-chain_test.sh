@@ -52,7 +52,7 @@ git -C "$d2" add src/foo.py; git -C "$d2" $GC commit -q -m "add new command foo"
 tr2="$(mktemp)"
 printf '%s\n' '{"role":"user","content":"please add a new command called foo to the cli tool"}' > "$tr2"
 out2="$(run_gate "$d2" "$tr2")"
-if printf '%s' "$out2" | grep -q "User-facing change detected"; then
+if printf '%s' "$out2" | grep -q "User-facing change with no docs and CHANGELOG update"; then
   echo "PASS: gate still fires on a real user-facing delivery missing docs/CHANGELOG"
 else
   echo "FAIL: gate did NOT fire on a real user-facing delivery:"; echo "$out2"; fail=1
@@ -93,7 +93,7 @@ git -C "$d4" remote set-head origin main
 tr4="$(mktemp)"
 printf '%s\n' '{"role":"user","content":"please cut a release of version 1.0.1 to the registry"}' > "$tr4"
 out4="$(run_gate "$d4" "$tr4")"
-if printf '%s' "$out4" | grep -q "Independently-shippable change detected"; then
+if printf '%s' "$out4" | grep -q "Release/live verification incomplete"; then
   echo "PASS: release-verification gate still fires on a zero-diff release session"
 else
   echo "FAIL: release-verification gate was silently disabled for a zero-diff release:"; echo "$out4"; fail=1
@@ -118,7 +118,7 @@ tr6="$(mktemp)"
 printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Write","input":{"file_path":"/tmp/mockup.html"}}]}}' > "$tr6"
 printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Bash","input":{"command":"scp /tmp/mockup.html zion:/tmp/mockup.html"}}]}}' >> "$tr6"
 out6="$(run_gate "$d1" "$tr6")"
-if printf '%s' "$out6" | grep -q "Visual artifact delivery has no image read-back"; then
+if printf '%s' "$out6" | grep -q "Visual delivered without image read-back"; then
   echo "PASS: scratch visual delivery requires image read-back"
 else
   echo "FAIL: scratch visual delivery passed without image read-back:"; echo "$out6"; fail=1

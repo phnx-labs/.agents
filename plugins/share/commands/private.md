@@ -15,4 +15,4 @@ Publish `$ARGUMENTS` as a **private / unlisted** link with `agents artifacts sha
 
 ## Honesty (important — do not overstate privacy)
 
-This is **unlisted**, not **authenticated**. The slug is unguessable and the link won't unfurl or get auto-indexed, but **anyone who has the exact URL can still read it** — R2 reads are public. Never describe it as encrypted or access-controlled. If the user needs true view-gating (a viewer token / password), say that's a future Worker enhancement, not something this command provides today.
+This is **unlisted**, not **authenticated**. The slug is unguessable and the link won't unfurl or get auto-indexed, but **anyone who has the exact URL can still read it** — R2 reads are public. Never describe it as encrypted or access-controlled. If the user needs true view restriction (a viewer token / password), say that's a future Worker enhancement, not something this command provides today.

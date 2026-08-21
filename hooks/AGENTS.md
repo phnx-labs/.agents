@@ -116,7 +116,7 @@ state command or interpret hook schemas. Use this layout consistently:
   only from that goal's suffix. Keep session-owned entities in a separate ledger
   so responsibility survives follow-up prompts without making old activity look
   like evidence for the new goal.
-- Record gate outcomes as compact structured events (gate + outcome + reason),
+- Record check outcomes as compact structured events (check + outcome + reason),
   not copied hook messages. This makes effectiveness measurable without retaining
   conversation content.
 
@@ -129,8 +129,8 @@ one namespaced database per device when it genuinely needs durable state.
 `user-prompt-submit/02-expand-prompt-skill-refs.py` has no entry in `../agents.yaml`
 and has never had one. Allowlisted in `registration_test.sh`. Register it or delete it.
 
-`stop/gate-outcome-backfill.py` has no entry **by design** — it is offline analysis of
-gate telemetry that was already recorded, not an event handler, so putting it on a hook
+`stop/check-outcome-backfill.py` has no entry **by design** — it is offline analysis of
+check telemetry that was already recorded, not an event handler, so putting it on a hook
 path would make every Stop pay for a whole-corpus scan. Allowlisted in
 `registration_test.sh`. Run it by hand. Do not register it.
 
@@ -163,9 +163,9 @@ one level deep, so it never descends into an event dir's `tests/` subdir.
 each event dir's `tests/` subdir (`hooks/<event>/tests/*_test.sh`). Run both before a
 PR that touches `hooks/`, `rules/subrules/`, or `agents.yaml`.
 
-`syntax_test.sh` is the parse gate: a hook that does not parse still runs, and bash
+`syntax_test.sh` is the parse check: a hook that does not parse still runs, and bash
 exits 2 on a syntax error — which is the harness's *block* code, so a typo becomes a
-gate no session can pass. It checks `.sh` under **`/bin/bash` (3.2 on macOS)** as well
+block no session can get past. It checks `.sh` under **`/bin/bash` (3.2 on macOS)** as well
 as the PATH bash, because 3.2 tracks quotes inside a heredoc nested in a `$(…)` and
 bash 5 does not: a quote in such a heredoc parses fine on Linux and breaks every Mac.
 Keep quote characters out of heredoc bodies inside `$(…)` — spell them `\x27` / `\x22`.

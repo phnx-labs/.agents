@@ -50,8 +50,8 @@ hooks/
   lib/                    shared helpers sourced by hooks (not event scripts)
     tests/                  its *_test.sh files
   promptcuts.yaml         data for promptcuts (internal hook: expand-promptcuts)
-  registration_test.sh    integrity gate (top-level)
-  syntax_test.sh          parse gate — every hook script, incl. under bash 3.2
+  registration_test.sh    integrity check (top-level)
+  syntax_test.sh          parse check — every hook script, incl. under bash 3.2
   run_tests.sh
 ```
 
@@ -108,10 +108,10 @@ register time). See [§Subrule hooks](#subrule-hooks-rules-not-this-tree).
 | Hook | What it does |
 |---|---|
 | [`00-agent-verify-work-complete.sh`](./stop/00-agent-verify-work-complete.sh) | Blocks a stop that claims "done" without verification / open PR with no handoff |
-| [`verify-work-state.py`](./stop/verify-work-state.py) | Goal-scoped positive-evidence classifier, session-owned entity ledger, and structured gate telemetry used by `verify-work-complete` |
+| [`verify-work-state.py`](./stop/verify-work-state.py) | Goal-scoped positive-evidence classifier, session-owned entity ledger, and structured check telemetry used by `verify-work-complete` |
 | [`visual_readback.py`](./stop/visual_readback.py) | Shared transcript evidence for authored, delivered, and image-read visual artifacts |
-| [`verify-delivery-chain.py`](./stop/verify-delivery-chain.py) | Goal-scoped delivery-chain verifier invoked by the Stop gate (not registered alone) |
-| [`gate-outcome-backfill.py`](./stop/gate-outcome-backfill.py) | Offline: derives whether each recorded gate block was followed by the specific thing that gate demanded; never on a hook path |
+| [`verify-delivery-chain.py`](./stop/verify-delivery-chain.py) | Goal-scoped delivery-chain verifier invoked by the Stop check (not registered alone) |
+| [`check-outcome-backfill.py`](./stop/check-outcome-backfill.py) | Offline: derives whether each recorded block was followed by the specific thing that block demanded; never on a hook path |
 
 ### `notification/` — Notification
 
@@ -163,7 +163,7 @@ hooks:
   disable any system-shipped hook.
 - `override` — set `true` on a user-layer entry to silence the
   `User-layer hook '<name>' shadows/disables system-shipped hook` warning. It
-  does **not** gate the shadowing itself: the user layer wins on a key collision
+  does **not** govern the shadowing itself: the user layer wins on a key collision
   either way, and `enabled: false` disables with or without it.
 - `agents` — **deprecated**; ignored.
 

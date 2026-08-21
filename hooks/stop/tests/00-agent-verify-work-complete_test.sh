@@ -324,21 +324,10 @@ check "done-claim on real transcript shape blocks for self-audit" "$rc" "2"
 grep -q 'agents feed post.*--level important' "$SANDBOX/stderr" && echo "ok   - completion post is phone-worthy" || { echo "FAIL - completion post is not important"; fail=1; }
 grep -qi "you claimed this work is done" "$SANDBOX/stderr" && echo "ok   - done-claim gate cites the original request" || { echo "FAIL - no done-claim gate message"; fail=1; }
 
-# 8a. Completion nudge: the done-claim gate must instruct the agent to file any
-#     genuine follow-up ideas as tickets (with real context) instead of dangling
-#     them ('say the word'), clean up worktrees/branches, and recap via /done
-#     (which itself recaps THEN self-exits) once genuinely finished — but only
-#     for a headless/dispatched run, never unconditionally for an interactive
-#     session someone might be watching.
-grep -qi "follow-ups\nas tickets\|follow-ups as tickets\|as tickets" "$SANDBOX/stderr" && echo "ok   - gate instructs filing follow-up tickets" || { echo "FAIL - gate does not mention filing follow-up tickets"; fail=1; }
-grep -qi "with context" "$SANDBOX/stderr" && echo "ok   - gate requires follow-up tickets to carry real context" || { echo "FAIL - gate does not require ticket context"; fail=1; }
-grep -qi "say the word" "$SANDBOX/stderr" && echo "ok   - gate names the dangling-idea anti-pattern" || { echo "FAIL - gate does not name the dangling-idea anti-pattern"; fail=1; }
-grep -qi "worktrees" "$SANDBOX/stderr" && echo "ok   - gate instructs worktree/branch cleanup" || { echo "FAIL - gate does not instruct worktree cleanup"; fail=1; }
-grep -qi "finish with /done" "$SANDBOX/stderr" && echo "ok   - gate instructs running /done as the close-out step" || { echo "FAIL - gate does not instruct running /done"; fail=1; }
-grep -qi "recap first" "$SANDBOX/stderr" && echo "ok   - gate requires the recap before self-exit" || { echo "FAIL - gate does not require recap-before-exit ordering"; fail=1; }
-grep -qi "bare SIGTERM" "$SANDBOX/stderr" && echo "ok   - gate warns against bypassing /done's parent-process guard" || { echo "FAIL - gate does not warn against a bare SIGTERM"; fail=1; }
-grep -qi "use /recap" "$SANDBOX/stderr" && echo "ok   - gate offers /recap (no self-exit) for uncertain/interactive sessions" || { echo "FAIL - gate does not offer a no-self-exit recap path"; fail=1; }
-grep -qi "interactive sessions" "$SANDBOX/stderr" && echo "ok   - gate carves out interactive sessions from self-exit" || { echo "FAIL - gate does not guard against killing an interactive session"; fail=1; }
+# 8a. The concise completion nudge keeps only the load-bearing instructions.
+grep -qi "verify before stopping" "$SANDBOX/stderr" && echo "ok   - check requires verification before stopping" || { echo "FAIL - check omits verification instruction"; fail=1; }
+grep -qi "Re-check every ask this session" "$SANDBOX/stderr" && echo "ok   - check requires a full-session audit" || { echo "FAIL - check omits the full-session audit"; fail=1; }
+grep -qi "agents feed post" "$SANDBOX/stderr" && echo "ok   - check requests one completion update" || { echo "FAIL - check omits the completion update"; fail=1; }
 
 # 8b. Regression: first_user_msg is extracted via `python3 -c "..."` inside $(...).
 #     A backtick in that python string is re-parsed by bash as a nested command
@@ -558,13 +547,13 @@ check "finish-line + closed ticket + evidence allows delivery stop" "$rc" "0"
 TD_UF=$(mk_delivery_transcript "Please add a new --flag command to the widget")
 rc=$(FAKE_GH_STATE=MERGED FAKE_GIT_BRANCH=feature/no-ticket FAKE_GIT_FILES=src/widget.js run_hook "$TD_UF" "Merged the new flag." false)
 check "user-facing change without docs/CHANGELOG blocks" "$rc" "2"
-grep -q "missing docs and CHANGELOG" "$SANDBOX/stderr" && echo "ok   - delivery gate flags missing docs and CHANGELOG" || { echo "FAIL - delivery gate did not flag docs/changelog"; fail=1; }
+grep -q "no docs and CHANGELOG update" "$SANDBOX/stderr" && echo "ok   - delivery check flags missing docs and CHANGELOG" || { echo "FAIL - delivery check did not flag docs/changelog"; fail=1; }
 
 # D4. User-facing change + only CHANGELOG updated -> still blocks; docs and
 #     CHANGELOG are separate requirements.
 rc=$(FAKE_GH_STATE=MERGED FAKE_GIT_BRANCH=feature/no-ticket FAKE_GIT_FILES=$'CHANGELOG.md\nsrc/widget.js' run_hook "$TD_UF" "Merged the new flag. Evidence: screenshot /tmp/flag.png." false)
 check "user-facing change with only CHANGELOG still blocks" "$rc" "2"
-grep -q "missing docs" "$SANDBOX/stderr" && echo "ok   - delivery gate requires docs separately" || { echo "FAIL - delivery gate did not require docs separately"; fail=1; }
+grep -q "no docs update" "$SANDBOX/stderr" && echo "ok   - delivery check requires docs separately" || { echo "FAIL - delivery check did not require docs separately"; fail=1; }
 
 # D4b. User-facing change + docs + CHANGELOG + evidence -> allows.
 rc=$(FAKE_GH_STATE=MERGED FAKE_GIT_BRANCH=feature/no-ticket FAKE_GIT_FILES=$'README.md\nCHANGELOG.md\nsrc/widget.js' run_hook "$TD_UF" "Merged the new flag. Evidence: screenshot /tmp/flag.png." false)
@@ -577,7 +566,7 @@ echo '{"name":"widget","version":"1.0.0"}' > "$SHIP_REPO/package.json"
 TD_SHIP=$(mk_delivery_transcript "Please release the widget extension" "$SHIP_REPO")
 rc=$(FAKE_GH_STATE=MERGED FAKE_GIT_BRANCH=feature/no-ticket FAKE_GIT_FILES=src/widget.js FAKE_GIT_TAG="" run_hook "$TD_SHIP" "Merged. The extension is ready to publish." false)
 check "shippable change without release evidence blocks" "$rc" "2"
-grep -q "release/live verification is incomplete" "$SANDBOX/stderr" && echo "ok   - delivery gate flags missing release/live verification" || { echo "FAIL - delivery gate did not flag release"; fail=1; }
+grep -q "Release/live verification incomplete" "$SANDBOX/stderr" && echo "ok   - delivery check flags missing release/live verification" || { echo "FAIL - delivery check did not flag release"; fail=1; }
 
 # D6. Independently-shippable change + release + live version check -> allows.
 rc=$(FAKE_GH_STATE=MERGED FAKE_GIT_BRANCH=feature/no-ticket FAKE_GIT_FILES=$'README.md\nCHANGELOG.md\nsrc/widget.js' FAKE_GIT_TAG=v1.1.0 run_hook "$TD_SHIP" "Merged and released v1.1.0. Verified live: npm view widget version -> 1.1.0." false)
@@ -820,9 +809,8 @@ grep -qi "this is block number" "$SANDBOX/stderr" && { echo "FAIL - repeat guida
 TL=$(mk_looped 2)
 rc=$(FAKE_GH_STATE=OPEN run_hook "$TL" "CI still running, waiting." false)
 check "3rd open-PR fire still blocks" "$rc" "2"
-grep -qi "this is block number 3" "$SANDBOX/stderr" && echo "ok   - repeat guidance appears on the 3rd fire" || { echo "FAIL - no repeat guidance on the 3rd fire"; fail=1; }
+grep -qi "block 3 this session" "$SANDBOX/stderr" && echo "ok   - repeat guidance appears on the 3rd fire" || { echo "FAIL - no repeat guidance on the 3rd fire"; fail=1; }
 grep -qi "change tactics" "$SANDBOX/stderr" && echo "ok   - guidance asks for a tactic change" || { echo "FAIL - repeat guidance has no tactic change"; fail=1; }
-grep -qi "unblock yourself\|advance another\|coordinate ownership" "$SANDBOX/stderr" && echo "ok   - guidance offers possible tactics" || { echo "FAIL - repeat guidance has no tactic clues"; fail=1; }
 
 # D3. Second fire (1 prior) does NOT yet add repeat guidance.
 TL1=$(mk_looped 1)
@@ -935,7 +923,7 @@ mk_tasks_looped() {   # $1 = number of prior keep-moving fires
 TKL=$(mk_tasks_looped 2)
 rc=$(run_hook "$TKL" "The parser is written and pushed." false)
 check "3rd keep-moving fire still blocks" "$rc" "2"
-grep -qi "this is block number 3" "$SANDBOX/stderr" && echo "ok   - keep-moving repeat guidance appears on the 3rd fire" || { echo "FAIL - no repeat guidance on the 3rd keep-moving fire"; fail=1; }
+grep -qi "block 3 this session" "$SANDBOX/stderr" && echo "ok   - keep-moving repeat guidance appears on the 3rd fire" || { echo "FAIL - no repeat guidance on the 3rd keep-moving fire"; fail=1; }
 
 # --- todo-progress.py folding (unit) -----------------------------------------
 # The helper folds snapshot checklist tools + Claude TaskCreate/TaskUpdate the

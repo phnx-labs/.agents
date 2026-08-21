@@ -1,6 +1,6 @@
 ---
 name: learn
-description: "Learn the codebase a coding session just worked in, and write what a future agent would otherwise re-derive into that project's AGENTS.md — entry points, architecture, non-obvious invariants, how to navigate. The primary durable output of a coding session is the project's own memory file, not the code plugin. May also fold a genuinely durable coding-workflow lesson into a code:* skill via the top-level `learn` engine's gates, but that's secondary. Triggers on: 'learn this codebase', 'update AGENTS.md', 'what should future agents know about this repo', 'learn from this coding session', 'improve the code plugin', 'what should the engineering loop have done'."
+description: "Learn the codebase a coding session just worked in, and write what a future agent would otherwise re-derive into that project's AGENTS.md — entry points, architecture, non-obvious invariants, how to navigate. The primary durable output of a coding session is the project's own memory file, not the code plugin. May also fold a genuinely durable coding-workflow lesson into a code:* skill via the top-level `learn` engine's filters, but that's secondary. Triggers on: 'learn this codebase', 'update AGENTS.md', 'what should future agents know about this repo', 'learn from this coding session', 'improve the code plugin', 'what should the engineering loop have done'."
 argument-hint: "[empty = current session/repo | session-id | topic | path to a monorepo package]"
 allowed-tools: Bash(agents *), Bash(git *), Bash(rg *), Bash(fd *), Bash(ls *), Bash(cat *), Bash(jq *), Read(*), Write(*), Edit(*), Task(*)
 user-invocable: true
@@ -80,7 +80,7 @@ Not every lesson from a coding session is about *this repo* — some are about *
 the loop*: a bad assumption `code:loop` made about rebasing, a review check that missed
 something, a dispatch-shape heuristic that was wrong. Those still belong in the plugin,
 but only when they clear the top-level `learn` engine's bar — **generalization,
-recurrence, root cause, durability** — the same four gates as any other `learn` target.
+recurrence, root cause, durability** — the same four filters as any other `learn` target.
 This is secondary to Step 2: a session that only taught you something about the code
 plugin and nothing about the project it worked in still writes nothing to AGENTS.md, and
 that's fine — not every session has both kinds of lesson.
@@ -105,10 +105,10 @@ that's fine — not every session has both kinds of lesson.
 **Don't break the contracts.** `code:loop` calls `code:review` by name (see
 `loop/SKILL.md` "Tools you compose"). An edit to a verb's *contract* — what `code:review`
 returns, what a caller checks before it treats something as done — can ripple to its
-callers. Before changing a skill's promised output or gate, grep the other `code:*`
+callers. Before changing a skill's promised output or check, grep the other `code:*`
 skills for references to it and keep the contract intact, or update every caller in the
 same scoped change. Additive sections are safe; contract changes are not.
 
-The rest — recall discipline, the four gates, the rejects-list, non-regression, verify-
+The rest — recall discipline, the four filters, the rejects-list, non-regression, verify-
 then-ship — is the `learn` engine. Follow it for Step 3; it doesn't apply to Step 2, which
 is a direct write of what you now know about the project, not a lesson about the loop.

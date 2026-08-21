@@ -112,8 +112,8 @@ agents teams add feat claude "..." --name w2 --device yosemite-s0    # or pin
 Always use `--mode plan` for security audits, research, and analysis.
 
 **Teammates run headless — `edit` can stall waiting for an approval prompt nobody
-answers.** `edit` lets a teammate write files but does not auto-approve anything; a
-gated operation just sits there unattended. `auto` runs the same permissions plus a
+answers.** `edit` lets a teammate write files but does not auto-approve anything; an
+operation that requires approval just sits there unattended. `auto` runs the same permissions plus a
 smart classifier that clears safe ops on its own, so it is usually the right default
 for an unattended edit-mode teammate — reach for plain `edit` only when you actively
 want it to pause on ambiguous operations (e.g. a human is watching that teammate's

@@ -3,7 +3,7 @@
 #
 # Why this exists: a Stop/PreToolUse hook that does not parse still RUNS. bash
 # exits 2 on a syntax error, and exit 2 is the harness's "block" code — so a
-# typo turns every hook into a permanent gate that no session can get past.
+# typo turns every hook into a permanent block that no session can get past.
 # That shipped: 2615e49 ("task-aware keep-moving gate") landed a heredoc whose
 # body carried a lone `'`, and bash 3.2 — /bin/bash on every macOS box — tracks
 # quotes inside a heredoc that sits in a $(...). The script became unparseable,

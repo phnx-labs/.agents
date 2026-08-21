@@ -119,7 +119,7 @@ The order matters: dedup first (a PR or session means the claim belongs to someo
 
 ## Tools you compose
 
-- **Inline verification** — before opening the PR, and again after the final push, identify the changed surfaces yourself and run each one's canonical test (the project's own `scripts/sandbox.sh test` / `bun test` / `go test ./...`, a health-endpoint `curl`, a UI screenshot). Quote the real output in your response — this is F3's closing gate, not a separate skill call.
+- **Inline verification** — before opening the PR, and again after the final push, identify the changed surfaces yourself and run each one's canonical test (the project's own `scripts/sandbox.sh test` / `bun test` / `go test ./...`, a health-endpoint `curl`, a UI screenshot). Quote the real output in your response — this is F3's closing check, not a separate skill call.
 - `code:review` — the pre-merge review. Run it after CI is green; act on its verdict.
 - `/code:release` (the `code:release` skill) — the post-merge step for distributables (extensions, CLIs, web apps): discovers the repo's own release process and drives publish, confirm-live, tag, and verify end to end. Merge is not the terminal state for anything users install or visit.
 - `code:commit` — the splitting / message-writing primitive when you stage work.

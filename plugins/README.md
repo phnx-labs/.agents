@@ -3,7 +3,7 @@
 A plugin bundles related commands and skills into one installable unit with its own
 namespace. `/work:loop`, `/code:loop`, `/swarm`, and `/fleet:sync` all come from plugins.
 
-The system layer ships the lightweight, no-paid-key plugins. Heavier or key-gated ones live
+The system layer ships the lightweight, no-paid-key plugins. Heavier or key-required ones live
 in the opt-in `.agents-extras` bundle instead, so the default install stays fast and works
 anywhere with no setup.
 
@@ -63,7 +63,7 @@ Plugins here are registered in
 every installed agent version on `agents sync`. To add a bundle from elsewhere:
 
 ```bash
-agents repo add gh:phnx-labs/.agents-extras   # heavier, key-gated workflows
+agents repo add gh:phnx-labs/.agents-extras   # heavier, key-required workflows
 agents repo list
 agents repo disable extras                     # turn off without deleting
 ```

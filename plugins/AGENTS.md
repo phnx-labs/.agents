@@ -63,7 +63,7 @@ skill and let any thin top-level aliases follow. Never fork logic into an alias.
 
 This repo ships plugins that are lightweight and need no paid key: they must work on a fresh
 install, on any OS, with nothing configured. A plugin that needs an API key, a heavy runtime,
-or a paid service belongs in the opt-in `.agents-extras` bundle. Adding a key-gated
+or a paid service belongs in the opt-in `.agents-extras` bundle. Adding a key-required
 dependency to a plugin here breaks the default install for everyone.
 
 ## Renaming a plugin or command

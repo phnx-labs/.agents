@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Evidence-based delivery-chain gate for the agent stop hook.
+"""Evidence-based delivery-chain check for the agent stop hook.
 
 Reads JSON on stdin with keys:
   transcript_path         path to the session transcript (JSONL)
@@ -7,7 +7,7 @@ Reads JSON on stdin with keys:
   last_assistant_message  final assistant message text
   repo_path               optional repo path hint
 
-Outputs a gate message to stdout if the agent must close a delivery loop.
+Outputs a check message to stdout if the agent must close a delivery loop.
 Outputs nothing (exit 0) if no issue is found or any probe fails.
 """
 import json
@@ -323,7 +323,7 @@ def _changed_files(repo_path, pr_data):
 
 # Path segments that are mechanically incapable of being a user-facing delivery:
 # the gitignored scratch/artifact/worktree scratch space and OS temp dirs. A write
-# confined to one of these can never ship, so it must not raise a delivery gate.
+# confined to one of these can never ship, so it must not raise a delivery check.
 NON_DELIVERABLE_MARKERS = (
     ".agents/artifacts/", ".agents/scratch/", ".agents/worktrees/",
 )
@@ -390,12 +390,12 @@ def _release_status(repo_path, pr_data, transcript_path, last_assistant_message,
 
     all_text = "\n".join(text_chunks)
 
-    # A tag ANYWHERE in history used to set release_ran here. That defeated the gate
+    # A tag ANYWHERE in history used to set release_ran here. That defeated the check
     # permanently in any repo that has ever cut a release: agents-cli has 185 tags, so
     # `git describe --tags --abbrev=0` always answered, release_ran was always True, and
     # "merged is not shipped" could never fire. Measured 2026-08-15: PR #2705 merged, its
     # entry sat under `## [Unreleased]`, and the session stopped clean asking whether to
-    # release — the exact banned stop this gate exists to catch.
+    # release — the exact banned stop this check exists to catch.
     #
     # Ask the real question instead: is the delivered work still staged rather than
     # shipped? A changelog this PR touched that still carries content under
@@ -428,7 +428,7 @@ def _release_status(repo_path, pr_data, transcript_path, last_assistant_message,
 
     # Staged work outranks any positive signal above: a real `## [Unreleased]` block in a
     # changelog this delivery touched means the change is merged and not published, whatever
-    # the transcript claims. The paths ride along so the gate can name the actual
+    # the transcript claims. The paths ride along so the check can name the actual
     # remediation (fold + finish the release) instead of "run the release" — which would
     # be wrong, and could induce a duplicate publish, when a publish already ran but the
     # changelog was never folded.
@@ -593,14 +593,14 @@ def main():
 
     # The docs/CHANGELOG demand keys off _looks_user_facing, a keyword match on the
     # conversation ("command", "flag", "feature", ...). A conversation that merely
-    # *mentions* a user-facing thing is not a *delivery* of one, so only gate it when
+    # *mentions* a user-facing thing is not a *delivery* of one, so only check it when
     # this session produced a real change to document: a tracked file changed outside
     # scratch/artifact/tmp paths, or a responsible PR. Can't be gamed — a genuine
     # change shows up in `git diff` / a PR.
     #
-    # NOTE: this gate is deliberately NOT applied to `shippable`. A release cut from
+    # NOTE: this check is deliberately NOT applied to `shippable`. A release cut from
     # already-merged code (tag/publish, no new local commits, no PR this session) is a
-    # real delivery with no file diff, and `_release_status` already gates it on
+    # real delivery with no file diff, and `_release_status` already checks it on
     # independent tag/publish/verify evidence. ANDing is_real_delivery here would
     # silently disable release verification for that ordinary flow.
     visual = inspect_transcript(transcript_path, goal_offset)
@@ -639,67 +639,32 @@ def main():
     if not issues:
         return
 
-    lines = ["STOP — before you stop, close out the delivery:\n"]
+    lines = ["STOP — close out the delivery, then stop again:"]
 
     if open_tickets:
-        lines.append("Open Linear ticket(s) still need state + proof:")
-        for t, state, title in open_tickets:
-            lines.append(f"  - {t} [{state}] {title}")
-        lines.append("")
+        ids = ", ".join(f"{t} [{state}]" for t, state, _ in open_tickets)
+        lines.append(f"  - Open Linear ticket(s): {ids} — update state with proof (`linear update <id> --done --proof <url|file|metric>`).")
 
     if open_related:
-        lines.append("Related/downstream Linear ticket(s) are still open:")
-        for t, state, title in open_related:
-            lines.append(f"  - {t} [{state}] {title}")
-        lines.append("")
+        ids = ", ".join(f"{t} [{state}]" for t, state, _ in open_related)
+        lines.append(f"  - Related/downstream ticket(s) still open: {ids}.")
 
     if user_facing and (not docs_ok or not changelog_ok):
-        missing = []
-        if not docs_ok:
-            missing.append("docs")
-        if not changelog_ok:
-            missing.append("CHANGELOG")
-        lines.append(f"User-facing change detected, but missing {' and '.join(missing)} update(s) in the PR.")
-        lines.append("  Satisfy: commit both a docs update and a CHANGELOG entry in this delivery, unless this is an exempt pure bug fix, internal refactor, test-only change, or self-evident rename.")
-        lines.append("")
+        missing = " and ".join(m for m, ok in (("docs", docs_ok), ("CHANGELOG", changelog_ok)) if not ok)
+        lines.append(f"  - User-facing change with no {missing} update — commit it in this delivery (exempt: pure bug fix, refactor, test-only, self-evident rename).")
 
     if shippable and (not release_ran or not release_verified):
-        lines.append("Independently-shippable change detected, but release/live verification is incomplete.")
         if unreleased_changelogs:
-            lines.append("  Changelog(s) touched by this delivery still carry entries under `## [Unreleased]`:")
-            for path in unreleased_changelogs:
-                lines.append(f"    - {path}")
-            lines.append("  The work is merged but not published. Finish the release — fold [Unreleased] into a")
-            lines.append("  version, publish, tag — or verify a live releaser owns it (probe the process/lease/PR,")
-            lines.append("  not a claim). If a publish already ran this session, fold the changelog and verify the")
-            lines.append("  registry version; do NOT blindly re-publish.")
+            paths = ", ".join(unreleased_changelogs)
+            lines.append(f"  - Merged but not published ({paths} still under [Unreleased]) — finish the release and verify the registry, or probe the live releaser (process/lease/PR, not a claim).")
         else:
-            if not release_ran:
-                lines.append("  Missing: release command/tag/publish evidence.")
-            if not release_verified:
-                lines.append("  Missing: live verification evidence (npm view, installed --version, gh release view, health URL, etc.).")
-            lines.append("  Satisfy: run the release, verify it is live, and cite the concrete version/URL/output in your final message.")
-        lines.append("")
+            lines.append("  - Release/live verification incomplete — release, then cite the live version/URL/output.")
 
     if visual["visual_delivered"] and not visual["visual_read_back"]:
-        lines.append("Visual artifact delivery has no image read-back after the latest render:")
-        lines.append(f"  - {visual['latest_visual'] or 'visual artifact'}")
-        lines.append("  Render it headlessly with `agents browser start --url file://…`, capture it with")
-        lines.append("  `agents browser screenshot -o /tmp/<name>.png`, then read that path with")
-        lines.append("  `view_image` before describing it.")
-        lines.append("")
+        lines.append(f"  - Visual delivered without image read-back ({visual['latest_visual'] or 'visual artifact'}) — screenshot it headlessly and view_image it.")
 
     if (ticket_ids or user_facing or shippable) and not evidence_ok:
-        lines.append("Outcome evidence is missing.")
-        lines.append("  Satisfy: cite a screenshot, URL, metric, passing test output, or version check proving the outcome.")
-        lines.append("")
-
-    lines.append("How to close each loop:")
-    if open_tickets or open_related:
-        lines.append("  - Linear: run `linear update <RUSH-XXXX> --done --proof <url|file|metric>` (or the correct state) and mention the ticket in your final message.")
-    lines.append("  - Evidence: attach a screenshot, URL, metric, or version check proving the outcome.")
-    lines.append("")
-    lines.append("Close the loop, then stop again.")
+        lines.append("  - No outcome evidence — cite a screenshot, URL, metric, passing test output, or version check.")
 
     sys.stdout.write("\n".join(lines))
 

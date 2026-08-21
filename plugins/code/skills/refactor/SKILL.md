@@ -42,7 +42,7 @@ wrong job.** Those are the byproducts of restructuring, not the point of it.
 
 ## What this is not
 
-Not a linter, not a style pass, not a rewrite, not a review gate, not an excuse to add
+Not a linter, not a style pass, not a rewrite, not a review checkpoint, not an excuse to add
 abstractions.
 
 **Boundary with `/code:review repo` (Mode C).** That is the read-only *defect* diagnostic
@@ -101,7 +101,7 @@ that owns it beats a mention in a reference table.
 | `--days N` | window for churn + agent traffic (default 90) |
 | `--top N` | how many moves the plan carries (default 6) |
 | `--scan-only` | stop after the plan |
-| `--execute` | skip the structural gate on an already-approved plan |
+| `--execute` | skip the structural checkpoint on an already-approved plan |
 
 ```bash
 REPO=$(git rev-parse --show-toplevel)
@@ -423,18 +423,18 @@ artifact where being sloppy does active harm: it becomes the next agent's contex
 4. **Dropped** — count and one line.
 5. **Bugs found, not fixed** — Phase 2 "code is wrong" cases, filed as tickets.
 
-Then split by tier and act — **do not gate the whole run**; asking permission to fix an
+Then split by tier and act — **do not block the whole run**; asking permission to fix an
 already-wrong doc is the banned stop:
 
 | Tier | Contents | Action |
 |---|---|---|
-| **Reversible** | doc-drift fixes, dead weight with proven zero callers, a one-caller indirection inlined, finishing an idiom migration already at ~90% | **Land it.** No gate. |
+| **Reversible** | doc-drift fixes, dead weight with proven zero callers, a one-caller indirection inlined, finishing an idiom migration already at ~90% | **Land it.** No checkpoint. |
 | **Structural** | every one of the seven architectural moves | **Present the figures, get the pick**, then land. |
 
-The structural gate is a genuine scope choice — which parts of the system get restructured
+The structural checkpoint is a genuine scope choice — which parts of the system get restructured
 is the user's call (F1's design-choice exemption), and a package extraction against a
 subsystem they are about to redesign is wasted work. `--scan-only` suppresses both;
-`--execute` suppresses the structural gate. After the pick, everything is autonomous.
+`--execute` suppresses the structural checkpoint. After the pick, everything is autonomous.
 
 ## Phase 6 — Land it
 

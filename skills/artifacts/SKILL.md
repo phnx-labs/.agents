@@ -71,7 +71,7 @@ output format; every kind renders to the same HTML.
    [references/authoring.md](references/authoring.md)
    before adding HTML or SVG.
 
-   **Plans are surface-gated.** An `internal` plan needs a live drawn SVG. Every
+   **Plans are surface-specific.** An `internal` plan needs a live drawn SVG. Every
    user-visible surface needs a product-faithful `.artifact-behavior` figure with
    current and proposed states; label each state as a real `capture` or a faithful
    `mockup`. An architecture diagram does not substitute for CLI/UI/API behavior.
