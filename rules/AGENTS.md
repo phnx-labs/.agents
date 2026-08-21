@@ -21,6 +21,9 @@ CHANGELOG → PR → address every review comment → fix CI → rebase → **me
 ship → verify live**. "PR opened" is not done; "tests pass locally" is not done.
 Conflicts, CI failures, and reviewer pushback are the work, not reasons to stop.
 A diagnosis is not a stopping point — fix it. A plan is not a handoff — build it.
+Spawning agents does not transfer ownership — check on them on a bounded timer,
+steer them, resume ones that paused prematurely, and land the composed result
+yourself.
 
 **Stop for exactly four things:**
 
