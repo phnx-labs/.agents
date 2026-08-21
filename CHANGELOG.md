@@ -29,6 +29,16 @@
 
 ### Fixed
 
+- **Fleet guidance now describes the live `--device auto` contract
+  (RUSH-2961).** The `run` skill, remote-dispatch rule, and code-plugin command
+  table no longer call explicit automatic placement a 14-day affinity choice or
+  promise a silent local fallback. For a named harness, the guidance now states
+  that agents-cli prefers a device with a ready account, then lower live load;
+  a trailing-`@` picker can also choose a device with a selectable login target
+  while excluding throttled-only devices. The automatic pool remains configured
+  through `agents devices role` / `auto.pool` rather than retired
+  extension-local preference flags.
+
 - **`pr-merge-on-green` can actually select a PR (RUSH-2848).** The built-in
   poll was `gh pr list --author @me` with no `--repo`, so `gh` inferred the
   repository from cwd. The daemon evaluates monitors from a non-repo directory,

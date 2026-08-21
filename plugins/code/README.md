@@ -60,7 +60,7 @@ skills. They're gone, not renamed:
 |---|---|
 | Inline edit | 1-2 files, < 15 min, no ambiguity. |
 | `agents run <agent> "..." --mode edit --cwd <worktree>` | One surface, one agent, local. |
-| `agents run --device auto` | Send to the fleet and let the CLI pick by affinity + headroom. |
+| `agents run --device auto` | Send to the automatic pool; named harnesses prefer a ready account, then lower live load. |
 | `agents run --device <box>` | The work must run on a specific fleet box. |
 | `agents run --lease` | Clear single-agent task on a disposable cloud box. |
 | `agents teams` | 3+ independent surfaces; use boundary contracts and per-teammate worktrees. |

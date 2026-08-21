@@ -8,6 +8,9 @@ when you dispatch.
 
 The traps the flags won't teach you:
 
+- `--device auto` uses the automatic-placement pool. For a named harness it
+  prefers a device with a ready account, then lower live load. A trailing `@`
+  also admits devices with a selectable login target, but not throttled-only devices.
 - Never `ssh <box> 'agents run …'` — the open ssh channel leaks stdin and the
   remote agent blocks forever. Only the native `--device` path launches
   detached.

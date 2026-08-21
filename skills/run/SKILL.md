@@ -249,14 +249,25 @@ agents logs <id> -f          # re-attach to a running one and follow
 
 ## Automatic fleet placement
 
-`--device auto` lets the CLI pick the machine from your registered fleet. It weights 14-day launch affinity by live headroom among online, dispatchable devices and degrades to local if no device is eligible.
+`--device auto` lets the CLI choose a reachable machine from its
+automatic-placement pool. For a named harness, placement prefers a device with
+a healthy signed-in account, then the device with lower live load. An
+interactive trailing-`@` picker launch also admits installed devices with a
+selectable signed-out or revoked-account login target, while still ranking a
+ready signed-in device first; a device whose picker would contain only
+throttled accounts stays excluded. If no machine is eligible, the command fails
+loud; it never silently degrades to the local machine.
 
 ```bash
 agents run claude "fix the flaky test" --device auto
 agents run claude "summarize logs" --device auto --no-follow
 ```
 
-Use this as the default for "send this to the fleet" unless the task must land on a specific box. Mark preferred machines with `agents devices config <name> auto-launch.preferred on`; exclude a box with `agents devices config <name> auto-launch.enabled off`.
+Use this as the default for "send this to the fleet" unless the task must land
+on a specific box. Mark worker machines with `agents devices role <name> worker`;
+once any worker is marked, automatic placement uses only marked workers. Mark
+the user's machine `personal` to exclude it. `agents config set auto.pool all`
+widens the pool past worker marks while still excluding personal devices.
 
 ## Quick reference
 
