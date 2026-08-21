@@ -1,14 +1,21 @@
 # Merge & Admin-Bypass Guard
 
-Authorization to do the work carries through to the merge — an in-session "build it / open a PR / fix this" authorizes a **rebase-merge on green**, no fresh ask needed. What still needs explicit authorization is merging *past* the safety rails: never bypass branch protection, never rubber-stamp your own code, never merge red.
+Authorization to do the work carries through to a **rebase-merge on green** — no
+fresh ask. What still needs explicit authorization is merging *past* the rails.
 
-- **Merge autonomously on green; ask only on red.** A non-author review **and** passing CI = rebase-merge without asking (see `truly-agentic-git-workflow`). Fall back to `AskUserQuestion` (merge / iterate / close) only when the review finds problems, tests fail, or the merge conflicts. "Green" means a genuine independent review + CI, never a rubber stamp. Do **not** open the PR for the user or ask them to click merge on an ordinary green PR.
-- **The verdict must be ON the PR you are merging.** `merge-guard.sh` blocks a
-  `gh pr merge` whose PR carries neither a GitHub APPROVED review nor a fresh
-  APPROVE verdict comment; a verdict "carried from" another PR satisfies
-  nothing (the #2736 laundering pattern). Get the verdict posted on this PR,
-  then merge.
-- **Non-author review source — check the automated reviewer first.** After you open a PR, determine whether the repo's automated code reviewer is **configured and functioning on this PR** (config file such as `.github/rush.yml` / `prix-cloud`, plus a real review or comment on the thread). **Configured and posting →** wait for that verdict; do not stack a second review on top. **Missing, silent, down, or unconfigured →** do not wait and do not hand the merge to the user — spawn a non-author subagent review immediately (`code:review` or an `Agent` that is not the author). That clear is what unblocks merge-on-green.
-- **Never `gh pr merge --admin`.** Admin bypass merges past branch protection and required reviews. The bundled `merge-guard.sh` (PreToolUse) blocks it. Merge *without* `--admin` so protections still apply — if protections block the merge, that's a red to resolve, not a thing to bypass.
-- **Never self-approve your own PR.** Reviewing and approving code you wrote, then merging it, is not review. The reviewer that clears the green must be someone — or some agent — other than the author. An automated repo reviewer counts; a subagent you spawned that did not author the PR also counts. You yourself never count.
-- **Never transfer credentials or auth files** (tokens, `~/.rush/user.yaml`, keychain exports) to another host or VM without explicit authorization. Don't attempt the transfer first and surface a question only after a guard blocks you.
+- Merge autonomously on green (non-author review + passing CI). Fall back to
+  `AskUserQuestion` only when the review finds problems, tests fail, or the
+  merge conflicts.
+- The verdict must be ON the PR you are merging — `merge-guard.sh` blocks a
+  `gh pr merge` whose PR carries neither an APPROVED review nor a fresh APPROVE
+  verdict comment. A verdict "carried from" another PR satisfies nothing.
+- Non-author review source: the repo's automated reviewer when configured and
+  posting on this PR; otherwise spawn a non-author subagent review immediately.
+  Never wait idle, never hand the merge to the user.
+- Never `gh pr merge --admin` (blocked by `merge-guard.sh`). If branch
+  protection blocks the merge, that's a red to resolve, not bypass.
+- Never self-approve your own PR. The clearing reviewer must be someone — or
+  some agent — other than the author; an automated repo reviewer or a
+  non-author subagent counts, you never do.
+- Never transfer credentials or auth files to another host without explicit
+  authorization.

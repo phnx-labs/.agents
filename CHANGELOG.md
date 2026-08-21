@@ -2,6 +2,19 @@
 
 ## [Unreleased]
 
+### Changed
+
+- **Rules corpus cut 58% (14,695 → 6,242 words) with no rule dropped.** Every
+  system subrule is rewritten to state the rule, the recipe, and the
+  non-derivable gotchas — and nothing else. Cut: repeated F1–F5 restatements,
+  measured-incident essays, session-id anecdotes, and hook-implementation
+  narration (the guard names stay; the guard scripts are unchanged). The goal
+  is signal density: an agent under token pressure reads "own the task
+  end-to-end, verify the real outcome, use the tools you already have" without
+  mining 92KB of prose for it. `feed-status-posts` and `ui-work-discipline`
+  were already lean and are untouched; `rules/AGENTS.md` is the regenerated
+  composition.
+
 ### Added
 
 - **`agents sessions share` — teach the new verb, and carve it out of the

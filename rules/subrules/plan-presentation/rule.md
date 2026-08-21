@@ -1,130 +1,50 @@
 # Present Plans as Browser-Ready HTML
 
-**Whenever you produce an implementation plan — the harness's native plan mode
-(the `ref-*.md` plan file), the `/plan` command, or `/swarm:plan` — do not leave it
-in terminal scrollback. Author a Markdown source under the repo's dated artifact
-layout, render it to a self-contained HTML doc with `artifacts-cli`, and open it in
-the user's default browser on the machine they sit at.**
+Any implementation plan — native plan mode, `/plan`, `/swarm:plan` — is
+authored as Markdown under the dated artifact layout, rendered to HTML with
+`artifacts-cli`, and inspected before you present it. Plan mode injects no
+methodology on any harness; this section is that methodology. Scale it to the
+change: a trivial single-file edit skips the architecture figure and the
+adversarial review.
 
-## What every plan must contain — and do before presenting
+**Research first:** search what previous agents did on this feature
+(`agents sessions "<keywords>"`) and extend prior work — silently reverting an
+earlier agent's change is the most common regression here. Locate the module's
+spec if one exists.
 
-Built-in plan mode (`/plan`, Shift+Tab, `--mode plan`) only restricts tools and asks
-for an `ExitPlanMode` — it injects **no** methodology, on any harness. This section is
-that methodology. Do all of it before you present a plan, whether you entered plan mode
-by a keystroke, a flag, or just started planning.
+**The plan contains, in order:**
 
-**Research first — before you draft:**
+1. **Focus for review** — 2–5 bullets naming exactly what the user should weigh
+   in on.
+2. **Intent** — the ask restated in the user's words.
+3. **Current architecture** — the affected files and how they talk today; for
+   an architectural change, before/after as an inline-SVG figure.
+4. **Implementation as real code** — the load-bearing hunks as diffs (fenced
+   ```diff blocks), naming every module that changes.
+5. **A rendered to-do checklist** (also created via `TaskCreate` — see
+   `task-checklists`).
 
-1. **Search what previous agents did on this feature.** Run
-   `agents sessions "<feature keywords>"` (and read the latest plan/PR on
-   that surface) before drafting. **Extend** prior work; do not silently revert it —
-   reverting an earlier agent's change is the most common regression on this fleet.
-2. **Find the module's specification.** Locate where this module's spec lives (a
-   `SPEC*.md`, a doc, an OpenSpec change). If none exists, propose writing a short one.
-   Keep specs **succinct and current** — do not pile on rules nobody asked for.
+**Two gates before presenting:** an adversarial non-author review for any
+API/CLI-surface or architecture change (a subagent checks the surface is clean
+and follows existing conventions); and render + inspect the HTML.
 
-**The plan must contain, in this order:**
+**Artifact path:** all durable outputs land in
+`.agents/artifacts/yyyy-mm-dd/<slug>.md` (plans as `plan-<slug>.md`), HTML
+rendered next to the source. One dated layout, no kind subdirs.
 
-3. **Focus for review (at the very top).** 2-5 bullets naming exactly what you want the
-   user to weigh in on. Lead with this — it is the first thing they read.
-4. **Intent.** Restate the user's ask in their own words, so the plan visibly tracks it.
-5. **Current architecture.** How the affected module works **today** — the files
-   involved and how they talk to each other. For an architectural change, show the
-   communication pattern **before and after** as an inline-SVG figure.
-6. **Implementation shown as real code.** For every file that changes, show the actual
-   change as a **diff** — the relevant hunk only (not the whole file), added lines
-   green, removed lines red — via the artifacts-cli `code-diff` component (fall back to
-   a fenced ```` ```diff ```` block until it ships). Name every module that changes.
-   Pick the load-bearing hunks; keep it readable, not exhaustive.
-7. **A rendered to-do list.** Beyond creating the `TaskCreate` checklist (see *A
-   multi-step plan also carries a checklist*, below), **render** it into the plan as a
-   checklist section, so the user sees the steps and their status in the plan itself —
-   not only in the harness's to-do UI.
+**Mechanics** (the full look lives in the `plan-render` skill):
 
-**Two gates before you present:**
+- Markdown is the source of truth; compile with `artifacts render <source>.md`.
+  Never hand-author the HTML.
+- Frontmatter needs `kind`, `title`, `surface` (`internal` / `cli` / `web` /
+  `native` / `api` / `workflow`); provenance chips auto-fill at render. A
+  user-visible surface shows current AND proposed appearance; internal plans
+  use a real architecture/flow figure. `artifacts check`/`render` error on
+  missing evidence and don't write HTML.
+- Theme in the target product's brand (probe the repo for tokens); ship light +
+  dark with the in-page toggle.
+- Render headlessly every time and inspect a screenshot; open it on the user's
+  machine only on request.
 
-- **Adversarial review.** For any change to an API/CLI surface or the system
-  architecture, get a **non-author** review before presenting — a subagent, or
-  `agents run claude --mode plan "Adversarially review this plan's API surface and
-  adherence to existing architectural conventions. Return file:line evidence."
-  --attach <plan.md>` on harnesses with no subagent tool. It checks the surface is
-  clean and intuitive and follows existing conventions (access centralized in one
-  place, no duplicated surface, cross-cutting change made at the source). Fold its
-  findings in before you present.
-- **Render + open** the HTML (below).
-
-Scale to the change: a trivial, single-file edit with no interface or architectural
-impact skips the architecture figure and the adversarial review.
-
-## Canonical artifact path (plans, HTML, and related items)
-
-All agent-produced durable artifacts — **plans, rendered HTML, visuals, reports,
-and other session outputs** — live under a single dated layout (not kind-based
-subdirs like `plans/` or `viz/`):
-
-```
-.agents/artifacts/yyyy-mm-dd/<artifact-title>.md
-```
-
-Examples:
-
-| Kind | Path |
-| --- | --- |
-| Plan source | `.agents/artifacts/2026-08-05/plan-auth-refresh.md` |
-| Plan HTML (render next to source) | `.agents/artifacts/2026-08-05/plan-auth-refresh.html` |
-| Visual / infographic | `.agents/artifacts/2026-08-05/fleet-status.md` |
-| Report / scan | `.agents/artifacts/2026-08-05/signal-scan.md` |
-
-- **Date** is the day the artifact is authored (`date +%F` → `yyyy-mm-dd`).
-- **Title** is a kebab-case slug that names the artifact (`plan-<slug>`,
-  `fleet-status`, `signal-scan`). No nested kind folder.
-- Create the date directory if missing (`mkdir -p .agents/artifacts/$(date +%F)`).
-- HTML builds land **next to** their Markdown source under the same date dir.
-
-This is mechanically enforced by the bundled `plan-html-reminder` hook: PreToolUse
-catches native plan-exit tools, while Stop catches Codex and other harnesses whose
-plan mode is collaboration state rather than a tool call. It nudges you to render +
-open before you present. The full LOOK — the
-house structure, the product-brand theming, the light/dark toggle, and the open-on-Mac
-transport — lives in the **`plan-render` skill**. Load it and follow it.
-
-- **Source of truth is Markdown.** Write `.agents/artifacts/yyyy-mm-dd/plan-<slug>.md`
-  and compile it with `artifacts render <source>.md`. The HTML is a build output;
-  never hand-author a complete `.html` file.
-- **Declare the surface.** Every plan frontmatter sets `surface` to one of
-  `internal`, `cli`, `web`, `native`, `api`, or `workflow`. Internal plans use a
-  real architecture/flow/state figure. Every user-visible surface shows the
-  **current** and **proposed** appearance in one product-faithful behavior figure;
-  each side is a real capture when available or an explicitly labeled mockup.
-- **Structure (fixed).** Hero (kicker · headline · problem statement · metadata chips ·
-  **provenance chips — harness · agent · host · session · date, so a rendered plan is never
-  an orphan** · TOC), numbered sections, **≥1 visual figure** (hand-authored inline SVG for timeline / architecture / before-after / charts — never mermaid), callouts, tagged tables, code blocks. **Author the Markdown directly** using the section list above — you do **not** need to run `artifacts new`. At render, `artifacts` auto-fills the provenance chips (project · repo · branch · harness · agent · host · session · date) from git + the agent env for any blank frontmatter field, so your frontmatter needs only `kind`, `title`, and `surface`, and it validates the required sections. (`artifacts new plan` stays available as an optional scaffold.)
-- **Quality is enforced, not suggested.** `artifacts check`/`render` **error** when
-  surface metadata or required visual evidence is absent, and they **do not write
-  HTML** on validation failure. The hook checks the Markdown surface plus semantic
-  HTML: an architecture SVG cannot clear a CLI/UI plan that lacks current/proposed
-  product views. Inline `` `code` `` alone is not enough:
-  put commands in fenced blocks and risks/files in tables.
-- **Theme (adopted).** Skin the plan in the **target product's brand** — probe the repo
-  for design tokens, tailwind/CSS vars, logo/manifest colors. Fall back to the dark +
-  light editorial house palette only when the product declares no brand.
-- **Light + dark.** Ship the in-page `◐` toggle, defaulting to the OS
-  `prefers-color-scheme`, so the plan is readable in bright light and dim alike.
-- **Render every time; open only on request.** On a worker, use its headless default with
-  `agents browser start --url file://<absolute-plan-path>`, save a screenshot with `-o`,
-  and inspect that exact path with `view_image`. On
-  the interactive host, still render headlessly so the user's focus is untouched. Copy or
-  `open` the HTML on that host only when the user explicitly asked to see it. Never
-  hardcode a host; resolve the interactive device from `agents devices`.
-
-A plan the agent has not seen rendered is not presented. Render, inspect, then discuss;
-open it for the user only on request.
-
-## A multi-step plan also carries a checklist
-
-The same `plan-html-reminder` hook now gates a second thing: when the plan has
-multiple steps, create a **task checklist** for it before you present (one
-`TaskCreate` per step). The checklist is the plan's acceptance rubric — it shows in
-`agents sessions`, drives the watchdog, and marks progress as you work. Trivial,
-single-step plans are exempt (the gate skips them). Binding the checklist to the
-task and to a tracker is covered by the **`task-checklists`** rule.
+A multi-step plan also carries a `TaskCreate` checklist before you present. The
+`plan-html-reminder` hook gates both; trivial single-step plans are exempt.

@@ -1,12 +1,19 @@
 # Research & Evidence Discipline
 
-Epistemic rigor — the habits that keep claims true. (F3 governs *done*-ness; this
-governs *every* factual claim along the way.)
-
-- **No unverified claims.** Every factual claim — code, counts, sizes, API capabilities — needs proof: a file path, a line number, code quoted from this conversation. "I think there are 26 files" is a violation. Run the tool, then report. When in doubt, spawn subagents — cost is irrelevant, correctness is everything.
-- **No lazy debugging.** Read every file in the data path. If data flows A → B → C → D, read all four and present file:line quotes from each. When debugging a regression on this fleet, attribute the culprit change to its agent/session (`git blame` → commit → `agents sessions preview`) and note whether the PR flagged the loss; do not stop at "what broke."
-- **Current-code anchoring.** Your local checkout goes stale the moment another agent pushes — on this fleet, constantly. Before you diagnose a codebase, call something a bug/regression, or open a "fix" PR, `git fetch origin` and check how far behind you are (`git rev-list --count HEAD..origin/<default>`); read the *latest* code, not your working-tree HEAD. A real miss: an architecture diagnosed against a checkout 39 commits / ~90 min stale produced confident-but-false claims and a merged PR that "restored" code a newer commit had deliberately superseded — the fix *was* the regression. The git analog of current-date anchoring below.
-- **Current date anchoring.** Your weights are stale. The real date is in the system prompt under `currentDate`. Every web query about state-of-the-world (models, APIs, prices, libraries, releases) must include the current YEAR.
-- **Web-search first for time-sensitive claims.** WebSearch before answering, not "if the user asks." Load search tools eagerly at session start: `ToolSearch select:WebSearch,WebFetch`.
-- **Investigation briefs demand evidence.** Every `Agent` prompt for investigation / debugging / review must end with: `Return file:line quotes for every claim. Do NOT paraphrase. If you can't quote it, don't claim it.`
-- **No human-time estimates.** You are an AI agent; human-hours/days are wrong by 6–50×. Estimate in wall-clock minutes (longest single-thread path after parallelizing), number of edits / test runs / agent invocations, or token cost. If you catch yourself writing "X hours" — stop and rewrite.
+- **No unverified claims.** Every factual claim — code, counts, capabilities —
+  needs proof: a file path, a line number, output quoted from this conversation.
+  Run the tool, then report.
+- **No lazy debugging.** Read every file in the data path and quote file:line
+  from each. For a fleet regression, attribute the culprit change to its
+  agent/session (`git blame` → commit → `agents sessions preview`).
+- **Current-code anchoring.** `git fetch origin` +
+  `git rev-list --count HEAD..origin/<default>` before diagnosing, calling
+  something a regression, or opening a fix — checkouts go stale constantly here.
+- **Current-date anchoring.** Your weights are stale; the real date is in the
+  system prompt. Include the current year in every state-of-the-world web query,
+  and WebSearch before answering time-sensitive questions. Load search tools at
+  session start: `ToolSearch select:WebSearch,WebFetch`.
+- Every investigation/review `Agent` brief ends with: `Return file:line quotes
+  for every claim. Do NOT paraphrase. If you can't quote it, don't claim it.`
+- **No human-time estimates.** Estimate in wall-clock minutes, number of edits /
+  test runs / agent invocations, or token cost — never "X hours/days".
