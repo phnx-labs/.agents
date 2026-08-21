@@ -21,7 +21,6 @@ presets:
       - agents-cli
       - parallel-teams
       - tech-stack
-      - context-query-mq
       - ui-work-discipline
       - plan-presentation
       - task-checklists

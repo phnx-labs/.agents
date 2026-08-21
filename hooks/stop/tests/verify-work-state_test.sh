@@ -102,10 +102,10 @@ out=$(eval_payload "{\"session_id\":\"owned-1\",\"agent\":\"claude\",\"transcrip
 check "follow-up goal does not inherit delivery classification" "$(printf '%s' "$out" | python3 -c 'import json,sys; print(json.load(sys.stdin)["context_kind"])')" "research-diagnostic"
 check "follow-up goal retains owned PR" "$(printf '%s' "$out" | python3 -c 'import json,sys; print(json.load(sys.stdin)["owned_prs"][0])')" "https://github.com/acme/repo/pull/12"
 
-# Structured telemetry makes every harness's gate fires observable without
+# Structured telemetry makes every harness's check fires observable without
 # depending on transcript feedback persistence.
-printf '%s' '{"session_id":"owned-1","agent":"claude"}' | python3 "$STATE" record-gate delivery blocked incomplete-delivery-chain >/dev/null
-check "gate telemetry records structured event" "$(sqlite3 "$DB" "select gate_name||':'||outcome||':'||reason_code from gate_events where session_key='claude:owned-1';")" "delivery:blocked:incomplete-delivery-chain"
+printf '%s' '{"session_id":"owned-1","agent":"claude"}' | python3 "$STATE" record-check delivery blocked incomplete-delivery-chain >/dev/null
+check "check telemetry records structured event" "$(sqlite3 "$DB" "select check_name||':'||outcome||':'||reason_code from check_events where session_key='claude:owned-1';")" "delivery:blocked:incomplete-delivery-chain"
 
 # A launch-only boundary is reconciled into the native session when SessionStart
 # later supplies both identities.
@@ -136,7 +136,7 @@ check "concurrent hook processes preserve all writes" "$parallel" "8"
 V1="$SANDBOX/v1.db"
 sqlite3 "$V1" "create table meta(key text primary key,value text not null); insert into meta values('schema_version','1'); create table goal_boundaries(session_key text not null,ordinal integer not null,prompt_sha256 text not null,created_at_ms integer not null,primary key(session_key,ordinal)); insert into goal_boundaries values('claude:legacy',1,'abc',9999999999999);"
 out=$(VERIFY_WORK_STATE_DB="$V1" eval_payload "{\"session_id\":\"legacy\",\"agent\":\"claude\",\"transcript_path\":\"$research\"}")
-check "v1 database migrates to the current schema" "$(sqlite3 "$V1" "select value from meta where key='schema_version';")" "3"
+check "v1 database migrates to the current schema" "$(sqlite3 "$V1" "select value from meta where key='schema_version';")" "4"
 check "v1 migration preserves goal row" "$(sqlite3 "$V1" "select count(*) from goal_boundaries where session_key='claude:legacy';")" "1"
 check "v1 migration adds transcript offset" "$(sqlite3 "$V1" "select transcript_offset from goal_boundaries where session_key='claude:legacy';")" "0"
 
@@ -181,47 +181,47 @@ EOF
 )
 check "missing identity stays stateless" "$(printf '%s' "$out" | python3 -c 'import json,sys; print(json.load(sys.stdin)["recorded"])')" "False"
 
-# --- gate_outcomes (schema v3) -------------------------------------------------
+# --- check_outcomes (schema v4) -------------------------------------------------
 # The measurement table. It is written offline by the backfill, never at connect
 # time, so the migration is a version stamp plus CREATE TABLE IF NOT EXISTS. What
 # these pin is that an EXISTING v2 database survives the bump with its rows intact
 # — that is the whole risk, since the live one already holds hundreds of fires.
 
-check "schema version is 3" "$(sqlite3 "$DB" "select value from meta where key='schema_version';")" "3"
-check "gate_outcomes exists" \
-  "$(sqlite3 "$DB" "select name from sqlite_master where type='table' and name='gate_outcomes';")" \
-  "gate_outcomes"
+check "schema version is 4" "$(sqlite3 "$DB" "select value from meta where key='schema_version';")" "4"
+check "check_outcomes exists" \
+  "$(sqlite3 "$DB" "select name from sqlite_master where type='table' and name='check_outcomes';")" \
+  "check_outcomes"
 
 # a v2 database with rows must migrate without losing them
 V2="$SANDBOX/v2.db"
 cp "$DB" "$V2"
-sqlite3 "$V2" "drop table gate_outcomes; update meta set value='2' where key='schema_version';"
+sqlite3 "$V2" "drop table check_outcomes; alter table check_events rename to gate_events; alter table gate_events rename column check_name to gate_name; update meta set value='2' where key='schema_version';"
 sqlite3 "$V2" "insert into gate_events(session_key,goal_ordinal,gate_name,outcome,reason_code,created_at_ms)
                values('claude:v2-canary',1,'open-pr','blocked','owned-pr-open',$(python3 -c 'import time;print(int(time.time()*1000))'));"
 before=$(sqlite3 "$V2" "select count(*) from gate_events;")
 VERIFY_WORK_STATE_DB="$V2" python3 "$STATE" evaluate >/dev/null 2>&1 <<'EOF'
 {"session_id":"native-1","agent":"claude","transcript_path":"/nonexistent"}
 EOF
-check "v2 database migrates to v3" "$(sqlite3 "$V2" "select value from meta where key='schema_version';")" "3"
-check "v2 rows survive the migration" "$(sqlite3 "$V2" "select count(*) from gate_events;")" "$before"
-check "migration creates gate_outcomes" \
-  "$(sqlite3 "$V2" "select name from sqlite_master where type='table' and name='gate_outcomes';")" \
-  "gate_outcomes"
+check "v2 database migrates to v4" "$(sqlite3 "$V2" "select value from meta where key='schema_version';")" "4"
+check "v2 rows survive the migration" "$(sqlite3 "$V2" "select count(*) from check_events;")" "$before"
+check "migration creates check_outcomes" \
+  "$(sqlite3 "$V2" "select name from sqlite_master where type='table' and name='check_outcomes';")" \
+  "check_outcomes"
 
-# an outcome row orphaned from its gate_event must not survive a prune
+# an outcome row orphaned from its check event must not survive a prune
 # derived_at_ms must be RECENT. With an epoch-1970 value this row is removed by the
 # age-based delete instead, and the assertion below then passes even if the
 # orphan-by-id sweep is deleted outright — a test that survives a broken build.
 NOW_MS=$(python3 -c 'import time;print(int(time.time()*1000))')
-sqlite3 "$V2" "insert into gate_outcomes(gate_event_id,derived_at_ms) values(999999,$NOW_MS);"
+sqlite3 "$V2" "insert into check_outcomes(check_event_id,derived_at_ms) values(999999,$NOW_MS);"
 check "orphan row is present before prune" \
-  "$(sqlite3 "$V2" "select count(*) from gate_outcomes where gate_event_id not in (select id from gate_events);")" "1"
+  "$(sqlite3 "$V2" "select count(*) from check_outcomes where check_event_id not in (select id from check_events);")" "1"
 sqlite3 "$V2" "update meta set value='0' where key='last_pruned_ms';"
 VERIFY_WORK_STATE_DB="$V2" python3 "$STATE" evaluate >/dev/null 2>&1 <<'EOF'
 {"session_id":"native-1","agent":"claude","transcript_path":"/nonexistent"}
 EOF
 check "prune drops orphaned outcomes" \
-  "$(sqlite3 "$V2" "select count(*) from gate_outcomes where gate_event_id not in (select id from gate_events);")" "0"
+  "$(sqlite3 "$V2" "select count(*) from check_outcomes where check_event_id not in (select id from check_events);")" "0"
 
 # an unknown future version must still refuse rather than silently downgrade
 V9="$SANDBOX/v9.db"; cp "$DB" "$V9"
@@ -232,9 +232,9 @@ EOF
 check "unknown schema version leaves the stamp alone" \
   "$(sqlite3 "$V9" "select value from meta where key='schema_version';")" "9"
 
-# --- record-gates: the batched writer -----------------------------------------
-# Recording only blocks is what left gate_events with 325 rows all reading
-# 'blocked' — no denominator, so no gate had a false-positive rate. These pin that
+# --- record-checks: the batched writer -----------------------------------------
+# Recording only blocks is what left check_events with 325 rows all reading
+# 'blocked' — no denominator, so no check had a false-positive rate. These pin that
 # allow outcomes are writable, that a batch is all-or-nothing, and that one bad
 # triple cannot half-write the rest.
 
@@ -242,32 +242,32 @@ BATCH_DB="$SANDBOX/batch.db"
 export VERIFY_WORK_STATE_DB="$BATCH_DB"
 printf '%s' "$prompt" | python3 "$STATE" record-prompt >/dev/null
 
-out=$(printf '%s' "$prompt" | python3 "$STATE" record-gates \
+out=$(printf '%s' "$prompt" | python3 "$STATE" record-checks \
   "open-pr:skipped:no-owned-pr" "keep-moving:passed:checklist-clear" "stop:skipped:not-claiming-done")
 check "batch reports how many it wrote" \
   "$(printf '%s' "$out" | python3 -c 'import json,sys; print(json.load(sys.stdin)["count"])')" "3"
-check "batch writes every row" "$(sqlite3 "$BATCH_DB" "select count(*) from gate_events;")" "3"
+check "batch writes every row" "$(sqlite3 "$BATCH_DB" "select count(*) from check_events;")" "3"
 check "passed outcome is recorded" \
-  "$(sqlite3 "$BATCH_DB" "select count(*) from gate_events where outcome='passed';")" "1"
+  "$(sqlite3 "$BATCH_DB" "select count(*) from check_events where outcome='passed';")" "1"
 check "skipped outcome is recorded" \
-  "$(sqlite3 "$BATCH_DB" "select count(*) from gate_events where outcome='skipped';")" "2"
+  "$(sqlite3 "$BATCH_DB" "select count(*) from check_events where outcome='skipped';")" "2"
 check "more than one outcome value now exists" \
-  "$(sqlite3 "$BATCH_DB" "select count(distinct outcome) from gate_events;")" "2"
+  "$(sqlite3 "$BATCH_DB" "select count(distinct outcome) from check_events;")" "2"
 
 # one invalid triple must abort the WHOLE batch, not write the good ones first
-before=$(sqlite3 "$BATCH_DB" "select count(*) from gate_events;")
-printf '%s' "$prompt" | python3 "$STATE" record-gates \
+before=$(sqlite3 "$BATCH_DB" "select count(*) from check_events;")
+printf '%s' "$prompt" | python3 "$STATE" record-checks \
   "open-pr:passed:fine" "bad:NOTANOUTCOME:x" >/dev/null 2>&1 || true
 check "an invalid triple writes nothing at all" \
-  "$(sqlite3 "$BATCH_DB" "select count(*) from gate_events;")" "$before"
+  "$(sqlite3 "$BATCH_DB" "select count(*) from check_events;")" "$before"
 
 # a malformed spec is rejected the same way
-printf '%s' "$prompt" | python3 "$STATE" record-gates "missing-colons" >/dev/null 2>&1 || true
+printf '%s' "$prompt" | python3 "$STATE" record-checks "missing-colons" >/dev/null 2>&1 || true
 check "a malformed spec writes nothing" \
-  "$(sqlite3 "$BATCH_DB" "select count(*) from gate_events;")" "$before"
+  "$(sqlite3 "$BATCH_DB" "select count(*) from check_events;")" "$before"
 
 # an empty batch is a no-op, not an error
-out=$(printf '%s' "$prompt" | python3 "$STATE" record-gates)
+out=$(printf '%s' "$prompt" | python3 "$STATE" record-checks)
 check "an empty batch records nothing" \
   "$(printf '%s' "$out" | python3 -c 'import json,sys; print(json.load(sys.stdin)["recorded"])')" "False"
 

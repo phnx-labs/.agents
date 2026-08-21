@@ -225,7 +225,7 @@ PY
 T=$(mk_transcript create)
 rc=$(FAKE_GH_STATE=OPEN run_hook "$T" "CI is green, waiting for the reviewer." false)
 check "open PR without handoff blocks" "$rc" "2"
-grep -q "STOP GATE" "$SANDBOX/stderr" && echo "ok   - block message names the gate" || { echo "FAIL - no gate message"; fail=1; }
+grep -q "STOP —" "$SANDBOX/stderr" && echo "ok   - block message present" || { echo "FAIL - no gate message"; fail=1; }
 
 # 2. Created PR, MERGED -> allow
 rc=$(FAKE_GH_STATE=MERGED run_hook "$T" "Merged and cleaned up." false)
@@ -322,23 +322,12 @@ check "mixed create+review only gates the created PR" "$rc" "0"
 rc=$(FAKE_GH_STATE=MERGED run_hook "$T" "All done. The widget feature is merged." false)
 check "done-claim on real transcript shape blocks for self-audit" "$rc" "2"
 grep -q 'agents feed post.*--level important' "$SANDBOX/stderr" && echo "ok   - completion post is phone-worthy" || { echo "FAIL - completion post is not important"; fail=1; }
-grep -q "You claimed this work is done" "$SANDBOX/stderr" && echo "ok   - done-claim gate cites the original request" || { echo "FAIL - no done-claim gate message"; fail=1; }
+grep -qi "you claimed this work is done" "$SANDBOX/stderr" && echo "ok   - done-claim gate cites the original request" || { echo "FAIL - no done-claim gate message"; fail=1; }
 
-# 8a. Completion nudge: the done-claim gate must instruct the agent to file any
-#     genuine follow-up ideas as tickets (with real context) instead of dangling
-#     them ('say the word'), clean up worktrees/branches, and recap via /done
-#     (which itself recaps THEN self-exits) once genuinely finished — but only
-#     for a headless/dispatched run, never unconditionally for an interactive
-#     session someone might be watching.
-grep -qi "FILE them as tickets" "$SANDBOX/stderr" && echo "ok   - gate instructs filing follow-up tickets" || { echo "FAIL - gate does not mention filing follow-up tickets"; fail=1; }
-grep -qi "with real context" "$SANDBOX/stderr" && echo "ok   - gate requires follow-up tickets to carry real context" || { echo "FAIL - gate does not require ticket context"; fail=1; }
-grep -qi "say the word" "$SANDBOX/stderr" && echo "ok   - gate names the dangling-idea anti-pattern" || { echo "FAIL - gate does not name the dangling-idea anti-pattern"; fail=1; }
-grep -qi "worktrees and branches this session no longer needs" "$SANDBOX/stderr" && echo "ok   - gate instructs worktree/branch cleanup" || { echo "FAIL - gate does not instruct worktree cleanup"; fail=1; }
-grep -qi "run /done as your very last action" "$SANDBOX/stderr" && echo "ok   - gate instructs running /done as the close-out step" || { echo "FAIL - gate does not instruct running /done"; fail=1; }
-grep -qi "do not skip straight to Step 2" "$SANDBOX/stderr" && echo "ok   - gate requires the recap (Step 1) before self-exit (Step 2)" || { echo "FAIL - gate does not require recap-before-exit ordering"; fail=1; }
-grep -qi "bare SIGTERM" "$SANDBOX/stderr" && echo "ok   - gate warns against bypassing /done's parent-process guard" || { echo "FAIL - gate does not warn against a bare SIGTERM"; fail=1; }
-grep -qi "run /recap instead" "$SANDBOX/stderr" && echo "ok   - gate offers /recap (no self-exit) for uncertain/interactive sessions" || { echo "FAIL - gate does not offer a no-self-exit recap path"; fail=1; }
-grep -qi "session someone is driving" "$SANDBOX/stderr" && echo "ok   - gate carves out interactive sessions from self-exit" || { echo "FAIL - gate does not guard against killing an interactive session"; fail=1; }
+# 8a. The concise completion nudge keeps only the load-bearing instructions.
+grep -qi "verify before stopping" "$SANDBOX/stderr" && echo "ok   - check requires verification before stopping" || { echo "FAIL - check omits verification instruction"; fail=1; }
+grep -qi "Re-check every ask this session" "$SANDBOX/stderr" && echo "ok   - check requires a full-session audit" || { echo "FAIL - check omits the full-session audit"; fail=1; }
+grep -qi "agents feed post" "$SANDBOX/stderr" && echo "ok   - check requests one completion update" || { echo "FAIL - check omits the completion update"; fail=1; }
 
 # 8b. Regression: first_user_msg is extracted via `python3 -c "..."` inside $(...).
 #     A backtick in that python string is re-parsed by bash as a nested command
@@ -356,7 +345,7 @@ TS=$(mk_transcript swarm)
 #    -> the swarm gate must fire (generic done-gate would have exited 0).
 rc=$(FAKE_GH_STATE=MERGED run_hook "$TS" "The factory work you asked for is done and merged. You can now text the fleet." false)
 check "swarm 'done and merged' blocks for integration audit" "$rc" "2"
-grep -q "STOP GATE (swarm)" "$SANDBOX/stderr" && echo "ok   - swarm gate names itself + the seam" || { echo "FAIL - no swarm gate message"; fail=1; }
+grep -q "edit-mode swarm" "$SANDBOX/stderr" && echo "ok   - swarm gate names itself + the seam" || { echo "FAIL - no swarm gate message"; fail=1; }
 
 # 10. Swarm ran + "landed end-to-end" wrap-up -> swarm gate fires.
 rc=$(FAKE_GH_STATE=MERGED run_hook "$TS" "All three tracks landed. AGI Factory end-to-end status: shipped." false)
@@ -382,7 +371,7 @@ check "swarm gate respects stop_hook_active" "$rc" "0"
 TG=$(mk_transcript grepteams)
 rc=$(FAKE_GH_STATE=MERGED run_hook "$TG" "All three tracks landed end-to-end." false)
 check "grep FOR the marker strings does not trip the swarm gate" "$rc" "0"
-grep -q "STOP GATE (swarm)" "$SANDBOX/stderr" && { echo "FAIL - swarm gate false-fired on a grep"; fail=1; } || echo "ok   - no swarm gate on a search-only session"
+grep -q "edit-mode swarm and are claiming" "$SANDBOX/stderr" && { echo "FAIL - swarm gate false-fired on a grep"; fail=1; } || echo "ok   - no swarm gate on a search-only session"
 
 # --- genuine-user-message extraction (skip harness noise) -------------------
 # A session opened with `j <dir>` (a `!`-prefix bash-input) must NOT have that
@@ -417,7 +406,7 @@ TI=$(mk_transcript inherited)
 #     no handoff -> the gate must fire even though this session never created it.
 rc=$(FAKE_GH_STATE=OPEN run_hook "$TI" "CI is green and it is reviewed. Presenting the merge choice: 1) merge 2) hold." false)
 check "inherited open PR (worked, not created) blocks" "$rc" "2"
-grep -q "created OR worked" "$SANDBOX/stderr" && echo "ok   - inherited-PR gate names created-or-worked" || { echo "FAIL - inherited gate message not updated"; fail=1; }
+grep -qi "created or worked" "$SANDBOX/stderr" && echo "ok   - inherited-PR gate names created-or-worked" || { echo "FAIL - inherited gate message not updated"; fail=1; }
 
 # A2. Same inherited PR but MERGED -> allow (the gate checks live state, not
 #     mere presence, so a session that actually merged it can stop).
@@ -460,7 +449,7 @@ TP=$(mk_transcript plain)
 # B1. 'want me to … on your go' parking -> the self-audit gate must fire.
 rc=$(FAKE_GH_STATE=OPEN run_hook "$TP" "Want me to build the current main into a .vsix and install it? I can do it on your go." false)
 check "parking 'want me to … on your go' blocks for self-audit" "$rc" "2"
-grep -q "You claimed this work is done" "$SANDBOX/stderr" && echo "ok   - parking routes through the self-audit GATE" || { echo "FAIL - parking did not reach the self-audit gate"; fail=1; }
+grep -qi "you claimed this work is done" "$SANDBOX/stderr" && echo "ok   - parking routes through the self-audit GATE" || { echo "FAIL - parking did not reach the self-audit gate"; fail=1; }
 
 # B2. A GENUINE clarifying question that offers alternatives -> must NOT fire
 #     (the agent legitimately cannot pick between the options).
@@ -494,7 +483,7 @@ check "parking phrasing in a <=2-turn session does not block" "$rc" "0"
 # S1. 'is yours, not mine to drive' stand-down -> the self-audit gate fires.
 rc=$(FAKE_GH_STATE=OPEN run_hook "$TP" "I've got the disposition clear: #1642 is yours, not mine to drive. I'm standing clear." false)
 check "stand-down 'yours not mine to drive' blocks for self-audit" "$rc" "2"
-grep -q "You claimed this work is done" "$SANDBOX/stderr" && echo "ok   - stand-down routes through the self-audit gate" || { echo "FAIL - stand-down did not reach the self-audit gate"; fail=1; }
+grep -qi "you claimed this work is done" "$SANDBOX/stderr" && echo "ok   - stand-down routes through the self-audit gate" || { echo "FAIL - stand-down did not reach the self-audit gate"; fail=1; }
 
 # S2. 'handing it back and standing clear' stand-down -> fires.
 rc=$(FAKE_GH_STATE=OPEN run_hook "$TP" "The other session can take it from here — handing it back and standing down." false)
@@ -545,7 +534,7 @@ mk_delivery_transcript() {
 TD=$(mk_delivery_transcript "Please implement the widget")
 rc=$(FAKE_GH_STATE=MERGED FAKE_GIT_BRANCH=feature/RUSH-1234 FAKE_LINEAR_STATE=Todo run_hook "$TD" "All done. The widget is merged." false)
 check "done-claim + open ticket in branch name blocks" "$rc" "2"
-grep -q "STOP GATE (delivery)" "$SANDBOX/stderr" && echo "ok   - delivery gate names itself" || { echo "FAIL - delivery gate message missing"; fail=1; }
+grep -q "close out the delivery" "$SANDBOX/stderr" && echo "ok   - delivery gate names itself" || { echo "FAIL - delivery gate message missing"; fail=1; }
 grep -q "RUSH-1234" "$SANDBOX/stderr" && echo "ok   - delivery gate cites the open ticket" || { echo "FAIL - delivery gate did not cite ticket"; fail=1; }
 
 # D2. PR finish-line + ticket closed + evidence -> delivery gate allows stop.
@@ -558,13 +547,13 @@ check "finish-line + closed ticket + evidence allows delivery stop" "$rc" "0"
 TD_UF=$(mk_delivery_transcript "Please add a new --flag command to the widget")
 rc=$(FAKE_GH_STATE=MERGED FAKE_GIT_BRANCH=feature/no-ticket FAKE_GIT_FILES=src/widget.js run_hook "$TD_UF" "Merged the new flag." false)
 check "user-facing change without docs/CHANGELOG blocks" "$rc" "2"
-grep -q "missing docs and CHANGELOG" "$SANDBOX/stderr" && echo "ok   - delivery gate flags missing docs and CHANGELOG" || { echo "FAIL - delivery gate did not flag docs/changelog"; fail=1; }
+grep -q "no docs and CHANGELOG update" "$SANDBOX/stderr" && echo "ok   - delivery check flags missing docs and CHANGELOG" || { echo "FAIL - delivery check did not flag docs/changelog"; fail=1; }
 
 # D4. User-facing change + only CHANGELOG updated -> still blocks; docs and
 #     CHANGELOG are separate requirements.
 rc=$(FAKE_GH_STATE=MERGED FAKE_GIT_BRANCH=feature/no-ticket FAKE_GIT_FILES=$'CHANGELOG.md\nsrc/widget.js' run_hook "$TD_UF" "Merged the new flag. Evidence: screenshot /tmp/flag.png." false)
 check "user-facing change with only CHANGELOG still blocks" "$rc" "2"
-grep -q "missing docs" "$SANDBOX/stderr" && echo "ok   - delivery gate requires docs separately" || { echo "FAIL - delivery gate did not require docs separately"; fail=1; }
+grep -q "no docs update" "$SANDBOX/stderr" && echo "ok   - delivery check requires docs separately" || { echo "FAIL - delivery check did not require docs separately"; fail=1; }
 
 # D4b. User-facing change + docs + CHANGELOG + evidence -> allows.
 rc=$(FAKE_GH_STATE=MERGED FAKE_GIT_BRANCH=feature/no-ticket FAKE_GIT_FILES=$'README.md\nCHANGELOG.md\nsrc/widget.js' run_hook "$TD_UF" "Merged the new flag. Evidence: screenshot /tmp/flag.png." false)
@@ -577,7 +566,7 @@ echo '{"name":"widget","version":"1.0.0"}' > "$SHIP_REPO/package.json"
 TD_SHIP=$(mk_delivery_transcript "Please release the widget extension" "$SHIP_REPO")
 rc=$(FAKE_GH_STATE=MERGED FAKE_GIT_BRANCH=feature/no-ticket FAKE_GIT_FILES=src/widget.js FAKE_GIT_TAG="" run_hook "$TD_SHIP" "Merged. The extension is ready to publish." false)
 check "shippable change without release evidence blocks" "$rc" "2"
-grep -q "release/live verification is incomplete" "$SANDBOX/stderr" && echo "ok   - delivery gate flags missing release/live verification" || { echo "FAIL - delivery gate did not flag release"; fail=1; }
+grep -q "Release/live verification incomplete" "$SANDBOX/stderr" && echo "ok   - delivery check flags missing release/live verification" || { echo "FAIL - delivery check did not flag release"; fail=1; }
 
 # D6. Independently-shippable change + release + live version check -> allows.
 rc=$(FAKE_GH_STATE=MERGED FAKE_GIT_BRANCH=feature/no-ticket FAKE_GIT_FILES=$'README.md\nCHANGELOG.md\nsrc/widget.js' FAKE_GIT_TAG=v1.1.0 run_hook "$TD_SHIP" "Merged and released v1.1.0. Verified live: npm view widget version -> 1.1.0." false)
@@ -600,7 +589,7 @@ STATE_MISMATCH="$SANDBOX/state-mismatch.db"
 sqlite3 "$STATE_MISMATCH" "create table meta(key text primary key,value text not null); insert into meta values('schema_version','999');"
 rc=$(VERIFY_WORK_STATE_DB="$STATE_MISMATCH" FAKE_GIT_BRANCH=feature/RUSH-1234 FAKE_LINEAR_STATE=Todo run_hook "$TWRITE" "All done. The widget is complete." false)
 check "state evaluation failure preserves delivery enforcement" "$rc" "2"
-grep -q "STOP GATE (delivery)" "$SANDBOX/stderr" && echo "ok   - state failure reaches delivery gate" || { echo "FAIL - state failure weakened delivery gate"; fail=1; }
+grep -q "close out the delivery" "$SANDBOX/stderr" && echo "ok   - state failure reaches delivery gate" || { echo "FAIL - state failure weakened delivery gate"; fail=1; }
 
 # D9. Probe error (linear crashes/returns garbage) -> fail open.
 cat > "$SANDBOX/bin/linear" <<'STUB'
@@ -611,7 +600,7 @@ STUB
 chmod +x "$SANDBOX/bin/linear"
 rc=$(FAKE_GH_STATE=MERGED FAKE_GIT_BRANCH=feature/RUSH-1234 run_hook "$TD" "All done. The widget is merged." false)
 check "linear probe error fails open to the older self-audit gate" "$rc" "2"
-grep -q "STOP GATE (delivery)" "$SANDBOX/stderr" && { echo "FAIL - delivery gate did not fail open on linear error"; fail=1; } || echo "ok   - delivery gate fails open on linear error"
+grep -q "close out the delivery" "$SANDBOX/stderr" && { echo "FAIL - delivery gate did not fail open on linear error"; fail=1; } || echo "ok   - delivery gate fails open on linear error"
 
 cat > "$SANDBOX/bin/linear" <<'STUB'
 #!/usr/bin/env bash
@@ -685,7 +674,7 @@ THB=$(mk_transcript handback)
 # H1. Wrote /tmp/release.sh (Write tool) + "run it when ready" -> block.
 rc=$(FAKE_GH_STATE=MERGED run_hook "$THB" "I've prepared the release at /tmp/release-1.20.82.sh — run it when ready for a single paste." false)
 check "temp-script write + 'run it' handoff blocks" "$rc" "2"
-grep -q "STOP GATE (handback)" "$SANDBOX/stderr" && echo "ok   - handback gate names itself" || { echo "FAIL - no handback gate message"; fail=1; }
+grep -q "runnable script" "$SANDBOX/stderr" && echo "ok   - handback gate names itself" || { echo "FAIL - no handback gate message"; fail=1; }
 
 # H2. Same temp script, but the final message reports the agent RAN it -> allow
 #     (no directive to the user; running it yourself is the whole point).
@@ -814,27 +803,20 @@ mk_looped() {   # $1 = number of prior open-PR fires already in the transcript
 # D1. First fire (0 prior) blocks WITHOUT repeated-gate guidance.
 rc=$(FAKE_GH_STATE=OPEN run_hook "$T" "CI is green, waiting for the reviewer." false)
 check "first open-PR fire blocks" "$rc" "2"
-grep -qi "this gate has now fired" "$SANDBOX/stderr" && { echo "FAIL - repeat guidance fired on the 1st block"; fail=1; } || echo "ok   - no repeat guidance on the 1st fire"
+grep -qi "this is block number" "$SANDBOX/stderr" && { echo "FAIL - repeat guidance fired on the 1st block"; fail=1; } || echo "ok   - no repeat guidance on the 1st fire"
 
 # D2. Third fire (2 prior) still blocks and suggests a context-led tactic change.
 TL=$(mk_looped 2)
 rc=$(FAKE_GH_STATE=OPEN run_hook "$TL" "CI still running, waiting." false)
 check "3rd open-PR fire still blocks" "$rc" "2"
-grep -qi "this gate has now fired 3 times" "$SANDBOX/stderr" && echo "ok   - repeat guidance appears on the 3rd fire" || { echo "FAIL - no repeat guidance on the 3rd fire"; fail=1; }
-if grep -qi "re-check the" "$SANDBOX/stderr" && grep -qi "live state" "$SANDBOX/stderr"; then
-  echo "ok   - guidance asks the agent to refresh its evidence"
-else
-  echo "FAIL - repeat guidance does not ask for live state"
-  fail=1
-fi
-grep -qi "suggestions, not a fixed route" "$SANDBOX/stderr" && echo "ok   - guidance preserves agent judgment" || { echo "FAIL - repeat guidance is still route-bound"; fail=1; }
-grep -qi "retrying.*differently\|unblock yourself\|advancing another in-scope" "$SANDBOX/stderr" && echo "ok   - guidance offers possible tactics" || { echo "FAIL - repeat guidance has no tactic clues"; fail=1; }
+grep -qi "block 3 this session" "$SANDBOX/stderr" && echo "ok   - repeat guidance appears on the 3rd fire" || { echo "FAIL - no repeat guidance on the 3rd fire"; fail=1; }
+grep -qi "change tactics" "$SANDBOX/stderr" && echo "ok   - guidance asks for a tactic change" || { echo "FAIL - repeat guidance has no tactic change"; fail=1; }
 
 # D3. Second fire (1 prior) does NOT yet add repeat guidance.
 TL1=$(mk_looped 1)
 rc=$(FAKE_GH_STATE=OPEN run_hook "$TL1" "still waiting on CI." false)
 check "2nd open-PR fire still blocks" "$rc" "2"
-grep -qi "this gate has now fired" "$SANDBOX/stderr" && { echo "FAIL - repeat guidance fired on the 2nd block (threshold is 3rd)"; fail=1; } || echo "ok   - no repeat guidance on the 2nd fire"
+grep -qi "this is block number" "$SANDBOX/stderr" && { echo "FAIL - repeat guidance fired on the 2nd block (threshold is 3rd)"; fail=1; } || echo "ok   - no repeat guidance on the 2nd fire"
 
 # --- Task-list keep-moving gate (RUSH-2113 A + B) ----------------------------
 # The session's OWN checklist is the strongest "stopped too early" signal. A stop
@@ -880,7 +862,7 @@ mk_tasks() {   # $1 selects checklist state
 TK=$(mk_tasks one-remaining)
 rc=$(run_hook "$TK" "The parser is written and pushed to the branch." false)
 check "pending checklist + declarative stop blocks" "$rc" "2"
-grep -qi "STOP GATE (keep moving)" "$SANDBOX/stderr" && echo "ok   - keep-moving gate identifies itself" || { echo "FAIL - keep-moving gate not the one that fired"; fail=1; }
+grep -qi "task list still has" "$SANDBOX/stderr" && echo "ok   - keep-moving gate identifies itself" || { echo "FAIL - keep-moving gate not the one that fired"; fail=1; }
 grep -qi "Wire it up" "$SANDBOX/stderr" && echo "ok   - keep-moving gate names the next item" || { echo "FAIL - keep-moving gate omits the next item"; fail=1; }
 
 # E2. Every item completed -> no keep-moving block (neutral wrap-up allows stop).
@@ -941,7 +923,7 @@ mk_tasks_looped() {   # $1 = number of prior keep-moving fires
 TKL=$(mk_tasks_looped 2)
 rc=$(run_hook "$TKL" "The parser is written and pushed." false)
 check "3rd keep-moving fire still blocks" "$rc" "2"
-grep -qi "this gate has now fired 3 times" "$SANDBOX/stderr" && echo "ok   - keep-moving repeat guidance appears on the 3rd fire" || { echo "FAIL - no repeat guidance on the 3rd keep-moving fire"; fail=1; }
+grep -qi "block 3 this session" "$SANDBOX/stderr" && echo "ok   - keep-moving repeat guidance appears on the 3rd fire" || { echo "FAIL - no repeat guidance on the 3rd keep-moving fire"; fail=1; }
 
 # --- todo-progress.py folding (unit) -----------------------------------------
 # The helper folds snapshot checklist tools + Claude TaskCreate/TaskUpdate the
@@ -973,7 +955,7 @@ echo "$rc_json" | grep -q '"total": 0' && echo "ok   - todo-progress fails open 
 T=$(mk_transcript create)
 rc=$(FAKE_GH_STATE=OPEN run_hook "$T" "Merged, not released — and that's the correct stopping point, not a gap." true)
 check "argue-past: 'correct stopping point' on retry blocks" "$rc" "2"
-grep -q "STOP GATE (argue-past)" "$SANDBOX/stderr" && echo "ok   - argue-past names its gate" || { echo "FAIL - no argue-past message"; fail=1; }
+grep -q "stand-down phrase" "$SANDBOX/stderr" && echo "ok   - argue-past names the evasion" || { echo "FAIL - no argue-past message"; fail=1; }
 
 # AP2. Retried stop restating the 6805bf66 evasion -> block again.
 rc=$(FAKE_GH_STATE=OPEN run_hook "$T" "Restating for the gate: RUSH-2719 stays open by design and is not mine to close." true)
@@ -990,8 +972,8 @@ check "argue-past: plain retry without evasion phrase still passes" "$rc" "0"
 # AP5. Cap: after two prior argue-past fires the retry passes (never wedge).
 TCAP="$SANDBOX/transcript-cap-$RANDOM.jsonl"
 cp "$T" "$TCAP"
-echo '{"type":"user","isMeta":true,"message":{"role":"user","content":"Stop hook feedback: STOP GATE (argue-past): This stop was already blocked"}}' >> "$TCAP"
-echo '{"type":"user","isMeta":true,"message":{"role":"user","content":"Stop hook feedback: STOP GATE (argue-past): This stop was already blocked"}}' >> "$TCAP"
+echo '{"type":"user","isMeta":true,"message":{"role":"user","content":"Stop hook feedback: STOP — this stop was already blocked, and the retry restates a stand-down phrase"}}' >> "$TCAP"
+echo '{"type":"user","isMeta":true,"message":{"role":"user","content":"Stop hook feedback: STOP — this stop was already blocked, and the retry restates a stand-down phrase"}}' >> "$TCAP"
 rc=$(FAKE_GH_STATE=OPEN run_hook "$TCAP" "Merged, not released — and that's the correct stopping point." true)
 check "argue-past: capped after two prior fires (never wedges)" "$rc" "0"
 

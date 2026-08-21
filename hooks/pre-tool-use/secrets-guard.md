@@ -34,8 +34,8 @@ installed agents-cli where the printers still work.
 The transfer modes (`export --device/--to-1password/--to-file`), the injection
 path (`secrets exec … -- …`, including `printenv` captures — deliberate
 composition the value-free audit stream records), the raw-item `get <item>`
-(the current CLI's own agent-context gate owns that case), masked `view`, bare
-`view --reveal` (the CLI's TTY gate owns it), and prose/`echo`/`grep` that
+(the current CLI's own agent-context check owns that case), masked `view`, bare
+`view --reveal` (the CLI's TTY check owns it), and prose/`echo`/`grep` that
 merely mentions the commands — the check is token-precise per command segment,
 not a substring match.
 

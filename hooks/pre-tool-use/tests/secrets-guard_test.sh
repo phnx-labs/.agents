@@ -129,7 +129,7 @@ check_allow "raw-item get (one arg)" \
   "agents secrets get some-raw-item"
 check_allow "masked view" \
   "agents secrets view prod"
-check_allow "view --reveal without the escape (CLI TTY gate owns it)" \
+check_allow "view --reveal without the escape (CLI TTY check owns it)" \
   "agents secrets view prod --reveal"
 check_allow "prose mentioning the command (echo, not an agents call)" \
   "echo 'never run agents secrets export prod --plaintext'"

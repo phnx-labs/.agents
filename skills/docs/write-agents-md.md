@@ -44,8 +44,8 @@ package's own AGENTS.md (see `api/AGENTS.md`, `worker/AGENTS.md`).
 ## Entry points (use these; don't hand-roll)
 - build:   `scripts/build.sh`
 - test:    `scripts/test.sh`      — real Postgres, no mocks; hits the actual path
-- release: `scripts/release.sh <version>`  — gates on tests + CHANGELOG, then publishes
-- deploy:  `scripts/deploy.sh`    — health-gated; auto-rolls-back on a failed check
+- release: `scripts/release.sh <version>`  — requires tests + CHANGELOG, then publishes
+- deploy:  `scripts/deploy.sh`    — health-checked; auto-rolls-back on a failed check
 
 ## Conventions
 - **Secrets never go in env or config** — use the keychain path in `src/secrets/`.
@@ -102,7 +102,7 @@ package's own AGENTS.md (see `api/AGENTS.md`, `worker/AGENTS.md`).
 The single most useful thing a root `AGENTS.md` can carry is **where the build,
 test, release, and deploy scripts live** — the stable operational entry points an
 agent needs and would otherwise hunt for. Document the *location and one-line
-contract* of each (`scripts/release.sh <version>` — "gates on tests + CHANGELOG,
+contract* of each (`scripts/release.sh <version>` — "requires tests + CHANGELOG,
 then publishes"). Do NOT document the volatile basics — which versions are pinned,
 install steps, environment specifics — those change under you and an agent can read
 them live. Location of the entry point = durable; current state behind it = not your
@@ -208,7 +208,7 @@ a registry.
   has an automated PR reviewer, make it enforce docs-in-sync.
 - **Prefer contracts that a test enforces, and cite the test.** Then the invariant can't
   silently drift without CI going red.
-- **Optional drift gate.** A tiny test that parses each `symbol — file` pointer in the
+- **Optional drift check.** A tiny test that parses each `symbol — file` pointer in the
   doc and asserts the symbol still exists in that file turns a moved/renamed/deleted
   symbol into a red build. Cheap insurance for a file agents are meant to trust.
 

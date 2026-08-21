@@ -169,7 +169,7 @@ fi
 
 # Agents actively working on THIS project, on THIS machine only (--local).
 # --json gives structured rows: filtering is on the real cwd field with a path
-# boundary (repo "…/agents" does not swallow "…/agents-cli"), the activity gate
+# boundary (repo "…/agents" does not swallow "…/agents-cli"), the activity filter
 # is the CLI's own derived `activity` state, and ranking is on `lastActivityMs`.
 # The session this hook is starting for (session_id in the hook input) is dropped.
 # Budget: measured at 4923ms against the old `_to 5` — a 77ms margin, so any extra

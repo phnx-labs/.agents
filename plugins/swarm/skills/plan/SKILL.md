@@ -53,10 +53,10 @@ state, error state, or multi-step user journey:
    user-visible surface the artifact must carry the current/proposed behavior figure
    in the `artifact-behavior` markup (`data-state="current|proposed"`,
    `data-evidence="capture|mockup"`) — that markup is what `artifacts check` and the
-   plan-presentation gate actually verify; fenced ASCII does **not** satisfy it. Do
+   plan-presentation check actually verify; fenced ASCII does **not** satisfy it. Do
    not leave mock-ups only in chat.
 5. **End the final plan message with the literal marker `<!-- agents-plan -->` on its
-   own line** — it is how the plan-presentation gate recognizes a plan turn when this
+   own line** — it is how the plan-presentation check recognizes a plan turn when this
    skill runs outside the harness's native plan mode.
 
 If the change is pure library/backend with **no** user-visible surface, say so explicitly

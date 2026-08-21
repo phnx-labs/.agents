@@ -76,7 +76,7 @@ Agents execute precise targets; they do not explore. Before the distribution pla
 
 ## Distribution plan — REQUIRED before any spawn
 
-Show the distribution plan as a concise checkpoint, then proceed on the default path. Only stop for genuine scope/design ambiguity, not for a permission gate. Fanning out the wrong plan wastes a wall-clock window, so make the plan concrete enough that it can be executed without re-asking.
+Show the distribution plan as a concise checkpoint, then proceed on the default path. Only stop for genuine scope/design ambiguity, not to ask permission. Fanning out the wrong plan wastes a wall-clock window, so make the plan concrete enough that it can be executed without re-asking.
 
 ```
 ## Swarm Distribution Plan

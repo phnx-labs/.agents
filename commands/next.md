@@ -1,5 +1,5 @@
 ---
-description: Drive the current task to fully delivered — verify end-to-end, docs, commit, PR, release gate, close the ticket — then surface (and if clear, claim) the next related task and keep working in this session. Never stops at a recap, blocker, or partial handoff; never hardcodes a tracker.
+description: Drive the current task to fully delivered — verify end-to-end, docs, commit, PR, release checklist, close the ticket — then surface (and if clear, claim) the next related task and keep working in this session. Never stops at a recap, blocker, or partial handoff; never hardcodes a tracker.
 ---
 
 You just finished something, or are about to move on. Context: $ARGUMENTS
@@ -10,7 +10,7 @@ recap, a blocker, or a partial handoff — **then find what to work on next** (r
 first, everything else after) using whichever tracker this project actually has, and keep
 going in this session.
 
-> **Folds in the old `/finish`.** The drive-to-delivered ship gate that used to be a separate
+> **Folds in the old `/finish`.** The drive-to-delivered ship checklist that used to be a separate
 > `/finish` command now lives in **Part A** below — there is no `/finish`, run `/next`. For
 > draining a whole *queue* of tickets/branches to merged, that's `/code:loop`. To *recap and
 > exit* the session, that's `/recap` then `/self:close`.
@@ -32,7 +32,7 @@ it. Detect the tracker every time.
 
 ## Part A — Drive the current task to delivered
 
-This is not a recap. It is an execution gate: recover the goal, finish what remains, verify
+This is not a recap. It is an execution contract: recover the goal, finish what remains, verify
 the real flow, and ship — before you look at what's next. If the current task is genuinely
 already delivered (e.g. `/continue` just did this), say so **with evidence** and jump to
 Part B.
@@ -88,7 +88,7 @@ radius.
 
 ### A5 — Ship the finished work
 
-Run the closing ship gate; if a sub-step genuinely doesn't apply, say so in the report.
+Run the closing ship checklist; if a sub-step genuinely doesn't apply, say so in the report.
 
 **Docs.** Walk every changed file: did it change anything a human would look up? Update only
 the surface that applies — don't write new docs unless asked:
@@ -130,7 +130,7 @@ context, and acceptance criteria — don't silently drop it.
 ### A6 — No stalling
 
 Every turn in Part A ends with an action, not a question handed back. Forbidden endings — the
-stalls this gate exists to interrupt:
+stalls this rule exists to interrupt:
 
 - "Want me to continue?" / "Should I do X next?"
 - "Pick one and I'll continue."
@@ -247,7 +247,7 @@ into a full audit.
 
 ## Anti-patterns
 
-- **Stopping at a recap.** Part A is a ship gate, not a status summary — drive to delivered
+- **Stopping at a recap.** Part A is a ship checklist, not a status summary — drive to delivered
   first (see A6's forbidden endings), then move on.
 - **Hardcoding a tracker.** Check injected context first, fall back to the `tickets` skill for
   detection, never assume Linear — the exact reason the original `/next` was removed.

@@ -52,7 +52,7 @@ agents computer click --bundle <id> --id @e7           # 4. act (AXPress — no 
 agents computer screenshot ... --out /tmp/s2.jpg       # 5. VERIFY — re-capture, compare
 ```
 
-Add `raise` **only** when the target genuinely must be frontmost — an AX-opaque surface (VM guest) or key-window-gated keystrokes (see Focus safety). Raising takes the user's foreground; don't do it to drive an app you can already reach by element id.
+Add `raise` **only** when the target genuinely must be frontmost — an AX-opaque surface (VM guest) or key-window-restricted keystrokes (see Focus safety). Raising takes the user's foreground; don't do it to drive an app you can already reach by element id.
 
 A **byte-identical screenshot after an action means the action did not land**. Treat `ok:true` as "the event was posted", not "the app reacted" — only a visible state change is proof.
 
@@ -71,10 +71,10 @@ global_y = origin_y + pixel_y / scale
 
 ## Focus Discipline (read this before typing)
 
-Mouse clicks are HID-tap synthesized and need the target **visible on the active Space**. Keyboard (`type-text`, `key`) is posted to the pid and is **silently dropped by key-window-gated apps** (Parallels VMs and similar) when the app isn't frontmost.
+Mouse clicks are HID-tap synthesized and need the target **visible on the active Space**. Keyboard (`type-text`, `key`) is posted to the pid and is **silently dropped by key-window-restricted apps** (Parallels VMs and similar) when the app isn't frontmost.
 
 - `raise` first. `--title` matches a window substring; bare raise activates the app.
-- Add `--require-frontmost` to `type-text`/`key` whenever the target gates on key-window (VMs, anything that previously ate your keystrokes) — turns silent drops into a hard `not_frontmost` error.
+- Add `--require-frontmost` to `type-text`/`key` whenever the target requires key-window focus (VMs, anything that previously ate your keystrokes) — turns silent drops into a hard `not_frontmost` error.
 - Every `type-text`/`key` result includes `"frontmost"`. A stderr warning or `frontmost:false` means the keystrokes probably landed nowhere — raise and retry, do not continue the chain.
 - One-shot form: `type-text --raise --require-frontmost --text "..."`.
 - Focus can be stolen **between** CLI calls (Space switches, user activity). If a mid-sequence step fails with `not_frontmost`, raise again; don't assume the earlier raise still holds.
@@ -107,7 +107,7 @@ Mouse clicks are HID-tap synthesized and need the target **visible on the active
 | `window_offscreen` | Window on an inactive fullscreen Space; SCK can't capture | `raise --window-id <n>`, then re-screenshot |
 | `element_not_found` (raise) | No AX window matched | `screenshot --list`, use the exact title substring |
 | `element_stale` / dead `@eN` | UI changed since `describe` | Re-run `describe`, use fresh ids |
-| `bundle not in allow list` | Policy gate | Add `Computer(<id>)` to a permissions group, `reload` |
+| `bundle not in allow list` | Policy block | Add `Computer(<id>)` to a permissions group, `reload` |
 | `rpc_timeout` | Daemon hung or stopped | `agents computer status`; `stop` + `start` |
 | `ok:true` but screenshot unchanged | Event posted, app ignored it | Wrong coords (re-derive from a fresh capture) or window not key — raise, re-capture, retry |
 | Typed text partially landed (VM guests) | Mid-stream focus blip | `key esc` to clear, retype with `--require-frontmost` |

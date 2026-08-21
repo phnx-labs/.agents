@@ -67,7 +67,7 @@ they want the work continued here.)
    - Nothing + no signal → Step 1: load the most recent prior session and resume here
      (never open a focus picker on bare `/continue` with no live signal).
 
-2. **Try to attach** (only after the live-signal gate).
+2. **Try to attach** (only after the live-signal check).
    - With id: `agents sessions focus <id> --attach-only` (append `--device <machine>` when
      the caller supplied a source machine).
    - No id but live signal: `agents sessions focus --attach-only` (picker; cancel → Step 1).

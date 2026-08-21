@@ -24,7 +24,7 @@ shortcuts:
 
     If you cannot verify a claim, say "unverified" explicitly. Never smuggle an assumption in as a fact.
   "#rethink": |
-    Rethink mode. NOT one angle — MANY. Multi-agent, multi-lens investigation before committing to a direction. This is a MANDATORY GATE, not a green light to implement.
+    Rethink mode. NOT one angle — MANY. Multi-agent, multi-lens investigation before committing to a direction. This is a MANDATORY CHECKPOINT, not a green light to implement.
 
     ---------------- PREP ----------------------------------------------
     1. Recall every constraint, correction, and piece of feedback in this conversation — scan the whole thread, quote the user's words, and treat the corrections as cumulative (the latest one does not replace the earlier ones). Ignoring prior feedback makes the rethink worthless.
@@ -241,7 +241,7 @@ shortcuts:
 
     Other hard stops still apply: destructive or shared-state actions still need explicit approval, unverified factual claims are still banned, real ambiguity in intent still warrants ONE clarifying question.
 
-    Cadence for mechanical work: read → edit → build → install → verify → next. No planning loops. No approval gates between mechanical steps.
+    Cadence for mechanical work: read → edit → build → install → verify → next. No planning loops. No approval checkpoints between mechanical steps.
     Cadence for UX work: propose → confirm → build → install → verify.
 
     End-of-turn: one sentence on what shipped, one on what's next. If done, say so and stop.
@@ -385,7 +385,7 @@ shortcuts:
 
   # Anti-slop enforcement
   "#noslop": |
-    No-slop mode. Say the precise, thorough, accurate thing — or say nothing. Slop is any word that lets you avoid committing to a claim you would otherwise have to verify. Vagueness is not a style; it is a way to be wrong without being caught. This is `code-quality` ("Write prose precisely; don't market") turned up to a hard gate for THIS turn.
+    No-slop mode. Say the precise, thorough, accurate thing — or say nothing. Slop is any word that lets you avoid committing to a claim you would otherwise have to verify. Vagueness is not a style; it is a way to be wrong without being caught. This is `code-quality` ("Write prose precisely; don't market") turned up to a hard rule for THIS turn.
 
     ---------------- THE RULE ----------------------------------------
     Every noun names the actual thing. Every verb names the actual mechanism. Every number is the real number. If you cannot name it precisely, that is a signal you have not looked yet — go look (read the file, run the command, count it), then name it. Reaching for a vague word instead of doing the lookup is the exact laziness this bans.
@@ -395,7 +395,7 @@ shortcuts:
 
     - APPROXIMATION HEDGES that dodge a real figure or claim: "directionally", "roughly", "approximately" (when the exact value is knowable), "basically", "essentially", "more or less", "kind of", "sort of", "-ish", "ballpark", "give or take". → State the exact value, or say "I have not measured it" and measure it.
     - VAGUE PLACEHOLDER NOUNS that stand in for named things: "things", "stuff", "surfaces" (unless it is the literal technical term), "aspects", "elements", "various", "several", "a number of", "a bunch of", "some parts". → Enumerate them. If there are three, name the three.
-    - EMPTY VERBS that hide what actually happens: "gate", "handle", "manage", "process", "deal with", "leverage", "utilize", "facilitate", "orchestrate" (when it just means "call"), "wire up" (when you can name the call). → Name the concrete operation: what calls what, with what input, producing what.
+    - EMPTY VERBS that hide what actually happens: "handle", "manage", "process", "deal with", "leverage", "utilize", "facilitate", "orchestrate" (when it just means "call"), "wire up" (when you can name the call), "govern". → Name the concrete operation: what calls what, with what input, producing what.
     - MARKETING ADJECTIVES that assert quality without evidence: "seamless", "powerful", "robust", "smart", "intelligent", "elegant", "clean", "simply", "just", "cutting-edge", "production-grade". → Delete them, or replace with the measured property ("handles 10k rows in 40ms", not "powerful").
     - FALSE-CONFIDENCE CONNECTIVES: "clearly", "obviously", "of course", "as expected", "needless to say". → If it were clear you would not need to say so; state the evidence instead.
     - DRAMA HEADERS: "Critically:", "Notably:", "Importantly:", "It's worth noting". → Cut the label; lead with the fact.

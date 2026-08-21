@@ -18,8 +18,8 @@ Security notes:
 - Each message is wrapped in a per-drain random nonce fence so message `text`
   cannot forge the wrapper or a sibling message's boundary.
 
-Sub-agent gate: an in-process sub-agent (Claude Task tool) inherits the parent's
-AGENTS_MAILBOX_DIR and session id, so without a gate it would consume a
+Sub-agent check: an in-process sub-agent (Claude Task tool) inherits the parent's
+AGENTS_MAILBOX_DIR and session id, so without this check it would consume a
 parent-addressed message into its ephemeral context and lose it. Its PreToolUse
 payload carries `agent_type` (the top-level agent's does not) — only the top
 level drains. Verified on Claude Code 2.1.170 (2026-07).
@@ -117,7 +117,7 @@ def main():
     except Exception:
         payload = {}
 
-    # Sub-agent gate (see module docstring). snake_case (Claude) + camelCase (Grok).
+    # Sub-agent check (see module docstring). snake_case (Claude) + camelCase (Grok).
     if payload.get("agent_type") or payload.get("agentType"):
         return
 

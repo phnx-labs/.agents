@@ -20,7 +20,7 @@
 #     (or .notebook_path); resolves its enclosing repo and current branch.
 #   - Bash -> inspects `git commit|add|stage` segments; resolves the target repo
 #     from `-C <path>` or the session cwd.
-#   - Bash -> also gates `git worktree add -b/-B`: a new-branch worktree must be
+#   - Bash -> also blocks `git worktree add -b/-B`: a new-branch worktree must be
 #     based on a freshly-fetched remote ref (origin/<default>), never an implicit
 #     HEAD or a local branch (the "worktree-ing off a stale local commit" trap).
 #     "Freshly-fetched" is mechanical: the remote-tracking ref (or FETCH_HEAD)
@@ -29,19 +29,19 @@
 #
 # Exits 0 (allow) or 2 (deny, message on stderr).
 #
-# No exceptions, no escape hatch — by design. This hook only gates the AGENT's
+# No exceptions, no escape hatch — by design. This hook only blocks the AGENT's
 # tool calls: the user's own editor, `!`-prefixed session commands, and git's
 # internal hooks are unaffected.
 #
-# Scope (deliberate — the "files + commit gate" design): raw-shell working-tree
+# Scope (deliberate — the "files + commit check" design): raw-shell working-tree
 # mutation in the primary tree (`>`/`>>` redirection, `tee`, `sed -i`, `cp`,
 # `git rm`/`git mv`) is NOT blocked at write time. The `git add`/`git commit`
-# gate is the choke point — such changes can never be committed from the primary
+# check is the choke point — such changes can never be committed from the primary
 # working tree, so nothing lands outside a linked worktree + PR.
 #
 # Limitations (intentionally out of scope — runtime obfuscation only a sandbox
 # can stop): `eval`/`xargs`/`$(...)` subshells feeding a git command string,
-# base64-decoded commands. The commit gate is defense in depth, not the sole
+# base64-decoded commands. The commit check is defense in depth, not the sole
 # barrier — the file-tool block already stops an agent authoring content on the
 # default branch through Write/Edit/NotebookEdit.
 #
@@ -49,7 +49,7 @@
 # expanded from literal `NAME=value` assignments earlier in the same command
 # string (`$(git rev-parse --show-toplevel)` / `$(pwd)` count as the session
 # cwd). A target that stays unresolvable, or that does not exist, is judged as
-# the PARSED target — the gate allows (git itself errors; nothing mutates) and
+# the PARSED target — the check allows (git itself errors; nothing mutates) and
 # never falls back to blaming the session cwd, which false-blocked linked-
 # worktree commits in compound/heredoc/multiline `-m` commands. Heredoc
 # detection is quote-parity aware (a `<<TAG` inside an open quote is data, not
@@ -278,7 +278,7 @@ case "$tool" in
   *) exit 0 ;;
 esac
 
-# --- Bash branch: gate `git commit|add|stage` in the primary working tree -----
+# --- Bash branch: block `git commit|add|stage` in the primary working tree -----
 # Fast path: no "git" anywhere -> nothing to police.
 case "$input" in *git*) ;; *) exit 0 ;; esac
 # Parser presence already confirmed by the tool_name extraction above.
@@ -323,7 +323,7 @@ extract_sh_c_inner() {
 # and `$(pwd)` count as the session cwd — the recipe idiom, and exactly what
 # they evaluate to where the command runs. Anything else that stays
 # unresolvable (an env var set outside this string, another command
-# substitution) marks the target UNRESOLVABLE and the commit gate FAILS TOWARD
+# substitution) marks the target UNRESOLVABLE and the commit check FAILS TOWARD
 # THE PARSED TARGET — it allows rather than blaming the cwd the agent
 # explicitly steered away from. git itself errors on a bogus -C, so nothing
 # can be mutated; a false block, by contrast, teaches agents to work around
@@ -377,7 +377,7 @@ _mbg_expand_leading_var() {
 
 # _mbg_note_assignment <segment> — record a segment that is a plain
 # `NAME=value` assignment. rc 0 when the segment WAS an assignment (recorded
-# or tombstoned — either way it is not a command to gate); rc 1 otherwise.
+# or tombstoned — either way it is not a command to check); rc 1 otherwise.
 _mbg_note_assignment() {
   _seg_a=$1
   case "$_seg_a" in
@@ -410,7 +410,7 @@ _mbg_note_assignment() {
   esac
   # Any other value with whitespace is an env-prefixed command (`FOO=1 git …`,
   # `FOO=$(x) git commit …`) — NOT a plain assignment segment; leave it to
-  # check_segment's prefix stripping so the command itself is still gated.
+  # check_segment's prefix stripping so the command itself is still checked.
   case "$_av" in *[[:space:]]*) return 1 ;; esac
   case "$_av" in
     *'$('*|*'`'*)
@@ -557,11 +557,11 @@ check_remote_ref_freshness() {
   return 0
 }
 
-# check_worktree_base <repo> <args-after-`worktree`...> — gate NEW-branch worktree
+# check_worktree_base <repo> <args-after-`worktree`...> — check NEW-branch worktree
 # creation so the branch is based on a freshly-fetched remote-tracking ref
 # (origin/<default>), never an implicit HEAD or a local branch (either can be a
 # stale default branch — the "worktree-ing off a stale local commit" trap). Only
-# `worktree add -b/-B` (new branch) is gated; materializing an existing ref
+# `worktree add -b/-B` (new branch) is checked; materializing an existing ref
 # (`worktree add <path> <ref>` without -b) and `worktree list/remove/...` pass.
 check_worktree_base() {
   _wrepo=$1; shift
@@ -670,7 +670,7 @@ check_segment() {
 
   # Expand a leading `$NAME`/`${NAME}` in the -C target from assignments seen
   # earlier in this command string (RUSH-2743). If a `$` survives, the target
-  # is unresolvable — the gates below must fail toward the PARSED target,
+  # is unresolvable — the checks below must fail toward the PARSED target,
   # never fall back to the session cwd.
   _c_unres=0
   case "$cpath" in
@@ -735,7 +735,7 @@ check_command_string() {
     seg=$(printf '%s' "$seg" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')
     [ -z "$seg" ] && continue
     # A plain `NAME=value` segment feeds later `-C "$NAME"` resolution; it is
-    # not itself a command to gate (RUSH-2743).
+    # not itself a command to check (RUSH-2743).
     if _mbg_note_assignment "$seg"; then continue; fi
     if ! check_segment "$seg"; then
       IFS=$OLDIFS

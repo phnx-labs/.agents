@@ -19,7 +19,7 @@ _to() {
 
 INPUT_JSON=$(cat)
 
-# Preserve loop protection for legacy gates, but let the visual-claim gate below
+# Preserve loop protection for legacy checks, but let the visual-claim check below
 # evaluate on the retry: that retry is where the agent can add image read-back.
 stop_active=$(echo "$INPUT_JSON" | python3 -c "
 import json, sys
@@ -60,56 +60,56 @@ failed = bool(data.get("state_error")) or not isinstance(data.get("delivery_evid
 print("STATE_EVAL_FAILED=" + shlex.quote("yes" if failed else "no"))
 ' 2>/dev/null || printf '%s\n' 'STATE_DELIVERY_EVIDENCE=no' 'STATE_CONTEXT_KIND=unknown' 'STATE_GOAL_OFFSET=0' 'STATE_OWNED_PRS=' 'STATE_EVAL_FAILED=yes')"
 
-# --- gate outcome recording ---------------------------------------------------
-# Every gate evaluation is recorded, not just the ones that block. Recording only
-# blocks is why gate_events held 325 rows and every single one read 'blocked':
-# there was no denominator, so no gate had a false-positive rate and no change to
-# gate logic could be shown to be an improvement.
+# --- check outcome recording ---------------------------------------------------
+# Every check evaluation is recorded, not just the ones that block. Recording only
+# blocks is why the events table held 325 rows and every single one read 'blocked':
+# there was no denominator, so no check had a false-positive rate and no change to
+# check logic could be shown to be an improvement.
 #
-# Batched deliberately. A stop evaluates many gates and most of them allow, but a
+# Batched deliberately. A stop evaluates many checks and most of them allow, but a
 # bare `python3` start costs ~18ms before sqlite3 is even imported — a process per
-# gate would tax every stop on every machine for telemetry nobody reads in the
+# check would tax every stop on every machine for telemetry nobody reads in the
 # moment. So callers accumulate and a single flush writes them through one
 # connection on exit.
 #
 # Tradeoff, stated: a hard kill (SIGKILL, or the harness timing the hook out
 # without a signal) loses the batch. That costs telemetry, never correctness — the
 # block itself is the exit code, not the row.
-GATE_LOG=()
+CHECK_LOG=()
 
-record_gate() { # $1 gate, $2 reason code  — blocked, the pre-existing contract
-  GATE_LOG+=("$1:blocked:$2")
+record_block() { # $1 check, $2 reason code  — blocked, the pre-existing contract
+  CHECK_LOG+=("$1:blocked:$2")
 }
 
-record_gate_ok() { # $1 gate, $2 outcome (passed|skipped), $3 reason code
-  GATE_LOG+=("$1:$2:$3")
+record_check_ok() { # $1 check, $2 outcome (passed|skipped), $3 reason code
+  CHECK_LOG+=("$1:$2:$3")
 }
 
-flush_gate_log() {
-  [ "${#GATE_LOG[@]}" -eq 0 ] && return 0
-  printf '%s' "$INPUT_JSON" | python3 "$HERE/verify-work-state.py" record-gates \
-    ${GATE_LOG[@]+"${GATE_LOG[@]}"} >/dev/null 2>&1 || true
-  GATE_LOG=()
+flush_check_log() {
+  [ "${#CHECK_LOG[@]}" -eq 0 ] && return 0
+  printf '%s' "$INPUT_JSON" | python3 "$HERE/verify-work-state.py" record-checks \
+    ${CHECK_LOG[@]+"${CHECK_LOG[@]}"} >/dev/null 2>&1 || true
+  CHECK_LOG=()
 }
 # EXIT flushes. INT/TERM must flush and then genuinely DIE: a signal handler that
 # does not exit suppresses the signal's default terminate action, so the script
 # would resume and run past the 20s timeout in agents.yaml. Reset the trap and
 # re-raise so the process dies with the conventional 128+signal status.
-trap flush_gate_log EXIT
-trap 'flush_gate_log; trap - INT; kill -INT $$' INT
-trap 'flush_gate_log; trap - TERM; kill -TERM $$' TERM
+trap flush_check_log EXIT
+trap 'flush_check_log; trap - INT; kill -INT $$' INT
+trap 'flush_check_log; trap - TERM; kill -TERM $$' TERM
 
-# Loop protection moved below the repeated-gate helpers: the retry path now
+# Loop protection moved below the repeated-check helpers: the retry path now
 # needs prior_fires() to bound the argue-past ramp. Nothing between here and
-# that check executes a gate, so the early-exit semantics are unchanged.
+# that check executes a check, so the early-exit semantics are unchanged.
 
-# --- repeated-gate guidance --------------------------------------------------
+# --- repeated-check guidance --------------------------------------------------
 # Repeating the identical block text eventually stops adding information. On a
 # 3rd+ matching fire, keep the proof standard unchanged but remind the agent to
 # re-check live state and choose its own next tactic. Prior fires are read from
 # the transcript and anchored to the injected 'Stop hook feedback:' prefix so a
 # Read of this hook's source is never miscounted as a fire.
-prior_fires() {   # $1 = a substring unique to the gate's injected message
+prior_fires() {   # $1 = a substring unique to the check's injected message
   python3 - "$TRANSCRIPT_PATH" "$1" <<'PY' 2>/dev/null || echo 0
 import json, sys
 path, marker = sys.argv[1], sys.argv[2]
@@ -134,26 +134,22 @@ print(n)
 PY
 }
 
-# Add lightweight strategy guidance when this gate has already fired >=2 times
+# Add lightweight strategy guidance when this check has already fired >=2 times
 # this session on the same item (so this is the 3rd+). It supplements the normal
-# block message and never weakens the gate.
+# block message and never weakens the check.
 repeat_guidance() {   # $1 = human name of the repeated item, $2 = prior count
   local n="${2:-0}"
   [ "$n" -lt 2 ] && return 0
   cat >&2 <<GUIDANCE
-NOTE — this gate has now fired $((n + 1)) times this session on $1. Re-check the
-live state and choose the most useful next move toward the user's goal. If the
-same approach is not working, change tactics. Possibilities include retrying
-differently, using your tools to unblock yourself, advancing another in-scope
-item, coordinating ownership, or escalating a genuinely human-only step. Use
-the actual context to decide; these are suggestions, not a fixed route.
+NOTE — block $((n + 1)) this session for $1. The same approach is not
+working: change tactics.
 
 GUIDANCE
 }
-# --- end repeated-gate guidance ---------------------------------------------
+# --- end repeated-check guidance ---------------------------------------------
 
 # Loop protection: a blocked Stop is retried with stop_hook_active=true; the
-# remaining gates fire at most once so a retry cannot wedge the session.
+# remaining checks fire at most once so a retry cannot wedge the session.
 #
 # Argue-past ramp (measured 2026-08-15): three sessions cleared blocked stops by
 # RESTATING a stand-down phrase on the retry — "Merged, not released — and
@@ -162,9 +158,9 @@ GUIDANCE
 # and is not mine to close" restated across three fires (6805bf66). The
 # unconditional retry pass was the ramp. A retried stop whose final message
 # carries one of those phrases is now blocked up to two more times; after that
-# it passes (a gate must never wedge a session) but files a fail-loud
+# it passes (a check must never wedge a session) but files a fail-loud
 # `agents feed post --blocked` so the evasion is never silent. Keep PHRASES in
-# sync with `standdown` in the done-claim gate below.
+# sync with `standdown` in the done-claim check below.
 if [ "$stop_active" = "true" ]; then
   evasion=$(echo "$INPUT_JSON" | python3 -c "
 import json, re, sys
@@ -193,37 +189,25 @@ evading = any(re.search(p, msg) for p in PHRASES) and not any(re.search(p, msg) 
 print('yes' if evading else 'no')
 " 2>/dev/null || echo no)
   if [ "$evasion" = "yes" ]; then
-    n=$(prior_fires 'STOP GATE (argue-past)')
+    n=$(prior_fires 'stand-down phrase')
     if [ "${n:-0}" -lt 2 ]; then
-      record_gate argue-past restated-standdown-on-retry
+      record_block argue-past restated-standdown-on-retry
       cat >&2 <<'MSG'
-STOP GATE (argue-past): This stop was already blocked, and the retry RESTATES a
-stand-down phrase instead of closing the loop. Re-asserting "correct stopping
-point" / "not mine to close" / "someone else owns it" is not evidence — it is
-the exact evasion this gate exists to catch.
-
-Do ONE of these, with verifiable evidence in your final message:
-1. Close the loop: drive the remaining step (release, ticket, deploy, PR) and
-   quote the real output (registry version, ticket state, URL).
-2. Defer to another owner ONLY with a live probe quoted: the owning process
-   (`pgrep`/lease state), the PR updated within minutes, or the owning session
-   actually running — plus a bounded watch on the outcome you have armed.
-3. Name a genuine user-only blocker (biometric, interactive login) and quote the
-   distinct attempts you made first.
-
-A claim without a probe will be blocked again.
+STOP — this stop was already blocked, and the retry restates a stand-down phrase
+without evidence. Finish the step and quote real output, or defer with a live
+probe quoted (`pgrep`/lease/the PR updated minutes ago) — a claim alone blocks again.
 MSG
       exit 2
     fi
     if [ "${n:-0}" -eq 2 ]; then
       sid=$(echo "$INPUT_JSON" | python3 -c "import json,sys; print(json.load(sys.stdin).get('session_id',''))" 2>/dev/null)
-      _to 5 agents feed post --session "${sid:-unknown}" --title "Stop-gate evasion: argued past 3 blocks" "Session restated a stand-down phrase after repeated delivery blocks and was allowed to stop. Transcript: $TRANSCRIPT_PATH" --blocked >/dev/null 2>&1 || true
+      _to 5 agents feed post --session "${sid:-unknown}" --title "Argued past 3 stop blocks" "Session restated a stand-down phrase after repeated delivery blocks and was allowed to stop. Transcript: $TRANSCRIPT_PATH" --blocked >/dev/null 2>&1 || true
     fi
   fi
   exit 0
 fi
 
-# --- Open-PR abandonment gate ------------------------------------------------
+# --- Open-PR abandonment check ------------------------------------------------
 # A session that CREATED *or actively WORKED* a pull request may not stop while
 # any is still open, unless the final message explicitly hands the PR off. "PR
 # open, waiting for reviewer" is not a stop state — merged-or-handed-off is
@@ -241,7 +225,7 @@ fi
 # A bare `gh pr view` is deliberately NOT a "worked" signal — reading someone
 # else's PR is incidental; `view` only attributes a PR when the SAME PR is
 # viewed 2+ times (active babysitting). So one incidental read of an unrelated
-# PR never triggers the gate. Fail-open: no gh, network down, parse errors —
+# PR never triggers the check. Fail-open: no gh, network down, parse errors —
 # allow the stop.
 if command -v gh >/dev/null 2>&1; then
   responsible_prs=$(python3 -c "
@@ -252,7 +236,7 @@ PR_URL = re.compile(r'https://github\.com/[\w.-]+/[\w.-]+/pull/\d+')
 # a PRIOR session created it. Observer verbs (checks/review/comment) and 'view'
 # are deliberately excluded: a reviewer or CI-watcher who correctly stops with the
 # ball in the author's court is not abandoning the PR. 'view' is handled below as a
-# weak, repetition-gated signal.
+# weak, repetition-checked signal.
 WORK = re.compile(r'\bgh\s+pr\s+(?:merge|ready|rebase|close|reopen|edit)\b')
 VIEW = re.compile(r'\bgh\s+pr\s+view\b')
 
@@ -350,7 +334,7 @@ except Exception:
 " "$TRANSCRIPT_PATH" "${STATE_OWNED_PRS:-}" "${STATE_GOAL_OFFSET:-0}" 2>/dev/null || true)
 
   if [ -z "$responsible_prs" ]; then
-    record_gate_ok open-pr skipped no-owned-pr
+    record_check_ok open-pr skipped no-owned-pr
   fi
   if [ -n "$responsible_prs" ]; then
     open_prs=""
@@ -363,7 +347,7 @@ except Exception:
     done <<< "$responsible_prs"
 
     if [ -z "$open_prs" ]; then
-      record_gate_ok open-pr passed no-pr-left-open
+      record_check_ok open-pr passed no-pr-left-open
     fi
     if [ -n "$open_prs" ]; then
       # Durable watcher evidence (RUSH-2394): a process that OUTLIVES this agent
@@ -424,15 +408,15 @@ except Exception:
 
       # Handoff escape: the final message may legitimately stop with an open PR
       # if it explicitly hands it off (named owner/babysitter) — restating that
-      # after this gate fires once is enough to pass (stop_hook_active).
+      # after this check fires once is enough to pass (stop_hook_active).
       has_handoff=$(echo "$INPUT_JSON" | LIVE_WATCHER="$live_watcher" python3 -c "
 import json, os, re, sys
 msg = json.load(sys.stdin).get('last_assistant_message', '').lower()
 live_watcher = os.environ.get('LIVE_WATCHER') == 'yes'
 pat = r'\b(handed off|hand-off|handoff|handing (this|it) off|will babysit|is babysitting|takes over from here|owns (this|the) pr)\b'
-# Structured external-blocker stop — the gate's own option 3. A genuine external
+# Structured external-blocker stop — the check's own option 3. A genuine external
 # blocker the agent CANNOT resolve (CI/GitHub outage, a signing step needing the
-# user's biometric) loops the gate forever. Let it pass ONLY when the message
+# user's biometric) loops the check forever. Let it pass ONLY when the message
 # names the blocker ('blocked on ...') AND points to either (a) a LIVE autonomous
 # process that will finish it, or (b) an action only the user's biometric can do.
 # The token set is deliberately narrow: 'your review' / 'awaiting your' / 'waiting
@@ -441,9 +425,9 @@ pat = r'\b(handed off|hand-off|handoff|handing (this|it) off|will babysit|is bab
 blocked = re.search(r'\bblocked on\b', msg)
 # nextstep must name a DURABLE finish path (a native ScheduleWakeup re-invoke or
 # the pr-merge-on-green monitor, or a biometric), never an in-process
-# gh pr checks --watch (RUSH-2394). This escape is NOT evidence-gated, so the
+# gh pr checks --watch (RUSH-2394). This escape is NOT evidence-checked, so the
 # tokens stay specific: bare 'monitor' is ordinary prose ('I'll monitor CI') and
-# must NOT clear the gate here (the tool name 'schedulewakeup' is specific enough).
+# must NOT clear the check here (the tool name 'schedulewakeup' is specific enough).
 nextstep = re.search(r'\b(schedulewakeup|pr-merge-on-green|will merge on green)\b|\byour (touch ?id|biometric)\b', msg)
 # Fix 2 (phrasing): trusted ONLY when a durable ScheduleWakeup/Monitor tool_use
 # exists this session (live_watcher). An in-process background gh pr checks
@@ -465,63 +449,39 @@ print('yes' if ok else 'no')
 
       if [ "$has_handoff" = "yes" ]; then
         # The PR is still open, but a named owner or a durable watcher accepted it.
-        # That is the gate's third real outcome and the one most worth counting: it
+        # That is the check's third real outcome and the one most worth counting: it
         # is the difference between "handed off properly" and "abandoned".
-        record_gate_ok open-pr passed handoff-or-watcher-declared
+        record_check_ok open-pr passed handoff-or-watcher-declared
       fi
       if [ "$has_handoff" != "yes" ]; then
         repeat_guidance "an open pull request (${open_prs%%$'\n'*})" "$(prior_fires 'pull request(s) that are still OPEN')"
-        cat >&2 <<PRGATE
-STOP GATE: This session created OR worked pull request(s) that are still OPEN:
+        cat >&2 <<PRMSG
+STOP — this session created or worked pull request(s) that are still OPEN:
 
 $open_prs
-An open PR is not a finished task — merged-or-handed-off is done. Before
-stopping you must do ONE of:
-1. Keep driving it: set a native \`ScheduleWakeup\`/\`Monitor\` to re-invoke you
-   when CI settles, or enable the built-in \`pr-merge-on-green\` monitor
-   (\`agents monitors enable pr-merge-on-green\`) — the daemon owns it, so it
-   outlives this agent. Get the non-author review and merge on green. Do NOT
-   background \`gh pr checks --watch\` — that child dies when a headless agent
-   exits and strands the PR (RUSH-2394). Do NOT open the PR link for the user
-   or ask them to click merge.
-2. Non-author review path: if the automated code reviewer is configured and
-   posting (e.g. prix-cloud), wait for it. If it is missing, silent, down, or
-   the repo has none — spawn a non-author subagent review NOW (code:review /
-   Agent that is not the author). Do not wait, and do not hand the merge to
-   the user because the bot is down.
-3. Hand it off EXPLICITLY only when someone/something else truly owns it: name
-   who or what now owns the PR (a person, a session, a durable monitor) in your
-   final message. "Needs you to merge" / "open the PR" is NOT a handoff.
-4. If stopping is genuinely correct — a GENUINE external blocker you cannot
-   resolve — name it ("blocked on <what>") AND point to either a DURABLE process
-   that will finish it (a native \`ScheduleWakeup\`/\`Monitor\` re-invoke, or the
-   \`pr-merge-on-green\` monitor — "will merge on green") or an action only your
-   biometric can do ("your Touch ID"). A background \`gh pr checks --watch\` is
-   NOT durable. Wanting a human REVIEW is NOT this
-   case: keep driving it (spawn a reviewer) or hand it off explicitly by naming
-   the owner (option 3) — "awaiting your review" will NOT pass this gate.
-
-Then finish your final message and stop again.
-PRGATE
-        record_gate open-pr owned-pr-open
+Merge it (non-author review + green CI), or in your final message name who or
+what now owns it (a person, session, or durable watcher) — "needs you to
+merge" is not a handoff.
+PRMSG
+        record_block open-pr owned-pr-open
         exit 2
       fi
     fi
   fi
 fi
-# --- end open-PR abandonment gate ---------------------------------------------
+# --- end open-PR abandonment check ---------------------------------------------
 
-# --- swarm integration gate ---------------------------------------------------
+# --- swarm integration check ---------------------------------------------------
 # An orchestrator that fanned work across an edit-mode swarm (`agents teams`) may
 # NOT stop on "all tracks merged". Each teammate's tests + reviewer only saw its
 # own diff, so the seam BETWEEN tracks (track A calls what track B built) is the
 # one thing no track verified — and it's where the composed feature breaks
 # (imsg shells out to `agents mission-control digest`; the digest track shipped
 # `mission-control-digest` → every PR green, feature dead, declared "landed
-# end-to-end" untested). The normal gates miss this: the teammates' PRs aren't
-# created by THIS transcript's `pr create` (so the open-PR gate is blind), and
+# end-to-end" untested). The normal checks miss this: the teammates' PRs aren't
+# created by THIS transcript's `pr create` (so the open-PR check is blind), and
 # wrap-up phrasing ("done and merged", "landed end-to-end") isn't in the
-# done-signal list below. This gate is narrow: it only fires when the session
+# done-signal list below. This check is narrow: it only fires when the session
 # actually ran an edit-mode swarm AND the final message claims completion.
 # Single pass over the transcript detects swarm use and counts assistant turns.
 # stop_hook_active (checked at top) makes it fire at most once. Fail-open.
@@ -534,7 +494,7 @@ turns = 0
 # same string appearing inside a grep pattern, an echo, a heredoc body, or any
 # quoted argument. Without this anchor a command that merely SEARCHES for
 # 'agents teams start' (e.g. grep -E \"agents teams start|create\" over a
-# transcript) tripped the gate — a false positive on any session that greps for
+# transcript) tripped the check — a false positive on any session that greps for
 # or prints these markers, including work on this very hook. Note the separator
 # class deliberately omits '|': a bare pipe before 'agents teams start' is never
 # a real invocation (you don't pipe INTO it), but it IS how a grep alternation
@@ -590,39 +550,27 @@ print('yes' if any(re.search(p, msg) for p in pats) else 'no')
 " 2>/dev/null || echo "no")
 
   if [ "$swarm_done" = "yes" ]; then
-    repeat_guidance "an edit-mode swarm's cross-track seam" "$(prior_fires 'STOP GATE (swarm)')"
-    cat >&2 <<SWARMGATE
-STOP GATE (swarm): You ran an edit-mode swarm and are claiming it is done.
-Every track's PR merging green is NOT proof the composed feature works — each
-teammate's tests and reviewer only ever saw that teammate's own diff. The seam
-BETWEEN tracks (where one track calls what another built) is the one thing no
-track verified, and it is exactly where the feature breaks.
-
-Before you can stop, you MUST:
-1. List every seam where one track calls/imports/hits what another track built.
-2. For each seam, TRIGGER the composed cross-track flow against where the
-   feature actually runs (the running daemon / installed binary / deployed
-   service — merged to main is NOT deployed) and QUOTE the real output.
-3. If a seam genuinely cannot be exercised, name that hop as UNVERIFIED — do
-   not fold it into a "done end-to-end" claim.
-
-"All PRs merged" / a table of green checkmarks is a report of merges, not proof
-of a working feature. Go run the composed flow, then report with quoted output.
-SWARMGATE
-    record_gate swarm composed-flow-unverified
+    repeat_guidance "an edit-mode swarm's cross-track seam" "$(prior_fires 'edit-mode swarm')"
+    cat >&2 <<SWARMMSG
+STOP — you ran an edit-mode swarm and are claiming it is done, but per-track
+green never verified the seams between tracks. Trigger the composed flow where
+it actually runs, quote its real output, and name any seam you cannot exercise
+as UNVERIFIED.
+SWARMMSG
+    record_block swarm composed-flow-unverified
     exit 2
   fi
 fi
-# --- end swarm integration gate -----------------------------------------------
+# --- end swarm integration check -----------------------------------------------
 
-# --- command-handback gate ----------------------------------------------------
+# --- command-handback check ----------------------------------------------------
 # The observed failure (a real correction — "No, you release it.."): an agent
 # prepares a runnable script the user did NOT ask it to hand over — it writes
 # /tmp/release.sh and its final message tells the user to RUN it — instead of
-# running it itself or escalating. This slips past every other gate: writing to
+# running it itself or escalating. This slips past every other check: writing to
 # /tmp is unguarded, a DECLARATIVE handoff ("Run it when ready.") has no '?' so
 # the permission-stop guards miss it, and it makes no done-claim so the audit
-# gate below never sees it. The agent has the SAME shell + ssh the user does, so
+# check below never sees it. The agent has the SAME shell + ssh the user does, so
 # handing over a command it could run is exactly the hand-back this repo bans.
 #
 # Fires only when BOTH hold, to stay high-precision (a bare /tmp script write is
@@ -636,10 +584,10 @@ fi
 #       application'), and sending a message/email/reply under the user's own
 #       identity ('hit send'). A plain 'just run it when you're ready' after a
 #       temp-script write still fires — that is the canonical handback.
-# Exempts a genuine user-only gate — a biometric / interactive login, or sending
+# Exempts a genuine user-only check — a biometric / interactive login, or sending
 # a message/email under the user's own identity — those are legitimate handoffs
 # the agent cannot perform. stop_hook_active (top of file)
-# makes it fire at most once; running the script (or naming the user-only gate)
+# makes it fire at most once; running the script (or naming the user-only check)
 # clears it. Fail-open on any parse error.
 wrote_temp_script=$(python3 -c "
 import json, re, sys
@@ -712,36 +660,21 @@ print('yes' if (RUN.search(msg) and not EXEMPT.search(msg) and not FORM_PASTE.se
 " 2>/dev/null || echo "no")
 
   if [ "$directs_user_to_run" = "yes" ]; then
-    cat >&2 <<'HBGATE'
-STOP GATE (handback): You wrote a runnable script to a temp path and your final
-message tells the user to run it. You have the SAME shell + ssh the user does —
-handing them a command you could run yourself is the hand-back this repo exists
-to prevent ("No, you release it..").
-
-Before you can stop, do ONE of:
-1. RUN IT YOURSELF (the default — you almost always can). Execute the script or
-   command you just prepared, then report the real result.
-2. If a step genuinely needs the USER (a biometric, an interactive login on their
-   own machine), say so explicitly ("needs your Touch ID" / "interactive login")
-   — that phrasing clears this gate.
-3. If you are blocked and it is NOT a user-only gate, do NOT stop in this window:
-   reach the user OUT-OF-BAND (message them) so you get their attention, keep
-   working every other thread meanwhile, and escalate if they do not reply. A
-   chat message in this window is a note in an empty room — the user is not
-   watching it.
-
-Then finish your final message and stop again.
-HBGATE
-    record_gate handback runnable-not-executed
+    cat >&2 <<'HBMSG'
+STOP — you wrote a runnable script and your final message tells the user to run
+it. You have the same shell: run it yourself and report the real result, or
+name the genuinely user-only step ("needs your Touch ID" / "interactive login").
+HBMSG
+    record_block handback runnable-not-executed
     exit 2
   fi
 fi
-# --- end command-handback gate ------------------------------------------------
+# --- end command-handback check ------------------------------------------------
 
-# --- task-list keep-moving gate ----------------------------------------------
+# --- task-list keep-moving check ----------------------------------------------
 # The strongest "stopped too early" signal is the session's OWN checklist: if it
 # still holds pending / in_progress items, the agent is stopping before its work
-# is done. This gate makes the hook task-aware (RUSH-2113 A + B): recognizing a
+# is done. This check makes the hook task-aware (RUSH-2113 A + B): recognizing a
 # background watcher is NOT blanket permission to stop — it should free the agent
 # to advance the NEXT item, and only stop when nothing else is advanceable.
 #
@@ -753,7 +686,7 @@ fi
 #   - explicitly hands the remaining work to a named owner, OR
 #   - points at a LIVE background watcher/monitor that owns the remaining step
 #     (a real ScheduleWakeup/Monitor/`gh pr checks --watch` tool_use this session,
-#     never phrasing alone — the same evidence bar the open-PR gate uses).
+#     never phrasing alone — the same evidence bar the open-PR check uses).
 # The checklist state is folded by todo-progress.py (snapshot TodoWrite/TodoList/
 # todo_write/update_plan + Claude TaskCreate/TaskUpdate). Fail-open on any error;
 # stop_hook_active (top of file) makes it fire at most once per stop.
@@ -761,7 +694,7 @@ todo_json=$(python3 "$HERE/todo-progress.py" "$TRANSCRIPT_PATH" 2>/dev/null || e
 
 # Cheap bash pre-check: only pay for the escape-detection python when the folded
 # checklist actually has a remaining item. A no-checklist / all-done stop (the
-# common case) skips it entirely, so this gate adds one python call, not two.
+# common case) skips it entirely, so this check adds one python call, not two.
 task_verdict="allow"
 if echo "$todo_json" | grep -q '"remaining": [1-9]'; then
 task_verdict=$(INPUT_JSON="$INPUT_JSON" TODO_JSON="$todo_json" python3 - "$TRANSCRIPT_PATH" <<'PY' 2>/dev/null
@@ -785,7 +718,7 @@ except Exception:
 live_watcher = False
 last_struct_tool = ''
 # Invoked is not armed (2026-08-15): a ScheduleWakeup/Monitor tool_use counts
-# only with a non-error paired tool_result. Keep in sync with the open-PR gate's
+# only with a non-error paired tool_result. Keep in sync with the open-PR check's
 # identical check above.
 wake_ids = set()
 ok_ids = set()
@@ -826,16 +759,16 @@ asking = bool(
     re.search(r'\?\s*[)\]\x27\x22]*\s*$', msg.strip())
     or re.search(r'\b(let me know|which (would|do) you|do you want|would you like|your call|which of these|should i (?:proceed|go ahead|continue|do that|do it|pick|choose))\b', msg)
     or last_struct_tool in ('ExitPlanMode', 'AskUserQuestion'))
-# Escape 2 — plan mode forbids acting (same cue the open-PR gate uses).
+# Escape 2 — plan mode forbids acting (same cue the open-PR check uses).
 plan_mode = bool(re.search(r'\bplan mode\b', msg)
                  and re.search(r'\b(cannot|can not|forbid|forbids|blocks?|blocked|prevent|no (?:commit|push|merge))\b', msg))
 # Escape 3 — a genuine external blocker + who/what finishes it. Not evidence-
-# gated, so keep the tokens specific: bare 'monitor' is ordinary prose here.
+# checked, so keep the tokens specific: bare 'monitor' is ordinary prose here.
 blocked = re.search(r'\bblocked on\b', msg)
 nextstep = re.search(r'\b(schedulewakeup|pr-merge-on-green|will merge on green)\b|\byour (touch ?id|biometric)\b', msg)
 # Escape 4 — explicit handoff of the remaining work to a named owner.
 handoff = re.search(r'\b(handed off|hand-off|handoff|handing (this|it) off|will babysit|is babysitting|takes over from here|owns (this|the) (pr|task|work))\b', msg)
-# Escape 5 — a durable ScheduleWakeup/Monitor owns the remaining step (evidence-gated).
+# Escape 5 — a durable ScheduleWakeup/Monitor owns the remaining step (evidence-checked).
 watcher_phrase = re.search(r'\b(schedulewakeup|monitor|pr-merge-on-green|poll(?:er|ing)?|re-?invoke|re-?invokes me|will merge on green|owns the (?:next|merge))\b', msg)
 
 ok = bool(asking or plan_mode or (blocked and nextstep) or handoff or (live_watcher and watcher_phrase))
@@ -846,7 +779,7 @@ PY
 fi
 
 if [ "$task_verdict" != "block" ]; then
-  record_gate_ok keep-moving passed checklist-clear-or-escaped
+  record_check_ok keep-moving passed checklist-clear-or-escaped
 fi
 if [ "$task_verdict" = "block" ]; then
   task_next=$(echo "$todo_json" | python3 -c "
@@ -864,34 +797,16 @@ try:
 except Exception:
     print(0)
 " 2>/dev/null || echo 0)
-  repeat_guidance "unfinished checklist items" "$(prior_fires 'STOP GATE (keep moving)')"
-  cat >&2 <<TASKGATE
-STOP GATE (keep moving): Your task list still has ${task_remaining} unfinished
-item(s). The next one to advance is:
-
-  "${task_next}"
-
-A checklist is your acceptance rubric — you are done when every item is completed,
-not before. Recognizing a background watcher on one item is not permission to stop
-the rest. Before stopping, do ONE of:
-1. Advance the next item now — do the work, then mark it completed (TaskUpdate
-   status=completed). Then move to the following item; stop only when nothing is
-   left to advance.
-2. If the item is genuinely owned by someone/something else — a live background
-   watcher, another session, or a person — name that owner explicitly in your
-   final message (that hands it off).
-3. If it is blocked on a genuine external step you cannot do (a biometric, an
-   interactive login), name the blocker ("blocked on <what>") and what will
-   finish it.
-4. If the item is no longer needed, delete it (TaskUpdate status=deleted) so the
-   list reflects reality.
-
-Do not stop with unfinished items and no owner named.
-TASKGATE
-  record_gate keep-moving unfinished-checklist
+  repeat_guidance "unfinished checklist items" "$(prior_fires 'our task list still has')"
+  cat >&2 <<TASKMSG
+STOP — your task list still has ${task_remaining} unfinished item(s); next:
+"${task_next}". Advance it now (TaskUpdate), name its owner or a genuine
+blocker, or delete items no longer needed (status=deleted).
+TASKMSG
+  record_block keep-moving unfinished-checklist
   exit 2
 fi
-# --- end task-list keep-moving gate -------------------------------------------
+# --- end task-list keep-moving check -------------------------------------------
 
 # Check if Claude is claiming completion
 is_claiming_done=$(echo "$INPUT_JSON" | python3 -c "
@@ -961,12 +876,12 @@ soft_parking = [
 # user asked YOU. These are unambiguous refusals to drive, so (like
 # strong_parking) they fire on their own, regardless of is_choice.
 # Handoff-by-naming-an-owner (handed-off-to-a-named-watcher) does NOT match these
-# — that legitimate escape lives in the open-PR gate above.
+# — that legitimate escape lives in the open-PR check above.
 standdown = [
     r'\bnot mine to (?:drive|own|finish|land|take|push|ship|complete|close|merge|run)\b',
     # 2026-08-15 additions — each phrase below was used verbatim that day to
     # rationalize a mid-delivery stop (ea913c60, fe1b0f93, 6805bf66, SV Atlas).
-    # Matching routes the stop into the delivery gate, where evidence decides;
+    # Matching routes the stop into the delivery check, where evidence decides;
     # an honest finished session passes because its evidence is real.
     r'\bstays open by design\b',
     r'\bsomeone else.{0,3}s in.?flight work\b',
@@ -1042,7 +957,7 @@ print('yes' if seen else 'no')
 # Git cwd are not evidence: the delivery chain runs only when this session
 # positively mutated a repo, authored/operated a PR, or started a deployment.
 # If state evaluation itself fails, preserve the prior done-claim enforcement;
-# state can improve precision but can never weaken an existing safety gate.
+# state can improve precision but can never weaken an existing safety check.
 # Created/worked PR evidence remains as an independent precision backstop.
 delivery_trigger="no"
 if [ "$is_claiming_done" = "yes" ] && { [ "${STATE_DELIVERY_EVIDENCE:-no}" = "yes" ] || [ "${STATE_EVAL_FAILED:-yes}" = "yes" ]; }; then
@@ -1062,9 +977,9 @@ print('yes' if any(re.search(p, msg) for p in pats) else 'no')
   fi
 fi
 
-# Neither a done claim nor a PR finish line needs any later completion gate.
+# Neither a done claim nor a PR finish line needs any later completion check.
 if [ "$delivery_trigger" != "yes" ] && [ "$is_claiming_done" != "yes" ]; then
-  record_gate_ok stop skipped no-delivery-or-done-claim
+  record_check_ok stop skipped no-delivery-or-done-claim
   exit 0
 fi
 
@@ -1089,19 +1004,19 @@ print(turns)
 " "$TRANSCRIPT_PATH" 2>/dev/null || echo "0")
 
 if [ "${turn_count:-0}" -le 2 ]; then
-  record_gate_ok self-audit skipped session-too-short
+  record_check_ok self-audit skipped session-too-short
   exit 0
 fi
 
-# --- Delivery-chain close-the-loop gate ---------------------------------------
+# --- Delivery-chain close-the-loop check ---------------------------------------
 # A stop at the end of a delivery must close the loop on Linear, docs/CHANGELOG,
-# and release. This gate is evidence-based: it parses the actual branch name,
+# and release. This check is evidence-based: it parses the actual branch name,
 # PR title/body, and commit messages for Linear ticket ids, then checks whether
 # they are still open and whether the delivery artifacts exist. It fails open:
 # any probe error allows the stop.
-delivery_gate_msg=""
+delivery_msg=""
 if [ "$delivery_trigger" = "yes" ]; then
-delivery_gate_msg=$(python3 - "$INPUT_JSON" "$responsible_prs" "${STATE_GOAL_OFFSET:-0}" <<'PY' | python3 "$HERE/verify-delivery-chain.py" 2>/dev/null
+delivery_msg=$(python3 - "$INPUT_JSON" "$responsible_prs" "${STATE_GOAL_OFFSET:-0}" <<'PY' | python3 "$HERE/verify-delivery-chain.py" 2>/dev/null
 import json, sys
 data = json.loads(sys.argv[1])
 refs = [r.strip() for r in sys.argv[2].splitlines() if r.strip()]
@@ -1113,16 +1028,16 @@ PY
 )
 fi
 
-if [ -n "$delivery_gate_msg" ]; then
-  echo "$delivery_gate_msg" >&2
-  record_gate delivery incomplete-delivery-chain
+if [ -n "$delivery_msg" ]; then
+  echo "$delivery_msg" >&2
+  record_block delivery incomplete-delivery-chain
   exit 2
 fi
-# --- end delivery-chain close-the-loop gate -----------------------------------
+# --- end delivery-chain close-the-loop check -----------------------------------
 
-# Not claiming done -> no further gates (PR finish-line deliveries pass here).
+# Not claiming done -> no further checks (PR finish-line deliveries pass here).
 if [ "$is_claiming_done" != "yes" ]; then
-  record_gate_ok stop skipped not-claiming-done
+  record_check_ok stop skipped not-claiming-done
   exit 0
 fi
 
@@ -1132,7 +1047,7 @@ fi
 # audit below, preserving the guard against an agent that did nothing and quit.
 case "${STATE_CONTEXT_KIND:-unknown}" in
   browser-external|ticket-creation|review-only|research-diagnostic)
-    record_gate_ok stop skipped non-code-outcome
+    record_check_ok stop skipped non-code-outcome
     exit 0
     ;;
 esac
@@ -1199,7 +1114,7 @@ try:
 except Exception:
     pass
 
-# Join the first few real asks; cap total length for the gate message.
+# Join the first few real asks; cap total length for the check message.
 out = '\n---\n'.join(picked)
 if len(out) > 900:
     out = out[:900] + '...'
@@ -1208,58 +1123,17 @@ print(out)
 
 # If we couldn't extract a genuine user message, allow stop
 if [ -z "$first_user_msg" ]; then
-  record_gate_ok self-audit skipped no-user-goal-found
+  record_check_ok self-audit skipped no-user-goal-found
   exit 0
 fi
 
 # Block and inject self-audit prompt
-repeat_guidance "a done-claim (full goal re-audit)" "$(prior_fires 'You claimed this work is done')"
-cat >&2 <<GATE
-STOP GATE: You claimed this work is done, but you must verify before stopping.
-
-The user's request(s) this session — re-read the FULL conversation for the rest,
-including any later corrections:
-"$first_user_msg"
-
-Before you can stop, you MUST:
-1. Re-read the full conversation from the beginning
-2. List EVERY goal, requirement, and question the user raised
-3. For each goal, state one of:
-   - DONE and TESTED end-to-end (cite the tangible output — test result, screenshot, live behavior)
-   - DONE but UNTESTED (state what verification is missing, then go do it)
-   - NOT DONE (continue working on it now)
-4. If ANY goal is UNTESTED or NOT DONE, keep working. Do not stop.
-5. Once EVERY goal is DONE and verified, close out in this order:
-   a. New follow-up ideas, improvements, or issues you noticed along the way that
-      are out of scope for this session: FILE them as tickets via the project's
-      tracker right now, with real context (what you found, why it's out of
-      scope, any evidence) — not a one-line stub. Do not just mention an idea
-      and wait ('say the word', 'let me know if you want this') — either do it,
-      file it as tracked work, or drop it. A dangling optional idea is not a
-      finished session.
-   b. Clean up loose ends: commit and push any stray uncommitted work, remove
-      worktrees and branches this session no longer needs, and confirm every
-      ticket this session actually finished is closed with proof (not left
-      Todo because it slipped your mind).
-   c. Post ONE quick status update the way you would update a human manager — the
-      headline outcome + the one link/next-step, not a transcript:
-       agents feed post --title "<short outcome>" "<what you delivered + the one next step>" --level important
-      This records the completion and marks this phone-worthy successful update
-      for owner delivery.
-   d. This session is now genuinely finished. If this is a headless, dispatched,
-      or background run — not a live terminal a person might be actively
-      watching right now — run /done as your very last action: its own Step 1
-      builds the real handoff recap (the /recap discipline — facts, what's
-      done, tests actually run, nothing left dangling) as your final message,
-      THEN its Step 2 self-exits via the guarded SIGTERM (do not hand-roll a
-      bare SIGTERM, and do not skip straight to Step 2 — a self-exit with no
-      recap first is not a clean handoff). If you are unsure, or this looks
-      like an interactive session someone is driving, run /recap instead (same
-      handoff discipline, no self-exit) and then just stop.
-
-Only stop when every goal has tangible, verified results, any real follow-ups are
-filed with context (not dangled or stubbed), loose ends are cleaned up, and — if
-applicable — the session has recapped and cleanly exited itself.
-GATE
-record_gate self-audit completion-unverified
+repeat_guidance "a done-claim (full goal re-audit)" "$(prior_fires 'ou claimed this work is done')"
+cat >&2 <<MSG
+STOP — you claimed this work is done, but you must verify before stopping.
+Re-check every ask this session (first: "$first_user_msg" — plus later
+corrections) against tangible output, finish what falls short, then post one
+update: agents feed post --title "<outcome>" "<delivered + next step>" --level important
+MSG
+record_block self-audit completion-unverified
 exit 2

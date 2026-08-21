@@ -10,7 +10,7 @@
 # of three. Deployed to the UNION of the three former agent lists
 # (claude/codex/gemini/kimi/grok/antigravity); the two silent state writes run
 # for every agent (strictly additive — a metadata/registry file for an agent that
-# lacked one before is harmless), while the stdout injection self-gates to the
+# lacked one before is harmless), while the stdout injection self-restricts to the
 # Claude harness so non-Claude agents never see Claude-shaped context JSON.
 #
 # BLAST RADIUS: runs on EVERY session start. It must NEVER abort or delay the

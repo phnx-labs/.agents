@@ -7,7 +7,7 @@
 # `bash -c "..."` wrappers, absolute path (`/usr/bin/git`), and quoted first
 # token (`'git'` / `"git"`).
 #
-# Also gates `git worktree remove`: allowed when the target tree is clean AND
+# Also checks `git worktree remove`: allowed when the target tree is clean AND
 # has no unpushed commits; denied otherwise (including --force).
 #
 # Exits 0 (allow) or 2 (deny, message on stderr).
@@ -100,7 +100,7 @@ fi
 [ -z "$cmd" ] && exit 0
 
 # Session working directory, used to tell whether a history-rewriting op is
-# scoped to an isolated worktree (safe) vs the user's main checkout (gated).
+# scoped to an isolated worktree (safe) vs the user's main checkout (blocked).
 cwd=$(_json_field "$input" cwd) || cwd=""
 [ -z "$cwd" ] && cwd=$(_json_field "$input" workspaceRoot) || true
 

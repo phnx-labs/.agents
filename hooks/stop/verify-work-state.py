@@ -9,7 +9,7 @@ migrations, retention, and interpretation. The shared convention is only:
 
 UserPromptSubmit records a privacy-preserving goal boundary and transcript offset.
 Stop folds positive evidence from that goal's transcript suffix, maintains a
-session-owned entity ledger, and records the decision and gate outcome. No raw
+session-owned entity ledger, and records the decision and check outcome. No raw
 prompts, transcript text, commands, or tool output are stored.
 """
 
@@ -29,7 +29,7 @@ from visual_readback import inspect_transcript
 
 
 HOOK_ID = "system.verify-work-complete"
-SCHEMA_VERSION = 3
+SCHEMA_VERSION = 4
 RETENTION_DAYS = 30
 BUSY_TIMEOUT_MS = 100
 PR_URL = re.compile(r"https://github\.com/[\w.-]+/[\w.-]+/pull/\d+")
@@ -117,19 +117,19 @@ def _connect(path: Path) -> sqlite3.Connection:
           updated_at_ms INTEGER NOT NULL,
           PRIMARY KEY(session_key, entity_type, entity_id)
         );
-        CREATE TABLE IF NOT EXISTS gate_events (
+        CREATE TABLE IF NOT EXISTS check_events (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           session_key TEXT NOT NULL,
           goal_ordinal INTEGER NOT NULL,
-          gate_name TEXT NOT NULL,
+          check_name TEXT NOT NULL,
           outcome TEXT NOT NULL,
           reason_code TEXT NOT NULL,
           created_at_ms INTEGER NOT NULL
         );
-        CREATE INDEX IF NOT EXISTS idx_gate_events_session
-          ON gate_events(session_key, created_at_ms);
-        CREATE TABLE IF NOT EXISTS gate_outcomes (
-          gate_event_id INTEGER PRIMARY KEY REFERENCES gate_events(id),
+        CREATE INDEX IF NOT EXISTS idx_check_events_session
+          ON check_events(session_key, created_at_ms);
+        CREATE TABLE IF NOT EXISTS check_outcomes (
+          check_event_id INTEGER PRIMARY KEY REFERENCES check_events(id),
           followon_tools INTEGER NOT NULL DEFAULT 0,
           followon_mutated INTEGER NOT NULL DEFAULT 0,
           demand_satisfied INTEGER NOT NULL DEFAULT 0,
@@ -138,23 +138,35 @@ def _connect(path: Path) -> sqlite3.Connection:
           msg_sha256 TEXT NOT NULL DEFAULT '',
           derived_at_ms INTEGER NOT NULL
         );
-        CREATE INDEX IF NOT EXISTS idx_gate_outcomes_derived
-          ON gate_outcomes(derived_at_ms);
+        CREATE INDEX IF NOT EXISTS idx_check_outcomes_derived
+          ON check_outcomes(derived_at_ms);
         """
     )
     row = db.execute("SELECT value FROM meta WHERE key='schema_version'").fetchone()
     if row is None:
         db.execute("INSERT INTO meta(key,value) VALUES('schema_version',?)", (str(SCHEMA_VERSION),))
-    elif int(row[0]) == 1:
-        columns = {str(value[1]) for value in db.execute("PRAGMA table_info(goal_boundaries)")}
-        if "transcript_offset" not in columns:
-            db.execute("ALTER TABLE goal_boundaries ADD COLUMN transcript_offset INTEGER NOT NULL DEFAULT 0")
-        db.execute("UPDATE meta SET value=? WHERE key='schema_version'", (str(SCHEMA_VERSION),))
-    elif int(row[0]) == 2:
-        # v2 -> v3 adds gate_outcomes, which the schema script above already created
-        # with CREATE TABLE IF NOT EXISTS. Nothing to backfill: an outcome is derived
-        # offline from the transcript, never reconstructed at connect time. So the
-        # migration is only the version stamp.
+    elif int(row[0]) in (1, 2, 3):
+        if int(row[0]) == 1:
+            columns = {str(value[1]) for value in db.execute("PRAGMA table_info(goal_boundaries)")}
+            if "transcript_offset" not in columns:
+                db.execute("ALTER TABLE goal_boundaries ADD COLUMN transcript_offset INTEGER NOT NULL DEFAULT 0")
+        # v4 renames the legacy event tables (gate_* -> check_*). The schema script
+        # above already created the empty check_* tables on this old DB, so move the
+        # legacy rows over and drop the old tables (their indexes drop with them).
+        if db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='gate_events'").fetchone():
+            db.execute(
+                "INSERT INTO check_events(id, session_key, goal_ordinal, check_name, outcome, reason_code, created_at_ms)"
+                " SELECT id, session_key, goal_ordinal, gate_name, outcome, reason_code, created_at_ms FROM gate_events"
+            )
+            db.execute("DROP TABLE gate_events")
+        if db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='gate_outcomes'").fetchone():
+            db.execute(
+                "INSERT INTO check_outcomes(check_event_id, followon_tools, followon_mutated, demand_satisfied,"
+                " refired, user_interjected, msg_sha256, derived_at_ms)"
+                " SELECT gate_event_id, followon_tools, followon_mutated, demand_satisfied,"
+                " refired, user_interjected, msg_sha256, derived_at_ms FROM gate_outcomes"
+            )
+            db.execute("DROP TABLE gate_outcomes")
         db.execute("UPDATE meta SET value=? WHERE key='schema_version'", (str(SCHEMA_VERSION),))
     elif int(row[0]) != SCHEMA_VERSION:
         raise RuntimeError(f"unsupported schema version {row[0]}")
@@ -398,7 +410,7 @@ def _reconcile_aliases(db: sqlite3.Connection, session_key: str, native: str, la
                 (session_key, provisional),
             )
             db.execute("DELETE FROM owned_entities WHERE session_key=?", (provisional,))
-            db.execute("UPDATE gate_events SET session_key=? WHERE session_key=?", (session_key, provisional))
+            db.execute("UPDATE check_events SET session_key=? WHERE session_key=?", (session_key, provisional))
             db.execute("DELETE FROM session_state WHERE session_key=?", (provisional,))
             db.execute("UPDATE session_aliases SET session_key=? WHERE session_key=?", (session_key, provisional))
         elif previous and not native:
@@ -426,12 +438,12 @@ def _prune(db: sqlite3.Connection) -> None:
     db.execute("DELETE FROM session_state WHERE updated_at_ms < ?", (cutoff,))
     db.execute("DELETE FROM session_aliases WHERE updated_at_ms < ?", (cutoff,))
     db.execute("DELETE FROM owned_entities WHERE updated_at_ms < ?", (cutoff,))
-    db.execute("DELETE FROM gate_events WHERE created_at_ms < ?", (cutoff,))
-    # gate_outcomes rows outlive their gate_event only if pruning misses them. SQLite
+    db.execute("DELETE FROM check_events WHERE created_at_ms < ?", (cutoff,))
+    # check_outcomes rows outlive their check_event only if pruning misses them. SQLite
     # does not enforce the REFERENCES clause unless foreign_keys is ON, so drop the
     # orphans explicitly rather than relying on a cascade that is not switched on.
-    db.execute("DELETE FROM gate_outcomes WHERE derived_at_ms < ?", (cutoff,))
-    db.execute("DELETE FROM gate_outcomes WHERE gate_event_id NOT IN (SELECT id FROM gate_events)")
+    db.execute("DELETE FROM check_outcomes WHERE derived_at_ms < ?", (cutoff,))
+    db.execute("DELETE FROM check_outcomes WHERE check_event_id NOT IN (SELECT id FROM check_events)")
     db.execute(
         "INSERT INTO meta(key,value) VALUES('last_pruned_ms',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
         (str(_now_ms()),),
@@ -492,7 +504,7 @@ def evaluate(payload: dict[str, Any], db_path: Path) -> dict[str, Any]:
         context, delivery, reason = classify(evidence)
         evidence_json = json.dumps(evidence, sort_keys=True, separators=(",", ":"))
         evidence_hash = hashlib.sha256(evidence_json.encode()).hexdigest()
-        decision = "run-delivery-gate" if delivery else "skip-delivery-gate"
+        decision = "run-delivery-check" if delivery else "skip-delivery-check"
         now = _now_ms()
         for entity_type, values in (
             ("pr", evidence["prs_authored"] + evidence["prs_operated"]),
@@ -545,29 +557,29 @@ def evaluate(payload: dict[str, Any], db_path: Path) -> dict[str, Any]:
     }
 
 
-def _validate_gate(gate_name: str, outcome: str, reason_code: str) -> None:
-    if not re.fullmatch(r"[a-z][a-z0-9-]{0,39}", gate_name):
-        raise ValueError("invalid gate name")
+def _validate_check(check_name: str, outcome: str, reason_code: str) -> None:
+    if not re.fullmatch(r"[a-z][a-z0-9-]{0,39}", check_name):
+        raise ValueError("invalid check name")
     if outcome not in {"blocked", "passed", "skipped"}:
-        raise ValueError("invalid gate outcome")
+        raise ValueError("invalid check outcome")
     if not re.fullmatch(r"[a-z][a-z0-9-]{0,63}", reason_code):
         raise ValueError("invalid reason code")
 
 
-def record_gates(payload: dict[str, Any], db_path: Path, triples: list[tuple[str, str, str]]) -> dict[str, Any]:
-    """Record several gate evaluations through ONE connection.
+def record_checks(payload: dict[str, Any], db_path: Path, triples: list[tuple[str, str, str]]) -> dict[str, Any]:
+    """Record several check evaluations through ONE connection.
 
-    A Stop hook evaluates many gates per stop, and most of them ALLOW. Recording
+    A Stop hook evaluates many checks per stop, and most of them ALLOW. Recording
     those allows is what creates a denominator — without it every row is 'blocked'
-    and no gate has a false-positive rate. But one `python3` start costs ~18ms
-    before sqlite3 is even imported, so a process per gate would tax every stop on
+    and no check has a false-positive rate. But one `python3` start costs ~18ms
+    before sqlite3 is even imported, so a process per check would tax every stop on
     every machine for data nobody reads in the moment. Hence the batch: the caller
     accumulates and flushes once.
     """
     if not triples:
-        return {"recorded": False, "reason": "no gates"}
-    for gate_name, outcome, reason_code in triples:
-        _validate_gate(gate_name, outcome, reason_code)  # fail before any write
+        return {"recorded": False, "reason": "no checks"}
+    for check_name, outcome, reason_code in triples:
+        _validate_check(check_name, outcome, reason_code)  # fail before any write
     session_key, _harness_name, native, launch = _identity(payload)
     if not session_key:
         return {"recorded": False, "reason": "missing session identity"}
@@ -580,7 +592,7 @@ def record_gates(payload: dict[str, Any], db_path: Path, triples: list[tuple[str
         ).fetchone()
         goal_ordinal = int(row[0])
         db.executemany(
-            "INSERT INTO gate_events(session_key,goal_ordinal,gate_name,outcome,reason_code,created_at_ms)"
+            "INSERT INTO check_events(session_key,goal_ordinal,check_name,outcome,reason_code,created_at_ms)"
             " VALUES(?,?,?,?,?,?)",
             [(session_key, goal_ordinal, g, o, r, now) for g, o, r in triples],
         )
@@ -588,10 +600,10 @@ def record_gates(payload: dict[str, Any], db_path: Path, triples: list[tuple[str
     return {"recorded": True, "count": len(triples)}
 
 
-def record_gate(payload: dict[str, Any], db_path: Path, gate_name: str, outcome: str, reason_code: str) -> dict[str, Any]:
-    result = record_gates(payload, db_path, [(gate_name, outcome, reason_code)])
+def record_check(payload: dict[str, Any], db_path: Path, check_name: str, outcome: str, reason_code: str) -> dict[str, Any]:
+    result = record_checks(payload, db_path, [(check_name, outcome, reason_code)])
     if result.get("recorded"):
-        return {"recorded": True, "gate_name": gate_name, "outcome": outcome}
+        return {"recorded": True, "check_name": check_name, "outcome": outcome}
     return result
 
 
@@ -611,19 +623,19 @@ def main() -> int:
             result = record_prompt(payload, default_db_path())
         elif action == "evaluate":
             result = evaluate(payload, default_db_path())
-        elif action == "record-gate":
+        elif action == "record-check":
             if len(sys.argv) != 5:
-                raise ValueError("record-gate requires gate, outcome, and reason")
-            result = record_gate(payload, default_db_path(), sys.argv[2], sys.argv[3], sys.argv[4])
-        elif action == "record-gates":
-            # each remaining argv is "gate:outcome:reason"
+                raise ValueError("record-check requires check, outcome, and reason")
+            result = record_check(payload, default_db_path(), sys.argv[2], sys.argv[3], sys.argv[4])
+        elif action == "record-checks":
+            # each remaining argv is "check:outcome:reason"
             triples = []
             for spec in sys.argv[2:]:
                 parts = spec.split(":")
                 if len(parts) != 3:
-                    raise ValueError("gate spec must be gate:outcome:reason")
+                    raise ValueError("check spec must be check:outcome:reason")
                 triples.append((parts[0], parts[1], parts[2]))
-            result = record_gates(payload, default_db_path(), triples)
+            result = record_checks(payload, default_db_path(), triples)
         else:
             raise ValueError(f"unknown action: {action}")
     except (OSError, sqlite3.Error, RuntimeError, ValueError) as exc:

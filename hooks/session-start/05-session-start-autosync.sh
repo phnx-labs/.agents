@@ -4,7 +4,7 @@
 #
 # Two properties keep this safe to run on EVERY session start for every agent:
 #   1. THROTTLED  — runs at most once per AGENTS_AUTOSYNC_INTERVAL (default 4h),
-#                   gated by a timestamp file. The stamp is written before the
+#                   throttled by a timestamp file. The stamp is written before the
 #                   sync runs, so a failed/slow sync never thrashes.
 #   2. NON-BLOCKING — the actual `agents sync` is fully detached (setsid + &),
 #                   so a slow git pull / reconcile never delays session start.
