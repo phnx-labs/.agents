@@ -1,0 +1,16 @@
+{
+  "number": 8,
+  "url": "https://github.com/acme/widgets/pull/8",
+  "repository": { "nameWithOwner": "acme/widgets" },
+  "reviewDecision": "",
+  "statusCheckRollup": [
+    { "name": "test", "conclusion": "SUCCESS", "state": "COMPLETED" }
+  ],
+  "reviews": [],
+  "comments": [
+    {
+      "author": { "login": "prix-cloud" },
+      "body": "## Verdict: APPROVE\nRe-verified both findings."
+    }
+  ]
+}

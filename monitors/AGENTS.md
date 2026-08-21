@@ -47,7 +47,13 @@ rateLimit:                   # optional firehose guard
 ```
 
 - **`poll` needs both `command` and `interval`.** The command's stdout is the
-  observation; empty stdout with `mode: match` never fires.
+  observation; empty stdout with `mode: match` never fires. The daemon
+  evaluates the command from a non-repo cwd — any `gh pr list` / `gh pr view`
+  must pass `--repo` (or use `gh search prs`); see `pr-merge-on-green.sh`.
+- **Verdict reuse.** Merge-clearing review is `rules/subrules/gh-merge-guard/pr-verdict.py`
+  (APPROVED review OR a non-carried APPROVE comment). Do not re-inline that
+  python in a monitor poll.
+
 - **`mode: match` fires once per distinct matched value**, not every tick — the
   engine only fires when the matched value differs from the last fire, so a
   still-true condition is reported once, not on a loop.

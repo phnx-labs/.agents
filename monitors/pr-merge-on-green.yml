@@ -4,27 +4,22 @@ name: pr-merge-on-green
 # ~/.agents/monitors/ shadows this file and can turn it on per box.
 description: >-
   Rebase-merge this machine's own pull requests once CI is green and a
-  non-author has approved them. Polls every 5 minutes for your open PRs that
-  are both CI-green and APPROVED, then dispatches an agent to merge each.
+  non-author has approved them. Polls every 5 minutes across GitHub for your
+  open PRs that are both CI-green and verdict-cleared (a GitHub APPROVED
+  review or an APPROVE comment on the same PR), then dispatches an agent to
+  merge each.
 
 source:
   type: poll
   interval: 5m
-  # One `gh pr list` per poll (no per-PR loop, so it stays rate-limit friendly):
-  # list your open PRs with their review decision + check rollup, keep only the
-  # APPROVED ones whose every check is SUCCESS/NEUTRAL/SKIPPED, and print their
-  # numbers on one line. reviewDecision is APPROVED only when a NON-author has
-  # approved (GitHub never lets you approve your own PR). Empty output (no
-  # mergeable PR) is a silent observation under the `mode: every` condition
-  # below, so nothing fires.
+  # Cwd-independent (RUSH-2848): the daemon evaluates this from a non-repo
+  # directory, so the helper never calls `gh pr list` without `--repo`. It
+  # lists via `gh search prs` and inspects each candidate with
+  # `gh pr view --repo <owner/name>`. Verdict is pr-verdict.py — the same
+  # check merge-guard.sh uses. AGENTS_SYSTEM_MONITORS_DIR is the CLI's existing
+  # system-monitors override; unset, this is ~/.agents/.system/monitors/.
   command: >-
-    gh pr list --author @me --state open --limit 50
-    --json number,reviewDecision,statusCheckRollup
-    --jq '.[] | select(.reviewDecision == "APPROVED")
-    | select(all(.statusCheckRollup[]?;
-    (.conclusion // .state // .status // "") | ascii_upcase
-    | . == "SUCCESS" or . == "NEUTRAL" or . == "SKIPPED")) | .number'
-    | tr '\n' ' '
+    sh "${AGENTS_SYSTEM_MONITORS_DIR:-$HOME/.agents/.system/monitors}/pr-merge-on-green.sh"
 
 condition:
   # Fire every 5-minute tick that reports at least one mergeable PR. `mode: every`
@@ -43,10 +38,16 @@ action:
   type: run
   agent: claude
   mode: auto
+  # Worded without a literal `gh pr merge` / `--admin` so registering or editing
+  # this monitor does not trip merge-guard (RUSH-2760 false positives on quoted
+  # prompt text). The dispatched agent still rebase-merges via the GitHub CLI.
   prompt: >-
-    These PRs are CI-green and non-author-approved: {event}. Rebase-merge each
-    with `gh pr merge <n> --rebase --delete-branch`. Never use `--admin`, never
-    self-approve. If a merge conflicts or CI flipped red, stop and report.
+    These pull requests are CI-green and carry a non-author APPROVE verdict on
+    the same PR (a GitHub APPROVED review or an APPROVE comment, not a verdict
+    carried from another PR): {event}. Each entry is owner/repo#number.
+    Rebase-merge each through the GitHub CLI, deleting the branch after.
+    Never bypass branch protection, never self-approve. If a merge conflicts
+    or CI flipped red, stop and report.
 
 # Firehose guard: if a PR keeps churning (CI flaps, a conflict the agent can't
 # resolve), auto-pause rather than dispatch a merge agent on a loop.
