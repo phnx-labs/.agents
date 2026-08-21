@@ -119,6 +119,27 @@
 
 ### Fixed
 
+- **`/work:loop` told agents to leave every PR for Muqsit to review and merge —
+  the skill was the banned stop, not the agent.** An overnight drain ended with
+  *"Owner of the one open thread: Muqsit reviews and merges PR #2833. Nothing else
+  is pending on me,"* and the agent was quoting its own contract: the skill stated
+  a no-merge-review gate in eight places (frontmatter, intro, mindset rule 3, the
+  routing table, two rows of the done table, the anti-patterns, the compose map),
+  down to an anti-pattern that forbade *"invoking `code:review` / merge-on-green."*
+  So F1's "merging on green is the work, not a decision to punt" lost to a
+  specific, local instruction that said the opposite — and every `/loop` invocation
+  parked its whole engineering queue on the one person running fifty other agents.
+  The skill now inherits `code:loop`'s bar instead of lowering it: implement →
+  test → open PR → **non-author review** → **merge on green** → clean up → close
+  the ticket with PR link + merge SHA, with `/code:release` named for
+  distributables. The four things that still stop a merge are enumerated and all
+  of them are red (CI, a review with real findings, a conflict, branch protection)
+  — never "ask the user." The safety rails the original contract was reaching for
+  are kept and stated: never `--admin`, never self-approve, never merge red. The
+  parked row is narrowed from "needs human review" to a real product/scope/
+  credential decision. `/loop`'s command description, `plugins/work/README.md`,
+  and the root README row advertised the same wrong contract and now match.
+
 - **Plans without mockups and PRs without run screenshots — the four enforcement
   holes are closed.** A session-transcript trace showed both requirements existed
   only as prose for the most common paths.
