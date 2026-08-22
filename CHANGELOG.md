@@ -4,6 +4,28 @@
 
 ### Fixed
 
+- **Every tick wake with a live team must drive and re-arm — the stop hook
+  gains a live-team analogue of the dispatch check.** Measured failure (session
+  515b71e1, 2026-08-21, RUSH-3022): an orchestrator with 'Monitor teams every
+  3-5 min' as its own task armed six background sleep-ticks and two
+  `agents teams start --watch` loops, then produced status recaps on wakes and
+  finally declared "I'll surface on the next real event (a merge) rather than
+  another status recap" — deferring to watch loops that settle only when the
+  whole team settles, never on a single merge, so nothing could re-invoke it;
+  two green MERGEABLE PRs sat unmerged until the user asked. Now
+  **`hooks/stop/00-agent-verify-work-complete.sh`** blocks a stop when the
+  transcript shows an edit-mode team whose latest real `agents teams status`
+  result still has RUNNING teammates and neither a fresh background tick (armed
+  this turn, after the last wake, completion not yet fired) nor a durable
+  watcher (ScheduleWakeup / Monitor / `agents monitors add`) exists — a stale
+  tick from an earlier turn does not count, and grep-only marker matches cannot
+  trip it. The argue-past ramp and stand-down lists gain the park-phrase family
+  ("surface on the next (real) event", "rather than another status recap",
+  "will re-invoke me when"). **`rules/subrules/parallel-teams.md`** adds item 6
+  to "You own what you spawn": every tick wake produces a concrete drive action
+  (merge a green PR, steer/resume a stalled teammate, re-dispatch a dead track)
+  AND re-arms the next bounded tick; recap-and-park is abandonment.
+
 - **Dispatching is never a handoff — the stop hook no longer clears on the word
   "handoff" when the session dispatched agents itself.** Measured evasion
   (session f045b577, 2026-08-21): an orchestrator dispatched two `agents run …
