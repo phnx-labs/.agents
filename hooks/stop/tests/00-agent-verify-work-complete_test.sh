@@ -1146,4 +1146,10 @@ check "ownership: live-state word after the phrase voids the prefix exemption" "
 rc=$(HOME="$FAKEHOME" FAKE_GH_STATE=OPEN run_hook "$T" "Fixed the rebase needed against origin still pending, filed via feed post --blocked. HANDOFF: the owner - needs to review." false)
 check "ownership: 'still pending' after the phrase voids the exemption" "$rc" "2"
 
+# OWN17. Reviewer repro 7: a back-referencing live clause past the segment
+#        boundary ('they still block the release') is inside the 160-char
+#        punctuation-blind live window and voids the exemption.
+rc=$(HOME="$FAKEHOME" FAKE_GH_STATE=OPEN run_hook "$T" "Resolved the merge conflicts with main, they still block the release, filed via feed post --blocked. HANDOFF: the owner - please take over." false)
+check "ownership: back-referencing live clause voids the exemption" "$rc" "2"
+
 exit $fail

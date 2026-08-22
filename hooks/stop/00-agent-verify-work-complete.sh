@@ -551,16 +551,24 @@ RESOLVED = re.compile(r'\b(?:fixed|resolved|rebased|cleared|addressed|landed|no 
 # rephrase; under-blocking costs the ownership gate.
 GAP_BEFORE = re.compile(r'^(?:\s*(?:the|a|an|all|any|both|each|every|its|his|her|our|their|these|those|some|remaining|last|final|earlier|prior|previous|open|aforementioned))*\s*$', re.I)
 GAP_AFTER = re.compile(r'^(?:\s*(?:the|a|an|all|its|our|their|with|on|in|against|from|for|of|main|master|origin|base|branch|are|is|were|was|been|now|fully|completely))*\s*$', re.I)
-# Either exemption is void when the REST of the phrase's own segment says the
-# state is live (review round 6: 'Resolved the merge conflicts with main
-# remain outstanding' exempted itself purely from the prefix — the two
-# branches never cross-checked the other side of the match).
-LIVE_STATE = re.compile(r'\b(?:still|remains?|remaining|needs?|need|not|unresolved|pending|blocking|outstanding|exists?|unfixed|open)\b', re.I)
+# Either exemption is void when nearby text says the state is live. Scope is
+# a punctuation-blind +-160-char window around the match (round 7: '...with
+# main, they still block the release' put the live clause past the segment
+# boundary; rounds 2-4 already proved punctuation is not an ideas boundary).
+# STATED BOUND: this check is a guard, not a parser — a live-state reference
+# further than 160 chars from its phrase is out of scope by design. The
+# backstops beyond the window are structural, not textual: an owner-targeted
+# stop still needs the on-disk --blocked receipt, and the non-author review
+# loop reads the whole message.
+# 'remaining/remain' is deliberately absent: it is also an allowlisted
+# quantifier ('resolved all the remaining conflicts' is honest), and every
+# measured launder shape carries an unambiguous live word alongside it.
+LIVE_STATE = re.compile(r'\b(?:still|needs?|need|not|unresolved|pending|blocking|outstanding|exists?|unfixed|open)\b', re.I)
 agent_fixable = False
 for m in FIXABLE.finditer(msg):
     seg_before = re.split(r'[.\n;,]', msg[:m.start()])[-1][-80:]
     seg_after = re.split(r'[.\n;,]', msg[m.end():m.end() + 60])[0]
-    live_after = bool(LIVE_STATE.search(seg_after))
+    live_after = bool(LIVE_STATE.search(msg[max(0, m.start() - 160):m.end() + 160]))
     exempt = False
     last = None
     for r in RESOLVED.finditer(seg_before):
