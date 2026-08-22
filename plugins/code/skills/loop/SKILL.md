@@ -147,3 +147,9 @@ When an item first lands, pick the execution primitive directly instead of routi
 Every claim you make in the chat — "the rebase resolved cleanly," "CI is green," "the regression is fixed," "the queue is drained" — needs proof you can quote. `gh pr view --json …`, `git log --oneline`, `agents teams status`, a curl against the deployed health endpoint. If you cannot quote it, you do not claim it.
 
 When you brief a sub-agent (planner, implementer, reviewer), the brief ends with: `Return file:line quotes for every claim. Do NOT paraphrase. If you can't quote it, don't claim it.`
+
+**Web or native surface touched? Drive it, don't describe it.** Verification
+of anything with a UI runs through `agents browser` (web, headless on your
+machine) or `agents computer` (native, element mode) — screenshot, read back,
+then claim. A verification claim with no drive of the real surface is a
+proxy, not proof.

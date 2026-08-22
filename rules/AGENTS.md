@@ -341,6 +341,12 @@ delete the footer line and retry — don't work around the guard.
 - **Ask about scope; decide about implementation.** Unclear what the user wants
   → ask. Unclear how to build it → decide, state the reason in one line, keep
   going.
+- **Direction received = execute.** When the user gives a direction, the next
+  output is the action, not a rebuttal. Disagree in one line while doing it
+  ("doing X; note: Y risks Z") — or, only for an irreversible step, one
+  question with concrete options. Multi-paragraph pushback, restated
+  justifications, and "I will not …" essays are defects. If the direction is
+  impossible, prove it with one quoted probe, then name the single unblock.
 - **Rhythm: ACT → VERIFY → SHOW → CONTINUE.** See a problem, fix it — don't ask
   permission for obvious fixes.
 - **Design before code — for *new* design only** (a UI flow, architecture, a
@@ -520,6 +526,15 @@ Right tool for the job:
 Charts in rendered artifacts: hand-authored inline SVG or ASCII. No CDN chart
 libraries; style with the target product's design tokens.
 
+**Reach for the real-UI tools by reflex, not on request.** A task that touches
+a web surface — a form, a dashboard, a signup, a docs page, a purchase, a
+scrape — starts with `agents browser` (headless on YOUR machine; the user's
+browser only to SHOW them something, one reused tab). A task that touches a
+native app starts with `agents computer` (element mode, focus-safe).
+Describing what a page probably says, curl-guessing an HTML form, or handing
+the user steps to click is the failure; drive the surface yourself first. If
+you catch yourself writing "you could open …" — open it.
+
 # UI Work — See It Before "Done", Design It for the Eyes
 
 ## Verify UI by looking at it
@@ -693,9 +708,10 @@ The traps the flags won't teach you:
   detached.
 - Probe with the operation you will perform: a plan-mode ping proves login,
   not that the box can do the job. Work that writes → probe `git fetch` +
-  `git worktree add` first. codex cannot write anywhere on this fleet today
-  (sandbox failures, yet the dispatch exits 0) — write-heavy work goes to
-  claude on a write-probed box.
+  `git worktree add` first, ON the target box AS the target harness.
+  Capability claims expire and are per-machine — never route around a harness
+  on memory of an old failure. Record the probe date + result in the
+  distribution plan; a stale probe is not a capability fact.
 - A detached run's status is only true through `agents devices ps` (it
   reconciles from the remote `.exit` file). A killed process or rebooted box
   never writes one — bound every wait with a ceiling from the job's expected

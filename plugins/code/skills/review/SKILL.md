@@ -734,3 +734,9 @@ through `/code:loop` or `/code:commit`. Don't write to `/tmp` — output lands i
 7. Mode C never returns a merge verdict and never modifies code — findings only.
 8. Never merge without one of: green CI, a quoted run, or explicit user override ("it
    looks correct" is not evidence).
+
+**Web or native surface touched? Drive it, don't describe it.** Verification
+of anything with a UI runs through `agents browser` (web, headless on your
+machine) or `agents computer` (native, element mode) — screenshot, read back,
+then claim. A verification claim with no drive of the real surface is a
+proxy, not proof.
