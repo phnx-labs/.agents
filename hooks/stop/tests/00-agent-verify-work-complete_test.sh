@@ -659,6 +659,15 @@ rc=$(VERIFY_WORK_STATE_DB="$STATE_MISMATCH" FAKE_GIT_BRANCH=feature/RUSH-1234 FA
 check "state evaluation failure preserves delivery enforcement" "$rc" "2"
 grep -q "close out the delivery" "$SANDBOX/stderr" && echo "ok   - state failure reaches delivery gate" || { echo "FAIL - state failure weakened delivery gate"; fail=1; }
 
+# D8c. session_cwd is the SOLE repo resolver (RUSH-3016, review SHOULD): the
+#      repo-write transcript carries no cd / git -C / --repo command and no
+#      repo_path hint, so the transcript scan yields nothing — only the hook
+#      input's cwd (FIXTURE_CWD_REPO, injected by run_hook) can resolve the
+#      repo. Deleting the session_cwd branch in _find_repo_path must fail this.
+rc=$(FAKE_GIT_BRANCH=feature/RUSH-1234 FAKE_LINEAR_STATE=Todo run_hook "$TWRITE" "All done. The widget is complete." false)
+check "session-cwd-only repo resolution reaches the delivery gate" "$rc" "2"
+grep -q "close out the delivery" "$SANDBOX/stderr" && echo "ok   - delivery gate fired via session cwd alone" || { echo "FAIL - delivery gate not reached via session cwd alone"; fail=1; }
+
 # D9. Probe error (linear crashes/returns garbage) -> fail open.
 cat > "$SANDBOX/bin/linear" <<'STUB'
 #!/usr/bin/env bash
