@@ -178,7 +178,47 @@ else
   echo "PASS: an empty [Unreleased] heading does not trip the release gate"
 fi
 
-rm -rf "$d1" "$d2" "$d3" "$d4" "$d7" "$d8" "$bare2" "$bare3" "$bare4" "$bare7" "$bare8" "$tr1" "$tr2" "$tr3" "$tr4" "$tr5" "$tr6" "$tr7" "$tr8" 2>/dev/null
+# --- Test 9: ticket demands are scoped to tickets this session WORKED; -----------
+# --- merely-referenced tickets are FYI, never a demand (RUSH-3013). --------------
+d9="$(mktemp -d)"
+git init -q "$d9"
+git -C "$d9" $GC commit -q --allow-empty -m init
+git -C "$d9" checkout -q -b rush-9001-fix
+echo x > "$d9/f.txt"; git -C "$d9" add f.txt; git -C "$d9" $GC commit -q -m "fix: f (RUSH-9001)"
+stubdir="$(mktemp -d)"
+cat > "$stubdir/linear" <<'STUB'
+#!/usr/bin/env bash
+printf '{"state":{"name":"Todo"},"title":"Fake"}\n'
+STUB
+chmod +x "$stubdir/linear"
+tr9="$(mktemp)"
+{
+  printf '%s\n' '{"role":"user","content":"context: RUSH-9002 is someone else'"'"'s in-flight work; fix RUSH-9001"}'
+  printf '%s\n' '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"l1","name":"Bash","input":{"command":"linear update RUSH-9001 --status Doing"}}]}}'
+} > "$tr9"
+out9="$(PATH="$stubdir:$PATH" run_gate "$d9" "$tr9")"
+if printf '%s' "$out9" | grep -q "then finish:"; then
+  echo "PASS: gate header says 'then finish', not 'stop again'"
+else
+  echo "FAIL: gate header wording wrong:"; echo "$out9"; fail=1
+fi
+if printf '%s' "$out9" | grep -q "this session worked: RUSH-9001"; then
+  echo "PASS: worked ticket RUSH-9001 is demanded"
+else
+  echo "FAIL: worked ticket not demanded:"; echo "$out9"; fail=1
+fi
+if printf '%s' "$out9" | grep -q "not yours to close.*RUSH-9002"; then
+  echo "PASS: referenced ticket RUSH-9002 is FYI only"
+else
+  echo "FAIL: referenced ticket not FYI:"; echo "$out9"; fail=1
+fi
+if printf '%s' "$out9" | grep -q "update state with proof.*RUSH-9002"; then
+  echo "FAIL: referenced ticket RUSH-9002 was demanded:"; echo "$out9"; fail=1
+else
+  echo "PASS: referenced ticket is never a --done demand"
+fi
+
+rm -rf "$d1" "$d2" "$d3" "$d4" "$d7" "$d8" "$d9" "$stubdir" "$bare2" "$bare3" "$bare4" "$bare7" "$bare8" "$tr1" "$tr2" "$tr3" "$tr4" "$tr5" "$tr6" "$tr7" "$tr8" "$tr9" 2>/dev/null
 
 if [ "$fail" -ne 0 ]; then
   echo "verify-delivery-chain_test: FAILED"; exit 1
