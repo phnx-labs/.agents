@@ -404,7 +404,8 @@ try:
                     name = b.get('name') or ''
                     # Durable handoff evidence: a native re-invoke tool the
                     # harness owns (ScheduleWakeup / Monitor), or a daemon-owned
-                    # `agents monitors add` — both outlive this agent.
+                    # agents monitors add — both outlive this agent. (No
+                    # backticks here: double-quoted python3 -c string.)
                     if name in ('ScheduleWakeup', 'Monitor'):
                         wake_ids.add(b.get('id') or '')
                     elif MONITORS_ADD.search(str((b.get('input') or {}).get('command', ''))):
