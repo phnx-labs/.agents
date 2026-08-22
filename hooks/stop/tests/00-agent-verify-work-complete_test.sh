@@ -1154,8 +1154,13 @@ check "ownership: back-referencing live clause voids the exemption" "$rc" "2"
 
 # OWN18. Reviewer repro 8 (false-positive direction): the HANDOFF clause's own
 #        vocabulary ('needs to review …') must not poison an exemption for an
-#        already-resolved blocker — the live window stops at the sentinel.
+#        already-resolved blocker — the clause's span is blanked from the scan.
 rc=$(HOME="$FAKEHOME" FAKE_GH_STATE=OPEN run_hook "$T" "Merge conflicts with main resolved, CI green. Ask filed via feed post --blocked. HANDOFF: the owner - needs to review the pricing policy." false)
 check "ownership: ask-clause wording cannot poison an honest exemption" "$rc" "0"
+
+# OWN19. Reviewer repro 9: a live confession typed AFTER the HANDOFF clause is
+#        still scanned — the sentinel classifies, it does not truncate.
+rc=$(HOME="$FAKEHOME" FAKE_GH_STATE=OPEN run_hook "$T" "Resolved the merge conflicts with main, filed via feed post --blocked. HANDOFF: the owner - needs to review. Still blocking the release though." false)
+check "ownership: live confession after the HANDOFF clause still blocks" "$rc" "2"
 
 exit $fail

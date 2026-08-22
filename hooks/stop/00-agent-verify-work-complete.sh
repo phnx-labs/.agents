@@ -564,19 +564,24 @@ GAP_AFTER = re.compile(r'^(?:\s*(?:the|a|an|all|its|our|their|with|on|in|against
 # quantifier ('resolved all the remaining conflicts' is honest), and every
 # measured launder shape carries an unambiguous live word alongside it.
 LIVE_STATE = re.compile(r'\b(?:still|needs?|need|not|unresolved|pending|blocking|outstanding|exists?|unfixed|open)\b', re.I)
-# The live window never crosses into the HANDOFF/ask clause (round 8: the
-# ask's own vocabulary — 'needs to review …' — poisoned the exemption for an
-# already-resolved blocker). The sentinel separates what the agent DID from
-# what the owner is ASKED; live-state words only count on the did side.
+# The HANDOFF clause is excluded from the live scan by BLANKING its own span
+# (sentinel to that sentence's end), never by truncating the scan at the
+# sentinel (round 9: truncation made a live confession typed AFTER the
+# HANDOFF line invisible). The ask's vocabulary ('needs to review …') stays
+# out; everything else — before or after the clause — still counts.
+_scan_msg = msg
 _h = re.search(r'(?i)\bhandoff:', msg)
+if _h is not None:
+    _h_end = len(msg)
+    _pm = re.search(r'[.\n]', msg[_h.start():])
+    if _pm is not None:
+        _h_end = _h.start() + _pm.end()
+    _scan_msg = msg[:_h.start()] + (' ' * (_h_end - _h.start())) + msg[_h_end:]
 agent_fixable = False
 for m in FIXABLE.finditer(msg):
     seg_before = re.split(r'[.\n;,]', msg[:m.start()])[-1][-80:]
     seg_after = re.split(r'[.\n;,]', msg[m.end():m.end() + 60])[0]
-    live_end = m.end() + 160
-    if _h is not None and _h.start() >= m.end():
-        live_end = min(live_end, _h.start())
-    live_after = bool(LIVE_STATE.search(msg[max(0, m.start() - 160):live_end]))
+    live_after = bool(LIVE_STATE.search(_scan_msg[max(0, m.start() - 160):m.end() + 160]))
     exempt = False
     last = None
     for r in RESOLVED.finditer(seg_before):
