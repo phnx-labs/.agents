@@ -1110,4 +1110,14 @@ check "ownership: comma-joined resolution verb cannot launder a live conflict" "
 rc=$(HOME="$FAKEHOME" FAKE_GH_STATE=OPEN run_hook "$T" "Merge conflicts with main resolved, CI green. Ask filed via feed post --blocked. HANDOFF: the owner — repo policy gate only they can clear." false)
 check "ownership: postfix 'conflicts resolved' does not trip the veto" "$rc" "0"
 
+# OWN10. Reviewer repro 3a: a subordinating conjunction ('although') between a
+#        resolution verb and a live blocker does not launder it.
+rc=$(HOME="$FAKEHOME" FAKE_GH_STATE=OPEN run_hook "$T" "Already fixed one issue although merge conflicts with main remain, filed via feed post --blocked. HANDOFF: the owner - needs to review." false)
+check "ownership: 'although'-joined resolution verb cannot launder a live conflict" "$rc" "2"
+
+# OWN11. Reviewer repro 3b: same class via 'though' + a different FIXABLE
+#        alternative (red CI with an adverb).
+rc=$(HOME="$FAKEHOME" FAKE_GH_STATE=OPEN run_hook "$T" "Addressed the review comments though ci is still failing on the release branch, filed via feed post --blocked. HANDOFF: the owner - needs to review." false)
+check "ownership: 'though'-joined resolution verb cannot launder red CI" "$rc" "2"
+
 exit $fail

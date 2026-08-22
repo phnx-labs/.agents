@@ -526,23 +526,31 @@ plan_mode = re.search(r'\bplan mode\b', msg) and re.search(r'\b(cannot|can not|f
 FIXABLE = re.compile(
     r'\b(merge conflicts?|conflicts? (?:with|on|in|against) (?:main|master|origin|the base)|'
     r'rebase (?:needed|required|pending)|needs? (?:a )?rebase|'
-    r'ci (?:is )?(?:red|failing|broken)|failing (?:tests?|checks?)|tests? (?:are )?failing|'
+    r'ci (?:is )?(?:still |currently )?(?:red|failing|broken)|failing (?:tests?|checks?)|tests? (?:are )?(?:still )?failing|'
     r'docs? (?:are )?(?:missing|not (?:yet )?written|still owed)|changelog (?:entry )?(?:missing|not (?:yet )?written))\b')
-# Tense matters (review finding on this PR): 'fixed the failing tests and
-# resolved merge conflicts' is completed work, not a blocker. Scope the
-# resolution check to the fixable phrase's OWN CLAUSE — sentence-level
-# lookback let a comma-joined 'Addressed feedback on the branch name, merge
-# conflicts still need resolving' launder a live blocker (second review
-# finding). Clauses split on . ; , newline, dashes, and/but; a resolution
-# verb anywhere in the clause exempts it (covers postfix 'conflicts
-# resolved' too). 'resolving'/'resolve' are demands, not resolutions —
-# RESOLVED matches only completed forms.
+# Tense matters (review findings 1-3 on this PR): 'fixed the failing tests'
+# is completed work, not a blocker — but clause- and sentence-level lookback
+# both let an unrelated resolution verb launder a LIVE blocker joined by a
+# comma ('Addressed feedback, conflicts remain') or a subordinating
+# conjunction ('fixed one issue although conflicts remain'). The check is now
+# PROXIMITY-scoped per fixable match: a completed-form verb exempts the match
+# only from within its own comma/sentence-bounded segment immediately BEFORE
+# it with no contrast conjunction in between, or immediately AFTER it
+# (postfix 'conflicts resolved') with no live-state word in between.
+# 'resolving'/'resolve' are demands, not resolutions.
 RESOLVED = re.compile(r'\b(?:fixed|resolved|rebased|cleared|addressed|landed|no (?:more|remaining|longer))\b')
+CONTRAST = re.compile(r'\b(?:although|though|but|while|however|yet|whereas|except|despite|because|since)\b')
+LIVE_AFTER = re.compile(r'\b(?:still|remains?|remaining|needs?|not|unresolved|pending|blocking)\b')
 agent_fixable = False
-for clause in re.split(r'[.\n;,]+|—|--+|\b(?:and|but)\b', msg):
-    if FIXABLE.search(clause) and not RESOLVED.search(clause):
-        agent_fixable = True
-        break
+for m in FIXABLE.finditer(msg):
+    before = re.split(r'[.\n;,]', msg[:m.start()])[-1][-80:]
+    after = re.split(r'[.\n;,]', msg[m.end():m.end() + 60])[0]
+    if RESOLVED.search(before) and not CONTRAST.search(before):
+        continue
+    if RESOLVED.search(after) and not LIVE_AFTER.search(after) and not CONTRAST.search(after):
+        continue
+    agent_fixable = True
+    break
 # The published exit for a GENUINELY owner-only gate (a credential, a repo
 # policy only the owner can satisfy, a product decision):
 #   HANDOFF: <owner> - <receipt>
