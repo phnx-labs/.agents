@@ -551,19 +551,25 @@ RESOLVED = re.compile(r'\b(?:fixed|resolved|rebased|cleared|addressed|landed|no 
 # rephrase; under-blocking costs the ownership gate.
 GAP_BEFORE = re.compile(r'^(?:\s*(?:the|a|an|all|any|both|each|every|its|his|her|our|their|these|those|some|remaining|last|final|earlier|prior|previous|open|aforementioned))*\s*$', re.I)
 GAP_AFTER = re.compile(r'^(?:\s*(?:the|a|an|all|its|our|their|with|on|in|against|from|for|of|main|master|origin|base|branch|are|is|were|was|been|now|fully|completely))*\s*$', re.I)
+# Either exemption is void when the REST of the phrase's own segment says the
+# state is live (review round 6: 'Resolved the merge conflicts with main
+# remain outstanding' exempted itself purely from the prefix — the two
+# branches never cross-checked the other side of the match).
+LIVE_STATE = re.compile(r'\b(?:still|remains?|remaining|needs?|need|not|unresolved|pending|blocking|outstanding|exists?|unfixed|open)\b', re.I)
 agent_fixable = False
 for m in FIXABLE.finditer(msg):
     seg_before = re.split(r'[.\n;,]', msg[:m.start()])[-1][-80:]
     seg_after = re.split(r'[.\n;,]', msg[m.end():m.end() + 60])[0]
+    live_after = bool(LIVE_STATE.search(seg_after))
     exempt = False
     last = None
     for r in RESOLVED.finditer(seg_before):
         last = r
-    if last is not None and GAP_BEFORE.match(seg_before[last.end():]):
+    if last is not None and GAP_BEFORE.match(seg_before[last.end():]) and not live_after:
         exempt = True
     if not exempt:
         first = RESOLVED.search(seg_after)
-        if first is not None and GAP_AFTER.match(seg_after[:first.start()]):
+        if first is not None and GAP_AFTER.match(seg_after[:first.start()]) and not live_after:
             exempt = True
     if not exempt:
         agent_fixable = True

@@ -1136,4 +1136,14 @@ check "ownership: 'also'-joined resolution verb cannot launder a live conflict" 
 rc=$(HOME="$FAKEHOME" FAKE_GH_STATE=OPEN run_hook "$T" "Resolved all the remaining merge conflicts with main; CI green. Ask filed via feed post --blocked. HANDOFF: repo-admin — branch-policy gate no agent can satisfy." false)
 check "ownership: function-word gap keeps honest resolution exempt" "$rc" "0"
 
+# OWN15. Reviewer repro 6a: a prefix exemption cannot ignore a live-state word
+#        AFTER the phrase — 'Resolved the merge conflicts ... remain outstanding'
+#        is self-contradictory and the blocker counts as live.
+rc=$(HOME="$FAKEHOME" FAKE_GH_STATE=OPEN run_hook "$T" "Resolved the merge conflicts with main remain outstanding, filed via feed post --blocked. HANDOFF: the owner - needs to review." false)
+check "ownership: live-state word after the phrase voids the prefix exemption" "$rc" "2"
+
+# OWN16. Reviewer repro 6b: same class, different FIXABLE alternative.
+rc=$(HOME="$FAKEHOME" FAKE_GH_STATE=OPEN run_hook "$T" "Fixed the rebase needed against origin still pending, filed via feed post --blocked. HANDOFF: the owner - needs to review." false)
+check "ownership: 'still pending' after the phrase voids the exemption" "$rc" "2"
+
 exit $fail
