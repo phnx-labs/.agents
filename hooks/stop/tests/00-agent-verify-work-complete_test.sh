@@ -1078,7 +1078,7 @@ FAKEHOME="$SANDBOX/home"
 SID="fixture-$(printf '%s' "$T" | sha256sum | cut -c1-16)"
 mkdir -p "$FAKEHOME/.agents/.history/feed"
 printf '{"blocked":true}' > "$FAKEHOME/.agents/.history/feed/block-${SID}.json"
-rc=$(HOME="$FAKEHOME" FAKE_GH_STATE=OPEN run_hook "$T" "HANDOFF: the owner — repo policy gate only they can clear; ask filed via feed post --blocked." false)
+rc=$(HOME="$FAKEHOME" FAKE_GH_STATE=OPEN run_hook "$T" "HANDOFF: repo-admin — branch-policy gate no agent can satisfy; ask filed via feed post --blocked." false)
 check "ownership: HANDOFF + --blocked receipt passes (owner-gated)" "$rc" "0"
 
 # OWN4. A receipt cannot launder an agent-fixable state: conflict reason still blocks.
@@ -1086,13 +1086,13 @@ rc=$(HOME="$FAKEHOME" FAKE_GH_STATE=OPEN run_hook "$T" "HANDOFF: the owner — m
 check "ownership: receipt cannot launder a conflict handback" "$rc" "2"
 
 # OWN5. Biometric owner-only gate WITH the filed receipt -> allow (4c's pair).
-rc=$(HOME="$FAKEHOME" FAKE_GH_STATE=OPEN run_hook "$T" "PR #42 is blocked on your Touch ID to sign the release; ask filed via feed post --blocked. HANDOFF: the owner — Touch ID signing, feed block record filed." false)
+rc=$(HOME="$FAKEHOME" FAKE_GH_STATE=OPEN run_hook "$T" "PR #42 is blocked on a Touch ID signing step no agent can perform; ask filed via feed post --blocked. HANDOFF: device-holder — Touch ID signing, feed block record filed." false)
 check "ownership: biometric gate + --blocked receipt allows stop" "$rc" "0"
 
 # OWN6. Reviewer repro: HONEST resolved-state narration must not trip the
 #       agent_fixable veto — 'fixed the failing tests and resolved merge
 #       conflicts' is completed work, and the receipted handoff still passes.
-rc=$(HOME="$FAKEHOME" FAKE_GH_STATE=OPEN run_hook "$T" "Fixed the failing tests and resolved merge conflicts with main; CI is green and docs are written. Ask filed via feed post --blocked. HANDOFF: the owner — repo policy gate only they can clear." false)
+rc=$(HOME="$FAKEHOME" FAKE_GH_STATE=OPEN run_hook "$T" "Fixed the failing tests and resolved merge conflicts with main; CI is green and docs are written. Ask filed via feed post --blocked. HANDOFF: repo-admin — branch-policy gate no agent can satisfy." false)
 check "ownership: resolved-state narration does not trip the fixable veto" "$rc" "0"
 
 # OWN7. Mixed sentence: resolution verb in one sentence does not launder a
@@ -1107,7 +1107,7 @@ check "ownership: comma-joined resolution verb cannot launder a live conflict" "
 
 # OWN9. Honest postfix passive — 'merge conflicts with main resolved' — is
 #       completed work in its own clause and must not trip the veto.
-rc=$(HOME="$FAKEHOME" FAKE_GH_STATE=OPEN run_hook "$T" "Merge conflicts with main resolved, CI green. Ask filed via feed post --blocked. HANDOFF: the owner — repo policy gate only they can clear." false)
+rc=$(HOME="$FAKEHOME" FAKE_GH_STATE=OPEN run_hook "$T" "Merge conflicts with main resolved, CI green. Ask filed via feed post --blocked. HANDOFF: repo-admin — branch-policy gate no agent can satisfy." false)
 check "ownership: postfix 'conflicts resolved' does not trip the veto" "$rc" "0"
 
 # OWN10. Reviewer repro 3a: a subordinating conjunction ('although') between a

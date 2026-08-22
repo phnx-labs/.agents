@@ -593,14 +593,14 @@ $open_prs
 This PR is YOURS until it merges. Keep driving it:
   - conflicts / diverged base -> rebase your worktree branch and re-push
   - red CI / failing tests -> fix forward now; a broken check is your bug
-  - no review yet -> the repo's automated reviewer, or spawn a non-author
-    subagent review; then merge on green
   - docs/CHANGELOG the diff owes -> write them in this delivery
+  - review -> the repo's automated reviewer, or spawn a non-author subagent
+    review (subagents/code-reviewer); merge on green. Reviews are never the
+    owner's job.
 Conflicts, red CI, missing docs, or "waiting on review" are never grounds to
-stop or hand back. The only other exit is a gate ONLY the owner can clear (a
-credential, a repo policy, a product decision): file it
-(agents feed post "<ask>" --blocked) and end your final message with
-HANDOFF: <owner> - <receipt>.
+stop or hand back. Rare exception, only when NO agent action can clear the
+gate (a credential, a repo policy): agents feed post "<ask>" --blocked, then
+end with HANDOFF: <owner> - <receipt>.
 PRMSG
         if [ "$self_dispatch" = "yes" ]; then
           cat >&2 <<'DISPATCHMSG'
