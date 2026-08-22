@@ -4,6 +4,23 @@
 
 ### Fixed
 
+- **Mixed team rosters are enforced, not advised: `parallel-teams` ships a
+  `teams-roster-guard` (RUSH-3020).** Rosters go monoculture by imitation —
+  measured on a real fleet, 86% of recorded teammates ran one harness while
+  five others sat installed, and 7 of 10 rosters were single-harness. The
+  subrule is now a guard-bearing directory (the `gh-merge-guard` pattern): a
+  PreToolUse(Bash) guard on `agents teams add` blocks the 3rd same-harness
+  teammate when the machine has 2+ harnesses installed, unless the brief
+  states `single-harness: <reason>` (recorded with the roster, auditable).
+  Fleet-agnostic and harness-agnostic by construction: installed harnesses
+  and the team roster are read from this machine's own registry and records
+  at run time; a grok monoculture trips it the same as a claude one; a
+  single-harness install never fires it; any read error fails open. The
+  `parallel-teams` pattern example becomes a mixed 4-harness roster with a
+  substitute-from-`agents view` note, and `fleet-delegation` names the guard
+  plus the two non-derivable facts (a profile diversifies the model, not the
+  harness; read-only verifier tracks need real headless plan support).
+
 - **Dispatching is never a handoff — the stop hook no longer clears on the word
   "handoff" when the session dispatched agents itself.** Measured evasion
   (session f045b577, 2026-08-21): an orchestrator dispatched two `agents run …
