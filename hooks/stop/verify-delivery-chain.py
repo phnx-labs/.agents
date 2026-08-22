@@ -6,6 +6,7 @@ Reads JSON on stdin with keys:
   responsible_prs         list of PR URLs/refs this session created/worked
   last_assistant_message  final assistant message text
   repo_path               optional repo path hint
+  cwd                     session working directory as reported by the harness
 
 Outputs a check message to stdout if the agent must close a delivery loop.
 Outputs nothing (exit 0) if no issue is found or any probe fails.
@@ -90,8 +91,13 @@ def _tool_commands(transcript_path, start_offset=0):
                 yield str((block.get("input") or {}).get("command", ""))
 
 
-def _find_repo_path(transcript_path, responsible_prs, hint, start_offset=0):
-    """Best-effort repo path from hint, transcript commands, or cwd."""
+def _find_repo_path(transcript_path, responsible_prs, hint, start_offset=0, session_cwd=""):
+    """Best-effort repo path from hint, transcript commands, or the session cwd.
+
+    Only the harness-reported session cwd from the hook input is consulted —
+    never this process's own cwd, because a Stop hook can be invoked from any
+    directory and must resolve the same repo regardless.
+    """
     if hint and Path(hint).is_dir() and Path(hint, ".git").exists():
         return str(Path(hint).resolve())
 
@@ -112,8 +118,8 @@ def _find_repo_path(transcript_path, responsible_prs, hint, start_offset=0):
     if candidates:
         return candidates[-1]
 
-    if Path(".git").exists():
-        return str(Path.cwd().resolve())
+    if session_cwd and Path(session_cwd, ".git").exists():
+        return str(Path(session_cwd).resolve())
 
     return ""
 
@@ -562,7 +568,13 @@ def main():
     if not transcript_path or not Path(transcript_path).exists():
         return
 
-    repo_path = _find_repo_path(transcript_path, responsible_prs, data.get("repo_path", ""), goal_offset)
+    repo_path = _find_repo_path(
+        transcript_path,
+        responsible_prs,
+        data.get("repo_path", ""),
+        goal_offset,
+        session_cwd=data.get("cwd", ""),
+    )
     pr_data = _fetch_pr_data(repo_path, responsible_prs) if repo_path else []
     if _fetched_pr_data_failed(repo_path, responsible_prs, pr_data):
         return
