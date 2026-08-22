@@ -569,18 +569,23 @@ LIVE_STATE = re.compile(r'\b(?:still|needs?|need|not|unresolved|pending|blocking
 # sentinel (round 9: truncation made a live confession typed AFTER the
 # HANDOFF line invisible). The ask's vocabulary ('needs to review …') stays
 # out; everything else — before or after the clause — still counts.
+# ONE clause-boundary definition for every call site (round 10: the blank
+# span used [.\n] while the segments used [.\n;,] — a comma-appended live
+# confession was swept into the blank; restating a delimiter set is how all
+# ten rounds' gaps were born).
+CLAUSE_END = r'[.\n;,]'
 _scan_msg = msg
 _h = re.search(r'(?i)\bhandoff:', msg)
 if _h is not None:
     _h_end = len(msg)
-    _pm = re.search(r'[.\n]', msg[_h.start():])
+    _pm = re.search(CLAUSE_END, msg[_h.start():])
     if _pm is not None:
         _h_end = _h.start() + _pm.end()
     _scan_msg = msg[:_h.start()] + (' ' * (_h_end - _h.start())) + msg[_h_end:]
 agent_fixable = False
 for m in FIXABLE.finditer(msg):
-    seg_before = re.split(r'[.\n;,]', msg[:m.start()])[-1][-80:]
-    seg_after = re.split(r'[.\n;,]', msg[m.end():m.end() + 60])[0]
+    seg_before = re.split(CLAUSE_END, msg[:m.start()])[-1][-80:]
+    seg_after = re.split(CLAUSE_END, msg[m.end():m.end() + 60])[0]
     live_after = bool(LIVE_STATE.search(_scan_msg[max(0, m.start() - 160):m.end() + 160]))
     exempt = False
     last = None

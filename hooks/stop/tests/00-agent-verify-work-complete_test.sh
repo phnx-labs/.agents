@@ -1163,4 +1163,9 @@ check "ownership: ask-clause wording cannot poison an honest exemption" "$rc" "0
 rc=$(HOME="$FAKEHOME" FAKE_GH_STATE=OPEN run_hook "$T" "Resolved the merge conflicts with main, filed via feed post --blocked. HANDOFF: the owner - needs to review. Still blocking the release though." false)
 check "ownership: live confession after the HANDOFF clause still blocks" "$rc" "2"
 
+# OWN20. Reviewer repro 10: a comma-appended confession on the HANDOFF sentence
+#        is outside the blanked clause (one shared CLAUSE_END for all sites).
+rc=$(HOME="$FAKEHOME" FAKE_GH_STATE=OPEN run_hook "$T" "Resolved the merge conflicts with main, filed via feed post --blocked. HANDOFF: the owner - needs to review, though it is still blocking the release." false)
+check "ownership: comma-appended confession on the HANDOFF line still blocks" "$rc" "2"
+
 exit $fail
