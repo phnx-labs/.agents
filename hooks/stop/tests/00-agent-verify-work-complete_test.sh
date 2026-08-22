@@ -307,9 +307,12 @@ check "external blocker + durable ScheduleWakeup phrasing allows stop" "$rc" "0"
 rc=$(FAKE_GH_STATE=OPEN run_hook "$T" "PR #42 is blocked on CI — watcher: background gh pr checks --watch will finish it." false)
 check "external blocker + in-process gh pr checks --watch still blocks (RUSH-2394)" "$rc" "2"
 
-# 4c. Open PR blocked on a pending user action (Touch ID / review) -> allow
+# 4c. Open PR blocked on a pending user action (Touch ID / review) WITHOUT a
+#     filed --blocked receipt -> block. An owner-only gate is real, but a
+#     hand-back that never reached the owner's feed/phone is a silent stop
+#     (RUSH-3013 ownership directive); the receipt-pass variant is OWN5 below.
 rc=$(FAKE_GH_STATE=OPEN run_hook "$T" "PR #42 is blocked on your Touch ID to sign the release; awaiting your merge." false)
-check "external blocker + awaited user action allows stop" "$rc" "0"
+check "owner-targeted stop without a filed receipt blocks" "$rc" "2"
 
 # 4d. Bare 'blocked on' with no next-step/watcher -> still blocks (no loophole)
 rc=$(FAKE_GH_STATE=OPEN run_hook "$T" "This is blocked on CI for now." false)
@@ -870,7 +873,7 @@ TL=$(mk_looped 2)
 rc=$(FAKE_GH_STATE=OPEN run_hook "$TL" "CI still running, waiting." false)
 check "3rd open-PR fire still blocks" "$rc" "2"
 grep -qi "block 3 this session" "$SANDBOX/stderr" && echo "ok   - repeat guidance appears on the 3rd fire" || { echo "FAIL - no repeat guidance on the 3rd fire"; fail=1; }
-grep -qi "change tactics" "$SANDBOX/stderr" && echo "ok   - guidance asks for a tactic change" || { echo "FAIL - repeat guidance has no tactic change"; fail=1; }
+grep -qi "cannot move without the owner" "$SANDBOX/stderr" && echo "ok   - guidance teaches the owner-gated exit, not 'change tactics'" || { echo "FAIL - repeat guidance lacks the owner-gated exit"; fail=1; }
 
 # D3. Second fire (1 prior) does NOT yet add repeat guidance.
 TL1=$(mk_looped 1)
@@ -1055,5 +1058,126 @@ check "errored watcher arm does not clear the open-PR gate" "$rc" "2"
 # RP1. First-stop replay of the fe1b0f93 stand-down (not a retry) -> blocks.
 rc=$(FAKE_GH_STATE=OPEN run_hook "$T" "1.22.40 is already in flight as PR #2664, owned by two live sessions under RUSH-2639 — someone else's in-flight work, not mine to take. Nothing needs you." false)
 check "stand-down deferral to unverified sessions does not escape the open-PR gate" "$rc" "2"
+
+# --- Ownership-is-absolute (RUSH-3013): conflicts are never hand-backable; ------
+# --- the only non-merge exit is an owner-only gate with a checked receipt. ------
+
+# OWN1. Conflict-shaped handoff never clears the open-PR gate, even with the
+#       accepted handoff phrase present.
+T=$(mk_transcript create)
+rc=$(FAKE_GH_STATE=OPEN run_hook "$T" "Handing this off — merge conflicts with main need resolving before this can land." false)
+check "ownership: conflict-shaped handoff still blocks" "$rc" "2"
+grep -q "This PR is YOURS" "$SANDBOX/stderr" && echo "ok   - ownership-first message present" || { echo "FAIL - ownership message missing"; fail=1; }
+
+# OWN2. HANDOFF sentinel without any receipt: prose alone never passes.
+rc=$(FAKE_GH_STATE=OPEN run_hook "$T" "HANDOFF: the owner — approval only they can grant." false)
+check "ownership: HANDOFF line without receipt blocks" "$rc" "2"
+
+# OWN3. HANDOFF sentinel + --blocked feed receipt on disk -> owner-gated pass.
+FAKEHOME="$SANDBOX/home"
+SID="fixture-$(printf '%s' "$T" | sha256sum | cut -c1-16)"
+mkdir -p "$FAKEHOME/.agents/.history/feed"
+printf '{"blocked":true}' > "$FAKEHOME/.agents/.history/feed/block-${SID}.json"
+rc=$(HOME="$FAKEHOME" FAKE_GH_STATE=OPEN run_hook "$T" "HANDOFF: repo-admin — branch-policy gate no agent can satisfy; ask filed via feed post --blocked." false)
+check "ownership: HANDOFF + --blocked receipt passes (owner-gated)" "$rc" "0"
+
+# OWN4. A receipt cannot launder an agent-fixable state: conflict reason still blocks.
+rc=$(HOME="$FAKEHOME" FAKE_GH_STATE=OPEN run_hook "$T" "HANDOFF: the owner — merge conflicts with main; please resolve them." false)
+check "ownership: receipt cannot launder a conflict handback" "$rc" "2"
+
+# OWN5. Biometric owner-only gate WITH the filed receipt -> allow (4c's pair).
+rc=$(HOME="$FAKEHOME" FAKE_GH_STATE=OPEN run_hook "$T" "PR #42 is blocked on a Touch ID signing step no agent can perform; ask filed via feed post --blocked. HANDOFF: device-holder — Touch ID signing, feed block record filed." false)
+check "ownership: biometric gate + --blocked receipt allows stop" "$rc" "0"
+
+# OWN6. Reviewer repro: HONEST resolved-state narration must not trip the
+#       agent_fixable veto — 'fixed the failing tests and resolved merge
+#       conflicts' is completed work, and the receipted handoff still passes.
+rc=$(HOME="$FAKEHOME" FAKE_GH_STATE=OPEN run_hook "$T" "Fixed the failing tests and resolved merge conflicts with main; CI is green and docs are written. Ask filed via feed post --blocked. HANDOFF: repo-admin — branch-policy gate no agent can satisfy." false)
+check "ownership: resolved-state narration does not trip the fixable veto" "$rc" "0"
+
+# OWN7. Mixed sentence: resolution verb in one sentence does not launder a
+#       LIVE blocker stated in another.
+rc=$(HOME="$FAKEHOME" FAKE_GH_STATE=OPEN run_hook "$T" "Resolved the lint errors. There are still merge conflicts with main. HANDOFF: the owner — please take it from here." false)
+check "ownership: live conflict in its own sentence still blocks" "$rc" "2"
+
+# OWN8. Reviewer repro 2: a comma-joined resolution verb in a NEIGHBORING
+#       clause does not launder a live blocker (clause-scoped check).
+rc=$(HOME="$FAKEHOME" FAKE_GH_STATE=OPEN run_hook "$T" "Addressed feedback on the branch name, merge conflicts with main still need resolving before this can land, filed via feed post --blocked. HANDOFF: the owner - needs to review." false)
+check "ownership: comma-joined resolution verb cannot launder a live conflict" "$rc" "2"
+
+# OWN9. Honest postfix passive — 'merge conflicts with main resolved' — is
+#       completed work in its own clause and must not trip the veto.
+rc=$(HOME="$FAKEHOME" FAKE_GH_STATE=OPEN run_hook "$T" "Merge conflicts with main resolved, CI green. Ask filed via feed post --blocked. HANDOFF: repo-admin — branch-policy gate no agent can satisfy." false)
+check "ownership: postfix 'conflicts resolved' does not trip the veto" "$rc" "0"
+
+# OWN10. Reviewer repro 3a: a subordinating conjunction ('although') between a
+#        resolution verb and a live blocker does not launder it.
+rc=$(HOME="$FAKEHOME" FAKE_GH_STATE=OPEN run_hook "$T" "Already fixed one issue although merge conflicts with main remain, filed via feed post --blocked. HANDOFF: the owner - needs to review." false)
+check "ownership: 'although'-joined resolution verb cannot launder a live conflict" "$rc" "2"
+
+# OWN11. Reviewer repro 3b: same class via 'though' + a different FIXABLE
+#        alternative (red CI with an adverb).
+rc=$(HOME="$FAKEHOME" FAKE_GH_STATE=OPEN run_hook "$T" "Addressed the review comments though ci is still failing on the release branch, filed via feed post --blocked. HANDOFF: the owner - needs to review." false)
+check "ownership: 'though'-joined resolution verb cannot launder red CI" "$rc" "2"
+
+# OWN12. Reviewer repro 4: plain 'and' between the resolution verb and a live
+#        blocker breaks adjacency — no laundering via the commonest conjunction.
+rc=$(HOME="$FAKEHOME" FAKE_GH_STATE=OPEN run_hook "$T" "Fixed the docs and merge conflicts with main remain, filed via feed post --blocked. HANDOFF: the owner - needs to review." false)
+check "ownership: 'and'-joined resolution verb cannot launder a live conflict" "$rc" "2"
+
+# OWN13. Reviewer repro 5: connective adverbs ('also') and any other content
+#        word in the verb-to-phrase gap break adjacency — the gap allowlist is
+#        closed-class function words only.
+rc=$(HOME="$FAKEHOME" FAKE_GH_STATE=OPEN run_hook "$T" "Resolved the doc issue also merge conflicts with main remain outstanding, filed via feed post --blocked. HANDOFF: the owner - needs to review." false)
+check "ownership: 'also'-joined resolution verb cannot launder a live conflict" "$rc" "2"
+
+# OWN14. Allowlist positive: quantified honest coordination stays exempt —
+#        'resolved all the remaining merge conflicts' has a pure function-word gap.
+rc=$(HOME="$FAKEHOME" FAKE_GH_STATE=OPEN run_hook "$T" "Resolved all the remaining merge conflicts with main; CI green. Ask filed via feed post --blocked. HANDOFF: repo-admin — branch-policy gate no agent can satisfy." false)
+check "ownership: function-word gap keeps honest resolution exempt" "$rc" "0"
+
+# OWN15. Reviewer repro 6a: a prefix exemption cannot ignore a live-state word
+#        AFTER the phrase — 'Resolved the merge conflicts ... remain outstanding'
+#        is self-contradictory and the blocker counts as live.
+rc=$(HOME="$FAKEHOME" FAKE_GH_STATE=OPEN run_hook "$T" "Resolved the merge conflicts with main remain outstanding, filed via feed post --blocked. HANDOFF: the owner - needs to review." false)
+check "ownership: live-state word after the phrase voids the prefix exemption" "$rc" "2"
+
+# OWN16. Reviewer repro 6b: same class, different FIXABLE alternative.
+rc=$(HOME="$FAKEHOME" FAKE_GH_STATE=OPEN run_hook "$T" "Fixed the rebase needed against origin still pending, filed via feed post --blocked. HANDOFF: the owner - needs to review." false)
+check "ownership: 'still pending' after the phrase voids the exemption" "$rc" "2"
+
+# OWN17. Reviewer repro 7: a back-referencing live clause past the segment
+#        boundary ('they still block the release') is inside the 160-char
+#        punctuation-blind live window and voids the exemption.
+rc=$(HOME="$FAKEHOME" FAKE_GH_STATE=OPEN run_hook "$T" "Resolved the merge conflicts with main, they still block the release, filed via feed post --blocked. HANDOFF: the owner - please take over." false)
+check "ownership: back-referencing live clause voids the exemption" "$rc" "2"
+
+# OWN18. Reviewer repro 8 (false-positive direction): the HANDOFF clause's own
+#        vocabulary ('needs to review …') must not poison an exemption for an
+#        already-resolved blocker — the clause's span is blanked from the scan.
+rc=$(HOME="$FAKEHOME" FAKE_GH_STATE=OPEN run_hook "$T" "Merge conflicts with main resolved, CI green. Ask filed via feed post --blocked. HANDOFF: the owner - needs to review the pricing policy." false)
+check "ownership: ask-clause wording cannot poison an honest exemption" "$rc" "0"
+
+# OWN19. Reviewer repro 9: a live confession typed AFTER the HANDOFF clause is
+#        still scanned — the sentinel classifies, it does not truncate.
+rc=$(HOME="$FAKEHOME" FAKE_GH_STATE=OPEN run_hook "$T" "Resolved the merge conflicts with main, filed via feed post --blocked. HANDOFF: the owner - needs to review. Still blocking the release though." false)
+check "ownership: live confession after the HANDOFF clause still blocks" "$rc" "2"
+
+# OWN20. Reviewer repro 10: a comma-appended confession on the HANDOFF sentence
+#        still blocks — 'still blocking …' is itself a FIXABLE phrase.
+rc=$(HOME="$FAKEHOME" FAKE_GH_STATE=OPEN run_hook "$T" "Resolved the merge conflicts with main, filed via feed post --blocked. HANDOFF: the owner - needs to review, though it is still blocking the release." false)
+check "ownership: comma-appended confession on the HANDOFF line still blocks" "$rc" "2"
+
+# OWN21. Reviewer repro 11 (the trade-off pair, both directions in one place):
+#        a reason-bearing ask ('needs the credential, which is not available')
+#        must NOT poison a resolved conflict — ask text past the sentinel is
+#        never scanned...
+rc=$(HOME="$FAKEHOME" FAKE_GH_STATE=OPEN run_hook "$T" "Merge conflicts with main resolved, CI green. Ask filed via feed post --blocked. HANDOFF: the owner - needs the credential, which is not available to agents." false)
+check "ownership: reason-bearing ask cannot poison a resolved conflict" "$rc" "0"
+
+# OWN22. ...while a confession appended after that same reason-bearing ask is
+#        still caught, because the confession idiom is FIXABLE on its own.
+rc=$(HOME="$FAKEHOME" FAKE_GH_STATE=OPEN run_hook "$T" "Resolved the merge conflicts with main, filed via feed post --blocked. HANDOFF: the owner - needs the credential, which is not available. Still blocking the release though." false)
+check "ownership: confession after a reason-bearing ask still blocks" "$rc" "2"
 
 exit $fail
