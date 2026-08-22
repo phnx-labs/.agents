@@ -62,8 +62,10 @@ for path in paths:
 cmd=$(_json_field "$input" "tool_input.command" "toolInput.command") || exit 0
 [ -n "$cmd" ] || exit 0
 
-# Only actual `agents teams add <team> <harness> ...` invocations at a command
-# position (start / after ; & | && || or $( ) — not a grep pattern or prose.
+# Cheap substring pre-filter only — the real gate is the command-position
+# extraction below. A command that merely MENTIONS the marker in prose, an
+# echo string, or a comment must never be denied (review finding on the PR
+# that introduced this guard).
 case "$cmd" in
   *"agents teams add"*|*"ag teams add"*) : ;;
   *) exit 0 ;;
@@ -74,13 +76,20 @@ case "$cmd" in
   *single-harness:*|*single_harness:*) exit 0 ;;
 esac
 
-# Extract team + harness from the first `agents teams add` occurrence.
-set -- $(printf '%s\n' "$cmd" | sed -nE 's/.*\b(agents|ag) teams add[[:space:]]+([^[:space:]]+)[[:space:]]+([^[:space:]]+).*/\2 \3/p' | head -1)
+# Extract team + harness from the first `agents teams add` at a COMMAND
+# position: start of the command, or right after a shell separator (; & |,
+# covering && and ||), a subshell open, or a newline. `echo "reminder:
+# agents teams add x y"` has a quote/word before the marker and never
+# matches; `cd wt && agents teams add x y` does.
+set -- $(printf '%s\n' "$cmd" | sed -nE 's/^[[:space:]]*(env [^;&|(]*)?(agents|ag) teams add[[:space:]]+([^[:space:]]+)[[:space:]]+([^[:space:]]+).*/\3 \4/p; s/.*[;&|(][[:space:]]*(agents|ag) teams add[[:space:]]+([^[:space:]]+)[[:space:]]+([^[:space:]]+).*/\2 \3/p' | head -1)
 team="${1:-}"
 harness="${2:-}"
 [ -n "$team" ] && [ -n "$harness" ] || exit 0
-# Flags in either slot mean an unusual invocation shape — stay out of the way.
-case "$team$harness" in -*) exit 0 ;; esac
+# A flag in the team slot means an unusual invocation shape — stay out of the
+# way. (A flag in the harness slot is harmless: no real agent_type starts
+# with '-' so the roster comparison below can never match it.)
+case "$team" in -*) exit 0 ;; esac
+case "$harness" in -*) exit 0 ;; esac
 
 home_dir="${HOME:-}"
 [ -n "$home_dir" ] || exit 0

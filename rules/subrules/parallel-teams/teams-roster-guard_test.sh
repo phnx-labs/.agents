@@ -65,6 +65,16 @@ check "second add passes" "$(run_guard 'agents teams add fresh claude "Owns: src
 
 # 7. Non-teams commands pass untouched; unreadable state fails open.
 check "unrelated command passes" "$(run_guard 'git status')" "0"
+
+# 7b. Mentions are never invocations (reviewer repros): prose in echo/cat
+#     passes even with a blockable roster; a chained real invocation blocks.
+mk_versions claude codex grok
+rm -rf "$SANDBOX/.agents/.history/teams"
+add_teammate myteam claude; add_teammate myteam claude
+check "echo-mention passes" "$(run_guard 'echo "reminder: agents teams add myteam claude before EOD"')" "0"
+check "comment-mention passes" "$(run_guard 'cat notes.md # says: agents teams add myteam claude "context" --name x')" "0"
+check "&&-chained real invocation still blocks" "$(run_guard 'cd /tmp && agents teams add myteam claude "Owns: src/z" --name t3')" "2"
+check "grep pattern passes" "$(run_guard 'grep -r "agents teams add" docs/')" "0"
 rm -rf "$SANDBOX/.agents/.history/teams"
 add_teammate broken claude; add_teammate broken claude
 for f in "$SANDBOX/.agents/.history/teams/agents/"*/meta.json; do printf 'not-json' > "$f"; done
