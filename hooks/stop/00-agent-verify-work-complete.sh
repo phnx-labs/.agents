@@ -523,12 +523,21 @@ plan_mode = re.search(r'\bplan mode\b', msg) and re.search(r'\b(cannot|can not|f
 # missing docs/CHANGELOG are the agent's own work — a stop that cites one
 # of them as its blocker or handoff reason NEVER clears this gate, whatever
 # else the message says. Fix it, then stop.
-agent_fixable = re.search(
+FIXABLE = re.compile(
     r'\b(merge conflicts?|conflicts? (?:with|on|in|against) (?:main|master|origin|the base)|'
     r'rebase (?:needed|required|pending)|needs? (?:a )?rebase|'
     r'ci (?:is )?(?:red|failing|broken)|failing (?:tests?|checks?)|tests? (?:are )?failing|'
-    r'docs? (?:are )?(?:missing|not (?:yet )?written|still owed)|changelog (?:entry )?(?:missing|not (?:yet )?written))\b',
-    msg)
+    r'docs? (?:are )?(?:missing|not (?:yet )?written|still owed)|changelog (?:entry )?(?:missing|not (?:yet )?written))\b')
+# Tense matters (review finding on this PR): 'fixed the failing tests and
+# resolved merge conflicts' is completed work, not a blocker. A fixable phrase
+# only counts when no resolution verb precedes it in its own sentence.
+RESOLVED = re.compile(r'\b(?:fixed|resolved|rebased|cleared|addressed|landed|no (?:more|remaining|longer))\b')
+agent_fixable = False
+for sent in re.split(r'[.\n;]+', msg):
+    m = FIXABLE.search(sent)
+    if m and not RESOLVED.search(sent[:m.start()]):
+        agent_fixable = True
+        break
 # The published exit for a GENUINELY owner-only gate (a credential, a repo
 # policy only the owner can satisfy, a product decision):
 #   HANDOFF: <owner> - <receipt>

@@ -1089,4 +1089,15 @@ check "ownership: receipt cannot launder a conflict handback" "$rc" "2"
 rc=$(HOME="$FAKEHOME" FAKE_GH_STATE=OPEN run_hook "$T" "PR #42 is blocked on your Touch ID to sign the release; ask filed via feed post --blocked. HANDOFF: the owner — Touch ID signing, feed block record filed." false)
 check "ownership: biometric gate + --blocked receipt allows stop" "$rc" "0"
 
+# OWN6. Reviewer repro: HONEST resolved-state narration must not trip the
+#       agent_fixable veto — 'fixed the failing tests and resolved merge
+#       conflicts' is completed work, and the receipted handoff still passes.
+rc=$(HOME="$FAKEHOME" FAKE_GH_STATE=OPEN run_hook "$T" "Fixed the failing tests and resolved merge conflicts with main; CI is green and docs are written. Ask filed via feed post --blocked. HANDOFF: the owner — repo policy gate only they can clear." false)
+check "ownership: resolved-state narration does not trip the fixable veto" "$rc" "0"
+
+# OWN7. Mixed sentence: resolution verb in one sentence does not launder a
+#       LIVE blocker stated in another.
+rc=$(HOME="$FAKEHOME" FAKE_GH_STATE=OPEN run_hook "$T" "Resolved the lint errors. There are still merge conflicts with main. HANDOFF: the owner — please take it from here." false)
+check "ownership: live conflict in its own sentence still blocks" "$rc" "2"
+
 exit $fail

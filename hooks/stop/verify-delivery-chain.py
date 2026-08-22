@@ -252,7 +252,9 @@ def _touched_ticket_ids(transcript_path, pr_data, branch_name, commits_text, sta
     for s in sources:
         ids.extend(_ticket_ids(s))
     for cmd in _tool_commands(transcript_path, start_offset):
-        for m in re.finditer(r"\blinear\s+(?:update|create)\b[^\n]*?(RUSH-\d+)", cmd, flags=re.IGNORECASE):
+        # `linear update <id>` only — a `linear create` command cannot carry the
+        # id of a ticket that does not exist yet (review finding on this PR).
+        for m in re.finditer(r"\blinear\s+update\b[^\n]*?(RUSH-\d+)", cmd, flags=re.IGNORECASE):
             ids.append(m.group(1).upper())
     seen = set()
     out = []
