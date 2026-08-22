@@ -564,11 +564,19 @@ GAP_AFTER = re.compile(r'^(?:\s*(?:the|a|an|all|its|our|their|with|on|in|against
 # quantifier ('resolved all the remaining conflicts' is honest), and every
 # measured launder shape carries an unambiguous live word alongside it.
 LIVE_STATE = re.compile(r'\b(?:still|needs?|need|not|unresolved|pending|blocking|outstanding|exists?|unfixed|open)\b', re.I)
+# The live window never crosses into the HANDOFF/ask clause (round 8: the
+# ask's own vocabulary — 'needs to review …' — poisoned the exemption for an
+# already-resolved blocker). The sentinel separates what the agent DID from
+# what the owner is ASKED; live-state words only count on the did side.
+_h = re.search(r'(?i)\bhandoff:', msg)
 agent_fixable = False
 for m in FIXABLE.finditer(msg):
     seg_before = re.split(r'[.\n;,]', msg[:m.start()])[-1][-80:]
     seg_after = re.split(r'[.\n;,]', msg[m.end():m.end() + 60])[0]
-    live_after = bool(LIVE_STATE.search(msg[max(0, m.start() - 160):m.end() + 160]))
+    live_end = m.end() + 160
+    if _h is not None and _h.start() >= m.end():
+        live_end = min(live_end, _h.start())
+    live_after = bool(LIVE_STATE.search(msg[max(0, m.start() - 160):live_end]))
     exempt = False
     last = None
     for r in RESOLVED.finditer(seg_before):

@@ -1152,4 +1152,10 @@ check "ownership: 'still pending' after the phrase voids the exemption" "$rc" "2
 rc=$(HOME="$FAKEHOME" FAKE_GH_STATE=OPEN run_hook "$T" "Resolved the merge conflicts with main, they still block the release, filed via feed post --blocked. HANDOFF: the owner - please take over." false)
 check "ownership: back-referencing live clause voids the exemption" "$rc" "2"
 
+# OWN18. Reviewer repro 8 (false-positive direction): the HANDOFF clause's own
+#        vocabulary ('needs to review …') must not poison an exemption for an
+#        already-resolved blocker — the live window stops at the sentinel.
+rc=$(HOME="$FAKEHOME" FAKE_GH_STATE=OPEN run_hook "$T" "Merge conflicts with main resolved, CI green. Ask filed via feed post --blocked. HANDOFF: the owner - needs to review the pricing policy." false)
+check "ownership: ask-clause wording cannot poison an honest exemption" "$rc" "0"
+
 exit $fail
