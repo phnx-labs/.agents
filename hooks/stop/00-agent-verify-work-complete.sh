@@ -648,8 +648,8 @@ This PR is YOURS until it merges. Keep driving it:
     review (subagents/code-reviewer); merge on green. Reviews are never the
     owner's job.
 Conflicts, red CI, missing docs, or "waiting on review" are never grounds to
-stop or hand back. Rare exception, only when NO agent action can clear the
-gate (a credential, a repo policy): agents feed post "<ask>" --blocked, then
+stop or hand back. Rare exception, only when NO agent action can satisfy the
+requirement (a credential, a repo policy): agents feed post "<ask>" --blocked, then
 end with HANDOFF: <owner> - <receipt>.
 PRMSG
         if [ "$self_dispatch" = "yes" ]; then

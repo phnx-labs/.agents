@@ -55,3 +55,9 @@ In flight is not done. Watch it to its real finish — a merged PR, a published 
 - **Filing a messy ticket** to dispatch — clean it at filing.
 - **Auto-dispatching a call that needs the human** (cancel / is-this-wanted / reprioritize) — surface it, don't build it.
 - **Stopping at "dispatched."** It's in flight, not shipped.
+
+**Web or native surface touched? Drive it, don't describe it.** Verification
+of anything with a UI runs through `agents browser` (web, headless on your
+machine) or `agents computer` (native, element mode) — screenshot, read back,
+then claim. A verification claim with no drive of the real surface is a
+proxy, not proof.

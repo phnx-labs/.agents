@@ -16,9 +16,10 @@ The traps the flags won't teach you:
   detached.
 - Probe with the operation you will perform: a plan-mode ping proves login,
   not that the box can do the job. Work that writes → probe `git fetch` +
-  `git worktree add` first. codex cannot write anywhere on this fleet today
-  (sandbox failures, yet the dispatch exits 0) — write-heavy work goes to
-  claude on a write-probed box.
+  `git worktree add` first, ON the target box AS the target harness.
+  Capability claims expire and are per-machine — never route around a harness
+  on memory of an old failure. Record the probe date + result in the
+  distribution plan; a stale probe is not a capability fact.
 - A detached run's status is only true through `agents devices ps` (it
   reconciles from the remote `.exit` file). A killed process or rebooted box
   never writes one — bound every wait with a ceiling from the job's expected

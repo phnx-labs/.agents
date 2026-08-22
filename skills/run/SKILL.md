@@ -8,6 +8,12 @@ user-invocable: true
 
 # Run Skill
 
+> Harness names in these examples are anchors, not prescriptions — substitute
+> from the harnesses installed on this machine (`agents view`). Spreading runs
+> across installed harnesses is the default; the `teams-roster-guard` enforces
+> it for team rosters.
+
+
 Dispatch a single agent for a one-off task. `agents run` is the fundamental command for interactive sessions and headless automation across Claude, Codex, Gemini, Cursor, OpenCode, and OpenClaw.
 
 ## Headless vs interactive
@@ -20,7 +26,7 @@ Dispatch a single agent for a one-off task. `agents run` is the fundamental comm
 agents run claude
 
 # Headless one-shot
-agents run claude "summarize recent git commits"
+agents run grok "summarize recent git commits"
 ```
 
 ## Modes
@@ -35,8 +41,8 @@ Permission mode controls what the agent can do.
 | `skip` | Last-resort bypass of every permission prompt. Direct exec uses the native unsafe flag; ACP selects a protocol permission option. `full` remains an alias. |
 
 ```bash
-agents run claude "fix lint errors in src/" --mode edit
-agents run claude "/code:commit" --mode auto          # run a command unattended, safely
+agents run kimi "fix lint errors in src/" --mode edit
+agents run codex "/code:commit" --mode auto          # run a command unattended, safely
 ```
 
 **Treat `skip` as a last resort.** In direct-exec runs (without `--acp`), agents-cli
@@ -81,7 +87,7 @@ rejects `plan` instead of silently running writable.
 
 ```bash
 # Reasoning effort (claude and codex only)
-agents run claude "..." --effort high
+agents run grok "..." --effort high
 
 # Override the model directly
 agents run claude "..." --model claude-opus-4-7
@@ -94,8 +100,8 @@ agents run claude "..." --model claude-opus-4-7
 Inject keychain-backed bundles as env vars at run time. Repeatable.
 
 ```bash
-agents run claude "deploy the api" --secrets prod
-agents run claude "..." --secrets prod --secrets stripe
+agents run kimi "deploy the api" --secrets prod
+agents run droid "..." --secrets prod --secrets stripe
 ```
 
 Bundles resolve from macOS Keychain (no plaintext on disk). See the `secrets` skill for bundle management.
@@ -119,8 +125,8 @@ Controls which installed version/account gets the work.
 | `balanced` | Distribute load across healthy accounts by remaining capacity |
 
 ```bash
-agents run claude "..." --strategy balanced
-agents run claude "..." -b                  # shortcut for --strategy balanced
+agents run opencode "..." --strategy balanced
+agents run codex "..." -b                  # shortcut for --strategy balanced
 
 # Select any named provider or native account
 agents run claude "..." --account work
@@ -172,14 +178,14 @@ agents run claude@2.1.143 "..."
 ## Resume a previous session (Claude only)
 
 ```bash
-agents run claude --session-id <id>
+agents run grok --session-id <id>
 ```
 
 ## Output and observability
 
 ```bash
 # Stream ndjson events for parsing
-agents run claude "..." --json --quiet | jq
+agents run kimi "..." --json --quiet | jq
 
 # Verbose execution logs
 agents run claude "..." --verbose
@@ -192,8 +198,8 @@ agents run claude "..." --verbose
 Kill the agent after a duration. Useful in CI and scheduled jobs.
 
 ```bash
-agents run claude "generate sales report" --timeout 30m
-agents run claude "..." --timeout 2h30m
+agents run droid "generate sales report" --timeout 30m
+agents run opencode "..." --timeout 2h30m
 ```
 
 ## Grant access to extra directories (Claude only)
@@ -205,7 +211,7 @@ agents run claude "refactor shared utils" --add-dir ../shared --add-dir ../other
 ## Working directory
 
 ```bash
-agents run claude "..." --cwd /path/to/repo
+agents run codex "..." --cwd /path/to/repo
 ```
 
 ## ACP routing
@@ -214,7 +220,7 @@ Route through the Agent Client Protocol (Zed integration).
 
 ```bash
 agents run gemini "..." --acp
-agents run claude "..." --acp           # via @zed-industries/claude-code-acp adapter
+agents run grok "..." --acp           # via @zed-industries/claude-code-acp adapter
 ```
 
 Emits a unified event stream; ndjson when combined with `--json`.
@@ -236,7 +242,7 @@ A different axis from cloud: `agents run --device <name>` runs the agent on one 
 
 ```bash
 agents run claude "profile this build" --device gpu-box   # run there, follow live
-agents run claude "..." --device gpu-box --no-follow        # detach
+agents run kimi "..." --device gpu-box --no-follow        # detach
 
 agents devices ps              # list dispatched runs
 agents logs --device gpu-box   # pick a run on that host and view its log
@@ -259,7 +265,7 @@ throttled accounts stays excluded. If no machine is eligible, the command fails
 loud; it never silently degrades to the local machine.
 
 ```bash
-agents run claude "fix the flaky test" --device auto
+agents run droid "fix the flaky test" --device auto
 agents run claude "summarize logs" --device auto --no-follow
 ```
 
