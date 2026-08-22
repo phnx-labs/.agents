@@ -4,6 +4,27 @@
 
 ### Fixed
 
+- **Ownership is absolute: the stop hook's open-PR gate no longer offers
+  "merge it or name an owner" as peers, and hand-backs to the owner require a
+  filed receipt (RUSH-3013).** The STOP message is now ownership-first: rebase
+  conflicts yourself, fix red CI, write the docs/CHANGELOG the diff owes — a
+  stop citing any agent-fixable state (merge conflicts, a needed rebase,
+  failing checks, missing docs) never clears the gate, with or without handoff
+  phrasing. The only non-merge exit is a genuinely owner-only gate (a
+  credential, a repo policy, a product decision) evidenced by the
+  `agents feed post --blocked` record on disk plus a `HANDOFF: <owner> —
+  <receipt>` final line; owner-targeted prose without that receipt blocks
+  (this also tightens the old biometric escape — the fail-loud ask must reach
+  the owner's feed, not just the transcript). Delegating to another agent,
+  session, or durable watcher keeps the existing escapes. The delivery gate
+  now demands `linear update --done` only on tickets this session actually
+  worked (a Linear write, its own branch/commits/PRs) — tickets merely
+  referenced (another session's In Review work, a parked decision ticket)
+  render as FYI, never a demand (measured: f045b577 was blocked 8× over
+  other sessions' tickets and correctly refused to fabricate closure). The
+  repeat-block note teaches the receipt exit instead of "change tactics", and
+  "close out the delivery, then stop again" is now "…then finish".
+
 - **Dispatching is never a handoff — the stop hook no longer clears on the word
   "handoff" when the session dispatched agents itself.** Measured evasion
   (session f045b577, 2026-08-21): an orchestrator dispatched two `agents run …

@@ -231,6 +231,38 @@ def _all_ticket_ids(transcript_path, pr_data, branch_name, commits_text, first_u
     return out
 
 
+def _touched_ticket_ids(transcript_path, pr_data, branch_name, commits_text, start_offset=0):
+    """Ticket IDs this session actually WORKED — the only ones the gate may
+    demand state changes on. A ticket that is merely referenced (the task
+    prompt's context list, another session's In Review work, the owner's
+    parked decision ticket) is not this session's to close; demanding
+    `--done` on it is demanding fabricated proof (measured: f045b577 was
+    blocked 8 times over other sessions' tickets and refused, correctly).
+
+    Touched = a Linear WRITE command in this transcript (`linear update` /
+    `linear create`), or an id carried by this session's own delivery
+    artifacts: its branch name, its commits, its responsible PRs' titles and
+    head branches. Deliberately excluded: the first user message and PR
+    bodies — both quote context tickets the session never owned."""
+    ids = []
+    sources = [branch_name, commits_text]
+    for pr in pr_data:
+        sources.append(pr.get("title", ""))
+        sources.append(pr.get("headRefName", ""))
+    for s in sources:
+        ids.extend(_ticket_ids(s))
+    for cmd in _tool_commands(transcript_path, start_offset):
+        for m in re.finditer(r"\blinear\s+(?:update|create)\b[^\n]*?(RUSH-\d+)", cmd, flags=re.IGNORECASE):
+            ids.append(m.group(1).upper())
+    seen = set()
+    out = []
+    for t in ids:
+        if t not in seen:
+            seen.add(t)
+            out.append(t)
+    return out
+
+
 def _fetch_pr_data(repo_path, pr_refs):
     """Return list of dicts with title/body/headRefName for each PR ref."""
     data = []
@@ -572,6 +604,7 @@ def main():
 
     ticket_ids = _all_ticket_ids(transcript_path, pr_data, branch_name, commits_text, first_user_msg, goal_offset)
     related_ids = _related_ticket_ids(pr_data, commits_text)
+    touched_ids = set(_touched_ticket_ids(transcript_path, pr_data, branch_name, commits_text, goal_offset))
 
     open_tickets = []
     for t in ticket_ids:
@@ -590,6 +623,11 @@ def main():
             return  # fail open on probe error
         if state.lower() not in DONE_STATES:
             open_related.append((t, state, title))
+
+    # Only tickets this session actually worked are demandable; the rest are
+    # FYI context on someone else's board state, never a block of their own.
+    open_touched = [x for x in open_tickets if x[0] in touched_ids]
+    open_fyi = [x for x in open_tickets if x[0] not in touched_ids] + open_related
 
     # The docs/CHANGELOG demand keys off _looks_user_facing, a keyword match on the
     # conversation ("command", "flag", "feature", ...). A conversation that merely
@@ -623,10 +661,8 @@ def main():
     )
 
     issues = []
-    if open_tickets:
-        issues.append("open Linear ticket(s) referenced by this delivery")
-    if open_related:
-        issues.append("open related/downstream Linear ticket(s)")
+    if open_touched:
+        issues.append("open Linear ticket(s) this session worked")
     if user_facing and (not docs_ok or not changelog_ok):
         issues.append("docs and CHANGELOG not updated for a user-facing change")
     if shippable and (not release_ran or not release_verified):
@@ -639,15 +675,15 @@ def main():
     if not issues:
         return
 
-    lines = ["STOP — close out the delivery, then stop again:"]
+    lines = ["STOP — close out the delivery, then finish:"]
 
-    if open_tickets:
-        ids = ", ".join(f"{t} [{state}]" for t, state, _ in open_tickets)
-        lines.append(f"  - Open Linear ticket(s): {ids} — update state with proof (`linear update <id> --done --proof <url|file|metric>`).")
+    if open_touched:
+        ids = ", ".join(f"{t} [{state}]" for t, state, _ in open_touched)
+        lines.append(f"  - Open Linear ticket(s) this session worked: {ids} — update state with proof (`linear update <id> --done --proof <url|file|metric>`), or state on the ticket why it stays open.")
 
-    if open_related:
-        ids = ", ".join(f"{t} [{state}]" for t, state, _ in open_related)
-        lines.append(f"  - Related/downstream ticket(s) still open: {ids}.")
+    if open_fyi:
+        ids = ", ".join(f"{t} [{state}]" for t, state, _ in open_fyi)
+        lines.append(f"  - FYI, referenced but not yours to close (no action, never mark these Done): {ids}.")
 
     if user_facing and (not docs_ok or not changelog_ok):
         missing = " and ".join(m for m, ok in (("docs", docs_ok), ("CHANGELOG", changelog_ok)) if not ok)

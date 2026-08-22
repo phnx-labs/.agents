@@ -141,8 +141,11 @@ repeat_guidance() {   # $1 = human name of the repeated item, $2 = prior count
   local n="${2:-0}"
   [ "$n" -lt 2 ] && return 0
   cat >&2 <<GUIDANCE
-NOTE — block $((n + 1)) this session for $1. The same approach is not
-working: change tactics.
+NOTE — block $((n + 1)) this session for $1.
+If this genuinely cannot move without the owner, file the ask
+(agents feed post "<ask>" --blocked) and end with HANDOFF: <owner> - <receipt>.
+Otherwise the state must change before you stop again — re-explaining it will
+not clear this check.
 
 GUIDANCE
 }
@@ -190,6 +193,9 @@ EVIDENCE = [
     r'https?://\S+',
     r'\bpgrep\b', r'\bps -p \d+', r'\blease (?:state|held|claimed)\b',
     r'\bmonitors runs\b', r'\bupdated_at\b',
+    # Honest owner-gated receipts are evidence, not evasion: the published
+    # HANDOFF exit, a filed --blocked feed record, an armed durable monitor.
+    r'(?m)^\s*handoff:', r'feed post [^\n]*--blocked', r'\bagents monitors (?:add|view)\b',
 ]
 evading = any(re.search(p, msg) for p in PHRASES) and not any(re.search(p, msg) for p in EVIDENCE)
 print('yes' if evading else 'no')
@@ -466,11 +472,20 @@ except Exception:
       # Handoff escape: the final message may legitimately stop with an open PR
       # if it explicitly hands it off (named owner/babysitter) — restating that
       # after this check fires once is enough to pass (stop_hook_active).
-      has_handoff=$(echo "$INPUT_JSON" | LIVE_WATCHER="$live_watcher" SELF_DISPATCH="$self_dispatch" python3 -c "
+      #
+      # Owner-gated receipt: a fail-loud needs-you record filed by THIS session
+      # (`agents feed post --blocked` writes ~/.agents/.history/feed/block-<sid>.json)
+      # is a verifiable handoff receipt for a genuinely owner-only gate. Prose
+      # alone never passes; the receipt is checked on disk.
+      gate_sid=$(echo "$INPUT_JSON" | python3 -c "import json,sys; print(json.load(sys.stdin).get('session_id',''))" 2>/dev/null)
+      block_receipt="no"
+      [ -n "$gate_sid" ] && [ -f "$HOME/.agents/.history/feed/block-${gate_sid}.json" ] && block_receipt="yes"
+      has_handoff=$(echo "$INPUT_JSON" | LIVE_WATCHER="$live_watcher" SELF_DISPATCH="$self_dispatch" BLOCK_RECEIPT="$block_receipt" python3 -c "
 import json, os, re, sys
 msg = json.load(sys.stdin).get('last_assistant_message', '').lower()
 live_watcher = os.environ.get('LIVE_WATCHER') == 'yes'
 self_dispatch = os.environ.get('SELF_DISPATCH') == 'yes'
+block_receipt = os.environ.get('BLOCK_RECEIPT') == 'yes'
 pat = r'\b(handed off|hand-off|handoff|handing (this|it) off|will babysit|is babysitting|takes over from here|owns (this|the) pr)\b'
 # Structured external-blocker stop — the check's own option 3. A genuine external
 # blocker the agent CANNOT resolve (CI/GitHub outage, a signing step needing the
@@ -502,10 +517,42 @@ plan_mode = re.search(r'\bplan mode\b', msg) and re.search(r'\b(cannot|can not|f
 # handoff phrase is the exact measured evasion (f045b577 handed its own
 # children to themselves). Phrase + a durable watcher still passes; phrase
 # alone does not.
-ok = ((re.search(pat, msg) and (not self_dispatch or live_watcher))
+#
+# Ownership is absolute for agent-fixable states (owner directive,
+# 2026-08-21): conflicts, a needed rebase, red CI, failing tests, and
+# missing docs/CHANGELOG are the agent's own work — a stop that cites one
+# of them as its blocker or handoff reason NEVER clears this gate, whatever
+# else the message says. Fix it, then stop.
+agent_fixable = re.search(
+    r'\b(merge conflicts?|conflicts? (?:with|on|in|against) (?:main|master|origin|the base)|'
+    r'rebase (?:needed|required|pending)|needs? (?:a )?rebase|'
+    r'ci (?:is )?(?:red|failing|broken)|failing (?:tests?|checks?)|tests? (?:are )?failing|'
+    r'docs? (?:are )?(?:missing|not (?:yet )?written|still owed)|changelog (?:entry )?(?:missing|not (?:yet )?written))\b',
+    msg)
+# The published exit for a GENUINELY owner-only gate (a credential, a repo
+# policy only the owner can satisfy, a product decision):
+#   HANDOFF: <owner> - <receipt>
+# honored only with a verifiable receipt: the --blocked feed record on disk,
+# or a live durable watcher.
+sentinel = re.search(r'^\s*handoff:\s*\S[^\n]*\S', msg, re.M)
+# A handoff whose TARGET is the user/owner is a hand-back, and a hand-back
+# without a filed receipt is the exact behavior the owner banned (2026-08-21:
+# agents take full responsibility, never hand things back to the owner).
+# Delegation to another agent, session, or watcher keeps the legacy escapes.
+owner_target = re.search(
+    r'\bhandoff:\s*(?:you\b|muqsit\b|the owner\b)|'
+    r'\b(?:handed|handing|hand)(?: \w+){0,2} (?:back )?(?:off )?to (?:you|muqsit|the owner)\b|'
+    r'\byour (?:approval|review|decision|sign-?off|merge|click)\b|'
+    r'\bneeds? (?:you|muqsit|the owner) to\b',
+    msg)
+legacy_ok = ((re.search(pat, msg) and (not self_dispatch or live_watcher))
       or (blocked and nextstep)
       or (live_watcher and watcher_phrase)
       or plan_mode)
+ok = (not agent_fixable) and (
+      (sentinel and (block_receipt or live_watcher))
+      or (block_receipt and re.search(r'\b(owner-gated|owner-only|only (?:the owner|you) can)\b', msg))
+      or (legacy_ok and not sentinel and not (owner_target and not block_receipt)))
 print('yes' if ok else 'no')
 " 2>/dev/null || echo "no")
 
@@ -521,9 +568,17 @@ print('yes' if ok else 'no')
 STOP — this session created or worked pull request(s) that are still OPEN:
 
 $open_prs
-Merge it (non-author review + green CI), or in your final message name who or
-what now owns it (a person, a session you did NOT spawn, or a durable watcher)
-— "needs you to merge" is not a handoff.
+This PR is YOURS until it merges. Keep driving it:
+  - conflicts / diverged base -> rebase your worktree branch and re-push
+  - red CI / failing tests -> fix forward now; a broken check is your bug
+  - no review yet -> the repo's automated reviewer, or spawn a non-author
+    subagent review; then merge on green
+  - docs/CHANGELOG the diff owes -> write them in this delivery
+Conflicts, red CI, missing docs, or "waiting on review" are never grounds to
+stop or hand back. The only other exit is a gate ONLY the owner can clear (a
+credential, a repo policy, a product decision): file it
+(agents feed post "<ask>" --blocked) and end your final message with
+HANDOFF: <owner> - <receipt>.
 PRMSG
         if [ "$self_dispatch" = "yes" ]; then
           cat >&2 <<'DISPATCHMSG'
