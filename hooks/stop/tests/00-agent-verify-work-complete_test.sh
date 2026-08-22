@@ -1120,4 +1120,9 @@ check "ownership: 'although'-joined resolution verb cannot launder a live confli
 rc=$(HOME="$FAKEHOME" FAKE_GH_STATE=OPEN run_hook "$T" "Addressed the review comments though ci is still failing on the release branch, filed via feed post --blocked. HANDOFF: the owner - needs to review." false)
 check "ownership: 'though'-joined resolution verb cannot launder red CI" "$rc" "2"
 
+# OWN12. Reviewer repro 4: plain 'and' between the resolution verb and a live
+#        blocker breaks adjacency — no laundering via the commonest conjunction.
+rc=$(HOME="$FAKEHOME" FAKE_GH_STATE=OPEN run_hook "$T" "Fixed the docs and merge conflicts with main remain, filed via feed post --blocked. HANDOFF: the owner - needs to review." false)
+check "ownership: 'and'-joined resolution verb cannot launder a live conflict" "$rc" "2"
+
 exit $fail

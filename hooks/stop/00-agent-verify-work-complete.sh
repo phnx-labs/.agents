@@ -539,18 +539,36 @@ FIXABLE = re.compile(
 # (postfix 'conflicts resolved') with no live-state word in between.
 # 'resolving'/'resolve' are demands, not resolutions.
 RESOLVED = re.compile(r'\b(?:fixed|resolved|rebased|cleared|addressed|landed|no (?:more|remaining|longer))\b')
-CONTRAST = re.compile(r'\b(?:although|though|but|while|however|yet|whereas|except|despite|because|since)\b')
-LIVE_AFTER = re.compile(r'\b(?:still|remains?|remaining|needs?|not|unresolved|pending|blocking)\b')
+# ANY conjunction between the resolution verb and the fixable phrase breaks
+# adjacency — review rounds 2-4 proved enumeration (comma, and/but,
+# although/though/because/...) is a losing game, so the rule is structural:
+# the verb must govern the phrase directly ('resolved merge conflicts',
+# 'merge conflicts resolved'), gap <= 30 chars, no conjunction, no live-state
+# word in it. 'Fixed the docs and merge conflicts remain' has a conjunction
+# in the gap -> no exemption -> blocks.
+CONJ = re.compile(r'\b(?:and|but|although|though|while|however|yet|whereas|except|despite|because|since|so|then|meanwhile|plus)\b')
+LIVE = re.compile(r'\b(?:still|remains?|remaining|needs?|not|unresolved|pending|blocking|exists?)\b')
 agent_fixable = False
 for m in FIXABLE.finditer(msg):
-    before = re.split(r'[.\n;,]', msg[:m.start()])[-1][-80:]
-    after = re.split(r'[.\n;,]', msg[m.end():m.end() + 60])[0]
-    if RESOLVED.search(before) and not CONTRAST.search(before):
-        continue
-    if RESOLVED.search(after) and not LIVE_AFTER.search(after) and not CONTRAST.search(after):
-        continue
-    agent_fixable = True
-    break
+    seg_before = re.split(r'[.\n;,]', msg[:m.start()])[-1][-80:]
+    seg_after = re.split(r'[.\n;,]', msg[m.end():m.end() + 60])[0]
+    exempt = False
+    last = None
+    for r in RESOLVED.finditer(seg_before):
+        last = r
+    if last is not None:
+        gap = seg_before[last.end():]
+        if len(gap) <= 30 and not CONJ.search(gap):
+            exempt = True
+    if not exempt:
+        first = RESOLVED.search(seg_after)
+        if first is not None:
+            gap = seg_after[:first.start()]
+            if len(gap) <= 30 and not CONJ.search(gap) and not LIVE.search(gap):
+                exempt = True
+    if not exempt:
+        agent_fixable = True
+        break
 # The published exit for a GENUINELY owner-only gate (a credential, a repo
 # policy only the owner can satisfy, a product decision):
 #   HANDOFF: <owner> - <receipt>
