@@ -1164,8 +1164,20 @@ rc=$(HOME="$FAKEHOME" FAKE_GH_STATE=OPEN run_hook "$T" "Resolved the merge confl
 check "ownership: live confession after the HANDOFF clause still blocks" "$rc" "2"
 
 # OWN20. Reviewer repro 10: a comma-appended confession on the HANDOFF sentence
-#        is outside the blanked clause (one shared CLAUSE_END for all sites).
+#        still blocks — 'still blocking …' is itself a FIXABLE phrase.
 rc=$(HOME="$FAKEHOME" FAKE_GH_STATE=OPEN run_hook "$T" "Resolved the merge conflicts with main, filed via feed post --blocked. HANDOFF: the owner - needs to review, though it is still blocking the release." false)
 check "ownership: comma-appended confession on the HANDOFF line still blocks" "$rc" "2"
+
+# OWN21. Reviewer repro 11 (the trade-off pair, both directions in one place):
+#        a reason-bearing ask ('needs the credential, which is not available')
+#        must NOT poison a resolved conflict — ask text past the sentinel is
+#        never scanned...
+rc=$(HOME="$FAKEHOME" FAKE_GH_STATE=OPEN run_hook "$T" "Merge conflicts with main resolved, CI green. Ask filed via feed post --blocked. HANDOFF: the owner - needs the credential, which is not available to agents." false)
+check "ownership: reason-bearing ask cannot poison a resolved conflict" "$rc" "0"
+
+# OWN22. ...while a confession appended after that same reason-bearing ask is
+#        still caught, because the confession idiom is FIXABLE on its own.
+rc=$(HOME="$FAKEHOME" FAKE_GH_STATE=OPEN run_hook "$T" "Resolved the merge conflicts with main, filed via feed post --blocked. HANDOFF: the owner - needs the credential, which is not available. Still blocking the release though." false)
+check "ownership: confession after a reason-bearing ask still blocks" "$rc" "2"
 
 exit $fail

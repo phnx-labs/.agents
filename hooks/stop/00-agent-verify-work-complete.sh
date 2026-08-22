@@ -527,7 +527,8 @@ FIXABLE = re.compile(
     r'\b(merge conflicts?|conflicts? (?:with|on|in|against) (?:main|master|origin|the base)|'
     r'rebase (?:needed|required|pending)|needs? (?:a )?rebase|'
     r'ci (?:is )?(?:still |currently )?(?:red|failing|broken)|failing (?:tests?|checks?)|tests? (?:are )?(?:still )?failing|'
-    r'docs? (?:are )?(?:missing|not (?:yet )?written|still owed)|changelog (?:entry )?(?:missing|not (?:yet )?written))\b')
+    r'docs? (?:are )?(?:missing|not (?:yet )?written|still owed)|changelog (?:entry )?(?:missing|not (?:yet )?written)|'
+    r'still blocks?|still blocking|blocking the \w+)\b')
 # Tense matters (review findings 1-3 on this PR): 'fixed the failing tests'
 # is completed work, not a blocker — but clause- and sentence-level lookback
 # both let an unrelated resolution verb launder a LIVE blocker joined by a
@@ -569,24 +570,24 @@ LIVE_STATE = re.compile(r'\b(?:still|needs?|need|not|unresolved|pending|blocking
 # sentinel (round 9: truncation made a live confession typed AFTER the
 # HANDOFF line invisible). The ask's vocabulary ('needs to review …') stays
 # out; everything else — before or after the clause — still counts.
-# ONE clause-boundary definition for every call site (round 10: the blank
-# span used [.\n] while the segments used [.\n;,] — a comma-appended live
-# confession was swept into the blank; restating a delimiter set is how all
-# ten rounds' gaps were born).
+# ONE clause-boundary definition for the segment splits (round 10's lesson:
+# restated delimiter sets breed gaps). The LIVE window CAPS at the sentinel —
+# rounds 8-11 proved the ask clause's own punctuation is irreducibly
+# ambiguous, so no delimiter rule can separate ask text from confession text
+# past the sentinel. Instead, post-sentinel confessions are caught where they
+# belong: 'still blocking …' idioms are FIXABLE phrases in their own right
+# (see the FIXABLE alternation), each needing its own adjacent resolution.
+# Ask text can never poison; a confession anywhere is a blocker claim.
 CLAUSE_END = r'[.\n;,]'
-_scan_msg = msg
 _h = re.search(r'(?i)\bhandoff:', msg)
-if _h is not None:
-    _h_end = len(msg)
-    _pm = re.search(CLAUSE_END, msg[_h.start():])
-    if _pm is not None:
-        _h_end = _h.start() + _pm.end()
-    _scan_msg = msg[:_h.start()] + (' ' * (_h_end - _h.start())) + msg[_h_end:]
 agent_fixable = False
 for m in FIXABLE.finditer(msg):
     seg_before = re.split(CLAUSE_END, msg[:m.start()])[-1][-80:]
     seg_after = re.split(CLAUSE_END, msg[m.end():m.end() + 60])[0]
-    live_after = bool(LIVE_STATE.search(_scan_msg[max(0, m.start() - 160):m.end() + 160]))
+    live_end = m.end() + 160
+    if _h is not None and _h.start() >= m.end():
+        live_end = min(live_end, _h.start())
+    live_after = bool(LIVE_STATE.search(msg[max(0, m.start() - 160):live_end]))
     exempt = False
     last = None
     for r in RESOLVED.finditer(seg_before):
