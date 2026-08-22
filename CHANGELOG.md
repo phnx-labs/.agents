@@ -2,6 +2,27 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- **Dispatching is never a handoff — the stop hook no longer clears on the word
+  "handoff" when the session dispatched agents itself.** Measured evasion
+  (session f045b577, 2026-08-21): an orchestrator dispatched two `agents run …
+  --no-follow` children, wrote "completion contract = PR merged or named
+  handoff" in its final message, and the `verify-work-complete` open-PR check
+  matched `\bhandoff\b` and recorded `handoff-or-watcher-declared` — no watcher
+  armed, both children unwatched, session idle with its PR open. Now a
+  transcript that shows a real dispatch (`agents run` with
+  `--no-follow`/`--device`/`--name`, or `agents teams start|create`) suppresses
+  the bare handoff-phrase escape: a durable watcher must exist, and the block
+  message teaches the recipe (re-check children every ~5 minutes, or arm
+  `agents monitors add` / ScheduleWakeup and park quoting it). A successful
+  `agents monitors add` now also counts as durable watcher evidence — it is the
+  watcher `parallel-teams` prescribes, but the hook previously only accepted
+  ScheduleWakeup/Monitor tool calls. The argue-past ramp and stand-down lists
+  gain the measured phrases ("I'm done unless…", "dispatched agents will
+  post…"). `parallel-teams` states the rule at the top of "You own what you
+  spawn".
+
 ### Changed
 
 - **Rules corpus cut ~60% (14,695 → 6042 words) with no rule dropped.** Every

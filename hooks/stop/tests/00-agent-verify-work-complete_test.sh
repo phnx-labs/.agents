@@ -96,7 +96,7 @@ mk_transcript() {
     echo '{"type":"user","message":{"role":"user","content":"Please implement the widget and open a PR for it"}}'
     echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"Working on it"}]}}'
     case "$1" in
-      create|create+view|create+watch|create+nativemon|create+monitor|create+monitor-err)
+      create|create+view|create+watch|create+nativemon|create+monitor|create+monitor-err|create+dispatch|create+dispatch+monarm|create+grepdispatch)
         echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_create1","name":"Bash","input":{"command":"cd /repo && gh pr create --title widget"}}]}}'
         echo '{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_create1","content":[{"type":"text","text":"https://github.com/acme/widgets/pull/42\n"}]}]}}'
         ;;
@@ -128,6 +128,28 @@ mk_transcript() {
         # a watcher, whatever the final message claims.
         echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_monE","name":"ScheduleWakeup","input":{"delaySeconds":300,"reason":"re-check CI"}}]}}'
         echo '{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_monE","is_error":true,"content":[{"type":"text","text":"Error: scheduler unavailable"}]}]}}'
+        ;;
+    esac
+    case "$1" in
+      create+dispatch|create+dispatch+monarm)
+        # The session DISPATCHED a child agent (dispatch-shaped: --no-follow).
+        # The f045b577 failure shape: dispatch, then stop on the word "handoff".
+        echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_disp1","name":"Bash","input":{"command":"agents run claude \"Mission: finish PR 42\" --mode auto --name widget-child --timeout 120m --no-follow"}}]}}'
+        echo '{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_disp1","content":[{"type":"text","text":"[agents] running claude@2.1.217 (session child01)"}]}]}}'
+        ;;
+    esac
+    case "$1" in
+      create+dispatch+monarm)
+        # Dispatch AND a durable daemon-owned watcher armed on the child PR —
+        # the recipe the block message teaches. Non-error result required.
+        echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_monarm1","name":"Bash","input":{"command":"agents monitors add pr-merge-on-green --pr https://github.com/acme/widgets/pull/42"}}]}}'
+        echo '{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_monarm1","content":[{"type":"text","text":"monitor added"}]}]}}'
+        ;;
+      create+grepdispatch)
+        # The dispatch marker appears ONLY inside a grep pattern — must NOT
+        # count as a real dispatch (same false positive class as the swarm gate).
+        echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_gd1","name":"Bash","input":{"command":"grep -cE \"agents run .*--no-follow|agents teams start\" /tmp/transcript.jsonl"}}]}}'
+        echo '{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_gd1","content":[{"type":"text","text":"2"}]}]}}'
         ;;
     esac
     case "$1" in
@@ -251,6 +273,31 @@ check "open PR with explicit handoff allows stop" "$rc" "0"
 # 4. Handoff words only as a substring of another word -> still blocks
 rc=$(FAKE_GH_STATE=OPEN run_hook "$T" "The build handoffs are documented; waiting on review." false)
 check "handoff-substring does not escape the gate" "$rc" "2"
+
+# --- dispatch-is-not-a-handoff (f045b577, 2026-08-21) ------------------------
+# An orchestrator that dispatched agents (`agents run … --no-follow`) may not
+# clear the open-PR check on the handoff phrase alone — it handed its own
+# children to themselves ("completion contract = PR merged or named handoff",
+# no watcher armed). Phrase + durable watcher still passes.
+TD=$(mk_transcript create+dispatch)
+
+# D1. Dispatch + open PR + the measured handoff phrasing, no watcher -> block.
+rc=$(FAKE_GH_STATE=OPEN run_hook "$TD" "RUSH-42 is dispatched to session child01; completion contract = PR merged or named handoff. I'm done unless it surfaces a blocker." false)
+check "dispatch + handoff phrase without a watcher blocks" "$rc" "2"
+grep -qi "you own what you spawn" "$SANDBOX/stderr" && echo "ok   - block message teaches you-own-what-you-spawn" || { echo "FAIL - no dispatch-ownership message"; fail=1; }
+grep -qi "agents monitors add" "$SANDBOX/stderr" && echo "ok   - block message names the watcher recipe" || { echo "FAIL - block message omits the watcher recipe"; fail=1; }
+
+# D2. Same dispatch but a successful `agents monitors add` armed -> allow.
+#     Also locks in monitors-add counting as durable watcher evidence at all.
+TDM=$(mk_transcript create+dispatch+monarm)
+rc=$(FAKE_GH_STATE=OPEN run_hook "$TDM" "PR #42 is handed off to the armed pr-merge-on-green monitor, which owns the PR from here." false)
+check "dispatch + armed agents monitors add allows stop" "$rc" "0"
+
+# D3. Dispatch marker only inside a grep pattern -> NOT a dispatch; the plain
+#     handoff escape still applies (same anti-false-positive as the swarm gate).
+TDG=$(mk_transcript create+grepdispatch)
+rc=$(FAKE_GH_STATE=OPEN run_hook "$TDG" "PR #42 is handed off to the release watcher, which owns the PR from here." false)
+check "grep FOR dispatch markers does not suppress the handoff escape" "$rc" "0"
 
 # 4b. Open PR blocked on a genuine external blocker WITH a durable finish path -> allow
 rc=$(FAKE_GH_STATE=OPEN run_hook "$T" "PR #42 is blocked on a GitHub Actions 503 outage failing CI — a ScheduleWakeup will merge on green when CI recovers." false)
