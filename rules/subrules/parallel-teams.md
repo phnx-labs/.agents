@@ -55,6 +55,16 @@ composed on top of — worse than a loud failure.
 
 ## You own what you spawn
 
+**Dispatching is never a handoff.** A session or teammate you spawned is not a
+valid "named owner" for your own stop — the completion contract's handoff
+clause names a person or a pre-existing owner, never your own children. While
+your dispatches run, either keep checking them on a bounded cadence (about
+every 5 minutes: `agents teams status` / `agents sessions preview <id>` /
+`gh pr view <pr>`) until they land, or arm a durable watcher
+(`agents monitors add` on each child PR, or ScheduleWakeup) and park quoting
+the armed watcher. "The dispatched agents will post to the feed" is the
+unfalsifiable park item 3 bans, not a watcher.
+
 1. **Confirm the spawn.** `agents teams status <team>` must show each teammate
    RUNNING — an add/start exit 0 is not a running teammate.
 2. **Arm a watcher that survives, and prove it.** `agents monitors add`, or a

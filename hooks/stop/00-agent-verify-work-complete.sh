@@ -174,6 +174,12 @@ PHRASES = [
     r'\bnothing needs you\b',
     r'\bships? on the next train\b',
     r'\bpermission classifier (?:bars|blocks|denies|denied|refused|refuses)\b',
+    # 2026-08-21 (f045b577): an orchestrator parked behind its own dispatches
+    # (the-dispatched-agents-will-post-to-the-feed, im-done-unless-a-blocker)
+    # with no watcher armed. Dispatching is not a handoff; you own what you
+    # spawn.
+    r'\bi\'?m done unless\b',
+    r'\bdispatched (?:agents?|sessions?) will (?:post|report|surface|finish|merge|land)\b',
 ]
 # Evidence exception: the ramp demands a probe, so a retry that CARRIES one
 # passes — a URL the user can open, or a quoted live-probe command
@@ -354,19 +360,27 @@ except Exception:
       # may own the next step. Background `gh pr checks --watch` is NOT durable
       # — it is a child of the agent process tree and dies when a headless agent
       # exits, stranding the PR (observed on PR #2334 / #2352). Accept ONLY a
-      # native ScheduleWakeup / Monitor tool_use: the harness owns the re-invoke,
-      # so it outlives this agent (a headless run's daemon-owned monitor, or the
-      # session re-invoke path). Never phrasing alone; never in-process
-      # `gh pr checks --watch`.
+      # native ScheduleWakeup / Monitor tool_use (the harness owns the re-invoke,
+      # so it outlives this agent), or a successful `agents monitors add` (the
+      # daemon owns its schedule — this is the watcher parallel-teams prescribes,
+      # and until 2026-08-21 the hook demanded a watcher the rules elsewhere ban
+      # while not counting the one they teach). Never phrasing alone; never
+      # in-process `gh pr checks --watch`.
       live_watcher=$(python3 -c "
 import json, re, sys
 # Legacy in-process watch — REJECT as a handoff (dies with the agent).
 INPROC_WATCH = re.compile(r'gh\s+pr\s+checks\b.*--watch', re.S)
+# Command-position anchor (same guard as the swarm check below): a command that
+# merely greps or echoes 'agents monitors add' must not count as arming one.
+CMD_POS = r'(?:^|[\n;&]\s*|\\\$\(\s*)'
+MONITORS_ADD = re.compile(CMD_POS + r'agents monitors add\b')
 # Invoked is not armed (measured 2026-08-15, ea913c60: a claimed watcher with no
-# live process). A ScheduleWakeup/Monitor tool_use only counts when its paired
-# tool_result came back WITHOUT error — an errored or cancelled arm is not a
-# watcher. Deeper daemon-side liveness belongs to `agents monitors`; this is the
-# strongest check the transcript alone supports.
+# live process). A ScheduleWakeup/Monitor/monitors-add tool_use only counts when
+# its paired tool_result came back WITHOUT error — an errored or cancelled arm is
+# not a watcher. Deeper daemon-side liveness belongs to agents monitors; this
+# is the strongest check the transcript alone supports. (No backticks in this
+# comment: it sits inside a double-quoted python3 -c string, where a backtick
+# is live command substitution.)
 wake_ids = set()
 ok_ids = set()
 try:
@@ -388,10 +402,12 @@ try:
                 btype = b.get('type')
                 if btype == 'tool_use':
                     name = b.get('name') or ''
-                    # The only durable handoff evidence is a native re-invoke tool
-                    # the harness owns (ScheduleWakeup / Monitor) — it outlives
-                    # this agent.
+                    # Durable handoff evidence: a native re-invoke tool the
+                    # harness owns (ScheduleWakeup / Monitor), or a daemon-owned
+                    # `agents monitors add` — both outlive this agent.
                     if name in ('ScheduleWakeup', 'Monitor'):
+                        wake_ids.add(b.get('id') or '')
+                    elif MONITORS_ADD.search(str((b.get('input') or {}).get('command', ''))):
                         wake_ids.add(b.get('id') or '')
                 elif btype == 'tool_result' and not b.get('is_error'):
                     ok_ids.add(b.get('tool_use_id') or '')
@@ -406,13 +422,54 @@ except Exception:
     print('no')
 " "$TRANSCRIPT_PATH" 2>/dev/null || echo "no")
 
+      # Dispatch-is-not-a-handoff (2026-08-21, f045b577): an orchestrator that
+      # dispatched two agents (`agents run … --no-follow`) then stopped cleared
+      # this check by writing "completion contract = PR merged or named handoff"
+      # — the word 'handoff' matched the phrase escape with no watcher armed and
+      # both children unwatched. You own what you spawn: a session you dispatched
+      # is not a valid named owner for your own stop. When the transcript shows a
+      # real dispatch, the handoff phrase alone no longer clears — a durable
+      # watcher must exist. Detection requires a dispatch-shaped flag
+      # (--no-follow / --device / --name) so a synchronous foreground probe run
+      # does not trip it, and uses the command-position anchor so grepping FOR
+      # these markers does not either.
+      self_dispatch=$(python3 -c "
+import json, re, sys
+CMD_POS = r'(?:^|[\n;&]\s*|\\\$\(\s*)'
+DISPATCH = re.compile(CMD_POS + r'agents run\b[^\n]*--(?:no-follow|device|name)\b')
+TEAMS = re.compile(CMD_POS + r'agents teams (?:start|create)\b')
+found = False
+try:
+    with open(sys.argv[1]) as f:
+        for raw in f:
+            if 'tool_use' not in raw:
+                continue
+            try:
+                rec = json.loads(raw)
+            except Exception:
+                continue
+            m = rec.get('message') if isinstance(rec.get('message'), dict) else rec
+            content = m.get('content') if isinstance(m, dict) else None
+            if not isinstance(content, list):
+                continue
+            for b in content:
+                if isinstance(b, dict) and b.get('type') == 'tool_use':
+                    cmd = str((b.get('input') or {}).get('command', ''))
+                    if DISPATCH.search(cmd) or TEAMS.search(cmd):
+                        found = True
+    print('yes' if found else 'no')
+except Exception:
+    print('no')
+" "$TRANSCRIPT_PATH" 2>/dev/null || echo "no")
+
       # Handoff escape: the final message may legitimately stop with an open PR
       # if it explicitly hands it off (named owner/babysitter) — restating that
       # after this check fires once is enough to pass (stop_hook_active).
-      has_handoff=$(echo "$INPUT_JSON" | LIVE_WATCHER="$live_watcher" python3 -c "
+      has_handoff=$(echo "$INPUT_JSON" | LIVE_WATCHER="$live_watcher" SELF_DISPATCH="$self_dispatch" python3 -c "
 import json, os, re, sys
 msg = json.load(sys.stdin).get('last_assistant_message', '').lower()
 live_watcher = os.environ.get('LIVE_WATCHER') == 'yes'
+self_dispatch = os.environ.get('SELF_DISPATCH') == 'yes'
 pat = r'\b(handed off|hand-off|handoff|handing (this|it) off|will babysit|is babysitting|takes over from here|owns (this|the) pr)\b'
 # Structured external-blocker stop — the check's own option 3. A genuine external
 # blocker the agent CANNOT resolve (CI/GitHub outage, a signing step needing the
@@ -440,7 +497,11 @@ plan_mode = re.search(r'\bplan mode\b', msg) and re.search(r'\b(cannot|can not|f
 # A silent/down/unconfigured automated reviewer is NOT a stop reason and NOT a
 # user handoff: spawn a non-author subagent review and keep driving merge-on-green.
 # Do not treat reviewer-down + needs-you-to-click-merge as a valid escape.
-ok = (re.search(pat, msg)
+# Dispatch-is-not-a-handoff: when THIS session dispatched agents, the bare
+# handoff phrase is the exact measured evasion (f045b577 handed its own
+# children to themselves). Phrase + a durable watcher still passes; phrase
+# alone does not.
+ok = ((re.search(pat, msg) and (not self_dispatch or live_watcher))
       or (blocked and nextstep)
       or (live_watcher and watcher_phrase)
       or plan_mode)
@@ -460,9 +521,19 @@ STOP — this session created or worked pull request(s) that are still OPEN:
 
 $open_prs
 Merge it (non-author review + green CI), or in your final message name who or
-what now owns it (a person, session, or durable watcher) — "needs you to
-merge" is not a handoff.
+what now owns it (a person, a session you did NOT spawn, or a durable watcher)
+— "needs you to merge" is not a handoff.
 PRMSG
+        if [ "$self_dispatch" = "yes" ]; then
+          cat >&2 <<'DISPATCHMSG'
+You dispatched agents this session — dispatching is not a handoff.
+You own what you spawn, until its PR merges. Either keep driving: re-check each
+child on a bounded cadence (sleep ~300, then `agents sessions preview <id>` /
+`gh pr view <pr>`) until it lands, or arm a durable watcher first
+(`agents monitors add` on each child PR, or ScheduleWakeup) and park quoting
+the armed watcher.
+DISPATCHMSG
+        fi
         record_block open-pr owned-pr-open
         exit 2
       fi
@@ -899,6 +970,10 @@ standdown = [
     r'\bstanding (?:clear|down)\b',
     r'\bi\'?ll stand (?:clear|down)\b',
     r'\bthis (?:one )?is (?:your|the user\'?s) (?:responsibility|job) to (?:drive|finish|own)\b',
+    # 2026-08-21 (f045b577): parked behind own dispatches with no watcher armed
+    # — keep in sync with PHRASES in the argue-past ramp at the top of the file.
+    r'\bi\'?m done unless\b',
+    r'\bdispatched (?:agents?|sessions?) will (?:post|report|surface|finish|merge|land)\b',
 ]
 # A genuine clarifying question offers alternatives — NOT next-step parking.
 is_choice = bool(re.search(r'\bwhich\b', msg) or re.search(r'\b\w+ or \w+\b', msg)
