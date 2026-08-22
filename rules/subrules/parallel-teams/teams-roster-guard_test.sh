@@ -75,6 +75,11 @@ check "echo-mention passes" "$(run_guard 'echo "reminder: agents teams add mytea
 check "comment-mention passes" "$(run_guard 'cat notes.md # says: agents teams add myteam claude "context" --name x')" "0"
 check "&&-chained real invocation still blocks" "$(run_guard 'cd /tmp && agents teams add myteam claude "Owns: src/z" --name t3')" "2"
 check "grep pattern passes" "$(run_guard 'grep -r "agents teams add" docs/')" "0"
+# Quote-parity repros (2nd review round): markers inside open quotes are prose.
+check "quoted parenthesized mention passes" "$(run_guard 'echo "(agents teams add myteam claude \"brief\")"')" "0"
+check "quoted semicolon mention passes" "$(run_guard 'echo "note: see the pattern; agents teams add myteam claude for reference"')" "0"
+check "notes-append mention passes" "$(run_guard 'echo "- Pattern: (agents teams add myteam claude \"Owns: src/x\" --name t3)" >> notes.md')" "0"
+check "invocation after balanced-quote prose still blocks" "$(run_guard 'echo "done"; agents teams add myteam claude "Owns: src/q" --name t3')" "2"
 rm -rf "$SANDBOX/.agents/.history/teams"
 add_teammate broken claude; add_teammate broken claude
 for f in "$SANDBOX/.agents/.history/teams/agents/"*/meta.json; do printf 'not-json' > "$f"; done

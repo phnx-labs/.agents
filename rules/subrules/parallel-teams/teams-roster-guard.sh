@@ -62,10 +62,14 @@ for path in paths:
 cmd=$(_json_field "$input" "tool_input.command" "toolInput.command") || exit 0
 [ -n "$cmd" ] || exit 0
 
-# Cheap substring pre-filter only — the real gate is the command-position
-# extraction below. A command that merely MENTIONS the marker in prose, an
-# echo string, or a comment must never be denied (review finding on the PR
-# that introduced this guard).
+# Cheap substring pre-filter only — the real gates are the quote-parity
+# check and command-position extraction below. Best-effort, like
+# gh-merge-guard's SCOPE note: prose mentions (echo strings, comments,
+# grep patterns, note appends) pass via quote parity + anchoring; a
+# determined obfuscation could still slip a real invocation past a text
+# rule — the enforcement backstop is the roster record itself, which any
+# monoculture spawn writes to disk where audits and the fleet-delegation
+# rule read it.
 case "$cmd" in
   *"agents teams add"*|*"ag teams add"*) : ;;
   *) exit 0 ;;
@@ -75,6 +79,21 @@ esac
 case "$cmd" in
   *single-harness:*|*single_harness:*) exit 0 ;;
 esac
+
+# Quote parity: a marker inside an open quote is prose (an echo string, a
+# heredoc line, a notes append), not an invocation. Count quotes BEFORE the
+# first marker occurrence; odd means we are inside a quoted string — pass.
+# This is a heuristic like merge-guard's SCOPE note, not a shell parser:
+# balanced-quote prose before a real chained invocation still blocks
+# correctly, and exotic nesting over-passes (fail-open direction).
+_p1=${cmd%%"agents teams add"*}
+_p2=${cmd%%"ag teams add"*}
+prefix="$_p1"
+[ ${#_p2} -lt ${#_p1} ] && prefix="$_p2"
+dq=$(printf '%s' "$prefix" | tr -cd '"' | wc -c)
+sq=$(printf '%s' "$prefix" | tr -cd "'" | wc -c)
+[ $((dq % 2)) -eq 1 ] && exit 0
+[ $((sq % 2)) -eq 1 ] && exit 0
 
 # Extract team + harness from the first `agents teams add` at a COMMAND
 # position: start of the command, or right after a shell separator (; & |,
