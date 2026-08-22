@@ -152,7 +152,13 @@ silently.
 
 - Spread delegable work across harnesses (Kimi, Grok, DeepSeek, Codex,
   Antigravity via `agents run <profile>` or a mixed `agents teams` roster) and
-  across the accounts of one harness.
+  across the accounts of one harness. Mixed rosters are enforced, not advised:
+  `parallel-teams`' bundled `teams-roster-guard` blocks a 3rd same-harness
+  teammate on any multi-harness machine unless the brief carries a
+  `single-harness: <reason>` token. Two facts you cannot derive: a profile
+  forked from a host harness (`agents run <profile>`) diversifies the model,
+  not the harness; and read-only verifier tracks need a harness whose headless
+  `plan` mode is real — others silently downgrade `plan` to `auto`.
 - Balanced rotation is already the default: a bare teammate (no `@version` or
   `--profile`) rotates across healthy accounts by remaining headroom. Pinning
   opts out — pin only when a teammate genuinely needs a specific version or
@@ -417,10 +423,21 @@ into one. Plan-mode (read-only) teams skip worktrees.
 
 ```bash
 agents teams create my-feature --enable-worktrees
-agents teams add my-feature claude "Owns: src/auth/*. Not: src/ui/*. …" --name auth --worktree auth --mode edit
+agents teams add my-feature kimi   "Owns: src/auth/*. Not: src/ui/*. …" --name auth --worktree auth --mode edit
 agents teams add my-feature codex  "Owns: src/ui/*. Not: src/auth/*. …" --name ui   --worktree ui   --mode edit --after auth
+agents teams add my-feature grok   "Owns: src/api/*. Not: src/ui/*. …"  --name api  --worktree api  --mode edit
+agents teams add my-feature claude "Verify the composed cross-track flow end-to-end" --name verify --mode plan --after auth,ui,api
 agents teams start my-feature --watch
 ```
+
+The harness names above are anchors, not prescriptions — substitute from the
+harnesses installed on THIS machine (`agents view`). Rosters go monoculture by
+imitation, so mixed is the default: the bundled `teams-roster-guard` (this
+subrule's hook) blocks the 3rd same-harness teammate on any multi-harness
+machine unless the brief states the reason inline — `single-harness:
+<capability constraint>` — which is recorded with the roster and auditable
+later. It never fires on a single-harness install, and a mixed roster never
+trips it.
 
 Every brief includes Mission, full scope, Owns / Must NOT touch, a concrete
 code pattern, success criteria, the evidence line from `research-discipline`,
