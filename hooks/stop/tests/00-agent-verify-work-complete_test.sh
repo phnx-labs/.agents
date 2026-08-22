@@ -61,6 +61,19 @@ printf '{"state":{"name":"%s"},"title":"%s"}\n' "$state" "$title"
 STUB
 chmod +x "$SANDBOX/bin/linear"
 
+# --- agents stub -------------------------------------------------------------
+# The hook's argue-past cap fires a REAL `agents feed post --blocked` (a
+# fail-loud owner delivery) on its third fire. AP5 exercises exactly that
+# branch, so without this stub every test run sends the owner an iMessage
+# (RUSH-3010). Log the invocation so AP5 can assert the post instead.
+cat > "$SANDBOX/bin/agents" <<'STUB'
+#!/usr/bin/env bash
+echo "$*" >> "${AGENTS_STUB_LOG:?}"
+STUB
+chmod +x "$SANDBOX/bin/agents"
+export AGENTS_STUB_LOG="$SANDBOX/agents.log"
+: > "$AGENTS_STUB_LOG"
+
 export PATH="$SANDBOX/bin:$PATH"
 
 # Defaults so existing merged-PR tests pass the delivery gate.
@@ -976,6 +989,9 @@ echo '{"type":"user","isMeta":true,"message":{"role":"user","content":"Stop hook
 echo '{"type":"user","isMeta":true,"message":{"role":"user","content":"Stop hook feedback: STOP — this stop was already blocked, and the retry restates a stand-down phrase"}}' >> "$TCAP"
 rc=$(FAKE_GH_STATE=OPEN run_hook "$TCAP" "Merged, not released — and that's the correct stopping point." true)
 check "argue-past: capped after two prior fires (never wedges)" "$rc" "0"
+grep -q -- 'feed post .*Argued past 3 stop blocks.*--blocked' "$AGENTS_STUB_LOG" \
+  && echo "ok   - capped pass files the fail-loud feed post (via stub, never a real delivery)" \
+  || { echo "FAIL - third argue-past fire did not file the --blocked feed post"; fail=1; }
 
 # AP6. An honest, EVIDENCED wrap-up that happens to contain a listed phrase —
 #      "nothing needs you" plus a merged-PR URL and quoted health output — must
