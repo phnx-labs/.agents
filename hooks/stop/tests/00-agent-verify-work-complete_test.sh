@@ -1125,4 +1125,15 @@ check "ownership: 'though'-joined resolution verb cannot launder red CI" "$rc" "
 rc=$(HOME="$FAKEHOME" FAKE_GH_STATE=OPEN run_hook "$T" "Fixed the docs and merge conflicts with main remain, filed via feed post --blocked. HANDOFF: the owner - needs to review." false)
 check "ownership: 'and'-joined resolution verb cannot launder a live conflict" "$rc" "2"
 
+# OWN13. Reviewer repro 5: connective adverbs ('also') and any other content
+#        word in the verb-to-phrase gap break adjacency — the gap allowlist is
+#        closed-class function words only.
+rc=$(HOME="$FAKEHOME" FAKE_GH_STATE=OPEN run_hook "$T" "Resolved the doc issue also merge conflicts with main remain outstanding, filed via feed post --blocked. HANDOFF: the owner - needs to review." false)
+check "ownership: 'also'-joined resolution verb cannot launder a live conflict" "$rc" "2"
+
+# OWN14. Allowlist positive: quantified honest coordination stays exempt —
+#        'resolved all the remaining merge conflicts' has a pure function-word gap.
+rc=$(HOME="$FAKEHOME" FAKE_GH_STATE=OPEN run_hook "$T" "Resolved all the remaining merge conflicts with main; CI green. Ask filed via feed post --blocked. HANDOFF: repo-admin — branch-policy gate no agent can satisfy." false)
+check "ownership: function-word gap keeps honest resolution exempt" "$rc" "0"
+
 exit $fail

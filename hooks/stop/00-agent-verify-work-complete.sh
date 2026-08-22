@@ -539,15 +539,18 @@ FIXABLE = re.compile(
 # (postfix 'conflicts resolved') with no live-state word in between.
 # 'resolving'/'resolve' are demands, not resolutions.
 RESOLVED = re.compile(r'\b(?:fixed|resolved|rebased|cleared|addressed|landed|no (?:more|remaining|longer))\b')
-# ANY conjunction between the resolution verb and the fixable phrase breaks
-# adjacency — review rounds 2-4 proved enumeration (comma, and/but,
-# although/though/because/...) is a losing game, so the rule is structural:
-# the verb must govern the phrase directly ('resolved merge conflicts',
-# 'merge conflicts resolved'), gap <= 30 chars, no conjunction, no live-state
-# word in it. 'Fixed the docs and merge conflicts remain' has a conjunction
-# in the gap -> no exemption -> blocks.
-CONJ = re.compile(r'\b(?:and|but|although|though|while|however|yet|whereas|except|despite|because|since|so|then|meanwhile|plus)\b')
-LIVE = re.compile(r'\b(?:still|remains?|remaining|needs?|not|unresolved|pending|blocking|exists?)\b')
+# The verb must govern the phrase DIRECTLY. Review rounds 2-5 proved any
+# denylist of connectors (comma, and/but, although/because, also/moreover)
+# is an open class that can never be complete. The structural inverse is
+# closed: the verb-to-phrase gap may contain ONLY function words — articles,
+# quantifiers, possessives (prefix side: 'resolved the remaining merge
+# conflicts'), plus the phrase's own continuation prepositions and branch
+# nouns on the postfix side ('merge conflicts with main resolved'). Any
+# content word or connector in the gap breaks adjacency and the blocker
+# counts as live. Over-blocking an oddly-phrased honest wrap-up costs one
+# rephrase; under-blocking costs the ownership gate.
+GAP_BEFORE = re.compile(r'^(?:\s*(?:the|a|an|all|any|both|each|every|its|his|her|our|their|these|those|some|remaining|last|final|earlier|prior|previous|open|aforementioned))*\s*$', re.I)
+GAP_AFTER = re.compile(r'^(?:\s*(?:the|a|an|all|its|our|their|with|on|in|against|from|for|of|main|master|origin|base|branch|are|is|were|was|been|now|fully|completely))*\s*$', re.I)
 agent_fixable = False
 for m in FIXABLE.finditer(msg):
     seg_before = re.split(r'[.\n;,]', msg[:m.start()])[-1][-80:]
@@ -556,16 +559,12 @@ for m in FIXABLE.finditer(msg):
     last = None
     for r in RESOLVED.finditer(seg_before):
         last = r
-    if last is not None:
-        gap = seg_before[last.end():]
-        if len(gap) <= 30 and not CONJ.search(gap):
-            exempt = True
+    if last is not None and GAP_BEFORE.match(seg_before[last.end():]):
+        exempt = True
     if not exempt:
         first = RESOLVED.search(seg_after)
-        if first is not None:
-            gap = seg_after[:first.start()]
-            if len(gap) <= 30 and not CONJ.search(gap) and not LIVE.search(gap):
-                exempt = True
+        if first is not None and GAP_AFTER.match(seg_after[:first.start()]):
+            exempt = True
     if not exempt:
         agent_fixable = True
         break
