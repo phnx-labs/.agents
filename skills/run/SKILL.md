@@ -87,7 +87,7 @@ rejects `plan` instead of silently running writable.
 
 ```bash
 # Reasoning effort (claude and codex only)
-agents run grok "..." --effort high
+agents run codex "..." --effort high
 
 # Override the model directly
 agents run claude "..." --model claude-opus-4-7
@@ -178,7 +178,7 @@ agents run claude@2.1.143 "..."
 ## Resume a previous session (Claude only)
 
 ```bash
-agents run grok --session-id <id>
+agents run claude --session-id <id>
 ```
 
 ## Output and observability
@@ -219,8 +219,7 @@ agents run codex "..." --cwd /path/to/repo
 Route through the Agent Client Protocol (Zed integration).
 
 ```bash
-agents run gemini "..." --acp
-agents run grok "..." --acp           # via @zed-industries/claude-code-acp adapter
+agents run grok "..." --acp           # ACP-capable harness (see acp/harnesses registry)
 ```
 
 Emits a unified event stream; ndjson when combined with `--json`.

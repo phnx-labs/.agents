@@ -7,7 +7,7 @@
 - **The instruction corpus stops teaching harness monoculture and tool
   passivity (RUSH-3020, corpus pass).** Spawn examples across `skills/run`,
   `skills/teams`, `swarm:orchestrate`, `commands/teams`, and `commands/recap`
-  now rotate lead harnesses with a substitute-from-`agents view` note (the
+  now rotate lead harnesses (skills carry a substitute-from-`agents view` note; command examples swap names only) (the
   audit found 41 claude spawn examples vs 11 codex and zero for grok/droid);
   the `commands/teams` capability table gains grok/kimi/droid/opencode/gemini
   rows; the undated "codex cannot write anywhere on this fleet" claim in

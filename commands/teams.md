@@ -46,7 +46,6 @@ agents teams add <team-name> <agent> "prompt" --name <role> --worktree <role> --
 | kimi | Implementation tracks, long-context reads |
 | droid | Headless implementation; headless-plan-capable verifier |
 | opencode | Headless-plan-capable verifier, light edits |
-| gemini | Research and analysis tracks |
 
 **Prompt must include:**
 - Background: what and why
