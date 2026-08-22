@@ -1100,4 +1100,14 @@ check "ownership: resolved-state narration does not trip the fixable veto" "$rc"
 rc=$(HOME="$FAKEHOME" FAKE_GH_STATE=OPEN run_hook "$T" "Resolved the lint errors. There are still merge conflicts with main. HANDOFF: the owner — please take it from here." false)
 check "ownership: live conflict in its own sentence still blocks" "$rc" "2"
 
+# OWN8. Reviewer repro 2: a comma-joined resolution verb in a NEIGHBORING
+#       clause does not launder a live blocker (clause-scoped check).
+rc=$(HOME="$FAKEHOME" FAKE_GH_STATE=OPEN run_hook "$T" "Addressed feedback on the branch name, merge conflicts with main still need resolving before this can land, filed via feed post --blocked. HANDOFF: the owner - needs to review." false)
+check "ownership: comma-joined resolution verb cannot launder a live conflict" "$rc" "2"
+
+# OWN9. Honest postfix passive — 'merge conflicts with main resolved' — is
+#       completed work in its own clause and must not trip the veto.
+rc=$(HOME="$FAKEHOME" FAKE_GH_STATE=OPEN run_hook "$T" "Merge conflicts with main resolved, CI green. Ask filed via feed post --blocked. HANDOFF: the owner — repo policy gate only they can clear." false)
+check "ownership: postfix 'conflicts resolved' does not trip the veto" "$rc" "0"
+
 exit $fail

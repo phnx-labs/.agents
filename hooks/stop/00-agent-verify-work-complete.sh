@@ -529,13 +529,18 @@ FIXABLE = re.compile(
     r'ci (?:is )?(?:red|failing|broken)|failing (?:tests?|checks?)|tests? (?:are )?failing|'
     r'docs? (?:are )?(?:missing|not (?:yet )?written|still owed)|changelog (?:entry )?(?:missing|not (?:yet )?written))\b')
 # Tense matters (review finding on this PR): 'fixed the failing tests and
-# resolved merge conflicts' is completed work, not a blocker. A fixable phrase
-# only counts when no resolution verb precedes it in its own sentence.
+# resolved merge conflicts' is completed work, not a blocker. Scope the
+# resolution check to the fixable phrase's OWN CLAUSE — sentence-level
+# lookback let a comma-joined 'Addressed feedback on the branch name, merge
+# conflicts still need resolving' launder a live blocker (second review
+# finding). Clauses split on . ; , newline, dashes, and/but; a resolution
+# verb anywhere in the clause exempts it (covers postfix 'conflicts
+# resolved' too). 'resolving'/'resolve' are demands, not resolutions —
+# RESOLVED matches only completed forms.
 RESOLVED = re.compile(r'\b(?:fixed|resolved|rebased|cleared|addressed|landed|no (?:more|remaining|longer))\b')
 agent_fixable = False
-for sent in re.split(r'[.\n;]+', msg):
-    m = FIXABLE.search(sent)
-    if m and not RESOLVED.search(sent[:m.start()]):
+for clause in re.split(r'[.\n;,]+|—|--+|\b(?:and|but)\b', msg):
+    if FIXABLE.search(clause) and not RESOLVED.search(clause):
         agent_fixable = True
         break
 # The published exit for a GENUINELY owner-only gate (a credential, a repo
