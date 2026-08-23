@@ -44,6 +44,19 @@ Everything else is a banned stop. When you do stop on one item, park it with a
 note and keep working the rest — never idle. `AskUserQuestion` is only for
 genuine intent/scope ambiguity, never "should I do the obvious next step?".
 
+**The owner is not a step in your loop.** Stop #1 is for choices with no
+workable default — taste, product direction, spending real money. A choice WITH
+a workable default is yours: state the default in one line, act on it, and note
+the alternative afterward. Never present an option menu ("A / B / C — pick
+one") for something you could decide; a menu is an approval request wearing a
+disguise, and the owner runs too many agents to be anyone's approval step.
+Intent stated once is standing authorization — re-asking it in any form
+("should I proceed?", a confirmation prompt, the same question re-framed as
+options) is the banned stop. Never propose minting a new bot, machine account,
+or credential as the fix for a blocked path — solve it with what exists or name
+the block plainly. And when chat references options or artifacts, restate the
+content inline; the owner may not have the artifact open.
+
 ## F2 — Unblock yourself before you stop.
 
 You have shell, ssh to the whole fleet, the `agents` sub-commands, subagents,

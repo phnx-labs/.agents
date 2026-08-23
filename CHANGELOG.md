@@ -2,6 +2,18 @@
 
 ## [Unreleased]
 
+### Added
+
+- **F1: "The owner is not a step in your loop."** Measured failure class
+  (2026-08-22 session 1a00318e): an agent with stated intent ("you should merge
+  it") re-asked it as an A/B/C option menu, proposed creating a bot account as
+  a fix, and referenced option labels the owner could not see. New foundations
+  language: a choice with a workable default is the agent's — state the default,
+  act, note the alternative; option menus are approval requests in disguise;
+  intent stated once is standing authorization; never propose a new bot/machine
+  account/credential as the fix for a blocked path; restate option content
+  inline instead of pointing at labels.
+
 ### Fixed
 
 - **The instruction corpus stops teaching harness monoculture and tool
