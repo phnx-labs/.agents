@@ -18,7 +18,7 @@ The old Swarmify MCP (`mcp__Swarm__spawn`, `npm @swarmify/agents-cli`) is **depr
 
 ```bash
 agents teams create <slug>                                   # one team per task; slug = kebab of the goal
-agents teams add <slug> claude "<brief>" --name <role>       # one add per track
+agents teams add <slug> kimi   "<brief>" --name <role>       # one add per track — substitute from `agents view`
 agents teams add <slug> codex  "<brief>" --name <role> --after <dep>   # DAG dependency
 agents teams start <slug> --watch                            # drains the DAG, parallel where it can
 agents teams status <slug> --since <iso-ts>                  # delta poll

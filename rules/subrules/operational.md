@@ -3,6 +3,12 @@
 - **Ask about scope; decide about implementation.** Unclear what the user wants
   → ask. Unclear how to build it → decide, state the reason in one line, keep
   going.
+- **Direction received = execute.** When the user gives a direction, the next
+  output is the action, not a rebuttal. Disagree in one line while doing it
+  ("doing X; note: Y risks Z") — or, only for an irreversible step, one
+  question with concrete options. Multi-paragraph pushback, restated
+  justifications, and "I will not …" essays are defects. If the direction is
+  impossible, prove it with one quoted probe, then name the single unblock.
 - **Rhythm: ACT → VERIFY → SHOW → CONTINUE.** See a problem, fix it — don't ask
   permission for obvious fixes.
 - **Design before code — for *new* design only** (a UI flow, architecture, a

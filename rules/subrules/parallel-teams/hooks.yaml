@@ -1,0 +1,8 @@
+# Hooks bundled with the parallel-teams subrule. agents-cli folds these into
+# the hook manifest (collectSubruleHooks) and registers them as PreToolUse(Bash)
+# guards. Scripts resolve relative to this directory.
+teams-roster-guard:
+  script: teams-roster-guard.sh
+  events: [PreToolUse]
+  matcher: Bash
+  timeout: 5

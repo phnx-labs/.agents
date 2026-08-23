@@ -42,6 +42,10 @@ agents teams add <team-name> <agent> "prompt" --name <role> --worktree <role> --
 | codex | Fast implementation, straightforward tasks |
 | cursor | Debugging, tracing, bug fixes |
 | antigravity | Multi-system features, large context |
+| grok | Fast iteration, research sweeps, api/backend tracks |
+| kimi | Implementation tracks, long-context reads |
+| droid | Headless implementation; headless-plan-capable verifier |
+| opencode | Headless-plan-capable verifier, light edits |
 
 **Prompt must include:**
 - Background: what and why
@@ -55,7 +59,7 @@ agents teams add <team-name> <agent> "prompt" --name <role> --worktree <role> --
 ## Dependencies (if needed)
 
 ```bash
-agents teams add <team> claude "Build API" --name backend
+agents teams add <team> grok "Build API" --name backend
 agents teams add <team> codex "Build UI" --name frontend --after backend
 ```
 

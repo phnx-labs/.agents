@@ -8,6 +8,19 @@ user-invocable: true
 
 # Teams Skill
 
+## Build the roster from what is installed
+
+Before the first `add`: list the harnesses installed and healthy on this
+machine (`agents view`), then spread tracks across them — write-heavy tracks
+on write-probed harnesses, read-only verifier tracks on harnesses whose
+headless `plan` mode is real (see the capability note below). Harness names
+in the examples here are anchors, not prescriptions: substitute from your
+installed set. The bundled `teams-roster-guard` (parallel-teams subrule)
+blocks a 3rd same-harness teammate on a multi-harness machine unless the
+brief states `single-harness: <capability reason>` — mixed is the default,
+monoculture is the documented exception.
+
+
 Organize AI coding agents into teams for parallel collaboration. This skill teaches you how to use the `agents teams` CLI.
 
 ## Single Agent vs Teams
@@ -22,7 +35,7 @@ Organize AI coding agents into teams for parallel collaboration. This skill teac
 agents teams create my-feature
 
 # Add teammates
-agents teams add my-feature claude "Implement the auth middleware" --name auth
+agents teams add my-feature kimi "Implement the auth middleware" --name auth
 agents teams add my-feature codex "Build the login UI" --name frontend
 
 # Start the team
@@ -54,13 +67,13 @@ Use `--after` to create dependencies:
 
 ```bash
 # Backend first
-agents teams add my-feature claude "Build API" --name backend
+agents teams add my-feature grok "Build API" --name backend
 
 # Frontend waits for backend
 agents teams add my-feature codex "Build UI" --name frontend --after backend
 
 # QA waits for both
-agents teams add my-feature claude "Run tests" --name qa --after backend,frontend
+agents teams add my-feature droid "Run tests" --name qa --after backend,frontend
 
 # Start drains the DAG automatically
 agents teams start my-feature --watch
@@ -77,13 +90,13 @@ every teammate runs local, exactly as before).
 ```bash
 # Send ONE teammate elsewhere — no pool needed
 agents teams create feat
-agents teams add feat claude "build the API" --name backend --device yosemite-s0
-agents teams add feat claude "build the UI"  --name ui               # stays local
+agents teams add feat codex "build the API" --name backend --device yosemite-s0
+agents teams add feat kimi "build the UI"   --name ui               # stays local
 agents teams start feat --watch
 
 # A device POOL — unpinned teammates auto-schedule across it (least-loaded)
 agents teams create feat --devices zion,yosemite-s0 --repo https://github.com/you/repo.git
-agents teams add feat claude "..." --name w1                         # auto-scheduled
+agents teams add feat grok "..." --name w1                          # auto-scheduled
 agents teams add feat claude "..." --name w2 --device yosemite-s0    # or pin
 ```
 
@@ -130,7 +143,7 @@ By default all teammates share the current checkout. For parallel **edit** work,
 agents teams create my-feature --enable-worktrees
 
 # Each teammate gets a dedicated worktree (.agents/worktrees/<name>, branch agents/<name>)
-agents teams add my-feature claude "Owns: src/auth/*" --name auth --worktree auth --mode edit
+agents teams add my-feature kimi "Owns: src/auth/*" --name auth --worktree auth --mode edit
 agents teams add my-feature codex  "Owns: src/ui/*"   --name ui   --worktree ui   --mode edit
 agents teams start my-feature --watch
 ```
