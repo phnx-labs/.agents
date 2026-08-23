@@ -356,6 +356,55 @@ unwrap_dash_c() {
   return 0
 }
 
+# Strip leading peel-list wrappers from a command STRING, so the interpreter
+# unwrapper can see an interpreter that sits behind one. Without this the two
+# mechanisms compose in only one direction: `sh -c 'sudo git add X'` worked
+# because unwrapping ran first, but `sudo sh -c 'git add X'` did not, because
+# unwrap_dash_c only ever inspects the FIRST word and nothing re-invoked it
+# after the peel loop stripped the wrapper. That asymmetry — not a missing name
+# — is what let every wrapper+interpreter pair through.
+strip_leading_wrappers() {
+  _s=$(printf '%s' "$1" | sed 's/^[[:space:]]*//')
+  _guard=0
+  while [ "$_guard" -lt 8 ]; do
+    _guard=$((_guard + 1))
+    _w=${_s%% *}
+    case "${_w##*/}" in
+      command|exec|nohup|setsid|caffeinate|time|unbuffer)
+        _s=${_s#* } ;;
+      sudo|doas)
+        _s=${_s#* }
+        while :; do
+          case "${_s%% *}" in
+            -u|-g|-U|-p|-C) _s=${_s#* }; _s=${_s#* } ;;
+            -*|*=*) _s=${_s#* } ;;
+            *) break ;;
+          esac
+        done ;;
+      nice|ionice|stdbuf)
+        _s=${_s#* }
+        while :; do
+          case "${_s%% *}" in
+            -[a-zA-Z]) _s=${_s#* }; _s=${_s#* } ;;
+            -*) _s=${_s#* } ;;
+            *) break ;;
+          esac
+        done ;;
+      timeout|gtimeout)
+        _s=${_s#* }
+        while :; do
+          case "${_s%% *}" in
+            -*) _s=${_s#* } ;;
+            *) _s=${_s#* }; break ;;
+          esac
+        done ;;
+      *) break ;;
+    esac
+    _s=$(printf '%s' "$_s" | sed 's/^[[:space:]]*//')
+  done
+  printf '%s' "$_s"
+}
+
 check_command_string() {
   _cs=$1
   # Split into segments on && || ; | and newlines.
@@ -372,21 +421,36 @@ SEG_CWD=""
 # where emit_deny's `exit 2` would kill only that subshell and the guard would
 # return 0 — allowing exactly what it just detected.
 _SEG_FILE="${_HIT_FILE}.segs"
-trap 'rm -f "$_HIT_FILE" "$_SEG_FILE"' EXIT INT TERM
+trap 'rm -f "$_HIT_FILE" "$_SEG_FILE" "${_SEG_FILE}.new" "${_SEG_FILE}.new.u"' EXIT INT TERM
 
-# Unwrap `sh -c` before segmenting, bounded so a pathological nesting cannot
-# loop. Each level is re-segmented, so `sh -c 'cd x && git add y'` is inspected.
-_scan=$cmd
-_depth=0
+# Segment, then expand: every segment is stripped of leading wrappers and, if an
+# interpreter is behind them, unwrapped and re-segmented. Iterating over SEGMENTS
+# rather than only the whole command matters because the pair can sit inside a
+# chain — `cd x && sudo sh -c 'git add y'`. Bounded on both axes so pathological
+# nesting cannot loop.
 : > "$_SEG_FILE"
-while [ "$_depth" -lt 4 ]; do
-  check_command_string "$_scan" >> "$_SEG_FILE"
-  if _inner_cmd=$(unwrap_dash_c "$_scan") && [ -n "$_inner_cmd" ] && [ "$_inner_cmd" != "$_scan" ]; then
-    _scan=$_inner_cmd
-    _depth=$((_depth + 1))
-  else
-    break
-  fi
+check_command_string "$cmd" > "$_SEG_FILE"
+_pass=0
+while [ "$_pass" -lt 4 ]; do
+  _pass=$((_pass + 1))
+  _new="${_SEG_FILE}.new"
+  : > "$_new"
+  while IFS= read -r _s; do
+    [ -n "$_s" ] || continue
+    _stripped=$(strip_leading_wrappers "$_s")
+    if _inner_cmd=$(unwrap_dash_c "$_stripped") && [ -n "$_inner_cmd" ] && [ "$_inner_cmd" != "$_s" ]; then
+      check_command_string "$_inner_cmd" >> "$_new"
+    fi
+  done < "$_SEG_FILE"
+  [ -s "$_new" ] || { rm -f "$_new"; break; }
+  # Keep only genuinely new lines, so a self-referential unwrap cannot spin.
+  sort -u "$_new" > "${_new}.u"
+  _grew=0
+  while IFS= read -r _l; do
+    grep -Fxq "$_l" "$_SEG_FILE" 2>/dev/null || { printf '%s\n' "$_l" >> "$_SEG_FILE"; _grew=1; }
+  done < "${_new}.u"
+  rm -f "$_new" "${_new}.u"
+  [ "$_grew" = 1 ] || break
 done
 
 # Capture `cd <dir>` from the SEGMENTS, not the raw command, so a cd inside an

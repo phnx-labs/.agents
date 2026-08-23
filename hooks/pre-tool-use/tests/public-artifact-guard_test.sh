@@ -264,6 +264,30 @@ check "N6: flock with flags + -c \"<cmd>\"" 2 "$RC"
 run_guard "flock /tmp/pag.lock -c 'git log $ART/monetize-agents-cli.md'"
 check "N6: flock -c with a read-only command is still allowed" 0 "$RC"
 
+# N7: wrapper + interpreter composition. The two unwrapping mechanisms used to
+# compose in ONE direction only — `sh -c 'sudo git add X'` worked because
+# unwrapping ran first, but `sudo sh -c 'git add X'` did not, because the
+# interpreter check only ever saw the command's first word and nothing
+# re-invoked it after the peel loop. That asymmetry, not a missing name, let
+# every wrapper+interpreter pair through. These are ordinary idioms.
+for pair in "sudo sh -c" "nohup bash -c" "timeout 5 su -c" "nice -n 5 sh -c" \
+            "doas sh -c" "env FOO=bar sh -c" "sudo flock /tmp/pag.lock -c"; do
+  run_guard "$pair 'git add $ART/monetize-agents-cli.md'"
+  check "N7: composes '$pair'" 2 "$RC"
+done
+# Inside a chain, and the reverse nesting order.
+run_guard "cd $SANDBOX/repo && sudo sh -c 'git add .agents/artifacts/2026-08-19/monetize-agents-cli.md'"
+check "N7: wrapper+interpreter inside a && chain" 2 "$RC"
+run_guard "sh -c 'sudo git add $ART/monetize-agents-cli.md'"
+check "N7: reverse order (interpreter then wrapper) still works" 2 "$RC"
+run_guard "sudo sh -c 'nohup git add $ART/monetize-agents-cli.md'"
+check "N7: wrapper, interpreter, wrapper" 2 "$RC"
+# The inverse: composition must not turn read-only commands into denials.
+run_guard "sudo sh -c 'git log $ART/monetize-agents-cli.md'"
+check "N7: composed read-only command is still allowed" 0 "$RC"
+run_guard "nohup bash -c \"git diff $ART/monetize-agents-cli.md\""
+check "N7: composed git diff is still allowed" 0 "$RC"
+
 # N5: `eval "<cmd>"` — same class as the sh -c bypass, and the reason the
 # interpreter set is now an explicit allowlist rather than a growing case arm.
 run_guard "eval \"git add $ART/monetize-agents-cli.md\""
