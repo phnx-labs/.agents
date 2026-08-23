@@ -387,5 +387,68 @@ FAKE_GUARD="$FAKE/rules/subrules/truly-agentic-git-workflow/main-branch-guard.sh
 _sk=$(printf '%s' "$(bj "git commit -m x" "$FEAT_REPO")" | HOME="$TMP/home" "$FAKE_GUARD" >/dev/null 2>&1; echo $?)
 if [ "$_sk" -eq 2 ]; then pass=$((pass+1)); else fail=$((fail+1)); printf 'FAIL: stale-lib version skew still blocks primary feature-branch commit (want 2, got %s)\n' "$_sk"; fi
 
+# --- Self-healing worktree. The refusal should hand over a directory that already
+# exists, not just a recipe. Three properties, and the last two are the ones that
+# make it safe to put a mutation inside a guard.
+AWT="$TMP/awt"; mkdir -p "$AWT"
+git_q init "$AWT"; git_q -C "$AWT" commit --allow-empty -m init
+UP="$TMP/awt-upstream"; git_q init --bare "$UP"
+git_q -C "$AWT" remote add origin "$UP"
+git_q -C "$AWT" push -u origin HEAD
+git_q -C "$AWT" remote set-head origin --auto
+
+_out=$(printf '%s' "$(wj Write file_path "$AWT/f.txt")" | \
+  AGENTS_AGENT_NAME=claude AGENTS_SESSION_ID=abcdef12-dead-beef "$GUARD" 2>&1 >/dev/null; true)
+_made=$(ls -d "$AWT"/.agents/worktrees/*-abcdef12 2>/dev/null | head -1)
+
+# 1. it created the worktree and named it in the refusal
+if [ -n "$_made" ] && [ -d "$_made" ] && printf '%s' "$_out" | grep -q "$_made"; then
+  pass=$((pass+1))
+else
+  fail=$((fail+1)); printf 'FAIL: self-healing worktree not created or not named in the refusal\n'
+fi
+
+# 1b. the name carries harness + date + hhmm + session chunk, in that order
+if basename "${_made:-none}" | grep -Eq '^claude-[0-9]{4}-[0-9]{2}-[0-9]{2}-[0-9]{4}-abcdef12$'; then
+  pass=$((pass+1))
+else
+  fail=$((fail+1)); printf 'FAIL: worktree name not <harness>-<date>-<hhmm>-<session8>: %s\n' "$(basename "${_made:-none}")"
+fi
+
+# 2. it still BLOCKS. A convenience that stops denying is a hole, not a feature.
+_rc=$(printf '%s' "$(wj Write file_path "$AWT/f.txt")" | \
+  AGENTS_AGENT_NAME=claude AGENTS_SESSION_ID=abcdef12-dead-beef "$GUARD" >/dev/null 2>&1; echo $?)
+if [ "$_rc" -eq 2 ]; then pass=$((pass+1)); else fail=$((fail+1)); printf 'FAIL: self-healing path stopped blocking (want 2, got %s)\n' "$_rc"; fi
+
+# 3. a second block REUSES it. Reuse matches on the SESSION chunk, not the whole
+# name, so it must hold even when a later block computes a different HHMM.
+_before=$(git -C "$AWT" worktree list | wc -l)
+printf '%s' "$(wj Edit file_path "$AWT/g.txt")" | \
+  AGENTS_AGENT_NAME=claude AGENTS_SESSION_ID=abcdef12-dead-beef "$GUARD" >/dev/null 2>&1
+_after=$(git -C "$AWT" worktree list | wc -l)
+if [ "$_before" -eq "$_after" ]; then pass=$((pass+1)); else fail=$((fail+1)); printf 'FAIL: second block created another worktree (%s -> %s)\n' "$_before" "$_after"; fi
+
+# 3b. a DIFFERENT session gets its own — reuse is scoped, not global
+printf '%s' "$(wj Write file_path "$AWT/i.txt")" | \
+  AGENTS_AGENT_NAME=claude AGENTS_SESSION_ID=99999999-cafe "$GUARD" >/dev/null 2>&1
+if [ -n "$(ls -d "$AWT"/.agents/worktrees/*-99999999 2>/dev/null | head -1)" ]; then
+  pass=$((pass+1))
+else
+  fail=$((fail+1)); printf 'FAIL: a second session did not get its own worktree\n'
+fi
+
+# 4. opt-out honored, and the fallback recipe returns
+_off=$(printf '%s' "$(wj Write file_path "$AWT/h.txt")" | AGENTS_NO_AUTO_WORKTREE=1 AGENTS_SESSION_ID=zz "$GUARD" 2>&1 >/dev/null; true)
+if printf '%s' "$_off" | grep -q 'worktree add -b <slug>' && [ ! -d "$AWT/.agents/worktrees/agent-zz" ]; then
+  pass=$((pass+1))
+else
+  fail=$((fail+1)); printf 'FAIL: AGENTS_NO_AUTO_WORKTREE did not fall back to the recipe\n'
+fi
+
+# 5. an un-creatable worktree (no origin/HEAD) must NOT stop the refusal
+NOUP="$TMP/noup"; git_q init "$NOUP"; git_q -C "$NOUP" commit --allow-empty -m init
+_rc=$(printf '%s' "$(wj Write file_path "$NOUP/f.txt")" | AGENTS_SESSION_ID=nohead "$GUARD" >/dev/null 2>&1; echo $?)
+if [ "$_rc" -eq 2 ]; then pass=$((pass+1)); else fail=$((fail+1)); printf 'FAIL: guard stopped blocking when the worktree could not be made (want 2, got %s)\n' "$_rc"; fi
+
 printf -- '---\nmain-branch-guard: %s passed, %s failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]

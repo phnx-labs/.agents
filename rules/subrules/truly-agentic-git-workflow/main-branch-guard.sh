@@ -184,10 +184,81 @@ in_primary_tree() {
   return 1                          # not a normal primary tree — allow
 }
 
+# Build the worktree the agent should have been working in, and return its path.
+#
+# Why the guard does this instead of only describing it: this refusal fires ~131
+# times across ~63 sessions, and every one of those is an agent that wanted to
+# write, stopped, read a recipe, ran four commands, and retried. Measured
+# recovery is 72% — the best of any guard, precisely because the message already
+# pastes a runnable recipe. The remaining 28% is agents fumbling the recipe or
+# wandering off. Handing over a directory that already exists removes the step
+# that can be fumbled.
+#
+# Safety: creating a linked worktree is additive and reversible. It touches
+# nothing in the primary tree, cannot lose work, and a leftover is removed with
+# `git worktree remove`. On ANY failure this is silent — the refusal still
+# happens, it just falls back to describing the recipe. A guard must never
+# become less protective because a convenience step broke.
+_ensure_worktree() {
+  _repo=$1
+  command -v git >/dev/null 2>&1 || return 1
+  [ -n "${AGENTS_NO_AUTO_WORKTREE:-}" ] && return 1
+
+  # Name: <harness>-<yyyy-mm-dd>-<hhmm>-<session8>. Each part earns its place —
+  # the harness says who made it, the timestamp sorts chronologically and says
+  # when, and the session chunk makes it unique AND resolvable: the worktree can
+  # be traced straight back with `agents sessions <session8>`.
+  # AGENTS_AGENT_NAME and AGENTS_SESSION_ID are both exported by buildExecEnv.
+  _who=${AGENTS_AGENT_NAME:-agent}
+  _sid=$(printf '%s' "${AGENTS_SESSION_ID:-$$}" | tr -cd 'A-Za-z0-9' | cut -c1-8)
+  [ -z "$_sid" ] && _sid=$$
+  _dir="$_repo/.agents/worktrees"
+
+  # Reuse the one this session already got, so a session with six blocked writes
+  # ends up with one worktree and not six. Matching on the session chunk rather
+  # than the whole name is what makes this survive the clock: a later block
+  # computes a different HHMM, but the same session still finds its worktree —
+  # and it needs no state file to do it.
+  for _prev in "$_dir"/*-"$_sid"; do
+    [ -d "$_prev" ] || continue
+    printf '%s' "$_prev"
+    return 0
+  done
+
+  _stamp=$(date +%Y-%m-%d-%H%M 2>/dev/null) || return 1
+  _name="$_who-$_stamp-$_sid"
+
+  git -C "$_repo" fetch origin --quiet >/dev/null 2>&1 || return 1
+  _base=$(git -C "$_repo" symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null | sed 's#^origin/##')
+  [ -z "$_base" ] && return 1
+  _wt="$_dir/$_name"
+  git -C "$_repo" worktree add -b "$_name" "$_wt" "origin/$_base" >/dev/null 2>&1 || return 1
+  [ -d "$_wt" ] || return 1
+  printf '%s' "$_wt"
+}
+
 set_deny_reason() {
   # $1 = what is blocked (e.g. the file path or "git commit"); uses _top/_cur.
   _where=$_top
   [ -n "$_cur" ] && _where="$_top (branch '$_cur')"
+
+  _ready=$(_ensure_worktree "$_top" 2>/dev/null) || _ready=""
+
+  if [ -n "$_ready" ]; then
+    deny_reason="Blocked: $1 in the PRIMARY working tree of $_where.
+
+No agent may modify the user's primary working tree — on ANY branch. It is the
+checkout the user works in; leaving it dirty or switched onto a feature branch
+strands their machine.
+
+A worktree is ready for you — redo this write there:
+  $_ready
+It is branched off freshly-fetched origin/HEAD. Work, commit, and push from it,
+then open a PR. Rename the branch if you want a task-shaped name:
+  git -C \"$_ready\" branch -m <slug>"
+    return
+  fi
+
   deny_reason="Blocked: $1 in the PRIMARY working tree of $_where.
 
 No agent may modify the user's primary working tree — on ANY branch. It is the

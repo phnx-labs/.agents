@@ -2,6 +2,23 @@
 
 ## [Unreleased]
 
+### Changed
+
+- **main-branch-guard now hands over a worktree instead of describing one.** The
+  refusal fires ~131 times across ~63 sessions, and each one is an agent that wanted
+  to write, stopped, read a recipe, ran four commands, and retried. Measured recovery
+  is 72% — the best of any guard, precisely because the message already pasted a
+  runnable recipe; the remaining 28% is agents fumbling it or wandering off. The
+  guard now creates the worktree itself and names it in the refusal, removing the
+  step that can be fumbled. Named `<harness>-<yyyy-mm-dd>-<hhmm>-<session8>` (e.g.
+  `claude-2026-08-23-0509-f5b0ef02`) so it says who made it and when, sorts
+  chronologically, and traces back with `agents sessions <session8>`. One worktree
+  per session, not per blocked write — reuse matches the session chunk so it holds
+  when the clock rolls to a new minute. It still **blocks**: creation is additive and
+  reversible, and any failure (no `origin/HEAD`, no git, `AGENTS_NO_AUTO_WORKTREE=1`)
+  falls back silently to the old recipe rather than weakening the refusal.
+
+
 ### Added
 
 - **`public-artifact-guard` blocks confidential material from the committed
