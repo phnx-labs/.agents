@@ -16,6 +16,9 @@ plan-html-reminder:
 # Codex plan mode is collaboration state, not an ExitPlanMode tool call. Stop is
 # the common completion seam across every hooks-capable harness; the script
 # inspects the final response/transcript and exits immediately for non-plan turns.
+# Harnesses that report the live permission mode on stdin (Claude Code sends
+# permission_mode) are gated on it first: an explicit non-plan mode exits 0
+# before any transcript scan; an absent field keeps the marker backstop.
 plan-html-stop-reminder:
   script: plan-html-reminder.sh
   events: [Stop]
