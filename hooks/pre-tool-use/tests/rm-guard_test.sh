@@ -34,7 +34,13 @@ run_guard() {
   local cmdstr="$1" path_override="${2:-}"
   local json esc_cmd errfile
   esc_cmd=$(json_escape "$cmdstr")
-  json=$(printf '{"tool_input":{"command":"%s"}}' "$esc_cmd")
+  # KEY_STYLE=camel emits a Grok-shaped payload (toolName/toolInput); default
+  # snake_case is byte-identical to before.
+  if [ "${KEY_STYLE:-snake}" = camel ]; then
+    json=$(printf '{"toolName":"Bash","toolInput":{"command":"%s"}}' "$esc_cmd")
+  else
+    json=$(printf '{"tool_input":{"command":"%s"}}' "$esc_cmd")
+  fi
   errfile="$SANDBOX/err.$$.$RANDOM"
   if [ -n "$path_override" ]; then
     OUT=$(printf '%s' "$json" | PATH="$path_override" "$SH_BIN" "$HOOK" 2>"$errfile")
@@ -141,6 +147,15 @@ if [ "$RC" -eq 0 ] && [ -z "$OUT" ]; then
 else
   echo "FAIL - no-parser PATH broke the non-rm fast path: rc=$RC out=[$OUT]"; fail=$((fail+1))
 fi
+
+# --- Harness portability: Grok CLI camelCase payloads (toolName/toolInput) ----
+# Grok delivers camelCase hook stdin; the guard MUST deny a protected-path rm
+# exactly as for the snake_case twins above. Pins the dual-path extraction
+# (efc7fef) with a regression fixture the Bash guards previously lacked.
+KEY_STYLE=camel
+check_deny  "camelCase: rm -rf ~/.agents still denied" "rm -rf ~/.agents" "protected path denied"
+check_allow "camelCase: rm -rf unprotected tmp allowed" "rm -rf $TMP_SCRATCH"
+KEY_STYLE=snake
 
 echo "  $pass passed, $fail failed"
 [ "$fail" -eq 0 ]
