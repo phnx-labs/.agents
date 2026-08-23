@@ -14,7 +14,7 @@
 #      fleet capacity summary) and each box's one-line description (what it is
 #      FOR) — so the agent can pick a fitting idle box when offloading work
 #      off this machine instead of guessing. Stats come from the rendered table
-#      (`--json` is registry-only and carries no live probe). The probe SSHes each
+#      (`--json` embeds the same health fields, which is why they are read from there). The probe SSHes each
 #      reachable box, bounded at ~2.5s/box in parallel, so worst case is a couple
 #      of seconds; if it fails or is empty we fall back to reachability-only.
 #

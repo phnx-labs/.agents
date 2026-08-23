@@ -50,6 +50,9 @@ case "$*" in
  {"name":"ghost-box","platform":"linux","tailscale":{"online":false},"interactive":false,
   "description":"load 12% steady, mem 8% steady, ● idle mostly, some 30% spikes",
   "health":{"reachable":false}},
+ {"name":"unprobed","platform":"linux","tailscale":{"online":true,"direct":true},"interactive":false,
+  "description":"runs at 20% load, 30% mem typically, ● idle mostly",
+  "health":{"reachable":true,"headroom":"unknown"}},
  {"name":"zion","platform":"macos","tailscale":{"online":true,"direct":true},"interactive":true}]
 JSON
     ;;
@@ -112,6 +115,14 @@ check_absent  "an offline box gets no stats"             "$OUT" "12% load / 8% m
 # being read as telemetry, which the assertion above pins.
 check_contains "an offline box still shows its description"  "$OUT" "load 12% steady"
 check_absent  "offline box absent from the reachable count"  "$OUT" "5 reachable device"
+
+# A THIRD row shape the old text parser never modelled: online in the registry
+# but never probed this run, so headroom is "unknown" and the renderer prints a
+# dash rather than a badge glyph. Under text parsing this fell through the
+# badge-glyph guard exactly like the offline case; from JSON it simply has no
+# loadPercent, so there is nothing to fall through to.
+check_contains "unprobed box still shows its description"    "$OUT" "runs at 20% load"
+check_absent  "unprobed box gets no fabricated stats"        "$OUT" "20% load / 30% mem"
 
 # --- older CLI: fewer keys, no invented ones ---------------------------------
 write_agents_stub_old
