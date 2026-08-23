@@ -31,7 +31,7 @@ agents devices unignore <name>    # undo an ignore
 
 ```bash
 agents devices list               # spec (cores/RAM/disk), live load/mem/disk, headroom, role, description (alias: ls)
-agents devices list --json        # same rows as a JSON array + health.disk* fields (for scripts/hooks)
+agents devices list --json        # same rows as a JSON array + top-level `description` and health.disk* fields (for scripts/hooks)
 agents devices list --no-stats    # instant: platform, address, reachability only
 agents devices show <name>        # full profile for one device
 agents devices ignored            # dismissed nodes — when, and which machine dismissed them
