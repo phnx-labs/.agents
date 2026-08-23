@@ -37,7 +37,7 @@ Hand the work to the plugin/skill built for it, on a machine that makes sense (a
 | A queue of coding tickets only | `/code:loop` (engineering merge-oriented) |
 | A queue of any kind / overnight drain | `/work:loop` (or `/loop`) — unattended, multi-project, drives each item to landed |
 | Design / images / assets | `design:design` (keyless, offline-first) |
-| Publish an artifact / plan / report | `share:public` / `share:private` |
+| Publish an artifact / plan / report | `share` (`--private` for `--no-cover --expire 7d`) |
 | Research / data pull | the `browser` skill + research skills, `secrets` for authed sources |
 | A real web task (form, portal, dashboard) | the `browser` skill + `secrets` |
 
