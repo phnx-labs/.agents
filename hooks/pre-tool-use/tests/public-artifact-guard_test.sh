@@ -228,6 +228,25 @@ check "N4: catches combined short flags (git commit -am)" 2 "$RC"
 run_guard "git commit --amend --no-edit"
 check "N4: --amend is not mistaken for -a" 0 "$RC"
 
+# N6: prefix wrappers. The walker required a segment's first token to be exactly
+# `git`, so any wrapper silently skipped the whole segment — six bypasses from
+# one root cause, all ordinary shell idioms rather than adversarial constructions.
+for wrap in "command" "exec" "nohup" "setsid" "env" "env FOO=bar" \
+            "timeout 5" "nice -n 5" "ionice -c2 -n0" "stdbuf -oL"; do
+  run_guard "$wrap git add $ART/monetize-agents-cli.md"
+  check "N6: sees through wrapper '$wrap'" 2 "$RC"
+done
+# ...and wrappers must not make read-only commands block.
+run_guard "timeout 5 git log $ART/monetize-agents-cli.md"
+check "N6: wrapper + git log is still allowed" 0 "$RC"
+run_guard "nice -n 5 git diff $ART/monetize-agents-cli.md"
+check "N6: wrapper + git diff is still allowed" 0 "$RC"
+# Wrappers compose with interpreter unwrapping.
+run_guard "sh -c 'command git add $ART/monetize-agents-cli.md'"
+check "N6: wrapper nested inside sh -c" 2 "$RC"
+run_guard "eval \"nohup git add $ART/monetize-agents-cli.md\""
+check "N6: wrapper nested inside eval" 2 "$RC"
+
 # N5: `eval "<cmd>"` — same class as the sh -c bypass, and the reason the
 # interpreter set is now an explicit allowlist rather than a growing case arm.
 run_guard "eval \"git add $ART/monetize-agents-cli.md\""

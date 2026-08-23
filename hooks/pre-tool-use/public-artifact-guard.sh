@@ -43,6 +43,19 @@
 # on every `git add`. Confidential material does not belong in a tracked
 # artifacts dir of ANY repo -- private repos get forked and flipped public.
 #
+# --- Known limits, stated rather than implied -------------------------------
+#
+# This inspects a command STRING, so constructions that only produce the real
+# command at runtime are out of reach and are NOT claimed to be covered:
+#   - `xargs git add < list`  — paths arrive on stdin
+#   - backticks and $(...)    — the path is the output of another command
+#   - a path built from shell variables expanded at run time
+# Closing those needs a different mechanism than string inspection (a pre-commit
+# hook on the repo, or server-side push protection). This guard is a cheap early
+# catch for the realistic case — an agent staging a file it should not — not a
+# defense against someone deliberately evading it. Anyone determined to commit
+# the file can simply rename it.
+#
 # Exits 0 (allow) or 2 (deny, message on stderr).
 
 set -eu
@@ -383,6 +396,58 @@ while IFS= read -r seg; do
   # Drop leading VAR=value assignments.
   while [ $# -gt 0 ]; do
     case "$1" in *=*) shift ;; *) break ;; esac
+  done
+  [ $# -eq 0 ] && continue
+
+  # Peel prefix wrappers. `command git add X`, `exec git add X`, `nohup …`,
+  # `timeout 5 …`, `env …` are ordinary shell idioms, and requiring the first
+  # token to be exactly `git` made the whole segment skip silently — six
+  # bypasses from one root cause. Kept as an explicit list for the same reason
+  # the interpreter set is: enumerating inline is what let them through.
+  _peeled=1
+  while [ "$_peeled" = 1 ] && [ $# -gt 0 ]; do
+    _peeled=0
+    case "$(strip_quotes "${1:-}")" in
+      command|exec|nohup|setsid|caffeinate)
+        shift; _peeled=1 ;;
+      nice|ionice|stdbuf)
+        shift; _peeled=1
+        # These take flags that carry a value (`nice -n 5`, `ionice -c2 -n0`,
+        # `stdbuf -oL`), so peel flag[+value] pairs before the real command.
+        while [ $# -gt 0 ]; do
+          case "$(strip_quotes "$1")" in
+            -[a-zA-Z])   shift; [ $# -gt 0 ] && shift ;;
+            -[a-zA-Z]*)  shift ;;
+            --*=*)       shift ;;
+            --[a-zA-Z]*) shift; [ $# -gt 0 ] && shift ;;
+            *) break ;;
+          esac
+        done ;;
+      env)
+        shift; _peeled=1
+        # env's own flags, then VAR=value pairs.
+        while [ $# -gt 0 ]; do
+          case "$(strip_quotes "$1")" in
+            -i|--ignore-environment|-0|--null) shift ;;
+            -u|--unset) shift; [ $# -gt 0 ] && shift ;;
+            *=*) shift ;;
+            *) break ;;
+          esac
+        done ;;
+      timeout|gtimeout)
+        shift; _peeled=1
+        # Flags, then the duration argument.
+        while [ $# -gt 0 ]; do
+          case "$(strip_quotes "$1")" in
+            -*) shift ;;
+            *) shift; break ;;
+          esac
+        done ;;
+    esac
+    # A wrapper may be followed by more VAR=value assignments.
+    while [ $# -gt 0 ]; do
+      case "$1" in *=*) shift; _peeled=1 ;; *) break ;; esac
+    done
   done
   [ $# -eq 0 ] && continue
 
