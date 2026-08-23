@@ -255,6 +255,14 @@ run_guard "eval \"nohup git add $ART/monetize-agents-cli.md\""
 check "N6: wrapper nested inside eval" 2 "$RC"
 run_guard "su -c 'git add $ART/monetize-agents-cli.md'"
 check "N6: su -c is unwrapped like sh -c" 2 "$RC"
+# flock has two forms and the bare-exec one alone is an INCOMPLETE close: the
+# -c form is a shell string, structurally the same as sh -c / su -c.
+run_guard "flock /tmp/pag.lock -c 'git add $ART/monetize-agents-cli.md'"
+check "N6: flock <file> -c '<cmd>' is unwrapped" 2 "$RC"
+run_guard "flock -w 5 /tmp/pag.lock -c \"git add $ART/notes.md\""
+check "N6: flock with flags + -c \"<cmd>\"" 2 "$RC"
+run_guard "flock /tmp/pag.lock -c 'git log $ART/monetize-agents-cli.md'"
+check "N6: flock -c with a read-only command is still allowed" 0 "$RC"
 
 # N5: `eval "<cmd>"` — same class as the sh -c bypass, and the reason the
 # interpreter set is now an explicit allowlist rather than a growing case arm.

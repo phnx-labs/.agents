@@ -334,9 +334,15 @@ unwrap_dash_c() {
       return 0
       ;;
   esac
+  # flock has BOTH forms: `flock <file> <cmd> [args]` (peeled as a wrapper
+  # below) and `flock <file> -c '<cmd>'` (a shell string, structurally identical
+  # to sh -c / su -c). Closing only the bare form left the -c form bypassing —
+  # an incomplete close, not an un-enumerated wrapper. The `${_raw#* -c }` split
+  # below already handles -c appearing after positional args, so listing flock
+  # here is the whole fix.
   _interp=${_raw%% *}
   case "${_interp##*/}" in
-    sh|bash|zsh|dash|ksh|env|su) ;;
+    sh|bash|zsh|dash|ksh|env|su|flock) ;;
     *) return 1 ;;
   esac
   case "$_raw" in *" -c "*) ;; *) return 1 ;; esac
