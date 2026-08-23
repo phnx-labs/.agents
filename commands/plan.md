@@ -308,8 +308,9 @@ HTML file** with `artifacts-cli`, and open it on the machine the user is actuall
 sitting at. This is the canonical recipe — other plan verbs (e.g. `/swarm:plan`)
 reference this step.
 
-1. **Render — in the `artifacts` house style.** Load the **`artifacts`** skill and
-   the **`artifacts`** skill. Resolve the repo root and write the Markdown source to
+1. **Render — in the `artifacts` house style.** Load the **`artifacts`** skill: it
+   owns both the house LOOK and the CLI mechanics. Resolve the repo root and write
+   the Markdown source to
    `.agents/artifacts/yyyy-mm-dd/plan-<slug>.md`, then render:
    ```bash
    artifacts render .agents/artifacts/yyyy-mm-dd/plan-<slug>.md
