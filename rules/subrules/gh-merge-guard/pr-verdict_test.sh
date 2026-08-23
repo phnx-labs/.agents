@@ -35,6 +35,10 @@ check missing "non-approving review body" '[{"state":"COMMENTED","body":"VERDICT
 # contains the word APPROVE must NOT launder itself into an approval.
 check missing "CHANGES_REQUESTED review body mentioning APPROVE" '[{"state":"CHANGES_REQUESTED","body":"I cannot APPROVE until the null check is fixed."}]' '[]'
 check missing "DISMISSED stale approving review body" '[{"state":"DISMISSED","body":"VERDICT: APPROVE"}]' '[]'
+# RUSH-3080: a reviewer quoting pr-verdict.py's own stdin contract puts the
+# literal ---AGENTS-SPLIT--- marker in the comment body. maxsplit=1 keeps the
+# whole comments JSON in parts[1] so it still parses and the verdict is read.
+check ok "APPROVE comment that quotes the split marker still clears" '[]' '[{"body":"VERDICT: APPROVE\nvalidated via: printf %s ---AGENTS-SPLIT--- %s | pr-verdict.py"}]'
 check missing "no verdict" '[]' '[{"body":"looks big, did not review"}]'
 check missing "carried from another PR" '[]' '[{"body":"Non-author APPROVE carried from #2731."}]'
 check missing "APPROVE on #N citation" '[]' '[{"body":"Non-author APPROVE on #2731 covers this."}]'

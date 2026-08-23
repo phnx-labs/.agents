@@ -62,7 +62,12 @@ def has_verdict(reviews, comments) -> bool:
 
 
 def verdict_from_stdin(raw: str) -> str:
-    parts = raw.split(SPLIT)
+    # Split on the FIRST marker only: merge-guard writes exactly one
+    # `<reviews>\n---AGENTS-SPLIT---\n<comments>`, and a review or comment body
+    # can legitimately quote the marker (e.g. a reviewer pasting pr-verdict.py's
+    # own stdin contract). maxsplit=1 keeps all of the comments JSON — markers
+    # and all — inside parts[1] so it still parses (RUSH-3080).
+    parts = raw.split(SPLIT, 1)
     reviews = None
     comments = None
     try:
