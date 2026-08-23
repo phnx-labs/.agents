@@ -12,7 +12,11 @@
   planning: `merge-guard`, `pr-description-reminder`, `large-file-add-guard`,
   `git-require-clean-tree`. Each now carries
   `matches: {permission_mode_not: plan}`, which **will** cut the per-`Bash` tax in
-  plan mode from 292 ms to 176 ms **once the predicate is live**. It is not live yet:
+  plan mode from **293 ms to 213 ms once the predicate is live** — these four are
+  80 ms of the 293 (19 + 18 + 25 + 18). An earlier draft of this entry claimed
+  292 → 176 ms; that added a mode *gate* to a *deletion* (cutting `footer-guard`
+  and `user-message-guard` outright is a further 36 ms, in every mode, and is not
+  this PR). It is not live yet:
   `permission_mode_not` merged in agents-cli #2930 but the published CLI is 1.22.46,
   cut before that merge, and `main` is 59 commits ahead of it. Until a release
   containing #2930 reaches the fleet, `should_fire()` does not recognise the key,
