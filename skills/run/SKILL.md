@@ -70,11 +70,14 @@ permission requests at the ACP protocol layer: it selects `allow_always` when of
 otherwise the first permission option offered by the server. The same last-resort
 warning applies.
 
-Codex has no native smart-classifier mode, so `agents run codex --mode auto` resolves
-to sandboxed `edit` and can still prompt. When no configured run default exists,
-omitting `--mode` for Codex uses the same safe writable profile: workspace plus common
-build caches, network enabled, and approvals on request. Explicit `--mode plan` remains filesystem-read-only while
-retaining network access. `agents run codex --mode skip` instead bypasses approvals
+Codex has three managed permission profiles rather than a smart classifier. `edit`
+and `auto` share one sandbox — workspace plus common build caches, network enabled —
+and differ only in approvals: `edit` requests them on demand, while `auto` is
+`approval_policy=never`, so it never prompts and a sandbox-denied command fails
+instead of raising a dialog. Use `--mode auto` for anything unattended; a prompt
+nobody answers is an agent that has stopped. When no configured run default exists,
+omitting `--mode` for Codex uses `edit`. Explicit `--mode plan` remains
+filesystem-read-only while retaining network access. `agents run codex --mode skip` instead bypasses approvals
 **and** removes the sandbox. Harnesses without a native bypass flag reject
 direct-exec `skip`.
 
