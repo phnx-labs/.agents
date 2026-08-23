@@ -135,10 +135,17 @@ if devices:
             f"The user sits at **{interactive}** (interactive host). To show them anything "
             f"visual (an HTML plan, a screenshot, a dashboard), deliver it THERE: "
             f"`scp <file> {interactive}:/tmp/` then show it in ONE reused browser tab — "
-            f"`agents ssh {interactive} '"'"'agents browser navigate --url file:///tmp/<file>'"'"'`. "
+            f"`agents browser navigate --device {interactive} --url file:///tmp/<file>`. "
             f"Re-run that to refresh the SAME tab in place; a raw `open` spawns a new "
-            f"duplicate tab every call. Fall back to `agents ssh {interactive} "
-            f"'"'"'open /tmp/<file>'"'"'` only if that host has no drivable browser profile. "
+            f"duplicate tab every call. Use `--device`, NOT "
+            f"`agents ssh {interactive} '"'"'agents browser ...'"'"'` — the ssh form skips the "
+            f"fleet dispatch path, so the target never sees the remote-control consent "
+            f"marker. That box also holds the logged-in browser profile for this fleet: "
+            f"`agents browser profiles logins --device {interactive}` shows which "
+            f"services it is signed in to, so you can act as the user rather than "
+            f"launching a logged-out browser here. "
+            f"Fall back to `agents ssh {interactive} '"'"'open /tmp/<file>'"'"'` only if "
+            f"that host has no drivable browser profile. "
             f"Do not open it locally — the user is not watching this machine."
         )
     elif interactive:
@@ -176,7 +183,8 @@ if devices:
     lines.append(
         "Browser: a bare `agents browser start` on any machine uses THAT machine"
         "'"'"'s configured profile — never pass --profile and never name a browser binary; "
-        "the machine knows."
+        "the machine knows. To drive another box, add `--device <host>` (still no "
+        "--profile: the target picks its own)."
     )
 
 print("\n".join(lines))

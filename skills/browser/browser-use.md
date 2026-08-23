@@ -160,12 +160,18 @@ activity: 58 tabs in a single window, 16 of them agent-opened `file://` docs,
 with the same document open three times. Reach for `tab add` only when you
 genuinely need two pages side by side.
 
-On a remote interactive host, copy the file over and run the same command there:
+On a remote interactive host, copy the file over and drive that host with
+`--device` — not `agents ssh`, which reaches the same machine but skips the fleet
+dispatch path, so the target never sees the remote-control consent marker:
 
 ```bash
 scp report.html <host>:/tmp/report.html
-agents ssh <host> "agents browser navigate --url file:///tmp/report.html"
+agents browser navigate --device <host> --url file:///tmp/report.html
 ```
+
+Pass no `--profile` on a `--device` run: the flag rides to the remote box and is
+interpreted there, where the same name means a different browser. The target
+machine picks its own.
 
 Fall back to a one-shot `open` ONLY when the host has no drivable browser profile
 (`agents browser profiles list` is empty and `agents browser start` cannot
