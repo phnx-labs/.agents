@@ -4,6 +4,20 @@
 
 ### Changed
 
+- **main-branch-guard now hands over a worktree instead of describing one.** The
+  refusal fires ~131 times across ~63 sessions, and each one is an agent that wanted
+  to write, stopped, read a recipe, ran four commands, and retried. Measured recovery
+  is 72% — the best of any guard, precisely because the message already pasted a
+  runnable recipe; the remaining 28% is agents fumbling it or wandering off. The
+  guard now creates the worktree itself and names it in the refusal, removing the
+  step that can be fumbled. Named `<harness>-<yyyy-mm-dd>-<hhmm>-<session8>` (e.g.
+  `claude-2026-08-23-0509-f5b0ef02`) so it says who made it and when, sorts
+  chronologically, and traces back with `agents sessions <session8>`. One worktree
+  per session, not per blocked write — reuse matches the session chunk so it holds
+  when the clock rolls to a new minute. It still **blocks**: creation is additive and
+  reversible, and any failure (no `origin/HEAD`, no git, `AGENTS_NO_AUTO_WORKTREE=1`)
+  falls back silently to the old recipe rather than weakening the refusal.
+
 - **Tickets are for work you deliver, not for what you noticed (`conventions`).**
   Measured on the live board: 275 open tickets, **257 of them opened in a single
   month**, and **220 sitting in Todo never started by anyone**. No hook creates
@@ -20,13 +34,19 @@
   `00-agent-verify-work-complete.sh` closed its self-audit block by prescribing
   `agents feed post ... --level important`, and `feed.broadcast.owner` forwards an
   important post to iMessage. Measured across fleet transcripts on 2026-08-23:
-  **811 fires over 272 sessions** (three per session, more than every PreToolUse
-  guard combined), **58% ignored** — and each of the 42% that complied produced a
-  phone buzz whether or not the session shipped anything worth one. The reminder
-  now asks for a plain, record-only post and says the agent adds `--level
-  important` only when the outcome genuinely needs the owner, matching what
+  **811 fires over 272 sessions** (three per session — more than any single guard
+  fires), **58% ignored** — and each of the 42% that complied produced a phone
+  buzz whether or not the session shipped anything worth one. The reminder now
+  asks for a plain, record-only post and says the agent adds `--level important`
+  only when the outcome genuinely needs the owner, matching what
   `feed-status-posts` already said. Its test asserted the old hardcode and now
   asserts the absence of it.
+
+- **`agents usage` reference retired with the command (RUSH-3079).**
+  `plugins/sessions/skills/insights/SKILL.md` pointed agents at the top-level
+  `agents usage` for live quota; that command is removed in agents-cli as a
+  duplicate surface (companion: phnx-labs/agents-cli RUSH-3079). The skill now
+  names `agents view`, which renders per-account quota with auth state.
 
 - **merge-guard reads APPROVE verdicts from review bodies, not only issue
   comments (RUSH-3080).** `pr-verdict.py`'s `has_verdict` cleared a merge on a

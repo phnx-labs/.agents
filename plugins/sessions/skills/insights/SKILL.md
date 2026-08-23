@@ -28,7 +28,7 @@ Related (only if the ask needs them; not the default path):
 
 - `agents cost` — what it cost
 - `agents output` — what shipped
-- `agents usage` — live quota
+- `agents view` — live quota
 
 If `$ARGUMENTS` already names one engine (`trends`, `perf`, `stats`, `insights` alone),
 run that engine and still synthesize actions — do not dump a raw table as the whole
