@@ -228,7 +228,18 @@ _ensure_worktree() {
   _stamp=$(date +%Y-%m-%d-%H%M 2>/dev/null) || return 1
   _name="$_who-$_stamp-$_sid"
 
-  git -C "$_repo" fetch origin --quiet >/dev/null 2>&1 || return 1
+  # Bound the fetch: this runs inside a PreToolUse guard on EVERY blocked write, so
+  # it must never HANG. A bare `git fetch` can block indefinitely on a credential /
+  # host-key prompt (a real /dev/tty exists in these terminal sessions) or a
+  # blackholed route (VPN down). GIT_TERMINAL_PROMPT=0 refuses the HTTPS credential
+  # prompt; BatchMode=yes refuses the SSH host-key/password prompt; ConnectTimeout
+  # caps the TCP connect. On any of these the fetch fails fast and `|| return 1`
+  # makes the guard deny (fail CLOSED) with its normal reason — the pre-#368
+  # behavior of an instant deny, never a hang. (No dependency on a `timeout` binary,
+  # which is absent on stock macOS.)
+  GIT_TERMINAL_PROMPT=0 \
+    GIT_SSH_COMMAND="${GIT_SSH_COMMAND:-ssh} -o BatchMode=yes -o ConnectTimeout=5" \
+    git -C "$_repo" fetch origin --quiet >/dev/null 2>&1 || return 1
   _base=$(git -C "$_repo" symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null | sed 's#^origin/##')
   [ -z "$_base" ] && return 1
   _wt="$_dir/$_name"
