@@ -1489,7 +1489,12 @@ cat >&2 <<MSG
 STOP — you claimed this work is done, but you must verify before stopping.
 Re-check every ask this session (first: "$first_user_msg" — plus later
 corrections) against tangible output, finish what falls short, then post one
-update: agents feed post --title "<outcome>" "<delivered + next step>" --level important
+update: agents feed post --title "<outcome>" "<delivered + next step>"
+That plain post is record-only. Add --level important ONLY if this outcome
+genuinely needs the owner's phone — a delivery they are waiting on, or a
+decision only they can make. If you are STUCK and need them, that is
+'agents feed post "<ask>" --blocked' instead — never --blocked with --level.
+Routine work records without ringing anyone.
 MSG
 record_block self-audit completion-unverified
 exit 2
