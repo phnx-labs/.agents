@@ -24,6 +24,12 @@ check() {
 
 check ok "GitHub APPROVED review" '[{"state":"APPROVED"}]' '[]'
 check ok "fresh APPROVE comment" '[]' '[{"body":"## Verdict: APPROVE\nRe-verified both findings."}]'
+# RUSH-3080: fleet agents cannot `gh pr review --approve` (self-approval blocked),
+# so a verdict often arrives as a state=COMMENTED review body via
+# `gh pr review --comment`. That must clear the guard too, not only issue comments.
+check ok "APPROVE in a state=COMMENTED review body" '[{"state":"COMMENTED","body":"VERDICT: APPROVE\nRe-verified, docs-only."}]' '[]'
+check missing "carried-from in a review body" '[{"state":"COMMENTED","body":"APPROVE carried from #2731."}]' '[]'
+check missing "non-approving review body" '[{"state":"COMMENTED","body":"VERDICT: REQUEST CHANGES\nem-dash cap violated."}]' '[]'
 check missing "no verdict" '[]' '[{"body":"looks big, did not review"}]'
 check missing "carried from another PR" '[]' '[{"body":"Non-author APPROVE carried from #2731."}]'
 check missing "APPROVE on #N citation" '[]' '[{"body":"Non-author APPROVE on #2731 covers this."}]'

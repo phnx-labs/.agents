@@ -27,19 +27,32 @@ CARRIED = re.compile(
 APPROVE = re.compile(r"\bAPPROVE\b")
 
 
-def has_verdict(reviews, comments) -> bool:
-    if isinstance(reviews, list) and any(r.get("state") == "APPROVED" for r in reviews):
-        return True
-    if not isinstance(comments, list):
+def _body_approves(items) -> bool:
+    """True if any item has a whole-word APPROVE body that is not a carried-from
+    citation. Applies to both review bodies and issue-comment bodies."""
+    if not isinstance(items, list):
         return False
-    for c in comments:
-        body = c.get("body") or ""
+    for it in items:
+        body = it.get("body") or ""
         if not APPROVE.search(body):
             continue
         if CARRIED.search(body):
             continue
         return True
     return False
+
+
+def has_verdict(reviews, comments) -> bool:
+    # A GitHub review with state APPROVED clears it outright.
+    if isinstance(reviews, list) and any(r.get("state") == "APPROVED" for r in reviews):
+        return True
+    # Fleet agents share one GitHub identity and cannot `gh pr review --approve`
+    # (GitHub blocks approving your own PR), so a non-author APPROVE arrives as a
+    # verdict in the BODY of either a review (state=COMMENTED, via
+    # `gh pr review --comment`) or an issue comment (`gh pr comment`). Both must
+    # clear the guard — reading only issue comments silently ignored a genuine
+    # verdict and blocked the merge (RUSH-3080).
+    return _body_approves(reviews) or _body_approves(comments)
 
 
 def verdict_from_stdin(raw: str) -> str:

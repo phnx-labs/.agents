@@ -4,6 +4,17 @@
 
 ### Fixed
 
+- **merge-guard reads APPROVE verdicts from review bodies, not only issue
+  comments (RUSH-3080).** `pr-verdict.py`'s `has_verdict` cleared a merge on a
+  GitHub review with `state=APPROVED` or an APPROVE in an *issue comment* body,
+  but never scanned review *bodies*. Fleet agents share one GitHub identity and
+  cannot `gh pr review --approve` (GitHub blocks self-approval), so a non-author
+  verdict commonly arrives as a `state=COMMENTED` review via
+  `gh pr review --comment`. That verdict was silently ignored and the merge
+  blocked with "no non-author review verdict found" (hit live on #375). Both
+  review bodies and issue-comment bodies now clear the guard, via one shared
+  `_body_approves` helper that keeps the whole-word / not-carried-from rule.
+
 - **`--mode auto` is per-harness, not a universal smart classifier (RUSH-3049).**
   `skills/teams/SKILL.md` (mode table + the unattended-teammate prose) and
   `plugins/swarm/skills/orchestrate/SKILL.md` claimed `auto` "adds a smart
