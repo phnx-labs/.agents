@@ -31,7 +31,7 @@ the internal **`swarm:orchestrate`** skill (no command of its own).
 | Audience | Builders draining the change | Anyone who must not break or re-invent the capability |
 | Mock-ups | **Required** for any UI / multi-step flow in the proposal | **Required** for any UI / multi-step flow in the contract |
 
-Both produce a reviewable HTML artifact (via `plan-render`). Both use the swarm to try to
+Both produce a reviewable HTML artifact (via `artifacts`). Both use the swarm to try to
 break the draft (blind independent plans / specs).
 
 ## Removed

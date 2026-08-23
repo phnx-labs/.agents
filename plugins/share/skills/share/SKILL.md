@@ -16,7 +16,7 @@ $0). The page is stored in R2, so the link outlives the agent that made it.
 
 - An agent rendered an HTML plan/viz/report and the user wants to *see* it or *send*
   it — don't leave it in `/tmp` where only this machine can open it.
-- A `plan-render` / dashboard / infographic step just produced a file.
+- An `artifacts` / dashboard / infographic step just produced a file.
 - The user says "share it", "make me a link", "publish this".
 
 ## One-time setup (per machine / per fleet)

@@ -4,6 +4,15 @@
 
 ### Added
 
+- **The artifact pipeline now has one skill.** `skills/artifacts/SKILL.md`
+  teaches the shared Markdown → `artifacts check`/`artifacts render` → branded
+  light/dark HTML → headless inspection workflow once, with separate `kind: plan`
+  and `kind: visual` contracts. The redundant `plan-render` and `visualize`
+  skills are removed. The plan contract retains the exact `surface`,
+  `.artifact-behavior`, current/proposed state, and capture/mockup evidence
+  markup enforced by `plan-html-reminder`; its PreToolUse/ExitPlanMode and Stop
+  registrations are unchanged.
+
 - **`public-artifact-guard` blocks confidential material from the committed
   artifacts dir (RUSH-3033).** The agi-cli GTM/monetization strategy was
   committed to `.agents/artifacts/` on the PUBLIC agents-cli repo and stayed

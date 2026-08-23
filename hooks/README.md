@@ -140,7 +140,7 @@ dir and namespaces the manifest key as `<rule>__<hook>`. Do not copy these into
 |---|---|---|
 | `gh-merge-guard` | `merge-guard` | PreToolUse (Bash) |
 | `no-pr-footer` | `footer-guard` | PreToolUse (Bash) |
-| `plan-presentation` | `plan-html-reminder`, `plan-html-stop-reminder` | PreToolUse (ExitPlanMode), Stop (cross-harness backstop) |
+| `plan-presentation` | `plan-html-reminder`, `plan-html-stop-reminder` | PreToolUse (ExitPlanMode), Stop (cross-harness backstop); authoring contract lives in `skills/artifacts/SKILL.md` |
 | `truly-agentic-git-workflow` | `main-branch-guard`, `pr-description-reminder` | PreToolUse |
 
 ## Manifest schema (`hooks:` in `../agents.yaml`)

@@ -108,7 +108,7 @@ After reading code, create concrete artifacts. **No discussion without artifacts
 ### For UI Changes — User Flow + a REAL Mockup REQUIRED
 
 First, show the user flow as a **rendered figure** — a hand-authored inline-SVG
-diagram (the `plan-render` / `artifacts` house style), not an ASCII box. Name each
+diagram (the `artifacts` house style), not an ASCII box. Name each
 screen and the transitions between them.
 
 Then a **real mockup** of each screen that reads like the actual product — not an
@@ -308,7 +308,7 @@ HTML file** with `artifacts-cli`, and open it on the machine the user is actuall
 sitting at. This is the canonical recipe — other plan verbs (e.g. `/swarm:plan`)
 reference this step.
 
-1. **Render — in the `plan-render` house style.** Load the **`plan-render`** skill and
+1. **Render — in the `artifacts` house style.** Load the **`artifacts`** skill and
    the **`artifacts`** skill. Resolve the repo root and write the Markdown source to
    `.agents/artifacts/yyyy-mm-dd/plan-<slug>.md`, then render:
    ```bash

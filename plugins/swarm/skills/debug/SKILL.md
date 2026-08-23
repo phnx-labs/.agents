@@ -77,7 +77,7 @@ Once the cause is verified, propose fixes — minimal, defensive, architectural 
 
 A confirmed root cause is the middle of the task, not the end. When this is a real problem you'll act on (not a throwaway diagnosis):
 
-- **Render a viewable artifact.** Turn the finding (intent/observed/delta → evidence chain → root cause → spec gap → recommended fix) into a self-contained HTML doc and open it on the machine the user sits at — follow the `plan-render` skill for the LOOK and the `/plan` open-on-Mac transport. This is the surface the user reviews and reacts to.
+- **Render a viewable artifact.** Turn the finding (intent/observed/delta → evidence chain → root cause → spec gap → recommended fix) into a self-contained HTML doc and open it on the machine the user sits at — follow the `artifacts` skill for the LOOK and the `/plan` open-on-Mac transport. This is the surface the user reviews and reacts to.
 - **Cut a ticket.** Use the `tickets` skill to open one scoped to the fix: the delta, the root-cause file:line, the regression test to add, and the spec gap. Link the artifact.
 - **Dispatch the build.** Once the fix is approved, dispatch it to the worker boxes — `agents run <profile> --device yosemite-s0` for a single fix, or `agents teams` for multi-surface work (see `swarm:orchestrate`). Don't hand-build it on the interactive machine.
 
