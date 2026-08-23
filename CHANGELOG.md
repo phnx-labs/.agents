@@ -4,6 +4,18 @@
 
 ### Added
 
+- **`07-inject-device-topology.sh` carries disk and the one-line description into
+  the Host & Fleet block (RUSH-3062).** The agents-cli devices list grew a `spec`
+  cell (cores/RAM/disk) and a `disk` used column, plus a top-level `description`
+  in `devices list --json` (companion: phnx-labs/agents-cli RUSH-3062 surface
+  track). The hook's table parser is percentage-order based, so `pcts[0]`/`pcts[1]`
+  stay load/mem on every CLI version — verified against both table shapes by the
+  new `tests/07-inject-device-topology_test.sh` — and a third percentage, when
+  present, is now rendered as disk. The injected machine row also appends the
+  operator description when the CLI provides one, so an agent offloading work sees
+  what a box is FOR, not just its hostname. `skills/devices/SKILL.md` teaches the
+  new columns, `agents devices describe`, and `agents devices ignored`.
+
 - **`public-artifact-guard` blocks confidential material from the committed
   artifacts dir (RUSH-3033).** The agi-cli GTM/monetization strategy was
   committed to `.agents/artifacts/` on the PUBLIC agents-cli repo and stayed
