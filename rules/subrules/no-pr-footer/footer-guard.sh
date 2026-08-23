@@ -19,40 +19,26 @@ case "$input" in
   *) exit 0 ;;
 esac
 
-# Extract the tool command with a jq -> node -> python fallback chain so the guard
-# does not fail OPEN when jq is absent (e.g. stock Git Bash on Windows). Sibling
-# guards (main-branch-guard, merge-guard) use the same helper and fail CLOSED.
-_json_field() {
-  # $1 = json, $2 = primary dotted key, $3 = optional fallback dotted key
-  if command -v jq >/dev/null 2>&1; then
-    if [ -n "${3:-}" ]; then
-      printf '%s' "$1" | jq -r "((.$2) // (.$3)) // empty" 2>/dev/null
-    else
-      printf '%s' "$1" | jq -r "(.$2) // empty" 2>/dev/null
-    fi
-    return 0
+# --- shared JSON field extractor -------------------------------------------
+# _json_field lives in hooks/lib/json-field.sh (one definition; formerly copied
+# into 12 hook scripts). Source it relative to this script, fall back to the
+# absolute system-install path, then verify it is defined. The command already
+# matched the gh/git fast path, so if the guard cannot parse it must refuse it
+# unchecked rather than let a footer slip (fail CLOSED, exit 2). ${0%/*} (POSIX,
+# no subprocess) locates the lib even when PATH carries no coreutils.
+_LIB_DIR=$(CDPATH= cd "${0%/*}" 2>/dev/null && pwd) || _LIB_DIR=""
+for _cand in "$_LIB_DIR/../../../hooks/lib/json-field.sh" "${HOME}/.agents/.system/hooks/lib/json-field.sh"; do
+  if [ -f "$_cand" ]; then
+    # shellcheck source=../../../hooks/lib/json-field.sh
+    . "$_cand"
+    if command -v _json_field >/dev/null 2>&1; then break; fi
   fi
-  if command -v node >/dev/null 2>&1; then
-    printf '%s' "$1" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const dig=(o,p)=>{for(const k of p.split("."))o=(o==null?null:o[k]);return o};try{let o=JSON.parse(s);let v=dig(o,process.argv[1]);if((v==null||v==="")&&process.argv[2])v=dig(o,process.argv[2]);process.stdout.write(v==null?"":String(v))}catch(e){}})' "$2" "${3:-}" 2>/dev/null
-    return 0
-  fi
-  for _py in python3 python; do
-    command -v "$_py" >/dev/null 2>&1 && "$_py" -c '' >/dev/null 2>&1 || continue
-    printf '%s' "$1" | "$_py" -c 'import json,sys
-try: o=json.load(sys.stdin)
-except Exception: o=None
-def dig(o,p):
-    for k in p.split("."):
-        o=o.get(k) if isinstance(o,dict) else None
-    return o
-v=dig(o,sys.argv[1])
-if (v is None or v=="") and len(sys.argv)>2 and sys.argv[2]:
-    v=dig(o,sys.argv[2])
-sys.stdout.write("" if v is None else str(v))' "$2" "${3:-}" 2>/dev/null
-    return 0
-  done
-  return 1
-}
+done
+unset _LIB_DIR _cand
+if ! command -v _json_field >/dev/null 2>&1; then
+  printf '%s\n' 'footer-guard: shared json-field lib not found — refusing the gh/git command unchecked (fail-closed). Ensure ~/.agents/.system/hooks/lib/json-field.sh is present.' >&2
+  exit 2
+fi
 
 if ! cmd=$(_json_field "$input" tool_input.command toolInput.command); then
   # No JSON parser available — fail CLOSED. The command already matched the

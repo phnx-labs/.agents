@@ -25,30 +25,26 @@
 
 set -eu
 
-# --- portable JSON field extractor (jq -> node -> python) -------------------
-# jq is absent on Windows git-bash; the old `… | jq …` extraction then returned
-# empty and this guard fail-OPEN'd (waved `rm -rf` through unchecked). Prefer jq
-# (fast, present on mac/Linux), fall back to node (always shipped with agents-cli)
-# then python. Returns 1 ONLY when NO parser exists, so the caller can fail CLOSED.
-_json_field() {  # $1=json  $2=dotted.path
-  if command -v jq >/dev/null 2>&1; then
-    printf '%s' "$1" | jq -r "(.$2) // empty" 2>/dev/null; return 0
+# --- shared JSON field extractor -------------------------------------------
+# _json_field lives in hooks/lib/json-field.sh (one definition; formerly copied
+# into 12 hook scripts). Source it relative to this script, fall back to the
+# absolute system-install path, then verify it is defined — a guard that cannot
+# parse its input must refuse, not wave `rm` through, so a missing lib fails
+# CLOSED (exit 2). ${0%/*} (POSIX, no subprocess) locates the lib even when
+# PATH carries no coreutils.
+_LIB_DIR=$(CDPATH= cd "${0%/*}" 2>/dev/null && pwd) || _LIB_DIR=""
+for _cand in "$_LIB_DIR/../lib/json-field.sh" "${HOME}/.agents/.system/hooks/lib/json-field.sh"; do
+  if [ -f "$_cand" ]; then
+    # shellcheck source=../lib/json-field.sh
+    . "$_cand"
+    if command -v _json_field >/dev/null 2>&1; then break; fi
   fi
-  if command -v node >/dev/null 2>&1; then
-    printf '%s' "$1" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{try{let o=JSON.parse(s);for(const k of process.argv[1].split("."))o=(o==null?null:o[k]);process.stdout.write(o==null?"":String(o))}catch(e){}})' "$2" 2>/dev/null; return 0
-  fi
-  for _py in python3 python; do
-    command -v "$_py" >/dev/null 2>&1 && "$_py" -c '' >/dev/null 2>&1 || continue
-    printf '%s' "$1" | "$_py" -c 'import json,sys
-try: o=json.load(sys.stdin)
-except Exception: o=None
-for k in sys.argv[1].split("."):
-    o=o.get(k) if isinstance(o,dict) else None
-sys.stdout.write("" if o is None else str(o))' "$2" 2>/dev/null
-    return 0
-  done
-  return 1
-}
+done
+unset _LIB_DIR _cand
+if ! command -v _json_field >/dev/null 2>&1; then
+  printf 'rm-guard: shared json-field lib not found — refusing to run an rm command unchecked (fail-closed). Ensure ~/.agents/.system/hooks/lib/json-field.sh is present.\n' >&2
+  exit 2
+fi
 
 # --- friction self-report ---------------------------------------------------
 # Guard hooks exit 2 before any `agents` process exists, so they cannot emit
