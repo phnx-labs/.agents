@@ -8,12 +8,17 @@
   the Host & Fleet block (RUSH-3062).** The agents-cli devices list grew a `spec`
   cell (cores/RAM/disk) and a `disk` used column, plus a top-level `description`
   in `devices list --json` (companion: phnx-labs/agents-cli RUSH-3062 surface
-  track). The hook's table parser is percentage-order based, so `pcts[0]`/`pcts[1]`
-  stay load/mem on every CLI version — verified against both table shapes by the
-  new `tests/07-inject-device-topology_test.sh` — and a third percentage, when
-  present, is now rendered as disk. The injected machine row also appends the
-  operator description when the CLI provides one, so an agent offloading work sees
-  what a box is FOR, not just its hostname. `skills/devices/SKILL.md` teaches the
+  track). The hook no longer parses the rendered table at all: it reads
+  `health.loadPercent` / `memPercent` / `diskUsedPercent` / `headroom` and the
+  top-level `description` straight from the `--json` call it already made, and
+  computes the fleet-capacity line from `ncpu` and the byte totals rather than
+  copying it. Scraping the table produced five separate fabrication bugs, because
+  the row ends in an operator-supplied description and any field found by
+  searching the line could be fed by that prose; reading typed keys makes the
+  class unrepresentable rather than bounded. Older CLIs simply carry fewer keys,
+  so output degrades to what that version knows. One fewer subprocess per session
+  start. Covered by `tests/07-inject-device-topology_test.sh`, whose table fixture
+  is deliberately hostile so a regression to scraping fails loudly. `skills/devices/SKILL.md` teaches the
   new columns, `agents devices describe`, and `agents devices ignored`.
 
 - **`public-artifact-guard` blocks confidential material from the committed
