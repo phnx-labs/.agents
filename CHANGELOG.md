@@ -63,6 +63,17 @@
   account/credential as the fix for a blocked path; restate option content
   inline instead of pointing at labels.
 
+### Changed
+
+- **`/share:public` and `/share:private` collapsed into one `/share` command.**
+  Public (auto OG cover) is the default: `/share <file>`. Private is a modifier:
+  `/share --private <file>` still runs `agents artifacts share <file>
+  --no-cover --expire 7d` — no preview card (the link does not unfurl) and a
+  7-day expiry (Worker returns 410 afterwards). Shared steps (resolve the file,
+  check `agents artifacts share status`, report the link) now live in the
+  `share` skill; the command file only invokes it. `/share:public` and
+  `/share:private` are gone.
+
 ### Fixed
 
 - **`hooks/stop/verify-delivery-chain.py` no longer resolves the repo from the
