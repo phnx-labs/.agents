@@ -4,6 +4,17 @@
 
 ### Changed
 
+- **Distilled the rule corpus to goal + role + hard-lines — ~17,200 words to
+  ~1,530 across 23 subrules (~91% smaller).** Every subrule rewritten to its
+  essence, cutting the step-by-step how-to a capable agent derives itself, and
+  reordered by theme. All guard hooks preserved. Six dispatch/fleet/team rules
+  merged into `Running Agents & Teams` (points the how-to at the built-in
+  `run`/`teams` skills); four workflow rules merged into `Truly Agentic Coding
+  Workflow` (review = spin up the `code-reviewer` subagent). Removed as bloat or
+  already enforced by config/hook: watchdog-disabled, no-telegram,
+  github-api-rate-limits, notify-owner (feed `--level important` auto-forwards),
+  rush, unattended-verification, agents-cli.
+
 - **main-branch-guard now hands over a worktree instead of describing one.** The
   refusal fires ~131 times across ~63 sessions, and each one is an agent that wanted
   to write, stopped, read a recipe, ran four commands, and retried. Measured recovery
