@@ -16,6 +16,16 @@
 
 ### Fixed
 
+- **`hooks/stop/verify-delivery-chain.py` no longer resolves the repo from the
+  hook process's own cwd (RUSH-3016).** When neither the `repo_path` hint nor a
+  transcript `cd`/`git -C` command named a repo, `_find_repo_path` fell back to
+  `Path(".git").exists()` on whatever directory the Stop hook process happened
+  to run in — so the delivery gate found a repo (and its open tickets) from a
+  repo cwd and silently found nothing from any other cwd. It now consults the
+  harness-reported session `cwd` from the hook input instead, and the stop-hook
+  test harness pins an explicit fixture `cwd`, making the suite give 0 FAIL
+  from any directory (verified from a repo root, `hooks/stop`, and a non-git
+  `/tmp` dir).
 - **Every tick wake with a live team must drive and re-arm — the stop hook
   gains a live-team analogue of the dispatch check.** Measured failure (session
   515b71e1, 2026-08-21, RUSH-3022): an orchestrator with 'Monitor teams every
