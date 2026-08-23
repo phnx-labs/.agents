@@ -45,16 +45,26 @@
 #
 # --- Known limits, stated rather than implied -------------------------------
 #
-# This inspects a command STRING, so constructions that only produce the real
-# command at runtime are out of reach and are NOT claimed to be covered:
-#   - `xargs git add < list`  — paths arrive on stdin
-#   - backticks and $(...)    — the path is the output of another command
-#   - a path built from shell variables expanded at run time
-# Closing those needs a different mechanism than string inspection (a pre-commit
-# hook on the repo, or server-side push protection). This guard is a cheap early
-# catch for the realistic case — an agent staging a file it should not — not a
-# defense against someone deliberately evading it. Anyone determined to commit
-# the file can simply rename it.
+# TWO different classes, kept separate on purpose — an earlier version of this
+# note ran them together, which implied more completeness than the code has.
+#
+# 1. UNREACHABLE by string inspection. The real path does not exist in the
+#    command text at all, so no amount of parsing finds it:
+#      - `xargs git add < list`  — paths arrive on stdin
+#      - backticks and $(...)    — the path is another command's output
+#      - a path built from variables expanded at run time
+#    Closing these needs a different mechanism entirely: a repo pre-commit hook,
+#    or server-side push protection.
+#
+# 2. NOT ENUMERATED YET. `git add` IS textually present, but behind a prefix
+#    wrapper this list does not name. The peel list below covers the common
+#    ones; an exotic or newly-invented wrapper is simply a gap, and the fix is
+#    to add it here. This class is finite and open to extension — unlike (1).
+#
+# So the honest scope: a cheap early catch for the realistic case — an agent
+# staging a file it should not — NOT a defense against deliberate evasion.
+# Anyone determined to commit the file can rename it and walk straight past
+# every check here.
 #
 # Exits 0 (allow) or 2 (deny, message on stderr).
 
@@ -326,7 +336,7 @@ unwrap_dash_c() {
   esac
   _interp=${_raw%% *}
   case "${_interp##*/}" in
-    sh|bash|zsh|dash|ksh|env) ;;
+    sh|bash|zsh|dash|ksh|env|su) ;;
     *) return 1 ;;
   esac
   case "$_raw" in *" -c "*) ;; *) return 1 ;; esac
@@ -408,8 +418,29 @@ while IFS= read -r seg; do
   while [ "$_peeled" = 1 ] && [ $# -gt 0 ]; do
     _peeled=0
     case "$(strip_quotes "${1:-}")" in
-      command|exec|nohup|setsid|caffeinate)
+      command|exec|nohup|setsid|caffeinate|time|unbuffer)
         shift; _peeled=1 ;;
+      sudo|doas)
+        shift; _peeled=1
+        while [ $# -gt 0 ]; do
+          case "$(strip_quotes "$1")" in
+            -u|-g|-U|-p|-C) shift; [ $# -gt 0 ] && shift ;;
+            --*=*|-[a-zA-Z]) shift ;;
+            -[a-zA-Z]*) shift ;;
+            *=*) shift ;;
+            *) break ;;
+          esac
+        done ;;
+      flock)
+        shift; _peeled=1
+        # flock <file|fd> <cmd>, with optional flags first.
+        while [ $# -gt 0 ]; do
+          case "$(strip_quotes "$1")" in
+            -w|--timeout|-E|--conflict-exit-code) shift; [ $# -gt 0 ] && shift ;;
+            -*) shift ;;
+            *) shift; break ;;
+          esac
+        done ;;
       nice|ionice|stdbuf)
         shift; _peeled=1
         # These take flags that carry a value (`nice -n 5`, `ionice -c2 -n0`,
