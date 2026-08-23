@@ -2,7 +2,7 @@
 # plan-html-reminder — plan presentation check at plan-exit and Stop.
 #
 # Enforces the plan-presentation rule: a plan must be RENDERED as a self-contained
-# HTML doc (plan-render skill) before it is presented, so the user reviews it in the
+# HTML doc (artifacts skill) before it is presented, so the user reviews it in the
 # browser — skinned in the product's brand, light/dark, and inspected headlessly.
 #
 # The source of truth is Markdown under the repo's dated artifact layout:
@@ -102,7 +102,7 @@ fi
 # ---- (A) HTML render check ----------------------------------------------------
 # A fresh plan HTML rendered in the last 90 min satisfies this. The canonical
 # location is `<repo>/.agents/artifacts/yyyy-mm-dd/` (per plan-presentation /
-# plan-render). Scan the whole `.agents/artifacts/` tree so dated day dirs and
+# artifacts). Scan the whole `.agents/artifacts/` tree so dated day dirs and
 # any transitional layout still clear the check. Scan root is overridable for
 # tests via PLAN_HTML_SCAN_ROOT.
 # -L: follow symlinks. On macOS /tmp is a symlink to /private/tmp, and BSD find
@@ -214,7 +214,7 @@ fi
   echo
   if [ "$html_ok" != 1 ]; then
     echo "* Render and inspect a FIGURE-RICH browser-ready HTML plan headlessly."
-    echo "  Load the plan-render skill. Author Markdown under the dated artifact layout:"
+    echo "  Load the artifacts skill. Author Markdown under the dated artifact layout:"
     echo "    .agents/artifacts/yyyy-mm-dd/plan-<slug>.md"
     echo "  then:"
     echo "    DATE=\$(date +%F)"

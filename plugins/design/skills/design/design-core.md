@@ -7,8 +7,8 @@ API key or a paid backend.
 
 ## 1 · The offline-first doctrine
 
-The primary substrate is **self-contained HTML/SVG** — the same engine as `plan-render`
-and `visualize` (inline CSS/SVG, no CDN, opens offline by double-click). Most design jobs
+The primary substrate is **self-contained HTML/SVG** — the same engine as the
+`artifacts` skill (inline CSS/SVG, no CDN, opens offline by double-click). Most design jobs
 have a better answer in editable vector/HTML than in a generated raster: pages, UIs,
 prototypes, diagrams, dataviz, decks, OG cards, logos, icons, posters. Reach for raster
 generation only when the deliverable is genuinely photographic or painterly. See
@@ -33,7 +33,7 @@ generation only when the deliverable is genuinely photographic or painterly. See
   not guess it.
 - **Colorblind-safe.** Never encode meaning by red-vs-green alone; pair color with shape,
   label, or position. Categorical uses Okabe-Ito; sequential uses Viridis. Reuse the
-  palettes in the `plan-render` skill's `diagram-conventions.md`.
+  palettes in the `artifacts` skill's `references/diagram-conventions.md`.
 - **Focus and motion.** Visible focus rings on interactive elements; honor
   `prefers-reduced-motion`; nothing conveyed by hover alone.
 - **Text.** Real, selectable text over text-baked-into-an-image; tap targets at least 44px.
@@ -41,7 +41,7 @@ generation only when the deliverable is genuinely photographic or painterly. See
 ## 4 · Brand-probe (on-brand when a brand exists, tasteful when not)
 
 Before rendering, probe the target for a brand and skin the output in it. Fall through in
-order, first hit wins (the same cascade as `plan-render`):
+order, first hit wins (the same cascade as `artifacts`):
 
 0. **`BRAND.md`** at the repo root — read it directly; it is the authoritative brand
    source (voice, palette, type, positioning, anti-tells). If it exists, use it and

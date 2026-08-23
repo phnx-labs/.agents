@@ -1,6 +1,6 @@
 # Diagram conventions — draw figures a domain expert recognizes
 
-Referenced by `plan-render` and `visualize`. When a figure depicts a structure that a
+Referenced by the `artifacts` skill. When a figure depicts a structure that a
 field already has a standard notation for, **use that notation** instead of ad-hoc boxes
 and arrows. The test: a professional in that field glances at the figure and recognizes it
 immediately. Add a **legend** whenever color or line-style carries meaning.
