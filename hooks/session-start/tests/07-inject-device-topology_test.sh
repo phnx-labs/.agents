@@ -27,7 +27,8 @@ case "$*" in
 [{"name":"testhost","platform":"linux","tailscale":{"online":true,"direct":true},"interactive":false,"description":"long-running teams"},
  {"name":"zion","platform":"macos","tailscale":{"online":true,"direct":true},"interactive":true},
  {"name":"pinnacles","platform":"macos","tailscale":{"online":false}},
- {"name":"gpu-box","platform":"linux","tailscale":{"online":true,"direct":true},"interactive":false,"description":"spot instance, 20% cheaper"}]
+ {"name":"gpu-box","platform":"linux","tailscale":{"online":true,"direct":true},"interactive":false,"description":"spot instance, 20% cheaper"},
+ {"name":"loaded-box","platform":"linux","tailscale":{"online":true,"direct":true},"interactive":false,"description":"mostly idle overnight"}]
 JSON
     ;;
   "devices list")
@@ -38,6 +39,7 @@ Devices (3)
 ▸ testhost        linux    20c 122G 3.7T  25%   48%  36%  ● busy  ← this machine  worker  long-running teams
   zion            macos    18c 127G 3.6T  31%   39%  54%  ● light  ★ interactive  personal
   gpu-box         linux    36c 96G 2T     15%   47%    —  ● busy  worker  spot instance, 20% cheaper
+  loaded-box      linux    36c 96G 2T     95%   91%  88%  ● busy  worker  mostly idle overnight
   Fleet capacity: 38 cores · 300G free / 249G RAM (65% free) · 4T disk free across 2 reachable devices
 TBL
     ;;
@@ -92,6 +94,11 @@ check_absent  "new shape: spec cell numbers never become percentages" "$OUT" "20
 # be injected as live disk telemetry — fabricated data, fleet-wide.
 check_contains "new shape: failed disk probe still reports load/mem" "$OUT" "15% load / 47% mem"
 check_absent  "new shape: a description percentage never becomes disk" "$OUT" "20% disk"
+# Same class, worse consequence: HEADROOM_WORDS checks "idle" first, so searching
+# the row found it inside "mostly idle overnight" and reported a box at 95% load
+# as idle — routing work ONTO a saturated machine rather than away from it.
+check_contains "new shape: headroom comes from the badge, not the description" "$OUT" "95% load / 91% mem / 88% disk / busy"
+check_absent  "new shape: a description word never becomes the headroom" "$OUT" "91% mem / 88% disk / idle"
 
 # --- legacy shape ------------------------------------------------------------
 write_agents_stub_old

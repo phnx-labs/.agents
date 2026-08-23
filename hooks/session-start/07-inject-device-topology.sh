@@ -82,11 +82,17 @@ for rawline in os.environ.get("DEVICES_TABLE", "").splitlines():
     # the whole row let that 20% become pcts[2] whenever the disk probe itself
     # failed and rendered as a dash, fabricating disk telemetry from prose and
     # injecting it fleet-wide. The badge glyph is the column boundary.
-    numeric = re.split(r"[\u25cf\u25cb]", rest, 1)[0]
+    parts = re.split(r"[\u25cf\u25cb]", rest, 1)
+    numeric, after_badge = parts[0], (parts[1] if len(parts) > 1 else "")
     pcts = re.findall(r"(\d+)%", numeric)
     if len(pcts) < 2:
         continue  # no live stats for this box (offline / probe failed)
-    hr = next((w for w in HEADROOM_WORDS if re.search(r"\b" + w + r"\b", rest)), None)
+    # The headroom word is the FIRST token after the badge. Anchor it there
+    # rather than searching the row: the row continues with a role and a
+    # free-text description, and searching found "idle" inside a description
+    # like "mostly idle overnight" — reporting a box at 95% load as idle, which
+    # is worse than no reading because it routes work ONTO a saturated machine.
+    hr = next((w for w in HEADROOM_WORDS if re.match(r"\s*" + w + r"\b", after_badge)), None)
     detail = f"{pcts[0]}% load / {pcts[1]}% mem"
     if len(pcts) >= 3:
         detail += f" / {pcts[2]}% disk"
