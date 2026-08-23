@@ -553,7 +553,7 @@ Right tool for the job:
 | Interactive terminal (REPLs, TUIs) | `agents pty` |
 | Parallel coding agents | `agents teams` — see `parallel-teams` |
 | Credentials | `agents secrets` — OS keychain-backed |
-| Release/publish | `/code:release` |
+| Release/publish | Repository's canonical release process |
 | What's already in flight | injected at session start; `gh pr list`, `agents sessions --active` |
 
 Charts in rendered artifacts: hand-authored inline SVG or ASCII. No CDN chart

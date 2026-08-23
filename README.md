@@ -92,7 +92,7 @@ to type.
 | Re-open crash sessions as **windows** | `/sessions:restore` | Not the same as `/continue` |
 | Finish many interrupted sessions **headlessly** | `/continue recover` | Mode of sessions continue |
 | How we have been working (analytics) | `/insights` | insights + trends + perf + stats |
-| Publish a package / CLI / extension | `/code:release` | Discovers the repo's real release process |
+| Score a repository's structure for coding agents | `/code:score` | `AGENTS.md` coverage, directory organization, ranked visual report |
 | Review PRs this session (or a whole repo scan) | `/code:review` | `code:review` — three modes |
 | Learn a codebase into project `AGENTS.md` | `/code:learn` | Durable nav notes for future agents |
 | Design / mockup offline | `/design` | [`design`](plugins/design/README.md) |
@@ -199,7 +199,7 @@ Each directory has a `README.md` for humans (a catalog of everything in it) and 
 
 | Directory | What it holds |
 |---|---|
-| [`commands/`](commands/README.md) | Slash commands — `/loop`, `/code:loop`, `/swarm`, `/continue`, `/code:release`, … (see guide above) |
+| [`commands/`](commands/README.md) | Slash commands — `/loop`, `/code:loop`, `/code:score`, `/swarm`, `/continue`, … (see guide above) |
 | [`skills/`](skills/README.md) | Skills — multi-file capabilities like `browser`, `teams`, `sessions`, `mq` |
 | [`plugins/`](plugins/README.md) | Plugins — `work` (drain any kind), `code`, `swarm`, `sessions`, `fleet`, `share`, `design`, … |
 | [`hooks/`](hooks/README.md) | Lifecycle scripts — session-start context injection, prompt expansion, Stop checks, guards |
