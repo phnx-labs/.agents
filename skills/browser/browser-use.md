@@ -59,10 +59,48 @@ agents browser profiles create local    -b chrome -e cdp://localhost:9222
 agents browser profiles create mac-mini -b comet  -e ssh://mac-mini?port=9333
 agents browser profiles list
 agents browser profiles show <name>
-agents browser profiles doctor <name>   # diagnose binary / port / user-data-dir
+agents browser profiles edit <name> -d "what this profile is for"
+agents browser profiles doctor <name>   # diagnose scope / binary / port / user-data-dir
 ```
 
+`edit` changes an existing profile in place — description, endpoints, secrets,
+viewport, binary. The browser type and the name are NOT editable: both key the
+on-disk profile cache, so changing either orphans it (and any logins it holds).
+Delete and recreate for those.
+
 Supported browsers: `chrome`, `comet`, `chromium`, `brave`, `edge`
+
+### `--fleet` is for a profile that means the same thing on every machine
+
+`agents browser profiles create --fleet` stores a profile in the synced
+`agents.yaml`, so every box sees the name. That is only correct when the
+endpoint addresses **one specific machine**:
+
+- `ssh://user@mac-mini?port=9300` names its host, so it resolves to the same
+  browser from anywhere. `--fleet` is right.
+- `cdp://localhost:9333` is evaluated **on the machine running the command**.
+  Fleet-synced, that name means "port 9333 on whatever box you are on", so it
+  silently resolves to a different — usually logged-out — browser everywhere
+  else. For a profile that carries live logins, that is the worst failure mode:
+  you ask for the credentialed browser by name and get a stranger.
+
+`agents browser profiles doctor <name>` reports the second case as a failing
+`scope` check, and `profiles prune` flags it in the kept reason. Repair it on the
+machine that owns the browser:
+
+```bash
+agents browser profiles scope <name> local
+```
+
+To reach another machine's browser, do not try to make one profile name span
+machines — run the CLI over there with `--device`, so the target machine picks
+its own profile:
+
+```bash
+agents browser navigate --device <host> --url https://example.com
+```
+
+
 
 ## Session Lifecycle
 
