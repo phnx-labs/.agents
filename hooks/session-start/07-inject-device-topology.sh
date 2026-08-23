@@ -82,6 +82,13 @@ for rawline in os.environ.get("DEVICES_TABLE", "").splitlines():
     # the whole row let that 20% become pcts[2] whenever the disk probe itself
     # failed and rendered as a dash, fabricating disk telemetry from prose and
     # injecting it fleet-wide. The badge glyph is the column boundary.
+    # An offline row is identified by the literal token the renderer emits right
+    # after the platform, NOT by the absence of a badge glyph. Inferring it from
+    # glyph presence was itself exploitable: a description containing its own
+    # "\u25cf" satisfied the badge check, and an explicitly-offline box got stats
+    # fabricated from its own description. Key off what the renderer guarantees.
+    if rest.strip().startswith("offline"):
+        continue
     parts = re.split(r"[\u25cf\u25cb]", rest, 1)
     if len(parts) < 2:
         # No headroom badge means the renderer had no live stats to show — an
