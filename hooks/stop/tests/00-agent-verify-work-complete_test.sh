@@ -424,7 +424,18 @@ check "done-claim on real transcript shape blocks for self-audit" "$rc" "2"
 # worth a buzz (811 fires / 272 sessions measured 2026-08-23). The level is the
 # agent's call from the outcome; the hook only asks for the record.
 grep -q 'agents feed post' "$SANDBOX/stderr" && echo "ok   - completion asks for a feed post" || { echo "FAIL - completion post not requested"; fail=1; }
-grep -qE 'agents feed post[^\n]*--level important' "$SANDBOX/stderr" && { echo "FAIL - reminder still hardcodes --level important"; fail=1; } || echo "ok   - reminder does not hardcode a phone ping"
+# The recognizer, factored out so the mutation probe below exercises the SAME
+# expression the assertion uses. `[^\n]*` was wrong here: in ERE a bracket
+# expression excludes the literal characters \ and n, so it failed to match the
+# very line it was meant to catch and the guard could never fire.
+_hardcodes_ping() { grep -qE 'agents feed post.*--level important' "$1"; }
+_hardcodes_ping "$SANDBOX/stderr" && { echo "FAIL - reminder still hardcodes --level important"; fail=1; } || echo "ok   - reminder does not hardcode a phone ping"
+
+# Mutation probe: a guard assertion that cannot fail is not an assertion. Feed
+# the recognizer the exact line this PR removed and require it to catch it.
+_mut="$SANDBOX/mutation-probe"
+printf 'update: agents feed post --title "<outcome>" "<delivered + next step>" --level important\n' > "$_mut"
+_hardcodes_ping "$_mut" && echo "ok   - the ping recognizer catches the removed line" || { echo "FAIL - recognizer cannot catch the old hardcode; the guard above is dead"; fail=1; }
 grep -qi "you claimed this work is done" "$SANDBOX/stderr" && echo "ok   - done-claim gate cites the original request" || { echo "FAIL - no done-claim gate message"; fail=1; }
 
 # 8a. The concise completion nudge keeps only the load-bearing instructions.
