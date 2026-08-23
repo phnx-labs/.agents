@@ -174,6 +174,52 @@ for eng in plan-pricing-model-api monetization-service-refactor \
   rm -f "$ART/$eng.md"
 done
 
+# --- round-2 bypasses, each reproduced then pinned --------------------------
+# The second review found four ways past the parser rewrite. Three were parity
+# gaps with large-file-add-guard.sh, which had already solved them.
+
+# N1: `sh -c '<cmd>'` hid the real command one level down and defeated the name
+# check, the frontmatter check AND the -A sweep at once.
+run_guard "sh -c 'git add $ART/monetize-agents-cli.md'"
+check "N1: unwraps sh -c '<staging cmd>'" 2 "$RC"
+run_guard "bash -c \"git add $ART/notes.md\""
+check "N1: unwraps bash -c \"<staging cmd>\"" 2 "$RC"
+run_guard "sh -c 'cd $SANDBOX/repo && git add .agents/artifacts/2026-08-19/monetize-agents-cli.md'"
+check "N1: unwraps sh -c with a cd inside it" 2 "$RC"
+
+# N2: `git -C <dir> add <relative>` — the -C VALUE was peeled and thrown away,
+# so relative paths never resolved and the frontmatter check (the primary
+# signal) missed.
+run_guard "git -C $SANDBOX/repo add .agents/artifacts/2026-08-19/notes.md"
+check "N2: resolves paths against git -C <dir>" 2 "$RC"
+
+# N3: the tokenizer honored quotes but not backslash escapes.
+ESCD="$SANDBOX/repo/.agents/artifacts/esc"
+mkdir -p "$ESCD"
+printf -- '---\ntitle: "G"\n---\n' > "$ESCD/gtm-strategy copy.md"
+run_guard "git add $ESCD/gtm-strategy\\ copy.md"
+check "N3: handles a backslash-escaped space" 2 "$RC"
+
+# N4: only the exact token -a matched, so the combined form slipped through.
+run_guard "git commit -am wip"
+check "N4: catches combined short flags (git commit -am)" 2 "$RC"
+run_guard "git commit --amend --no-edit"
+check "N4: --amend is not mistaken for -a" 0 "$RC"
+
+# The name matcher trims trailing segments so "gtm-strategy-v2" is caught, but
+# only accepts MULTI-WORD candidates — otherwise "gtm-dashboard-component" would
+# reduce to bare "gtm" and reintroduce the round-1 false positives.
+printf -- '---\ntitle: "v2"\n---\n' > "$ART/gtm-strategy-v2.md"
+run_guard "git add $ART/gtm-strategy-v2.md"
+check "trailing-segment trim catches gtm-strategy-v2.md" 2 "$RC"
+rm -f "$ART/gtm-strategy-v2.md"
+for eng2 in gtm-dashboard-component gtm-analytics-service plan-gtm-integration-api; do
+  printf -- '---\ntitle: "e"\n---\n' > "$ART/$eng2.md"
+  run_guard "git add $ART/$eng2.md"
+  check "trim does NOT reduce $eng2.md to bare gtm" 0 "$RC"
+  rm -f "$ART/$eng2.md"
+done
+
 # --- the sweeping forms -----------------------------------------------------
 # `git add -A` is the MOST likely leak vector, not an edge case: the recap
 # workflow tells agents to commit any uncommitted work they find, and this is

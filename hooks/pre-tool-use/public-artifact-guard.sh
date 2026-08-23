@@ -110,7 +110,16 @@ tokenize() {
     n = length($0); tok = ""; q = ""; have = 0
     for (i = 1; i <= n; i++) {
       c = substr($0, i, 1)
-      if (q != "") {
+      if (q == "\047") {
+        # Single quotes: no escape processing, per shell semantics.
+        if (c == q) { q = "" } else { tok = tok c; have = 1 }
+      } else if (c == "\\") {
+        # Backslash escapes the next character, so `gtm-strategy\ x.md` is ONE
+        # token. Without this the escaped space split it in two and both halves
+        # failed the path+name test — a reported bypass.
+        i++
+        if (i <= n) { tok = tok substr($0, i, 1); have = 1 }
+      } else if (q != "") {
         if (c == q) { q = "" } else { tok = tok c; have = 1 }
       } else if (c == "\"" || c == "\047") {
         q = c; have = 1
@@ -140,9 +149,32 @@ is_strategy_name() {
   _b=${1##*/}
   _b=$(printf '%s' "$_b" | tr '[:upper:]' '[:lower:]')
   _b=${_b%.md}; _b=${_b%.markdown}; _b=${_b%.mdx}; _b=${_b%.html}; _b=${_b%.yaml}; _b=${_b%.yml}
-  # Drop a leading date or "plan-"/"draft-" style prefix before anchoring.
-  _b=$(printf '%s' "$_b" | sed -E 's/^[0-9]{4}-[0-9]{2}-[0-9]{2}-//')
-  case "$_b" in
+  # Normalize separators so "gtm-strategy copy" and "gtm_strategy" reduce to the
+  # same shape, then drop a leading date prefix.
+  # Both expressions need -e: with a bare first expression plus a later -e, sed
+  # treats the bare one as a FILENAME and the whole normalization silently
+  # no-ops, which made every name allow.
+  _b=$(printf '%s' "$_b" | tr ' _' '--' \
+    | sed -E -e 's/^[0-9]{4}-[0-9]{2}-[0-9]{2}-//' -e 's/-+/-/g')
+
+  # Exact, then progressively trim trailing "-segment" suffixes so
+  # "gtm-strategy-v2" and "gtm-strategy copy" are caught. A trimmed candidate is
+  # only accepted if it still contains a hyphen — i.e. is a MULTI-WORD document
+  # title. That is what stops "gtm-dashboard-component" from reducing to bare
+  # "gtm" and reintroducing the fleet-wide false positives of the first version.
+  _cand=$_b
+  while : ; do
+    if _match_strategy "$_cand"; then
+      [ "$_cand" = "$_b" ] && return 0
+      case "$_cand" in *-*) return 0 ;; esac
+    fi
+    case "$_cand" in *-*) _cand=${_cand%-*} ;; *) break ;; esac
+  done
+  return 1
+}
+
+_match_strategy() {
+  case "$1" in
     # The RUSH-3033 document set, by whole name.
     gtm|gtm-strategy|go-to-market|go-to-market-strategy) return 0 ;;
     monetize|monetize-*|monetization-strategy|pricing-models) return 0 ;;
@@ -248,6 +280,32 @@ sweep_pending() {
 # subcommand. Modelled on large-file-add-guard.sh's parser, which already
 # solved this; an earlier revision here walked every whitespace-separated word
 # regardless of subcommand and so fired on read-only `git log <path>`.
+# `sh -c '<inner>'` / `bash -c "<inner>"` hides the real command one level down.
+# large-file-add-guard.sh carries this unwrapping and I failed to port it, so
+# wrapping defeated the name check, the frontmatter check AND the -A sweep at
+# once — the worst of the reported bypasses. Returns the inner string.
+unwrap_dash_c() {
+  _raw=$(printf '%s' "$1" | sed 's/^[[:space:]]*//')
+  while :; do
+    _pre=$_raw
+    _raw=$(printf '%s' "$_raw" | sed 's/^[A-Za-z_][A-Za-z_0-9]*=[^[:space:]]*[[:space:]][[:space:]]*//')
+    [ "$_raw" = "$_pre" ] && break
+  done
+  case "$_raw" in
+    sh\ *|bash\ *|zsh\ *|/bin/sh\ *|/bin/bash\ *|/bin/zsh\ *|/usr/bin/sh\ *|/usr/bin/bash\ *|/usr/bin/env\ *) ;;
+    *) return 1 ;;
+  esac
+  case "$_raw" in *" -c "*) ;; *) return 1 ;; esac
+  _inner=${_raw#* -c }
+  _inner=$(printf '%s' "$_inner" | sed 's/^[[:space:]]*//')
+  case "$_inner" in
+    \"*\") _inner=${_inner#\"}; _inner=${_inner%\"} ;;
+    \'*\') _inner=${_inner#\'}; _inner=${_inner%\'} ;;
+  esac
+  printf '%s' "$_inner"
+  return 0
+}
+
 check_command_string() {
   _cs=$1
   # Split into segments on && || ; | and newlines.
@@ -259,20 +317,36 @@ check_command_string() {
 }
 
 SEG_CWD=""
-# Capture a `cd <dir>` anywhere in the command so later segments resolve against
-# it (blocker: `cd repo && git add <relative>` bypassed an existence-gated check).
-_cd_target=$(printf '%s' "$cmd" | sed -n 's/.*\(^\|[;&|] *\)cd  *\([^ ;&|]*\).*/\2/p' | head -1)
-if [ -n "$_cd_target" ]; then
-  _cd_target=$(strip_quotes "$_cd_target")
-  [ -d "$_cd_target" ] && SEG_CWD=$_cd_target
-fi
 
 # Read segments from a FILE, not a pipe: a `cmd | while` loop runs in a subshell,
 # where emit_deny's `exit 2` would kill only that subshell and the guard would
 # return 0 — allowing exactly what it just detected.
 _SEG_FILE="${_HIT_FILE}.segs"
 trap 'rm -f "$_HIT_FILE" "$_SEG_FILE"' EXIT INT TERM
-check_command_string "$cmd" > "$_SEG_FILE"
+
+# Unwrap `sh -c` before segmenting, bounded so a pathological nesting cannot
+# loop. Each level is re-segmented, so `sh -c 'cd x && git add y'` is inspected.
+_scan=$cmd
+_depth=0
+: > "$_SEG_FILE"
+while [ "$_depth" -lt 4 ]; do
+  check_command_string "$_scan" >> "$_SEG_FILE"
+  if _inner_cmd=$(unwrap_dash_c "$_scan") && [ -n "$_inner_cmd" ] && [ "$_inner_cmd" != "$_scan" ]; then
+    _scan=$_inner_cmd
+    _depth=$((_depth + 1))
+  else
+    break
+  fi
+done
+
+# Capture `cd <dir>` from the SEGMENTS, not the raw command, so a cd inside an
+# `sh -c` wrapper is seen too. Later segments resolve relative paths against it
+# (`cd repo && git add <relative>` was a reported bypass).
+_cd_target=$(sed -n 's/^[[:space:]]*cd[[:space:]][[:space:]]*\([^[:space:];&|]*\).*/\1/p' "$_SEG_FILE" | head -1)
+if [ -n "$_cd_target" ]; then
+  _cd_target=$(strip_quotes "$_cd_target")
+  [ -d "$_cd_target" ] && SEG_CWD=$_cd_target
+fi
 
 while IFS= read -r seg; do
   [ -n "$seg" ] || continue
@@ -292,10 +366,20 @@ while IFS= read -r seg; do
   case "$first" in git|*/git) ;; *) continue ;; esac
   shift
 
-  # Peel git's global flags (mirrors large-file-add-guard).
+  # Peel git's global flags (mirrors large-file-add-guard). -C's VALUE is kept,
+  # not discarded: `git -C <dir> add <relative>` resolves against that dir, and
+  # throwing it away made the frontmatter check — the primary signal — miss.
   while [ $# -gt 0 ]; do
     case "$1" in
-      -C)            shift; [ $# -gt 0 ] && shift ;;
+      -C)            shift
+                     if [ $# -gt 0 ]; then
+                       _cdir=$(strip_quotes "$1")
+                       [ -d "$_cdir" ] && SEG_CWD=$_cdir
+                       shift
+                     fi ;;
+      -C*)           _cdir=$(strip_quotes "${1#-C}")
+                     [ -d "$_cdir" ] && SEG_CWD=$_cdir
+                     shift ;;
       --git-dir=*|--work-tree=*|--namespace=*) shift ;;
       --git-dir|--work-tree|--namespace)      shift; [ $# -gt 0 ] && shift ;;
       -c)            shift; [ $# -gt 0 ] && shift ;;
@@ -311,10 +395,18 @@ while IFS= read -r seg; do
   # name a strategy path and must not be blocked.
   case "$sub" in add|stage|commit) ;; *) continue ;; esac
 
+  # Combined short flags count: `git commit -am "wip"` is `-a -m`, and matching
+  # only the exact token `-a` let it through. Any single-dash cluster carrying
+  # a/A means stage-everything; `--` long options are excluded so `--amend`
+  # does not read as `-a`.
   _sweeps=0
   for a in "$@"; do
-    case "$(strip_quotes "$a")" in
-      -A|--all|.|-a) _sweeps=1 ;;
+    _a=$(strip_quotes "$a")
+    case "$_a" in
+      --all) _sweeps=1 ;;
+      --*) ;;
+      .) _sweeps=1 ;;
+      -*[aA]*) _sweeps=1 ;;
     esac
   done
   [ "$_sweeps" = 1 ] && sweep_pending
