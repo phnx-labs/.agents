@@ -10,8 +10,9 @@
 # We inject two things from `agents devices list`:
 #   1. Reachability (from `--json`, always fast) — where each box is and whether
 #      it is online / relayed / offline.
-#   2. Live resource headroom (load / memory / a headroom badge, plus a fleet
-#      capacity summary) — so the agent can pick an idle box when offloading work
+#   2. Live resource headroom (load / memory / disk / a headroom badge, plus a
+#      fleet capacity summary) and each box's one-line description (what it is
+#      FOR) — so the agent can pick a fitting idle box when offloading work
 #      off this machine instead of guessing. Stats come from the rendered table
 #      (`--json` is registry-only and carries no live probe). The probe SSHes each
 #      reachable box, bounded at ~2.5s/box in parallel, so worst case is a couple
@@ -31,7 +32,7 @@ case "$(uname -s 2>/dev/null)" in
 esac
 
 DEVICES_JSON=$(agents devices list --json 2>/dev/null)
-# Rendered table — carries the live load/mem/headroom columns and the fleet
+# Rendered table — carries the live load/mem/disk/headroom columns and the fleet
 # capacity summary that `--json` omits. chalk auto-strips its color codes when
 # stdout is not a TTY (as here), so the capture is plain text.
 DEVICES_TABLE=$(agents devices list 2>/dev/null)
@@ -53,10 +54,13 @@ if raw:
         devices = []
 
 # Parse the rendered table into a per-device stats map + the fleet summary line.
-# Each data row looks like:  "[▸ ]<name> <platform> <load>% <mem>% <badge> <word>[ ← this machine]"
+# Each data row looks like:  "[▸ ]<name> <platform> [<spec cell>] <load>% <mem>% [<disk>%] <badge> <word>[ ← this machine][ role][ description]"
+# where the <spec cell> ("12c 64G 1T") carries no % and the <disk>% column only
+# exists on newer CLIs — so pcts[0]/pcts[1] stay load/mem on every version and a
+# third percentage, when present, is disk used.
 # Offline/no-stats rows have no percentages and are simply skipped (the row still
 # renders from JSON reachability, just without a stats suffix).
-stats = {}          # name -> "<load>% load / <mem>% mem / <headroom>"
+stats = {}          # name -> "<load>% load / <mem>% mem [/ <disk>% disk] / <headroom>"
 fleet = ""
 HEADROOM_WORDS = ("idle", "light", "busy", "loaded")
 for rawline in os.environ.get("DEVICES_TABLE", "").splitlines():
@@ -77,6 +81,8 @@ for rawline in os.environ.get("DEVICES_TABLE", "").splitlines():
         continue  # no live stats for this box (offline / probe failed)
     hr = next((w for w in HEADROOM_WORDS if re.search(r"\b" + w + r"\b", rest)), None)
     detail = f"{pcts[0]}% load / {pcts[1]}% mem"
+    if len(pcts) >= 3:
+        detail += f" / {pcts[2]}% disk"
     if hr:
         detail += f" / {hr}"
     stats[name] = detail
@@ -92,7 +98,7 @@ if devices:
     have_stats = any(d.get("name") in stats for d in devices)
     lines.append("")
     if have_stats:
-        lines.append("Machines you can reach (from `agents devices`), with live load / memory / headroom:")
+        lines.append("Machines you can reach (from `agents devices`), with live load / memory / disk / headroom:")
     else:
         lines.append("Machines you can reach (from `agents devices`):")
     lines.append("")
@@ -109,6 +115,11 @@ if devices:
         row = f"- {name} — {plat} — {reach}"
         if name in stats:
             row += f" — {stats[name]}"
+        # One-line operator description (newer CLIs: top-level `description` in
+        # `devices list --json`; absent on older ones) — what the box is FOR.
+        desc = d.get("description")
+        if isinstance(desc, str) and desc:
+            row += f" — {desc}"
         lines.append(row)
     if fleet:
         lines.append("")
