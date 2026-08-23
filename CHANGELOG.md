@@ -2,6 +2,17 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- **`--mode auto` is per-harness, not a universal smart classifier (RUSH-3049).**
+  `skills/teams/SKILL.md` (mode table + the unattended-teammate prose) and
+  `plugins/swarm/skills/orchestrate/SKILL.md` claimed `auto` "adds a smart
+  classifier that clears safe operations" as if it applied to every harness. That
+  is false for Codex, whose `auto` is `approval_policy=never` (never prompts), not
+  a classifier. Both now state the behavior per harness: Claude/Copilot's smart
+  classifier, Codex's never-prompt `approval_policy=never`, Droid's high-auto,
+  matching the already-correct table in `skills/run/SKILL.md`.
+
 ### Added
 
 - **The artifact pipeline now has one skill.** `skills/artifacts/SKILL.md`
@@ -12,6 +23,23 @@
   `.artifact-behavior`, current/proposed state, and capture/mockup evidence
   markup enforced by `plan-html-reminder`; its PreToolUse/ExitPlanMode and Stop
   registrations are unchanged.
+
+- **`07-inject-device-topology.sh` carries disk and the one-line description into
+  the Host & Fleet block (RUSH-3062).** The agents-cli devices list grew a `spec`
+  cell (cores/RAM/disk) and a `disk` used column, plus a top-level `description`
+  in `devices list --json` (companion: phnx-labs/agents-cli RUSH-3062 surface
+  track). The hook no longer parses the rendered table at all: it reads
+  `health.loadPercent` / `memPercent` / `diskUsedPercent` / `headroom` and the
+  top-level `description` straight from the `--json` call it already made, and
+  computes the fleet-capacity line from `ncpu` and the byte totals rather than
+  copying it. Scraping the table produced five separate fabrication bugs, because
+  the row ends in an operator-supplied description and any field found by
+  searching the line could be fed by that prose; reading typed keys makes the
+  class unrepresentable rather than bounded. Older CLIs simply carry fewer keys,
+  so output degrades to what that version knows. One fewer subprocess per session
+  start. Covered by `tests/07-inject-device-topology_test.sh`, whose table fixture
+  is deliberately hostile so a regression to scraping fails loudly. `skills/devices/SKILL.md` teaches the
+  new columns, `agents devices describe`, and `agents devices ignored`.
 
 - **`public-artifact-guard` blocks confidential material from the committed
   artifacts dir (RUSH-3033).** The agi-cli GTM/monetization strategy was
@@ -43,6 +71,17 @@
   intent stated once is standing authorization; never propose a new bot/machine
   account/credential as the fix for a blocked path; restate option content
   inline instead of pointing at labels.
+
+### Changed
+
+- **`/share:public` and `/share:private` collapsed into one `/share` command.**
+  Public (auto OG cover) is the default: `/share <file>`. Private is a modifier:
+  `/share --private <file>` still runs `agents artifacts share <file>
+  --no-cover --expire 7d` — no preview card (the link does not unfurl) and a
+  7-day expiry (Worker returns 410 afterwards). Shared steps (resolve the file,
+  check `agents artifacts share status`, report the link) now live in the
+  `share` skill; the command file only invokes it. `/share:public` and
+  `/share:private` are gone.
 
 ### Fixed
 
