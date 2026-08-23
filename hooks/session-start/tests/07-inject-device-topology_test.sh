@@ -28,7 +28,8 @@ case "$*" in
  {"name":"zion","platform":"macos","tailscale":{"online":true,"direct":true},"interactive":true},
  {"name":"pinnacles","platform":"macos","tailscale":{"online":false}},
  {"name":"gpu-box","platform":"linux","tailscale":{"online":true,"direct":true},"interactive":false,"description":"spot instance, 20% cheaper"},
- {"name":"loaded-box","platform":"linux","tailscale":{"online":true,"direct":true},"interactive":false,"description":"mostly idle overnight"}]
+ {"name":"loaded-box","platform":"linux","tailscale":{"online":true,"direct":true},"interactive":false,"description":"mostly idle overnight"},
+ {"name":"dead-box","platform":"linux","tailscale":{"online":false},"interactive":false,"description":"spot instance, 20% cheaper, runs at 50% capacity"}]
 JSON
     ;;
   "devices list")
@@ -40,6 +41,7 @@ Devices (3)
   zion            macos    18c 127G 3.6T  31%   39%  54%  ● light  ★ interactive  personal
   gpu-box         linux    36c 96G 2T     15%   47%    —  ● busy  worker  spot instance, 20% cheaper
   loaded-box      linux    36c 96G 2T     95%   91%  88%  ● busy  worker  mostly idle overnight
+  dead-box        linux    offline  worker  spot instance, 20% cheaper, runs at 50% capacity
   Fleet capacity: 38 cores · 300G free / 249G RAM (65% free) · 4T disk free across 2 reachable devices
 TBL
     ;;
@@ -99,6 +101,10 @@ check_absent  "new shape: a description percentage never becomes disk" "$OUT" "2
 # as idle — routing work ONTO a saturated machine rather than away from it.
 check_contains "new shape: headroom comes from the badge, not the description" "$OUT" "95% load / 91% mem / 88% disk / busy"
 check_absent  "new shape: a description word never becomes the headroom" "$OUT" "91% mem / 88% disk / idle"
+# An offline row prints no badge, so there is no column boundary at all — the
+# scan must not fall back to the whole row and read stats out of the description
+# for a box that is not even reachable.
+check_absent  "new shape: an offline row never gets stats from its description" "$OUT" "20% load / 50% mem"
 
 # --- legacy shape ------------------------------------------------------------
 write_agents_stub_old

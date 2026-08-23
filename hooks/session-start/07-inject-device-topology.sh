@@ -83,10 +83,17 @@ for rawline in os.environ.get("DEVICES_TABLE", "").splitlines():
     # failed and rendered as a dash, fabricating disk telemetry from prose and
     # injecting it fleet-wide. The badge glyph is the column boundary.
     parts = re.split(r"[\u25cf\u25cb]", rest, 1)
-    numeric, after_badge = parts[0], (parts[1] if len(parts) > 1 else "")
+    if len(parts) < 2:
+        # No headroom badge means the renderer had no live stats to show — an
+        # offline row, or a probe that produced nothing. Skip BEFORE scanning:
+        # without a badge there is no column boundary, so the scan would fall
+        # back to the whole row and read percentages out of the description,
+        # inventing load/mem for a box that is not even reachable.
+        continue
+    numeric, after_badge = parts[0], parts[1]
     pcts = re.findall(r"(\d+)%", numeric)
     if len(pcts) < 2:
-        continue  # no live stats for this box (offline / probe failed)
+        continue  # badge present but the numbers did not parse
     # The headroom word is the FIRST token after the badge. Anchor it there
     # rather than searching the row: the row continues with a role and a
     # free-text description, and searching found "idle" inside a description
