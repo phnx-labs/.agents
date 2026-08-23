@@ -16,6 +16,12 @@
 
 ### Fixed
 
+- **`agents usage` reference retired with the command (RUSH-3079).**
+  `plugins/sessions/skills/insights/SKILL.md` pointed agents at the top-level
+  `agents usage` for live quota; that command is removed in agents-cli as a
+  duplicate surface (companion: phnx-labs/agents-cli RUSH-3079). The skill now
+  names `agents view`, which renders per-account quota with auth state.
+
 - **merge-guard reads APPROVE verdicts from review bodies, not only issue
   comments (RUSH-3080).** `pr-verdict.py`'s `has_verdict` cleared a merge on a
   GitHub review with `state=APPROVED` or an APPROVE in an *issue comment* body,
