@@ -2,6 +2,18 @@
 
 ## [Unreleased]
 
+### Changed
+
+- **Tickets are for work you deliver, not for what you noticed (`conventions`).**
+  Measured on the live board: 275 open tickets, **257 of them opened in a single
+  month**, and **220 sitting in Todo never started by anyone**. No hook creates
+  tickets — the volume comes from rules telling 100+ agents to file what they
+  noticed at session close, with no cross-session dedup. The ticket clause now
+  reads: search and claim an existing ticket first; open a new one only for work
+  you are actually delivering in this session; never for a follow-up, an idea, or
+  something spotted in passing (those are one line in the owner update). Recomposed
+  `rules/AGENTS.md` alongside.
+
 ### Fixed
 
 - **merge-guard reads APPROVE verdicts from review bodies, not only issue
