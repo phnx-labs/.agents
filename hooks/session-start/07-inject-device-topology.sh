@@ -13,8 +13,9 @@
 #   2. Live resource headroom (load / memory / disk / a headroom badge, plus a
 #      fleet capacity summary) and each box's one-line description (what it is
 #      FOR) — so the agent can pick a fitting idle box when offloading work
-#      off this machine instead of guessing. Stats come from the rendered table
-#      (`--json` embeds the same health fields, which is why they are read from there). The probe SSHes each
+#      off this machine instead of guessing. Both come from the SAME `--json`
+#      call: it embeds the live `health` fields as well as the registry, so
+#      there is no second command and no table to parse. That call SSHes each
 #      reachable box, bounded at ~2.5s/box in parallel, so worst case is a couple
 #      of seconds; if it fails or is empty we fall back to reachability-only.
 #
@@ -34,7 +35,7 @@ esac
 DEVICES_JSON=$(agents devices list --json 2>/dev/null)
 
 SELF_HOST="$SELF_HOST" SELF_OS="$SELF_OS" python3 -c '
-import json, os, re, sys
+import json, os, sys
 
 self_host = os.environ.get("SELF_HOST", "").strip()
 self_os = os.environ.get("SELF_OS", "").strip()
