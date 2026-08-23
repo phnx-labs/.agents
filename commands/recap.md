@@ -135,7 +135,7 @@ Pattern:
 
 ```bash
 agents teams create <topic-slug>
-agents teams add <topic-slug> claude "Specific task 1 with full context" --name task1
+agents teams add <topic-slug> kimi "Specific task 1 with full context" --name task1
 agents teams add <topic-slug> codex "Specific task 2 with full context" --name task2
 agents teams start <topic-slug>
 ```

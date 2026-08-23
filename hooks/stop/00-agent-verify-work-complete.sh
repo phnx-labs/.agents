@@ -141,8 +141,11 @@ repeat_guidance() {   # $1 = human name of the repeated item, $2 = prior count
   local n="${2:-0}"
   [ "$n" -lt 2 ] && return 0
   cat >&2 <<GUIDANCE
-NOTE — block $((n + 1)) this session for $1. The same approach is not
-working: change tactics.
+NOTE — block $((n + 1)) this session for $1.
+If this genuinely cannot move without the owner, file the ask
+(agents feed post "<ask>" --blocked) and end with HANDOFF: <owner> - <receipt>.
+Otherwise the state must change before you stop again — re-explaining it will
+not clear this check.
 
 GUIDANCE
 }
@@ -198,6 +201,9 @@ EVIDENCE = [
     r'https?://\S+',
     r'\bpgrep\b', r'\bps -p \d+', r'\blease (?:state|held|claimed)\b',
     r'\bmonitors runs\b', r'\bupdated_at\b',
+    # Honest owner-gated receipts are evidence, not evasion: the published
+    # HANDOFF exit, a filed --blocked feed record, an armed durable monitor.
+    r'(?m)^\s*handoff:', r'feed post [^\n]*--blocked', r'\bagents monitors (?:add|view)\b',
 ]
 evading = any(re.search(p, msg) for p in PHRASES) and not any(re.search(p, msg) for p in EVIDENCE)
 print('yes' if evading else 'no')
@@ -474,11 +480,20 @@ except Exception:
       # Handoff escape: the final message may legitimately stop with an open PR
       # if it explicitly hands it off (named owner/babysitter) — restating that
       # after this check fires once is enough to pass (stop_hook_active).
-      has_handoff=$(echo "$INPUT_JSON" | LIVE_WATCHER="$live_watcher" SELF_DISPATCH="$self_dispatch" python3 -c "
+      #
+      # Owner-gated receipt: a fail-loud needs-you record filed by THIS session
+      # (`agents feed post --blocked` writes ~/.agents/.history/feed/block-<sid>.json)
+      # is a verifiable handoff receipt for a genuinely owner-only gate. Prose
+      # alone never passes; the receipt is checked on disk.
+      gate_sid=$(echo "$INPUT_JSON" | python3 -c "import json,sys; print(json.load(sys.stdin).get('session_id',''))" 2>/dev/null)
+      block_receipt="no"
+      [ -n "$gate_sid" ] && [ -f "$HOME/.agents/.history/feed/block-${gate_sid}.json" ] && block_receipt="yes"
+      has_handoff=$(echo "$INPUT_JSON" | LIVE_WATCHER="$live_watcher" SELF_DISPATCH="$self_dispatch" BLOCK_RECEIPT="$block_receipt" python3 -c "
 import json, os, re, sys
 msg = json.load(sys.stdin).get('last_assistant_message', '').lower()
 live_watcher = os.environ.get('LIVE_WATCHER') == 'yes'
 self_dispatch = os.environ.get('SELF_DISPATCH') == 'yes'
+block_receipt = os.environ.get('BLOCK_RECEIPT') == 'yes'
 pat = r'\b(handed off|hand-off|handoff|handing (this|it) off|will babysit|is babysitting|takes over from here|owns (this|the) pr)\b'
 # Structured external-blocker stop — the check's own option 3. A genuine external
 # blocker the agent CANNOT resolve (CI/GitHub outage, a signing step needing the
@@ -510,10 +525,114 @@ plan_mode = re.search(r'\bplan mode\b', msg) and re.search(r'\b(cannot|can not|f
 # handoff phrase is the exact measured evasion (f045b577 handed its own
 # children to themselves). Phrase + a durable watcher still passes; phrase
 # alone does not.
-ok = ((re.search(pat, msg) and (not self_dispatch or live_watcher))
+#
+# Ownership is absolute for agent-fixable states (owner directive,
+# 2026-08-21): conflicts, a needed rebase, red CI, failing tests, and
+# missing docs/CHANGELOG are the agent's own work — a stop that cites one
+# of them as its blocker or handoff reason NEVER clears this gate, whatever
+# else the message says. Fix it, then stop.
+FIXABLE = re.compile(
+    r'\b(merge conflicts?|conflicts? (?:with|on|in|against) (?:main|master|origin|the base)|'
+    r'rebase (?:needed|required|pending)|needs? (?:a )?rebase|'
+    r'ci (?:is )?(?:still |currently )?(?:red|failing|broken)|failing (?:tests?|checks?)|tests? (?:are )?(?:still )?failing|'
+    r'docs? (?:are )?(?:missing|not (?:yet )?written|still owed)|changelog (?:entry )?(?:missing|not (?:yet )?written)|'
+    r'still blocks?|still blocking|blocking the \w+)\b')
+# Tense matters (review findings 1-3 on this PR): 'fixed the failing tests'
+# is completed work, not a blocker — but clause- and sentence-level lookback
+# both let an unrelated resolution verb launder a LIVE blocker joined by a
+# comma ('Addressed feedback, conflicts remain') or a subordinating
+# conjunction ('fixed one issue although conflicts remain'). The check is now
+# PROXIMITY-scoped per fixable match: a completed-form verb exempts the match
+# only from within its own comma/sentence-bounded segment immediately BEFORE
+# it with no contrast conjunction in between, or immediately AFTER it
+# (postfix 'conflicts resolved') with no live-state word in between.
+# 'resolving'/'resolve' are demands, not resolutions.
+RESOLVED = re.compile(r'\b(?:fixed|resolved|rebased|cleared|addressed|landed|no (?:more|remaining|longer))\b')
+# The verb must govern the phrase DIRECTLY. Review rounds 2-5 proved any
+# denylist of connectors (comma, and/but, although/because, also/moreover)
+# is an open class that can never be complete. The structural inverse is
+# closed: the verb-to-phrase gap may contain ONLY function words — articles,
+# quantifiers, possessives (prefix side: 'resolved the remaining merge
+# conflicts'), plus the phrase's own continuation prepositions and branch
+# nouns on the postfix side ('merge conflicts with main resolved'). Any
+# content word or connector in the gap breaks adjacency and the blocker
+# counts as live. Over-blocking an oddly-phrased honest wrap-up costs one
+# rephrase; under-blocking costs the ownership gate.
+GAP_BEFORE = re.compile(r'^(?:\s*(?:the|a|an|all|any|both|each|every|its|his|her|our|their|these|those|some|remaining|last|final|earlier|prior|previous|open|aforementioned))*\s*$', re.I)
+GAP_AFTER = re.compile(r'^(?:\s*(?:the|a|an|all|its|our|their|with|on|in|against|from|for|of|main|master|origin|base|branch|are|is|were|was|been|now|fully|completely))*\s*$', re.I)
+# Either exemption is void when nearby text says the state is live. Scope is
+# a punctuation-blind +-160-char window around the match (round 7: '...with
+# main, they still block the release' put the live clause past the segment
+# boundary; rounds 2-4 already proved punctuation is not an ideas boundary).
+# STATED BOUND: this check is a guard, not a parser — a live-state reference
+# further than 160 chars from its phrase is out of scope by design. The
+# backstops beyond the window are structural, not textual: an owner-targeted
+# stop still needs the on-disk --blocked receipt, and the non-author review
+# loop reads the whole message.
+# 'remaining/remain' is deliberately absent: it is also an allowlisted
+# quantifier ('resolved all the remaining conflicts' is honest), and every
+# measured launder shape carries an unambiguous live word alongside it.
+LIVE_STATE = re.compile(r'\b(?:still|needs?|need|not|unresolved|pending|blocking|outstanding|exists?|unfixed|open)\b', re.I)
+# The HANDOFF clause is excluded from the live scan by BLANKING its own span
+# (sentinel to that sentence's end), never by truncating the scan at the
+# sentinel (round 9: truncation made a live confession typed AFTER the
+# HANDOFF line invisible). The ask's vocabulary ('needs to review …') stays
+# out; everything else — before or after the clause — still counts.
+# ONE clause-boundary definition for the segment splits (round 10's lesson:
+# restated delimiter sets breed gaps). The LIVE window CAPS at the sentinel —
+# rounds 8-11 proved the ask clause's own punctuation is irreducibly
+# ambiguous, so no delimiter rule can separate ask text from confession text
+# past the sentinel. Instead, post-sentinel confessions are caught where they
+# belong: 'still blocking …' idioms are FIXABLE phrases in their own right
+# (see the FIXABLE alternation), each needing its own adjacent resolution.
+# Ask text can never poison; a confession anywhere is a blocker claim.
+CLAUSE_END = r'[.\n;,]'
+_h = re.search(r'(?i)\bhandoff:', msg)
+agent_fixable = False
+for m in FIXABLE.finditer(msg):
+    seg_before = re.split(CLAUSE_END, msg[:m.start()])[-1][-80:]
+    seg_after = re.split(CLAUSE_END, msg[m.end():m.end() + 60])[0]
+    live_end = m.end() + 160
+    if _h is not None and _h.start() >= m.end():
+        live_end = min(live_end, _h.start())
+    live_after = bool(LIVE_STATE.search(msg[max(0, m.start() - 160):live_end]))
+    exempt = False
+    last = None
+    for r in RESOLVED.finditer(seg_before):
+        last = r
+    if last is not None and GAP_BEFORE.match(seg_before[last.end():]) and not live_after:
+        exempt = True
+    if not exempt:
+        first = RESOLVED.search(seg_after)
+        if first is not None and GAP_AFTER.match(seg_after[:first.start()]) and not live_after:
+            exempt = True
+    if not exempt:
+        agent_fixable = True
+        break
+# The published exit for a GENUINELY owner-only gate (a credential, a repo
+# policy only the owner can satisfy, a product decision):
+#   HANDOFF: <owner> - <receipt>
+# honored only with a verifiable receipt: the --blocked feed record on disk,
+# or a live durable watcher.
+sentinel = re.search(r'^\s*handoff:\s*\S[^\n]*\S', msg, re.M)
+# A handoff whose TARGET is the user/owner is a hand-back, and a hand-back
+# without a filed receipt is the exact behavior the owner banned (2026-08-21:
+# agents take full responsibility, never hand things back to the owner).
+# Delegation to another agent, session, or watcher keeps the legacy escapes.
+owner_target = re.search(
+    r'\bhandoff:\s*(?:you\b|muqsit\b|the owner\b)|'
+    r'\b(?:handed|handing|hand)(?: \w+){0,2} (?:back )?(?:off )?to (?:you|muqsit|the owner)\b|'
+    r'\byour (?:approval|review|decision|sign-?off|merge|click)\b|'
+    r'\bneeds? (?:you|muqsit|the owner) to\b',
+    msg)
+legacy_ok = ((re.search(pat, msg) and (not self_dispatch or live_watcher))
       or (blocked and nextstep)
       or (live_watcher and watcher_phrase)
       or plan_mode)
+ok = (not agent_fixable) and (
+      (sentinel and (block_receipt or live_watcher))
+      or (block_receipt and re.search(r'\b(owner-gated|owner-only|only (?:the owner|you) can)\b', msg))
+      or (legacy_ok and not sentinel and not (owner_target and not block_receipt)))
 print('yes' if ok else 'no')
 " 2>/dev/null || echo "no")
 
@@ -529,9 +648,17 @@ print('yes' if ok else 'no')
 STOP — this session created or worked pull request(s) that are still OPEN:
 
 $open_prs
-Merge it (non-author review + green CI), or in your final message name who or
-what now owns it (a person, a session you did NOT spawn, or a durable watcher)
-— "needs you to merge" is not a handoff.
+This PR is YOURS until it merges. Keep driving it:
+  - conflicts / diverged base -> rebase your worktree branch and re-push
+  - red CI / failing tests -> fix forward now; a broken check is your bug
+  - docs/CHANGELOG the diff owes -> write them in this delivery
+  - review -> the repo's automated reviewer, or spawn a non-author subagent
+    review (subagents/code-reviewer); merge on green. Reviews are never the
+    owner's job.
+Conflicts, red CI, missing docs, or "waiting on review" are never grounds to
+stop or hand back. Rare exception, only when NO agent action can satisfy the
+requirement (a credential, a repo policy): agents feed post "<ask>" --blocked, then
+end with HANDOFF: <owner> - <receipt>.
 PRMSG
         if [ "$self_dispatch" = "yes" ]; then
           cat >&2 <<'DISPATCHMSG'

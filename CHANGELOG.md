@@ -25,6 +25,57 @@
   to "You own what you spawn": every tick wake produces a concrete drive action
   (merge a green PR, steer/resume a stalled teammate, re-dispatch a dead track)
   AND re-arms the next bounded tick; recap-and-park is abandonment.
+- **The instruction corpus stops teaching harness monoculture and tool
+  passivity (RUSH-3020, corpus pass).** Spawn examples across `skills/run`,
+  `skills/teams`, `swarm:orchestrate`, `commands/teams`, and `commands/recap`
+  now rotate lead harnesses (skills carry a substitute-from-`agents view` note; command examples swap names only) (the
+  audit found 41 claude spawn examples vs 11 codex and zero for grok/droid);
+  the `commands/teams` capability table gains grok/kimi/droid/opencode/gemini
+  rows; the undated "codex cannot write anywhere on this fleet" claim in
+  `remote-fleet-dispatch` becomes a dated per-box write-probe procedure;
+  `tech-stack` teaches the real-UI tool reflex (web -> `agents browser`,
+  native -> `agents computer`, drive it before describing it) and
+  `operational` adds direction-received-equals-execute; the code/work plugin
+  skills name the drive-the-surface verification step; and the stop hook's
+  open-PR message drops the word "gate" ("no agent action can satisfy the
+  requirement").
+
+- **Mixed team rosters are enforced, not advised: `parallel-teams` ships a
+  `teams-roster-guard` (RUSH-3020).** Rosters go monoculture by imitation —
+  measured on a real fleet, 86% of recorded teammates ran one harness while
+  five others sat installed, and 7 of 10 rosters were single-harness. The
+  subrule is now a guard-bearing directory (the `gh-merge-guard` pattern): a
+  PreToolUse(Bash) guard on `agents teams add` blocks the 3rd same-harness
+  teammate when the machine has 2+ harnesses installed, unless the brief
+  states `single-harness: <reason>` (recorded with the roster, auditable).
+  Fleet-agnostic and harness-agnostic by construction: installed harnesses
+  and the team roster are read from this machine's own registry and records
+  at run time; a grok monoculture trips it the same as a claude one; a
+  single-harness install never fires it; any read error fails open. The
+  `parallel-teams` pattern example becomes a mixed 4-harness roster with a
+  substitute-from-`agents view` note, and `fleet-delegation` names the guard
+  plus the two non-derivable facts (a profile diversifies the model, not the
+  harness; read-only verifier tracks need real headless plan support).
+- **Ownership is absolute: the stop hook's open-PR gate no longer offers
+  "merge it or name an owner" as peers, and hand-backs to the owner require a
+  filed receipt (RUSH-3013).** The STOP message is now ownership-first: rebase
+  conflicts yourself, fix red CI, write the docs/CHANGELOG the diff owes — a
+  stop citing any agent-fixable state (merge conflicts, a needed rebase,
+  failing checks, missing docs) never clears the gate, with or without handoff
+  phrasing. The only non-merge exit is a genuinely owner-only gate (a
+  credential, a repo policy, a product decision) evidenced by the
+  `agents feed post --blocked` record on disk plus a `HANDOFF: <owner> —
+  <receipt>` final line; owner-targeted prose without that receipt blocks
+  (this also tightens the old biometric escape — the fail-loud ask must reach
+  the owner's feed, not just the transcript). Delegating to another agent,
+  session, or durable watcher keeps the existing escapes. The delivery gate
+  now demands `linear update --done` only on tickets this session actually
+  worked (a Linear write, its own branch/commits/PRs) — tickets merely
+  referenced (another session's In Review work, a parked decision ticket)
+  render as FYI, never a demand (measured: f045b577 was blocked 8× over
+  other sessions' tickets and correctly refused to fabricate closure). The
+  repeat-block note teaches the receipt exit instead of "change tactics", and
+  "close out the delivery, then stop again" is now "…then finish".
 
 - **Dispatching is never a handoff — the stop hook no longer clears on the word
   "handoff" when the session dispatched agents itself.** Measured evasion
