@@ -37,6 +37,20 @@
 
 ### Fixed
 
+- **Stop-hook and guard follow-ups from the 2026-08-22 wave (RUSH-3032).**
+  The delivery gate's "worked ticket" attribution no longer sweeps base-branch
+  history (squash commits carrying another PR's "(#N)" suffix are excluded)
+  and no longer counts comment-only `linear update`s as ownership — both were
+  measured misattributions. The open-PR check gains the identical-state cap:
+  after two blocks with an unchanged evidence hash (verify-work-state's new
+  `evidence_repeat` signal), a third identical block records
+  `identical-state-capped` and passes — measured before: 630 of 1,711
+  consecutive stops re-fired on an unchanged hash. merge-guard now parses
+  `-R` like `--repo` (missing it probed the CWD repo's PR for a verdict and
+  blocked a legitimate cross-repo merge). New weekly `backfill-check-outcomes`
+  routine derives check outcomes per box so gate changes finally have a
+  false-positive denominator (first --write populated 1,030 rows).
+
 - **`hooks/stop/verify-delivery-chain.py` no longer resolves the repo from the
   hook process's own cwd (RUSH-3016).** When neither the `repo_path` hint nor a
   transcript `cd`/`git -C` command named a repo, `_find_repo_path` fell back to

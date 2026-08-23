@@ -218,7 +218,42 @@ else
   echo "PASS: referenced ticket is never a --done demand"
 fi
 
-rm -rf "$d1" "$d2" "$d3" "$d4" "$d7" "$d8" "$d9" "$stubdir" "$bare2" "$bare3" "$bare4" "$bare7" "$bare8" "$tr1" "$tr2" "$tr3" "$tr4" "$tr5" "$tr6" "$tr7" "$tr8" "$tr9" 2>/dev/null
+# --- Test 10: base-history squash commits and comment-only updates are not
+# --- "worked" tickets (RUSH-3032 items f+g). ---------------------------------
+d10="$(mktemp -d)"
+git init -q "$d10"
+git -C "$d10" $GC commit -q --allow-empty -m "fix: other session work (RUSH-8001) (#900)"
+git -C "$d10" checkout -q -b rush-8002-mine
+echo y > "$d10/g.txt"; git -C "$d10" add g.txt; git -C "$d10" $GC commit -q -m "fix: mine (RUSH-8002)"
+tr10="$(mktemp)"
+{
+  printf '%s\n' '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"l1","name":"Bash","input":{"command":"linear update RUSH-8003 --comment \"context note only\""}}]}}'
+  printf '%s\n' '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"l2","name":"Bash","input":{"command":"linear update RUSH-8002 --status Doing"}}]}}'
+} > "$tr10"
+stubdir10="$(mktemp -d)"
+cat > "$stubdir10/linear" <<'STUB'
+#!/usr/bin/env bash
+printf '{"state":{"name":"Todo"},"title":"Fake"}\n'
+STUB
+chmod +x "$stubdir10/linear"
+out10="$(PATH="$stubdir10:$PATH" run_gate "$d10" "$tr10")"
+if printf '%s' "$out10" | grep -q "this session worked: RUSH-8002"; then
+  echo "PASS: status-changing update on own-branch ticket is demanded"
+else
+  echo "FAIL: own worked ticket not demanded:"; echo "$out10"; fail=1
+fi
+if printf '%s' "$out10" | grep -q "worked:.*RUSH-8001"; then
+  echo "FAIL: base-history squash commit (#900) attributed to this session"; fail=1
+else
+  echo "PASS: base-history squash commit ids are not demanded"
+fi
+if printf '%s' "$out10" | grep -q "worked:.*RUSH-8003"; then
+  echo "FAIL: comment-only update counted as worked"; fail=1
+else
+  echo "PASS: comment-only update is not ownership"
+fi
+
+rm -rf "$d1" "$d2" "$d3" "$d4" "$d7" "$d8" "$d9" "$d10" "$stubdir" "$stubdir10" "$bare2" "$bare3" "$bare4" "$bare7" "$bare8" "$tr1" "$tr2" "$tr3" "$tr4" "$tr5" "$tr6" "$tr7" "$tr8" "$tr9" "$tr10" 2>/dev/null
 
 if [ "$fail" -ne 0 ]; then
   echo "verify-delivery-chain_test: FAILED"; exit 1

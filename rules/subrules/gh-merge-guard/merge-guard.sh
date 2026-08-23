@@ -185,7 +185,10 @@ case "$norm" in
       _pr_repo=$(printf '%s' "$_pr_url" | sed -E 's#https://github\.com/([^/]+/[^/]+)/pull/.*#\1#')
     else
       _pr_num=$(printf '%s' "$cmd" | grep -oE 'pr merge[[:space:]]+[0-9]+' | grep -oE '[0-9]+' | head -1)
-      _pr_repo=$(printf '%s' "$cmd" | grep -oE '\-\-repo[= ][A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+' | sed -E 's/--repo[= ]//' | head -1)
+      # Both spellings gh accepts: --repo and -R. Missing -R sent the verdict
+      # probe to the CWD repo's origin and blocked a legitimate merge whose
+      # APPROVE lived on the -R repo's PR (RUSH-3032; hit live 2026-08-22).
+      _pr_repo=$(printf '%s' "$cmd" | grep -oE '(\-\-repo|-R)[= ][A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+' | sed -E 's/(--repo|-R)[= ]//' | head -1)
       if [ -z "$_pr_repo" ]; then
         _pr_repo=$(git remote get-url origin 2>/dev/null | sed -E 's#(git@github\.com:|https://github\.com/)([^/]+/[^/.]+)(\.git)?#\2#' | head -1)
       fi
