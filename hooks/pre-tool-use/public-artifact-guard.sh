@@ -205,7 +205,14 @@ _match_strategy() {
   case "$1" in
     # The RUSH-3033 document set, by whole name.
     gtm|gtm-strategy|go-to-market|go-to-market-strategy) return 0 ;;
-    monetize|monetize-*|monetization-strategy|pricing-models) return 0 ;;
+    # `monetize-*` used to sit here — the ONLY glob in an otherwise all-literal
+    # list, directly under a comment promising whole-basename matching. It
+    # blocked monetize-api-endpoint, monetize-webhook-integration and
+    # monetize-tier-flag-component: ordinary engineering files. It survived
+    # seven review rounds because the suite only ever exercised `monetize` via
+    # the monetize-agents-cli fixture and never through the ALLOWS block that
+    # pins this exact failure mode for every sibling pattern. Literals only.
+    monetize|monetize-agents-cli|monetization-strategy|pricing-models) return 0 ;;
     how-winners-charge|launch-venues|launch-venues-and-posts) return 0 ;;
     github-stars-playbook|stars-playbook|supply-vs-demand) return 0 ;;
     byo-subscription-pivot|developer-pain-reddit|vibe-kanban-postmortem) return 0 ;;
@@ -612,8 +619,21 @@ while IFS= read -r seg; do
   done
   [ "$_sweeps" = 1 ] && sweep_pending
 
+  # Walk the remaining args as PATHS — but flags that consume a value must have
+  # that value skipped, or the value gets inspected as if it were a path. The
+  # reported case: `git commit -m 'remove leaked .../pricing-models.md'` was
+  # denied while staging nothing, which is precisely the shape of the
+  # remediation commit this hook exists to support.
+  _skip=0
   for a in "$@"; do
-    case "$a" in -*) continue ;; esac
+    if [ "$_skip" = 1 ]; then _skip=0; continue; fi
+    case "$(strip_quotes "$a")" in
+      # `--flag=value` carries its value inline; nothing to skip.
+      --*=*) continue ;;
+      -m|--message|-F|--file|-t|--template|--author|--date|--cleanup|--fixup|--squash|-C|--reuse-message|-c|--reedit-message|--trailer|--pathspec-from-file)
+        _skip=1; continue ;;
+      -*) continue ;;
+    esac
     inspect_path "$a"
   done
 done < "$_SEG_FILE"

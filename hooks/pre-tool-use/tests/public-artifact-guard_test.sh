@@ -228,6 +228,20 @@ check "N4: catches combined short flags (git commit -am)" 2 "$RC"
 run_guard "git commit --amend --no-edit"
 check "N4: --amend is not mistaken for -a" 0 "$RC"
 
+# N8: flags that CONSUME a value must have that value skipped, or the value is
+# inspected as a path. Reported case: a commit message naming a leaked file was
+# denied while staging nothing — the exact shape of the remediation commit this
+# hook exists to support.
+run_guard "git commit -m 'remove leaked repo/.agents/artifacts/2026-08-01/pricing-models.md'"
+check "N8: -m message naming a leaked path is not a path" 0 "$RC"
+run_guard "git commit --message=\"drop .agents/artifacts/d/gtm-strategy.md\""
+check "N8: --message=<inline value> is not a path" 0 "$RC"
+run_guard "git commit -F $ART/monetize-agents-cli.md -m wip"
+check "N8: -F consumes its value (not treated as a staged path)" 0 "$RC"
+# ...and a real pathspec AFTER a value-flag is still inspected.
+run_guard "git commit -m wip $ART/monetize-agents-cli.md"
+check "N8: a real path after -m <value> is still caught" 2 "$RC"
+
 # N6: prefix wrappers. The walker required a segment's first token to be exactly
 # `git`, so any wrapper silently skipped the whole segment — six bypasses from
 # one root cause, all ordinary shell idioms rather than adversarial constructions.
@@ -300,10 +314,18 @@ check "N5: unwraps eval '<staging cmd>'" 2 "$RC"
 # These five are why that was reverted: each trims to a real pattern AND stays
 # multi-word, so the gate did not stop them and 5 of 18 ordinary filenames
 # blocked. They are the regression test for not reintroducing the trim.
+# The monetize-* entries are here because a `monetize-*` GLOB once sat in an
+# otherwise all-literal pattern list and blocked all three. It survived seven
+# review rounds precisely because no ALLOWS case exercised that pattern — the
+# suite only ever reached `monetize` through the monetize-agents-cli fixture.
+# Every pattern in the list needs a case on THIS side, not just the deny side.
 for fp in launch-venues-map-component supply-vs-demand-chart-lib \
           how-winners-charge-back-taxes stars-playbook-for-kids \
           byo-subscription-pivot-table-ui gtm-dashboard-component \
-          gtm-analytics-service plan-gtm-integration-api; do
+          gtm-analytics-service plan-gtm-integration-api \
+          monetize-api-endpoint monetize-webhook-integration \
+          monetize-tier-flag-component pricing-models-table-ui \
+          gtm-strategy-dashboard launch-venues-picker; do
   printf -- '---\ntitle: "e"\n---\n' > "$ART/$fp.md"
   run_guard "git add $ART/$fp.md"
   check "whole-name only: ALLOWS $fp.md" 0 "$RC"
