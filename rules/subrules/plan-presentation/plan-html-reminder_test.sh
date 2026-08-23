@@ -203,20 +203,18 @@ run 0 "ordinary Codex Stop, no render -> allow" \
 run 0 "recursive Stop hook invocation -> allow" \
   '{"hook_event_name":"Stop","stop_hook_active":true,"last_assistant_message":"<proposed_plan>plan</proposed_plan>"}'
 
-# --- permission_mode gate: Claude Code reports the live mode on Stop ----------
-# An explicit non-plan mode skips the transcript scan entirely — even when the
-# final message carries plan markers (the false-positive class: ordinary answers
-# that merely discuss plans). Absent field keeps the backstop (cases above).
+# --- permission_mode gating moved to the shim layer ----------------------------
+# hooks.yaml declares matches.permission_mode: plan on the Stop entry; the
+# agents-cli generated shim (>= 1.22.47) skips this script for an explicit
+# non-plan mode and passes mode-less input through (fail-open — Codex/Grok keep
+# the marker backstop). The skip/pass semantics are pinned by the conformance
+# suite in agents-cli (src/lib/hooks/cache-matches.test.ts); this script no
+# longer reads permission_mode, so a mode-carrying plan turn behaves like any
+# plan turn.
 rm -f "$SCAN"/plan-*.html "$SCAN"/plan-*.md
 printf '%s\n' '{"type":"turn_context","payload":{"collaboration_mode":{"mode":"plan"}}}' > "$CODEX_TX"
-run 0 "Stop with permission_mode=default + plan markers, no render -> allow (mode gate)" \
-  '{"hook_event_name":"Stop","permission_mode":"default","transcript_path":"'"$CODEX_TX"'","last_assistant_message":"<proposed_plan>plan</proposed_plan>"}'
-
 run 2 "Stop with permission_mode=plan + plan markers, no render -> block" \
   '{"hook_event_name":"Stop","permission_mode":"plan","transcript_path":"'"$CODEX_TX"'","last_assistant_message":"<proposed_plan>plan</proposed_plan>"}'
-
-run 0 "Stop with camelCase permissionMode=acceptEdits + plan markers -> allow (mode gate)" \
-  '{"hookEventName":"Stop","permissionMode":"acceptEdits","lastAssistantMessage":"<proposed_plan>plan</proposed_plan>"}'
 
 # --- Repo-root artifact path (no PLAN_HTML_SCAN_ROOT override) -----------------
 # When the env override is absent, the hook resolves the repo root and scans
