@@ -107,6 +107,11 @@ is_strategy_name() {
     *gtm*|*go-to-market*|*monetiz*|*pricing-model*|*how-winners-charge*) return 0 ;;
     *launch-venue*|*stars-playbook*|*supply-vs-demand*|*byo-subscription*) return 0 ;;
     *competitive-landscape*|*competitor-intel*|*revenue-model*|*fundrais*) return 0 ;;
+    # Not business strategy, but the same leak: the 2026-08-22 sweep found a
+    # 1147-line compile of the operator's PRIVATE global agent ruleset sitting in
+    # the public tree. It names fleet hosts and working habits, has no
+    # frontmatter to declare itself, and no engineering plan is ever called this.
+    *compiled-ruleset*|*ruleset-compiled*) return 0 ;;
   esac
   return 1
 }
@@ -128,22 +133,61 @@ has_confidential_frontmatter() {
   return 1
 }
 
+# The directory scan's `while read` runs in a subshell (it is fed by a pipe), so
+# it cannot set a variable in this shell — the hit is passed back through a file.
+_HIT_FILE=$(mktemp 2>/dev/null || echo "/tmp/paguard.$$")
+trap 'rm -f "$_HIT_FILE"' EXIT INT TERM
+
+check_file() {  # a single regular file
+  if is_strategy_name "$1"; then
+    emit_deny "$1" "reads as a confidential business-strategy document"
+    exit 2
+  fi
+  if has_confidential_frontmatter "$1"; then
+    emit_deny "$1" "declares 'confidential: true' in its frontmatter"
+    exit 2
+  fi
+  return 0
+}
+
 check_path() {
   _p=$1
   # Quoted globs reach git unexpanded; nothing to inspect.
   case "$_p" in *\**|*\?*|*\[*) return 0 ;; esac
-  # Only guard the artifacts dir — the one documented as committed.
-  case "$_p" in */.agents/artifacts/*|.agents/artifacts/*) ;; *) return 0 ;; esac
+  # Only guard the artifacts dir — the one documented as committed. Match the
+  # dir itself too (trailing slash or not), since `git add <dir>` is how a whole
+  # day of artifacts gets staged at once.
+  case "$_p" in
+    */.agents/artifacts|*/.agents/artifacts/*|.agents/artifacts|.agents/artifacts/*) ;;
+    *) return 0 ;;
+  esac
 
-  if is_strategy_name "$_p"; then
-    emit_deny "$_p" "reads as a confidential business-strategy document"
-    exit 2
+  # A DIRECTORY is the common case and the one that actually leaks:
+  # `git add .agents/artifacts/2026-08-19/` stages the whole day. Checking only
+  # the literal argument would catch the careful caller and miss the real one.
+  if [ -d "$_p" ]; then
+    # Bounded: only the file types that carry frontmatter/prose, and capped so a
+    # huge tree cannot stall the hot path.
+    _hits=$(find "$_p" -type f \( -name '*.md' -o -name '*.markdown' -o -name '*.mdx' \
+      -o -name '*.html' -o -name '*.yaml' -o -name '*.yml' \) 2>/dev/null | head -400)
+    [ -z "$_hits" ] && return 0
+    printf '%s\n' "$_hits" | while IFS= read -r _f; do
+      [ -n "$_f" ] || continue
+      if is_strategy_name "$_f" || has_confidential_frontmatter "$_f"; then
+        printf '%s\n' "$_f" > "${_HIT_FILE}"
+        break
+      fi
+    done
+    if [ -s "${_HIT_FILE}" ]; then
+      _bad=$(cat "${_HIT_FILE}")
+      emit_deny "$_bad" "is confidential and would be staged by adding the directory $_p"
+      exit 2
+    fi
+    return 0
   fi
-  if has_confidential_frontmatter "$_p"; then
-    emit_deny "$_p" "declares 'confidential: true' in its frontmatter"
-    exit 2
-  fi
-  return 0
+
+  [ -f "$_p" ] || return 0
+  check_file "$_p"
 }
 
 # Walk the command's words; skip flags and the git verbs themselves.

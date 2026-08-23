@@ -99,6 +99,36 @@ check "ignores commands that stage nothing" 0 "$RC"
 run_guard "git commit $ART/monetize-agents-cli.md -m wip"
 check "covers git commit <path>, not just git add" 2 "$RC"
 
+# --- staging the DIRECTORY, which is how a whole day actually gets added ----
+# The first version of this guard checked only the literal argument, so
+# `git add <day-dir>/` sailed through while `git add <day-dir>/gtm.md` blocked —
+# i.e. it caught the careful caller and missed the realistic one.
+run_guard "git add $ART"
+check "denies staging a DIRECTORY that contains a confidential file" 2 "$RC"
+
+run_guard "git add $ART/"
+check "denies the same directory with a trailing slash" 2 "$RC"
+
+run_guard "git add $SANDBOX/repo/.agents/artifacts"
+check "denies the artifacts root when a confidential file is anywhere under it" 2 "$RC"
+
+CLEANDAY="$SANDBOX/repo/.agents/artifacts/2026-08-21"
+mkdir -p "$CLEANDAY"
+printf -- '---\ntitle: "Session tracker"\nsurface: internal\n---\n' > "$CLEANDAY/plan-session-tracker.md"
+run_guard "git add $CLEANDAY"
+check "ALLOWS a directory whose artifacts are all ordinary plans" 0 "$RC"
+
+# A private-ruleset compile: no strategy words in the name, no frontmatter to
+# declare itself, but it is the operator's private config in a public tree.
+printf '# Foundations\n\nF1 — you own the whole task.\n' > "$CLEANDAY/compiled-ruleset.md"
+run_guard "git add $CLEANDAY/compiled-ruleset.md"
+check "denies a compiled private ruleset (no frontmatter, innocuous name)" 2 "$RC"
+rm -f "$CLEANDAY/compiled-ruleset.md"
+
+# Paths that do not exist must not blow up under `set -eu`.
+run_guard "git add $ART/does-not-exist.md"
+check "tolerates a nonexistent path without erroring" 0 "$RC"
+
 # --- fail closed with no JSON parser --------------------------------------
 NOPARSE="$SANDBOX/noparse-bin"
 mkdir -p "$NOPARSE"
