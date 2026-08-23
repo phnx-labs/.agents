@@ -96,7 +96,7 @@ to type.
 | Review PRs this session (or a whole repo scan) | `/code:review` | `code:review` — three modes |
 | Learn a codebase into project `AGENTS.md` | `/code:learn` | Durable nav notes for future agents |
 | Design / mockup offline | `/design` | [`design`](plugins/design/README.md) |
-| Share an HTML plan/report | `/share:public` or `/share:private` | [`share`](plugins/share/README.md) |
+| Share an HTML plan/report | `/share` (`--private` for unlisted) | [`share`](plugins/share/README.md) |
 | Fleet: pull every device to latest | `/fleet:sync` | [`fleet`](plugins/fleet/README.md) |
 | Drive a **website** | skill `browser` (`agents browser`) | Not a slash command — load the skill |
 | Drive a **native Mac app** | skill `computer` | Same |
