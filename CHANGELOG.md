@@ -4,20 +4,28 @@
 
 ### Changed
 
-- **Four delivery-phase guards no longer fire in plan mode.** Measured from
-  `~/.agents/.cache/perf/perf.db` (2026-08-03 → 08-08, 4.2 days): nine guards fire on
-  **every** `Bash` tool call for a combined **292 ms** before the command runs, across
-  285,667 fires of which 284 — **0.099%** — changed the outcome. Four of them cannot
-  fire usefully while an agent is planning, because nothing merges, opens a PR,
-  `git add`s, or rebases from a planning turn: `merge-guard`,
-  `pr-description-reminder`, `large-file-add-guard`, `git-require-clean-tree`. Each now
-  carries `matches: {permission_mode_not: plan}`, cutting the per-`Bash` tax in plan
-  mode from **292 ms to 176 ms**. The data-loss guards — `git-guard`, `rm-guard`,
-  `secrets-guard` — are deliberately **not** gated: Bash still runs in plan mode, so
-  `reset --hard` and `rm -rf` stay reachable and those guards fire in every mode.
-  Uses `permission_mode_not` rather than an enumerated `permission_mode` allowlist,
-  because an allowlist silently stops matching when a harness adds or renames a mode —
-  and for a guard, that means it quietly stops guarding.
+- **Four delivery-phase guards are configured to skip plan mode — INERT until an
+  agents-cli release ships the predicate.** Measured from
+  `~/.agents/.cache/perf/perf.db` (2026-08-03 → 08-08): nine guards fire on **every**
+  `Bash` tool call for a combined **292 ms**, across 285,667 fires of which 284 —
+  **0.099%** — changed the outcome. Four cannot fire usefully while an agent is
+  planning: `merge-guard`, `pr-description-reminder`, `large-file-add-guard`,
+  `git-require-clean-tree`. Each now carries
+  `matches: {permission_mode_not: plan}`, which **will** cut the per-`Bash` tax in
+  plan mode from 292 ms to 176 ms **once the predicate is live**. It is not live yet:
+  `permission_mode_not` merged in agents-cli #2930 but the published CLI is 1.22.46,
+  cut before that merge, and `main` is 59 commits ahead of it. Until a release
+  containing #2930 reaches the fleet, `should_fire()` does not recognise the key,
+  falls through to `return True`, and every gated guard still fires — fail-safe (no
+  guard is silently disabled) but with **72 ms of gate subprocess added per `Bash`
+  call**, since a `matches:` block spawns a Python evaluation per fire
+  (`dist/lib/hooks/cache.js:426-427`, measured at 18 ms × 4). Do not merge this
+  ahead of the release: today it is a net cost, not a saving. The data-loss guards —
+  `git-guard`, `rm-guard`, `secrets-guard` — are deliberately **not** gated, because
+  Bash still runs in plan mode and `reset --hard` / `rm -rf` stay reachable.
+  `permission_mode_not` is used rather than an enumerated `permission_mode`
+  allowlist, because an allowlist silently stops matching when a harness adds or
+  renames a mode — and for a guard, that means it quietly stops guarding.
 
 
 ### Added
