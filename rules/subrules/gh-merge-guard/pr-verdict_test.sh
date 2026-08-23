@@ -24,6 +24,21 @@ check() {
 
 check ok "GitHub APPROVED review" '[{"state":"APPROVED"}]' '[]'
 check ok "fresh APPROVE comment" '[]' '[{"body":"## Verdict: APPROVE\nRe-verified both findings."}]'
+# RUSH-3080: fleet agents cannot `gh pr review --approve` (self-approval blocked),
+# so a verdict often arrives as a state=COMMENTED review body via
+# `gh pr review --comment`. That must clear the guard too, not only issue comments.
+check ok "APPROVE in a state=COMMENTED review body" '[{"state":"COMMENTED","body":"VERDICT: APPROVE\nRe-verified, docs-only."}]' '[]'
+check missing "carried-from in a review body" '[{"state":"COMMENTED","body":"APPROVE carried from #2731."}]' '[]'
+check missing "non-approving review body" '[{"state":"COMMENTED","body":"VERDICT: REQUEST CHANGES\nem-dash cap violated."}]' '[]'
+# RUSH-3080 blocker (caught in review): a review body is only trusted when its
+# own state is COMMENTED. A CHANGES_REQUESTED or DISMISSED review whose body
+# contains the word APPROVE must NOT launder itself into an approval.
+check missing "CHANGES_REQUESTED review body mentioning APPROVE" '[{"state":"CHANGES_REQUESTED","body":"I cannot APPROVE until the null check is fixed."}]' '[]'
+check missing "DISMISSED stale approving review body" '[{"state":"DISMISSED","body":"VERDICT: APPROVE"}]' '[]'
+# RUSH-3080: a reviewer quoting pr-verdict.py's own stdin contract puts the
+# literal ---AGENTS-SPLIT--- marker in the comment body. maxsplit=1 keeps the
+# whole comments JSON in parts[1] so it still parses and the verdict is read.
+check ok "APPROVE comment that quotes the split marker still clears" '[]' '[{"body":"VERDICT: APPROVE\nvalidated via: printf %s ---AGENTS-SPLIT--- %s | pr-verdict.py"}]'
 check missing "no verdict" '[]' '[{"body":"looks big, did not review"}]'
 check missing "carried from another PR" '[]' '[{"body":"Non-author APPROVE carried from #2731."}]'
 check missing "APPROVE on #N citation" '[]' '[{"body":"Non-author APPROVE on #2731 covers this."}]'

@@ -173,8 +173,9 @@ case "$norm" in
     # non-author-review convention with "Non-author APPROVE on #2731" — an
     # approval carried from a DIFFERENT PR. A verdict only counts on the PR it
     # was posted on. Accept either a real GitHub APPROVED review, or the fleet
-    # convention of an APPROVE verdict comment on this PR that is not a
-    # carried-from citation. Fail OPEN on anything the guard cannot resolve
+    # convention of a non-carried APPROVE verdict in a COMMENTED review body
+    # (`gh pr review --comment`) or an issue comment on this PR. Fail OPEN on
+    # anything the guard cannot resolve
     # (no number, no repo, API error, rate limit) — a review guard must never
     # block a legit merge because GitHub hiccuped; --admin blocking above never
     # fails open.
@@ -203,7 +204,7 @@ case "$norm" in
         _GUARD_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
         _verdict=$(printf '%s\n---AGENTS-SPLIT---\n%s' "$_reviews" "$_comments" | python3 "$_GUARD_DIR/pr-verdict.py" 2>/dev/null) || _verdict="ok"
         if [ "$_verdict" = "missing" ]; then
-          printf '%s\n' "Blocked: no non-author review verdict found ON this PR ($_pr_repo#$_pr_num). A GitHub APPROVED review or an APPROVE verdict comment must be posted on the PR being merged — a verdict 'carried from' another PR satisfies nothing (the #2736 laundering pattern). Get the automated reviewer's verdict or spawn a non-author subagent review on THIS PR, then retry." >&2
+          printf '%s\n' "Blocked: no non-author review verdict found ON this PR ($_pr_repo#$_pr_num). Post a GitHub APPROVED review, or an APPROVE verdict in a COMMENTED review body (gh pr review --comment) or an issue comment (gh pr comment), ON the PR being merged — a verdict 'carried from' another PR satisfies nothing (the #2736 laundering pattern). Get the automated reviewer's verdict or spawn a non-author subagent review on THIS PR, then retry." >&2
           exit 2
         fi
       fi
