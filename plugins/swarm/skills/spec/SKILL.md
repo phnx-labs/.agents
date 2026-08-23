@@ -134,7 +134,7 @@ If specifying this surfaced work to do, name it and point to `/swarm:plan` — t
 ### Review artifact (HTML)
 After the spec is written, author a Markdown source under `.agents/artifacts/yyyy-mm-dd/`,
 render it to a self-contained HTML file with `artifacts-cli`, and open it on the machine
-the user sits at — follow the **`plan-render`** skill for the LOOK (house structure,
+the user sits at — follow the **`artifacts`** skill for the LOOK (house structure,
 product-brand theming, light/dark toggle, ≥1 hand-authored inline-SVG diagram — a
 requirements map or a spec-vs-code drift table reads well as SVG) and the `/plan`
 command's Step 9 for the open-on-Mac transport, using the injected **Host & Fleet**

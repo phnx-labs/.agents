@@ -40,6 +40,15 @@
 
 ### Added
 
+- **The artifact pipeline now has one skill.** `skills/artifacts/SKILL.md`
+  teaches the shared Markdown → `artifacts check`/`artifacts render` → branded
+  light/dark HTML → headless inspection workflow once, with separate `kind: plan`
+  and `kind: visual` contracts. The redundant `plan-render` and `visualize`
+  skills are removed. The plan contract retains the exact `surface`,
+  `.artifact-behavior`, current/proposed state, and capture/mockup evidence
+  markup enforced by `plan-html-reminder`; its PreToolUse/ExitPlanMode and Stop
+  registrations are unchanged.
+
 - **`07-inject-device-topology.sh` carries disk and the one-line description into
   the Host & Fleet block (RUSH-3062).** The agents-cli devices list grew a `spec`
   cell (cores/RAM/disk) and a `disk` used column, plus a top-level `description`
