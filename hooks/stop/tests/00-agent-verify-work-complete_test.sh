@@ -234,6 +234,32 @@ mk_transcript() {
         echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_edit1","name":"Edit","input":{"file_path":"/repo/src/widget.ts","old_string":"old","new_string":"new"}}]}}'
         ;;
     esac
+    case "$1" in
+      liveteam|liveteam+tick)
+        # RUSH-3022 (515b71e1): an edit-mode team is up and a REAL status probe
+        # showed RUNNING teammates; a tick notification (the wake) then arrives.
+        # The +tick variant re-arms a fresh background tick after that wake.
+        echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_lt1","name":"Bash","input":{"command":"agents teams start resume-cli --watch"}}]}}'
+        echo '{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_lt1","content":[{"type":"text","text":"team started"}]}]}}'
+        echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_lts1","name":"Bash","input":{"command":"agents teams status resume-cli 2>&1 | head -20"}}]}}'
+        echo '{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_lts1","content":[{"type":"text","text":"Team resume-cli  (2 working, 1 done, 0 failed, 0 stopped)\n  apicleanup  (711859e5)  RUNNING - 6.3 minutes - 94 tools\n  artifacts   (cfde0b82)  RUNNING - 5.7 minutes - 12 tools"}]}]}}'
+        echo '{"type":"user","message":{"role":"user","content":"<task-notification>\n<task-id>bgtick1</task-id>\n<status>completed</status>\n<summary>Background command Tick-1 completed (exit code 0)</summary>\n</task-notification>"}}'
+        ;;
+      grepstatus)
+        # RUSH-3022 false-positive pin: the status/RUNNING markers appear ONLY
+        # inside grep patterns and their output — never a real invocation.
+        echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_gs1","name":"Bash","input":{"command":"grep -cE \"agents teams status|agents teams start\" /tmp/transcript.jsonl"}}]}}'
+        echo '{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_gs1","content":[{"type":"text","text":"7"}]}]}}'
+        echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_gs2","name":"Bash","input":{"command":"grep -A2 RUNNING /tmp/transcript.jsonl | head -5"}}]}}'
+        echo '{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_gs2","content":[{"type":"text","text":"  apicleanup  (711859e5)  RUNNING - 6.3 minutes - 94 tools"}]}]}}'
+        ;;
+    esac
+    case "$1" in
+      liveteam+tick)
+        echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_lt2","name":"Bash","input":{"command":"sleep 300; agents teams status resume-cli; echo TICK done","run_in_background":true}}]}}'
+        echo '{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_lt2","content":[{"type":"text","text":"Command running in background with ID: bgtick2. Output is being written to: /tmp/tasks/bgtick2.output. You will be notified when it completes."}]}]}}'
+        ;;
+    esac
     echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"step 2"}]}}'
     echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"step 3"}]}}'
   } > "$t"
@@ -1059,6 +1085,37 @@ check "errored watcher arm does not clear the open-PR gate" "$rc" "2"
 rc=$(FAKE_GH_STATE=OPEN run_hook "$T" "1.22.40 is already in flight as PR #2664, owned by two live sessions under RUSH-2639 — someone else's in-flight work, not mine to take. Nothing needs you." false)
 check "stand-down deferral to unverified sessions does not escape the open-PR gate" "$rc" "2"
 
+
+# --- live-team tick gate (RUSH-3022) -----------------------------------------
+# An orchestrator with RUNNING teammates may not stop unless a fresh background
+# tick was armed THIS turn (after the last wake) or a durable watcher exists.
+# Session 515b71e1 recapped through five ticks, deferred to --watch loops that
+# can never fire on a single merge, and let the chain die.
+
+# LT1. Live team + recap-park final message + no tick armed after the wake -> block.
+TLT=$(mk_transcript liveteam)
+rc=$(run_hook "$TLT" "Nothing needs my intervention — the teammates own their merges. I'll surface on the next real event (a merge) rather than another status recap." false)
+check "live team with no fresh tick blocks" "$rc" "2"
+grep -q "RUNNING teammates" "$SANDBOX/stderr" && echo "ok   - live-team gate teaches the tick recipe" || { echo "FAIL - no live-team gate message"; fail=1; }
+
+# LT2. Live team + a background tick armed THIS turn (after the wake) -> allow.
+TLTT=$(mk_transcript liveteam+tick)
+rc=$(run_hook "$TLTT" "Tick armed for ~5 min; apicleanup and artifacts still RUNNING. On the next wake I merge whatever is green." false)
+check "live team with a fresh tick armed this turn allows stop" "$rc" "0"
+
+# LT3. Status/RUNNING markers only inside grep patterns and their output -> the
+#      live-team gate must NOT fire (same false-positive class as grepteams).
+TGS=$(mk_transcript grepstatus)
+rc=$(run_hook "$TGS" "Search finished; no live teams found in that transcript." false)
+check "grep FOR status markers does not trip the live-team gate" "$rc" "0"
+grep -q "RUNNING teammates" "$SANDBOX/stderr" && { echo "FAIL - live-team gate false-fired on a grep"; fail=1; } || echo "ok   - no live-team gate on a search-only session"
+
+# LT4. Retry restating the 515b71e1 park phrases without evidence -> argue-past
+#      ramp blocks (the phrase family is in PHRASES and standdown, kept in sync).
+TLP=$(mk_transcript plain)
+rc=$(run_hook "$TLP" "Both watch loops are armed and will re-invoke me when a PR merges. I'll surface on the next real event rather than another status recap." true)
+check "park-phrase family blocks on the argue-past ramp" "$rc" "2"
+grep -q "stand-down phrase" "$SANDBOX/stderr" && echo "ok   - ramp names the stand-down restatement" || { echo "FAIL - ramp message missing"; fail=1; }
 # --- Ownership-is-absolute (RUSH-3013): conflicts are never hand-backable; ------
 # --- the only non-merge exit is an owner-only gate with a checked receipt. ------
 

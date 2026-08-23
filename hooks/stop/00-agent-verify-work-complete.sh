@@ -183,6 +183,14 @@ PHRASES = [
     # spawn.
     r'\bi\'?m done unless\b',
     r'\bdispatched (?:agents?|sessions?) will (?:post|report|surface|finish|merge|land)\b',
+    # 2026-08-22 (515b71e1, RUSH-3022): an orchestrator with RUNNING teammates
+    # opted out of its own monitoring cadence with these lines while two green
+    # MERGEABLE PRs sat unmerged. The event it deferred to (a teams-start watch
+    # that settles only when the WHOLE team settles) could never fire on a
+    # single merge. Keep in sync with standdown in the done-claim check below.
+    r'\bsurface on the next (?:real )?event\b',
+    r'\brather than another status recap\b',
+    r'\bwill re-?invoke me when\b',
 ]
 # Evidence exception: the ramp demands a probe, so a retry that CARRIES one
 # passes — a URL the user can open, or a quoted live-probe command
@@ -762,6 +770,136 @@ SWARMMSG
 fi
 # --- end swarm integration check -----------------------------------------------
 
+# --- live-team tick check -------------------------------------------------------
+# An orchestrator whose team still has RUNNING teammates may not stop with
+# nothing armed to re-invoke it (RUSH-3022, session 515b71e1): the orchestrator
+# armed six sleep-ticks and two `teams start --watch` loops, but on later wakes
+# it emitted status recaps and finally declared it would surface on the next
+# real event (a merge) — deferring to watch loops that settle only when the
+# WHOLE team settles, never on a single merge, so no real event could ever
+# re-invoke it. Two green MERGEABLE PRs sat unmerged until the user asked. The
+# stop contract while teammates are RUNNING: EITHER a live tick — a background
+# command armed THIS turn (after the last wake) whose completion notification
+# has not fired yet — OR the durable-watcher evidence the open-PR check already
+# accepts (ScheduleWakeup / Monitor / agents monitors add, non-error result).
+# Team detection reuses the swarm check's command-position regexes; teammate
+# liveness reads only the paired tool_result of an actual agents-teams-status
+# invocation, so a session that merely greps FOR these markers cannot trip it
+# (the same false-positive class the swarm check pins). A stale tick from an
+# earlier turn does NOT count: the dead --watch loops above would satisfy a
+# pending-only check forever, which is exactly the observed failure.
+# stop_hook_active (top of file) caps this at one fire per stop. Fail-open.
+live_team_info=$(python3 -c "
+import json, re, sys
+CMD_POS = r'(?:^|[\n;&]\s*|\\\$\(\s*)'
+TEAMS_RE = re.compile(CMD_POS + r'agents teams (?:start|create)\b')
+TEAMS_ADD_RE = re.compile(CMD_POS + r'agents teams add\b')
+STATUS_RE = re.compile(CMD_POS + r'agents teams status\b')
+MONITORS_ADD = re.compile(CMD_POS + r'agents monitors add\b')
+BG_START = re.compile(r'Command running in background with ID: (\S+)')
+NOTIF_ID = re.compile(r'<task-id>([^<]+)</task-id>')
+# A RUNNING teammate line, or a nonzero working count in the status header.
+# (No double quotes or backticks in this code: it sits inside a double-quoted
+# python3 -c string, where either would break or execute.)
+LIVE_STATE = re.compile(r'\bRUNNING\b|\([1-9]\d* working')
+team_used = False
+status_ids = set()
+watch_ids = set()
+last_status_live = False
+durable = False
+completed = set()
+bg_gen = {}
+boundary_gen = 0
+try:
+    with open(sys.argv[1]) as f:
+        for raw in f:
+            raw = raw.strip()
+            if not raw:
+                continue
+            try:
+                rec = json.loads(raw)
+            except Exception:
+                continue
+            rectype = rec.get('type') or ''
+            msg = rec.get('message') if isinstance(rec.get('message'), dict) else rec
+            role = rec.get('role') or (msg.get('role') if isinstance(msg, dict) else '')
+            # Wake boundaries: a task-notification (any non-assistant entry —
+            # they arrive as user, queue-operation, or attachment records) or a
+            # genuine user turn (string content, or a text block). A
+            # tool_result-only user entry is NOT a boundary.
+            if rectype != 'assistant' and '<task-notification>' in raw:
+                boundary_gen += 1
+                for m in NOTIF_ID.finditer(raw):
+                    completed.add(m.group(1))
+            content = msg.get('content') if isinstance(msg, dict) else None
+            if role == 'user':
+                if isinstance(content, str):
+                    boundary_gen += 1
+                elif isinstance(content, list) and any(
+                        isinstance(b, dict) and b.get('type') == 'text' for b in content):
+                    boundary_gen += 1
+            if not isinstance(content, list):
+                continue
+            for b in content:
+                if not isinstance(b, dict):
+                    continue
+                btype = b.get('type')
+                if btype == 'tool_use':
+                    name = b.get('name') or ''
+                    cmd = str((b.get('input') or {}).get('command', ''))
+                    if TEAMS_RE.search(cmd) or (TEAMS_ADD_RE.search(cmd) and '--mode edit' in cmd):
+                        team_used = True
+                    if STATUS_RE.search(cmd):
+                        status_ids.add(b.get('id') or '')
+                    if name in ('ScheduleWakeup', 'Monitor') or MONITORS_ADD.search(cmd):
+                        watch_ids.add(b.get('id') or '')
+                elif btype == 'tool_result':
+                    rid = b.get('tool_use_id') or ''
+                    text = b.get('content')
+                    if isinstance(text, list):
+                        text = ' '.join(str(x.get('text', '')) for x in text if isinstance(x, dict))
+                    text = str(text or '')
+                    if rid in status_ids:
+                        last_status_live = bool(LIVE_STATE.search(text))
+                    if rid in watch_ids and not b.get('is_error'):
+                        durable = True
+                    for m in BG_START.finditer(text):
+                        bg_gen[m.group(1)] = boundary_gen
+    live_tick = any(g == boundary_gen and t not in completed for t, g in bg_gen.items())
+    live = team_used and last_status_live
+    print(('yes' if live else 'no'), ('yes' if live_tick else 'no'), ('yes' if durable else 'no'))
+except Exception:
+    print('no no no')
+" "$TRANSCRIPT_PATH" 2>/dev/null || echo "no no no")
+lt_live=$(echo "$live_team_info" | awk '{print $1}')
+lt_tick=$(echo "$live_team_info" | awk '{print $2}')
+lt_watch=$(echo "$live_team_info" | awk '{print $3}')
+
+if [ "$lt_live" = "yes" ]; then
+  if [ "$lt_tick" = "yes" ] || [ "$lt_watch" = "yes" ]; then
+    record_check_ok live-team passed tick-or-watcher-armed
+  else
+    repeat_guidance "a live team with nothing armed to re-invoke you" "$(prior_fires 'team still has RUNNING teammates')"
+    cat >&2 <<'LIVETEAMMSG'
+STOP — your team still has RUNNING teammates and this stop arms nothing that
+re-invokes you. On every wake while a team runs, drive then re-arm:
+  1. One concrete drive action — merge a PR that is green and mergeable, steer
+     or resume a stalled teammate, re-dispatch a dead track.
+  2. Re-arm the next bounded tick BEFORE stopping — a background command
+     (run_in_background: true) shaped like
+       sleep 300; agents teams status <team>; echo TICK done
+     — or arm a durable watcher (`agents monitors add`, ScheduleWakeup) and
+     park quoting it.
+A status recap with no re-arm is abandonment. `teams start --watch` settles
+only when the WHOLE team settles — a single PR merge never re-invokes you
+through it, so "surface on the next real event" parks forever.
+LIVETEAMMSG
+    record_block live-team running-teammates-no-tick
+    exit 2
+  fi
+fi
+# --- end live-team tick check ---------------------------------------------------
+
 # --- command-handback check ----------------------------------------------------
 # The observed failure (a real correction — "No, you release it.."): an agent
 # prepares a runnable script the user did NOT ask it to hand over — it writes
@@ -1102,6 +1240,11 @@ standdown = [
     # — keep in sync with PHRASES in the argue-past ramp at the top of the file.
     r'\bi\'?m done unless\b',
     r'\bdispatched (?:agents?|sessions?) will (?:post|report|surface|finish|merge|land)\b',
+    # 2026-08-22 (515b71e1, RUSH-3022): live-team recap-and-park — keep in
+    # sync with PHRASES in the argue-past ramp at the top of the file.
+    r'\bsurface on the next (?:real )?event\b',
+    r'\brather than another status recap\b',
+    r'\bwill re-?invoke me when\b',
 ]
 # A genuine clarifying question offers alternatives — NOT next-step parking.
 is_choice = bool(re.search(r'\bwhich\b', msg) or re.search(r'\b\w+ or \w+\b', msg)
