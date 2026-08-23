@@ -120,14 +120,16 @@ agents teams add feat claude "..." --name w2 --device yosemite-s0    # or pin
 |------|----------|
 | `plan` (default) | Read-only work: research, audit, analysis |
 | `edit` | Code changes: implementation, refactoring |
-| `auto` | Same as `edit`, plus a smart classifier auto-approves safe operations |
+| `auto` | Same as `edit`, plus harness-native auto-approval of safe operations — Claude/Copilot via the smart classifier (still prompts on risky ops), Codex via never-prompt `approval_policy=never`, Droid via `--auto high` |
 
 Always use `--mode plan` for security audits, research, and analysis.
 
 **Teammates run headless — `edit` can stall waiting for an approval prompt nobody
 answers.** `edit` lets a teammate write files but does not auto-approve anything; an
-operation that requires approval just sits there unattended. `auto` runs the same permissions plus a
-smart classifier that clears safe ops on its own, so it is usually the right default
+operation that requires approval just sits there unattended. `auto` runs the same
+permissions plus each harness's native auto-approval that clears safe ops on its own
+— Claude/Copilot's smart classifier, Codex's never-prompt `approval_policy=never`,
+Droid's high-auto — so it is usually the right default
 for an unattended edit-mode teammate — reach for plain `edit` only when you actively
 want it to pause on ambiguous operations (e.g. a human is watching that teammate's
 session). Default coverage by harness: `plan`/`edit`/`auto` are all headless-capable

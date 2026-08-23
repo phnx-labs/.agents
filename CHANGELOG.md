@@ -2,6 +2,17 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- **`--mode auto` is per-harness, not a universal smart classifier (RUSH-3049).**
+  `skills/teams/SKILL.md` (mode table + the unattended-teammate prose) and
+  `plugins/swarm/skills/orchestrate/SKILL.md` claimed `auto` "adds a smart
+  classifier that clears safe operations" as if it applied to every harness —
+  false for Codex, whose `auto` is `approval_policy=never` (never prompts), not a
+  classifier. Both now state the behavior per harness — Claude/Copilot's smart
+  classifier, Codex's never-prompt `approval_policy=never`, Droid's high-auto —
+  matching the already-correct table in `skills/run/SKILL.md`.
+
 ### Added
 
 - **`07-inject-device-topology.sh` carries disk and the one-line description into
