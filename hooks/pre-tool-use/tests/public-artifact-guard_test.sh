@@ -129,6 +129,51 @@ rm -f "$CLEANDAY/compiled-ruleset.md"
 run_guard "git add $ART/does-not-exist.md"
 check "tolerates a nonexistent path without erroring" 0 "$RC"
 
+# --- review blockers, each reproduced then pinned ---------------------------
+# A non-author review found five. They shared one root cause: the first version
+# walked every whitespace-separated word of the command with no shell grammar,
+# so it mis-parsed quotes, ignored the subcommand, and resolved paths against
+# the wrong directory.
+
+# B1: `cd <dir> && git add <relative>` bypassed the guard entirely, because the
+# existence gates resolved against the HOOK's cwd, not the cd target. The name
+# test now runs on the path string alone, so no filesystem resolution is needed
+# for it at all.
+run_guard "cd $SANDBOX/repo && git add .agents/artifacts/2026-08-19/monetize-agents-cli.md"
+check "B1: catches cd <dir> && git add <relative path>" 2 "$RC"
+
+# B2: a quoted path containing a space was split into two useless fragments --
+# one with the directory but an innocuous basename, one with the filename but no
+# directory -- so a check needing both matched neither.
+QD="$SANDBOX/repo/.agents/artifacts/my docs"
+mkdir -p "$QD"
+printf -- '---\ntitle: "G"\n---\n' > "$QD/gtm-strategy.md"
+printf -- '---\ntitle: "B"\nconfidential: true\n---\n' > "$QD/board notes.md"
+run_guard "git add \"$QD/gtm-strategy.md\""
+check "B2: catches a double-quoted path with a space" 2 "$RC"
+run_guard "git add '$QD/board notes.md'"
+check "B2: catches a single-quoted path with a space" 2 "$RC"
+
+# B3: read-only commands that merely NAME a strategy path were blocked, because
+# nothing scoped the check to a staging subcommand.
+run_guard "git log --oneline $ART/monetize-agents-cli.md"
+check "B3: ALLOWS git log naming a strategy path" 0 "$RC"
+run_guard "git diff $ART/monetize-agents-cli.md"
+check "B3: ALLOWS git diff naming a strategy path" 0 "$RC"
+
+# B4: the worst failure mode available to this hook. It runs on every git add
+# fleet-wide, so blocking real work gets it switched off, and then it protects
+# nothing. Loose substrings (*pricing-model*, *monetiz*, *fundrais*) blocked all
+# of these; matching is now anchored on whole document names.
+for eng in plan-pricing-model-api monetization-service-refactor \
+           fundraising-page-redesign plan-revenue-model-migration \
+           gtm-dashboard-component pricing-page-redesign; do
+  printf -- '---\ntitle: "eng"\nsurface: internal\n---\n' > "$ART/$eng.md"
+  run_guard "git add $ART/$eng.md"
+  check "B4: ALLOWS engineering file $eng.md" 0 "$RC"
+  rm -f "$ART/$eng.md"
+done
+
 # --- the sweeping forms -----------------------------------------------------
 # `git add -A` is the MOST likely leak vector, not an edge case: the recap
 # workflow tells agents to commit any uncommitted work they find, and this is

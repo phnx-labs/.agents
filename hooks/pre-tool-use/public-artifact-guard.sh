@@ -1,56 +1,61 @@
 #!/bin/sh
 # public-artifact-guard — PreToolUse hook on Bash.
 #
-# Blocks `git add` / `git commit` of confidential business strategy into a
-# repo's `.agents/artifacts/` directory, which is COMMITTED by design and on an
-# OSS repo is therefore PUBLIC.
+# Blocks staging confidential material into a repo's `.agents/artifacts/`
+# directory, which is COMMITTED by design and therefore PUBLIC on an OSS repo.
 #
 # Why this exists (RUSH-3033): the agi-cli GTM/monetization strategy -- real
 # revenue figures, a "~no users" assessment, competitor intel, pricing model,
 # launch plan -- was committed to `.agents/artifacts/` on the public agents-cli
-# repo and was world-readable for about two days. The files were removed from
-# the tip, but git history still carries them, and strategy intel is not a
-# rotatable secret. This guard is item 3 of that ticket's remediation: stop the
-# next one at the tool boundary instead of discovering it two days later.
+# repo and stayed world-readable for about two days. The tip was cleaned by
+# PR #2895; git history still carries it, and strategy intel is not a rotatable
+# secret.
 #
-# The failure mode is structural, not careless. Two documented rules compose
-# badly: `.agents/artifacts/<date>/` is "durable output, committed", while
-# `.agents/scratch/` is gitignored -- so an agent writing a "durable" strategy
-# doc puts it on the public path by following instructions. Meanwhile the
-# session-recap workflow tells agents to commit any uncommitted work they find,
-# including other sessions'. A 2026-08-22 sweep found exactly that pending: an
-# internal monetization strategy and a 1147-line copy of the operator's private
-# global ruleset sitting untracked in the public tree, one `git add -A` away.
+# The failure is structural, not careless. Two documented rules compose into it:
+# `.agents/artifacts/<date>/` is "durable output, committed" while
+# `.agents/scratch/` is gitignored, so an agent writing a durable strategy doc
+# puts it on the public path BY FOLLOWING INSTRUCTIONS -- and the session-recap
+# workflow tells agents to commit any uncommitted work they find, including
+# other sessions'. A 2026-08-22 sweep found exactly that pending in the public
+# tree: an internal monetization doc and a 1147-line compile of the operator's
+# private global ruleset, both untracked.
 #
-# What it does NOT key on: `surface: internal` frontmatter. That field names the
-# PRODUCT surface a plan touches (internal / cli / web / native / api /
-# workflow), not its confidentiality -- ordinary architecture plans carry it, so
-# keying on it would deny the common case and train everyone to bypass the
-# guard. It keys on strategy-shaped FILENAMES (the approach RUSH-3033 itself
-# proposes) plus an explicit `confidential: true` frontmatter opt-in.
+# --- What it keys on, and what it deliberately does NOT --------------------
+#
+# PRIMARY signal: a `confidential: true` frontmatter key. Explicit, robust, and
+# author-controlled — no guessing from a filename.
+#
+# BACKSTOP signal: a small set of document names, deliberately anchored rather
+# than substring-matched. An earlier revision used loose substrings
+# (`*pricing-model*`, `*monetiz*`, `*fundrais*`) and a reviewer showed it blocked
+# ordinary engineering work: `plan-pricing-model-api.md`,
+# `monetization-service-refactor.md`, `fundraising-page-redesign.md`,
+# `plan-revenue-model-migration.md`. That is the worst failure mode available to
+# this hook — it runs on every `git add` fleet-wide, so a guard that blocks real
+# work gets switched off, and then it protects nothing. The patterns below match
+# whole-name documents, not any file whose name mentions money.
+#
+# NOT `surface: internal` frontmatter. That field names the PRODUCT surface a
+# plan touches (internal / cli / web / native / api / workflow), not its
+# confidentiality; ordinary architecture plans carry it.
+#
+# No network call: repo visibility would need `gh repo view` on a path that runs
+# on every `git add`. Confidential material does not belong in a tracked
+# artifacts dir of ANY repo -- private repos get forked and flipped public.
 #
 # Exits 0 (allow) or 2 (deny, message on stderr).
-#
-# Out of scope, deliberately:
-#   - `git add -A` / `git add .` / `git commit -a`: the paths are not in the
-#     command, so there is nothing to introspect at hook time. Same boundary
-#     large-file-add-guard draws. Those are caught by review, not here.
-#   - Private repos: visibility needs a network call (`gh repo view`) on a hot
-#     path that must stay fast and offline-safe. A confidential strategy doc
-#     does not belong in a tracked artifacts dir of ANY repo -- private repos
-#     get forked, made public, and shared. Use `.agents/scratch/` instead.
 
 set -eu
 
 input=$(cat)
-# Fast path: must mention git and a staging/commit verb.
+# Fast path: must plausibly be a staging command.
 case "$input" in
   *git*add*|*git*commit*|*git*stage*) ;;
   *) exit 0 ;;
 esac
 
 # Portable JSON field (jq -> node -> python). Claude/Codex: tool_input.command;
-# Grok: toolInput.command. Empty on both -> not a shell tool, allow.
+# Grok: toolInput.command.
 _json_field() {
   if command -v jq >/dev/null 2>&1; then
     printf '%s' "$1" | jq -r "(.$2) // empty" 2>/dev/null; return 0
@@ -78,52 +83,86 @@ fi
 [ -z "$cmd" ] && cmd=$(_json_field "$input" toolInput.command) || true
 [ -z "$cmd" ] && exit 0
 
-# --- friction self-report ---------------------------------------------------
-# Guard hooks exit 2 before any `agents` process exists, so they cannot emit
-# in-process. Fire the hidden recorder in the background, fully fail-open.
 report_friction() {  # $1=failureId  $2=error-message
   [ -z "${AGENTS_DISABLE_FRICTION_LOG:-}" ] || return 0
-  _friction_cmd=$cmd
+  _fc=$cmd
   (agents _internal friction --surface guard --id "$1" \
-    --error "$2" --command "$_friction_cmd" || true) </dev/null >/dev/null 2>&1 &
+    --error "$2" --command "$_fc" || true) </dev/null >/dev/null 2>&1 &
 }
 
-# Structured denial (RUSH-2295) — same shape as git-guard / rm-guard.
 emit_deny() {  # $1=path  $2=why
   report_friction "artifacts.confidential-publish" "$2"
   printf 'blocked_op: %s\nreason: %s\ndo_this_instead: %s\n' \
     "artifacts.confidential-publish" \
-    "$1 — $2. .agents/artifacts/ is COMMITTED by design, so on an OSS repo this is published to the world (RUSH-3033: exactly this leaked GTM strategy for ~2 days, and git history still carries it)." \
-    "Confidential business material does not belong on a tracked path. Move it to .agents/scratch/ (gitignored) or a PRIVATE repo, then stage the rest. If this file is genuinely publishable, rename it away from the strategy-document pattern or drop 'confidential: true' from its frontmatter — do not work around the guard." >&2
+    "$1 — $2. .agents/artifacts/ is COMMITTED by design, so on an OSS repo this publishes to the world (RUSH-3033: exactly this leaked the GTM strategy for ~2 days, and git history still carries it)." \
+    "Confidential material does not belong on a tracked path. Move it to .agents/scratch/ (gitignored) or a PRIVATE repo, then stage the rest. If it is genuinely publishable, drop 'confidential: true' from its frontmatter or give it a name that is not a whole-document strategy title — do not work around the guard." >&2
+  exit 2
 }
 
-# A strategy-shaped basename. Deliberately narrow: it names the document CLASS
-# that leaked (RUSH-3033 lists gtm-strategy, how-winners-charge, pricing-models,
-# monetize, launch-venues, github-stars-playbook, supply-vs-demand,
-# byo-subscription), not every business-adjacent word. A plan about billing CODE
-# is engineering and must still be committable.
+# Tokenize a segment the way a shell would, honoring quotes, one token per line.
+# Plain `set -- $seg` splits `git add "notes gtm-strategy.md"` into `"notes` and
+# `gtm-strategy.md"` — the first carries the artifacts path but an innocuous
+# basename, the second carries the strategy name but no path, so a check needing
+# BOTH matches neither and the file sails through. Reported as a bypass.
+tokenize() {
+  printf '%s' "$1" | awk '
+  {
+    n = length($0); tok = ""; q = ""; have = 0
+    for (i = 1; i <= n; i++) {
+      c = substr($0, i, 1)
+      if (q != "") {
+        if (c == q) { q = "" } else { tok = tok c; have = 1 }
+      } else if (c == "\"" || c == "\047") {
+        q = c; have = 1
+      } else if (c == " " || c == "\t") {
+        if (have) { print tok; tok = ""; have = 0 }
+      } else {
+        tok = tok c; have = 1
+      }
+    }
+    if (have) print tok
+  }'
+}
+
+strip_quotes() {
+  case "$1" in
+    \"*\") printf '%s' "$1" | sed 's/^"\(.*\)"$/\1/' ;;
+    \'*\') printf '%s' "$1" | sed "s/^'\(.*\)'\$/\1/" ;;
+    *) printf '%s' "$1" ;;
+  esac
+}
+
+# Whole-document strategy names. ANCHORED on purpose: each alternative must be
+# the entire basename (modulo an extension and an optional date/dir prefix), so
+# `plan-pricing-model-api.md` and `monetization-service-refactor.md` — real
+# engineering work — do not match, while the actual leaked documents do.
 is_strategy_name() {
-  case $(printf '%s' "${1##*/}" | tr '[:upper:]' '[:lower:]') in
-    *gtm*|*go-to-market*|*monetiz*|*pricing-model*|*how-winners-charge*) return 0 ;;
-    *launch-venue*|*stars-playbook*|*supply-vs-demand*|*byo-subscription*) return 0 ;;
-    *competitive-landscape*|*competitor-intel*|*revenue-model*|*fundrais*) return 0 ;;
-    # Not business strategy, but the same leak: the 2026-08-22 sweep found a
-    # 1147-line compile of the operator's PRIVATE global agent ruleset sitting in
-    # the public tree. It names fleet hosts and working habits, has no
-    # frontmatter to declare itself, and no engineering plan is ever called this.
-    *compiled-ruleset*|*ruleset-compiled*) return 0 ;;
+  _b=${1##*/}
+  _b=$(printf '%s' "$_b" | tr '[:upper:]' '[:lower:]')
+  _b=${_b%.md}; _b=${_b%.markdown}; _b=${_b%.mdx}; _b=${_b%.html}; _b=${_b%.yaml}; _b=${_b%.yml}
+  # Drop a leading date or "plan-"/"draft-" style prefix before anchoring.
+  _b=$(printf '%s' "$_b" | sed -E 's/^[0-9]{4}-[0-9]{2}-[0-9]{2}-//')
+  case "$_b" in
+    # The RUSH-3033 document set, by whole name.
+    gtm|gtm-strategy|go-to-market|go-to-market-strategy) return 0 ;;
+    monetize|monetize-*|monetization-strategy|pricing-models) return 0 ;;
+    how-winners-charge|launch-venues|launch-venues-and-posts) return 0 ;;
+    github-stars-playbook|stars-playbook|supply-vs-demand) return 0 ;;
+    byo-subscription-pivot|developer-pain-reddit|vibe-kanban-postmortem) return 0 ;;
+    # Not business strategy, but the same leak class: the 2026-08-22 sweep found
+    # a compile of the operator's PRIVATE global ruleset in the public tree. It
+    # carries no frontmatter to declare itself, and no engineering document is
+    # ever called this.
+    compiled-ruleset|ruleset-compiled) return 0 ;;
   esac
   return 1
 }
 
-# An explicit frontmatter opt-in, for material the filename does not betray.
-# Only the leading frontmatter block is read, so the phrase appearing in prose
-# (e.g. this guard's own docs) does not trip it.
+# `exit` in awk still runs END, so END must not hard-code the status or it
+# overrides the match — carry the result in a flag.
 has_confidential_frontmatter() {
   [ -f "$1" ] || return 1
   case "$1" in *.md|*.markdown|*.mdx|*.html|*.yaml|*.yml) ;; *) return 1 ;; esac
-  # `exit` in awk still runs END, so END must not hard-code the status or it
-  # overrides the match — carry the result in a flag instead.
   head -20 "$1" 2>/dev/null | awk '
     NR==1 && $0 !~ /^---[[:space:]]*$/ { exit }
     NR>1 && /^---[[:space:]]*$/ { exit }
@@ -133,115 +172,157 @@ has_confidential_frontmatter() {
   return 1
 }
 
-# The directory scan's `while read` runs in a subshell (it is fed by a pipe), so
-# it cannot set a variable in this shell — the hit is passed back through a file.
-_HIT_FILE=$(mktemp 2>/dev/null || echo "/tmp/paguard.$$")
-trap 'rm -f "$_HIT_FILE"' EXIT INT TERM
-
-check_file() {  # a single regular file
-  if is_strategy_name "$1"; then
-    emit_deny "$1" "reads as a confidential business-strategy document"
-    exit 2
-  fi
-  if has_confidential_frontmatter "$1"; then
-    emit_deny "$1" "declares 'confidential: true' in its frontmatter"
-    exit 2
-  fi
-  return 0
+# Resolve a possibly-relative path against the segment's `cd` target, so
+# `cd repo && git add .agents/artifacts/gtm-strategy.md` is still inspectable.
+# SEG_CWD is set by the segment walker below.
+resolve() {
+  case "$1" in
+    /*) printf '%s' "$1" ;;
+    *) [ -n "${SEG_CWD:-}" ] && printf '%s/%s' "${SEG_CWD%/}" "$1" || printf '%s' "$1" ;;
+  esac
 }
 
-check_path() {
-  _p=$1
-  # Quoted globs reach git unexpanded; nothing to inspect.
+# The NAME test runs on the string alone — no filesystem access — so a relative
+# path under a `cd` the hook never performed is still caught. Only the
+# frontmatter test needs to open the file, and that is best-effort.
+inspect_path() {
+  _p=$(strip_quotes "$1")
   case "$_p" in *\**|*\?*|*\[*) return 0 ;; esac
-  # Only guard the artifacts dir — the one documented as committed. Match the
-  # dir itself too (trailing slash or not), since `git add <dir>` is how a whole
-  # day of artifacts gets staged at once.
   case "$_p" in
     */.agents/artifacts|*/.agents/artifacts/*|.agents/artifacts|.agents/artifacts/*) ;;
     *) return 0 ;;
   esac
 
-  # A DIRECTORY is the common case and the one that actually leaks:
-  # `git add .agents/artifacts/2026-08-19/` stages the whole day. Checking only
-  # the literal argument would catch the careful caller and miss the real one.
-  if [ -d "$_p" ]; then
-    # Bounded: only the file types that carry frontmatter/prose, and capped so a
-    # huge tree cannot stall the hot path.
-    _hits=$(find "$_p" -type f \( -name '*.md' -o -name '*.markdown' -o -name '*.mdx' \
-      -o -name '*.html' -o -name '*.yaml' -o -name '*.yml' \) 2>/dev/null | head -400)
-    [ -z "$_hits" ] && return 0
-    printf '%s\n' "$_hits" | while IFS= read -r _f; do
-      [ -n "$_f" ] || continue
-      if is_strategy_name "$_f" || has_confidential_frontmatter "$_f"; then
-        printf '%s\n' "$_f" > "${_HIT_FILE}"
-        break
-      fi
-    done
-    if [ -s "${_HIT_FILE}" ]; then
-      _bad=$(cat "${_HIT_FILE}")
-      emit_deny "$_bad" "is confidential and would be staged by adding the directory $_p"
-      exit 2
+  is_strategy_name "$_p" && emit_deny "$_p" "reads as a confidential business-strategy document"
+
+  _full=$(resolve "$_p")
+  if [ -d "$_full" ]; then
+    # `git add <day-dir>/` stages a whole day at once — the realistic vector.
+    # Bounded so a large tree cannot stall a hot path.
+    find "$_full" -type f \( -name '*.md' -o -name '*.markdown' -o -name '*.mdx' \
+      -o -name '*.html' -o -name '*.yaml' -o -name '*.yml' \) 2>/dev/null | head -400 \
+      | while IFS= read -r _f; do
+          if is_strategy_name "$_f" || has_confidential_frontmatter "$_f"; then
+            printf '%s\n' "$_f" > "$_HIT_FILE"; break
+          fi
+        done
+    if [ -s "$_HIT_FILE" ]; then
+      emit_deny "$(cat "$_HIT_FILE")" "is confidential and would be staged by adding the directory $_p"
     fi
     return 0
   fi
-
-  [ -f "$_p" ] || return 0
-  check_file "$_p"
+  if [ -f "$_full" ] && has_confidential_frontmatter "$_full"; then
+    emit_deny "$_p" "declares 'confidential: true' in its frontmatter"
+  fi
+  return 0
 }
 
-# --- the sweeping forms: `git add -A`, `git add .`, `git commit -a` ----------
-# large-file-add-guard treats these as out of scope, and for a SIZE check that
-# is right — it would have to stat the whole tree. For a LEAK check it is the
-# opposite: these are the most likely vector, because the session-recap workflow
-# instructs agents to commit any uncommitted work they find, and "commit
-# everything" is how that gets done. `git status --porcelain` gives exactly the
-# set git is about to stage, cheaply, so there is no excuse to skip it.
-case " $cmd " in
-  *" git add -A"*|*" git add --all"*|*" git add ."*|*" git add -A."*|\
-  *"git add -A "*|*"git add --all "*|*"git add . "*|*"git commit -a"*|*"git commit --all"*)
-    # -uall is load-bearing: plain --porcelain COLLAPSES an untracked directory
-    # to a single "?? .agents/" entry, so a filter on .agents/artifacts/* never
-    # matches and the guard silently passes. It only appeared to work on repos
-    # where those parent dirs are already tracked.
-    if pending=$(git status --porcelain -uall 2>/dev/null); then
-      root=$(git rev-parse --show-toplevel 2>/dev/null || printf '.')
-      printf '%s\n' "$pending" | while IFS= read -r line; do
-        # Strip the 2-char status field; handle renames (a -> b) by taking the target.
-        p=$(printf '%s' "$line" | cut -c4-)
-        case "$p" in *" -> "*) p=${p##* -> } ;; esac
-        p=$(printf '%s' "$p" | sed -e 's/^"//' -e 's/"$//')
-        case "$p" in .agents/artifacts/*|*/.agents/artifacts/*) ;; *) continue ;; esac
-        full="$root/$p"
-        if [ -d "$full" ]; then
-          hit=$(find "$full" -type f \( -name '*.md' -o -name '*.markdown' -o -name '*.mdx' \
-            -o -name '*.html' -o -name '*.yaml' -o -name '*.yml' \) 2>/dev/null | head -400 \
-            | while IFS= read -r f; do
-                if is_strategy_name "$f" || has_confidential_frontmatter "$f"; then printf '%s' "$f"; break; fi
-              done)
-          [ -n "$hit" ] && printf '%s\n' "$hit" > "$_HIT_FILE" && break
-        elif [ -f "$full" ]; then
-          if is_strategy_name "$full" || has_confidential_frontmatter "$full"; then
-            printf '%s\n' "$full" > "$_HIT_FILE"; break
-          fi
-        fi
-      done
-      if [ -s "$_HIT_FILE" ]; then
-        bad=$(cat "$_HIT_FILE")
-        emit_deny "$bad" "is pending and would be swept in by this stage-everything command"
-        exit 2
-      fi
-    fi
-    ;;
-esac
+_HIT_FILE=$(mktemp 2>/dev/null || echo "/tmp/paguard.$$")
+trap 'rm -f "$_HIT_FILE"' EXIT INT TERM
 
-# Walk the command's words; skip flags and the git verbs themselves.
-# shellcheck disable=SC2086
-for word in $cmd; do
-  case "$word" in
-    -*|git|add|commit|stage|/*/git) continue ;;
-  esac
-  check_path "$word"
-done
+# `git add -A` / `.` / `git commit -a`: the MOST likely vector, because the
+# recap workflow tells agents to commit any stray work they find. Read exactly
+# what git is about to stage. -uall is load-bearing: plain --porcelain COLLAPSES
+# an untracked dir into one "?? .agents/" entry, so an artifacts filter never
+# matches (this silently passed until a fresh-repo test caught it).
+sweep_pending() {
+  _root=$(cd "${SEG_CWD:-.}" 2>/dev/null && git rev-parse --show-toplevel 2>/dev/null) || return 0
+  [ -n "$_root" ] || return 0
+  git -C "$_root" status --porcelain -uall 2>/dev/null | while IFS= read -r _line; do
+    _p=$(printf '%s' "$_line" | cut -c4-)
+    case "$_p" in *" -> "*) _p=${_p##* -> } ;; esac
+    _p=$(printf '%s' "$_p" | sed -e 's/^"//' -e 's/"$//')
+    case "$_p" in .agents/artifacts/*|*/.agents/artifacts/*) ;; *) continue ;; esac
+    _f="$_root/$_p"
+    if [ -f "$_f" ] && { is_strategy_name "$_f" || has_confidential_frontmatter "$_f"; }; then
+      printf '%s\n' "$_f" > "$_HIT_FILE"; break
+    fi
+  done
+  if [ -s "$_HIT_FILE" ]; then
+    emit_deny "$(cat "$_HIT_FILE")" "is pending and would be swept in by this stage-everything command"
+  fi
+}
+
+# --- command walk ----------------------------------------------------------
+# Split on segment separators, track `cd` per segment, scope to the git
+# subcommand. Modelled on large-file-add-guard.sh's parser, which already
+# solved this; an earlier revision here walked every whitespace-separated word
+# regardless of subcommand and so fired on read-only `git log <path>`.
+check_command_string() {
+  _cs=$1
+  # Split into segments on && || ; | and newlines.
+  printf '%s\n' "$_cs" | tr ';\n' '\n\n' | sed -e 's/&&/\n/g' -e 's/||/\n/g' -e 's/|/\n/g' \
+  | while IFS= read -r _seg; do
+      [ -n "$_seg" ] || continue
+      printf '%s\n' "$_seg"
+    done
+}
+
+SEG_CWD=""
+# Capture a `cd <dir>` anywhere in the command so later segments resolve against
+# it (blocker: `cd repo && git add <relative>` bypassed an existence-gated check).
+_cd_target=$(printf '%s' "$cmd" | sed -n 's/.*\(^\|[;&|] *\)cd  *\([^ ;&|]*\).*/\2/p' | head -1)
+if [ -n "$_cd_target" ]; then
+  _cd_target=$(strip_quotes "$_cd_target")
+  [ -d "$_cd_target" ] && SEG_CWD=$_cd_target
+fi
+
+# Read segments from a FILE, not a pipe: a `cmd | while` loop runs in a subshell,
+# where emit_deny's `exit 2` would kill only that subshell and the guard would
+# return 0 — allowing exactly what it just detected.
+_SEG_FILE="${_HIT_FILE}.segs"
+trap 'rm -f "$_HIT_FILE" "$_SEG_FILE"' EXIT INT TERM
+check_command_string "$cmd" > "$_SEG_FILE"
+
+while IFS= read -r seg; do
+  [ -n "$seg" ] || continue
+  _oldifs=${IFS:-}
+  IFS='
+'
+  # shellcheck disable=SC2046,SC2086
+  set -- $(tokenize "$seg")
+  IFS=$_oldifs
+  # Drop leading VAR=value assignments.
+  while [ $# -gt 0 ]; do
+    case "$1" in *=*) shift ;; *) break ;; esac
+  done
+  [ $# -eq 0 ] && continue
+
+  first=$(strip_quotes "${1:-}")
+  case "$first" in git|*/git) ;; *) continue ;; esac
+  shift
+
+  # Peel git's global flags (mirrors large-file-add-guard).
+  while [ $# -gt 0 ]; do
+    case "$1" in
+      -C)            shift; [ $# -gt 0 ] && shift ;;
+      --git-dir=*|--work-tree=*|--namespace=*) shift ;;
+      --git-dir|--work-tree|--namespace)      shift; [ $# -gt 0 ] && shift ;;
+      -c)            shift; [ $# -gt 0 ] && shift ;;
+      --no-pager|--paginate|--bare|--literal-pathspecs|--no-optional-locks) shift ;;
+      -*)            shift ;;
+      *)             break ;;
+    esac
+  done
+  [ $# -eq 0 ] && continue
+
+  sub=$1; shift
+  # ONLY staging subcommands. `git log`/`git diff`/`git show` may legitimately
+  # name a strategy path and must not be blocked.
+  case "$sub" in add|stage|commit) ;; *) continue ;; esac
+
+  _sweeps=0
+  for a in "$@"; do
+    case "$(strip_quotes "$a")" in
+      -A|--all|.|-a) _sweeps=1 ;;
+    esac
+  done
+  [ "$_sweeps" = 1 ] && sweep_pending
+
+  for a in "$@"; do
+    case "$a" in -*) continue ;; esac
+    inspect_path "$a"
+  done
+done < "$_SEG_FILE"
 
 exit 0
