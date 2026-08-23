@@ -35,6 +35,7 @@ tool=$(printf '%s' "$input" | jq -r '(.tool_name // .toolName) // empty' 2>/dev/
 event=$(printf '%s' "$input" | jq -r '(.hook_event_name // .hookEventName) // empty' 2>/dev/null) || event=""
 tp=$(printf '%s' "$input" | jq -r '(.transcript_path // .transcriptPath) // empty' 2>/dev/null) || tp=""
 last_message=$(printf '%s' "$input" | jq -r '(.last_assistant_message // .lastAssistantMessage) // empty' 2>/dev/null) || last_message=""
+perm_mode=$(printf '%s' "$input" | jq -r '(.permission_mode // .permissionMode) // empty' 2>/dev/null) || perm_mode=""
 
 is_plan=0
 case "$tool" in
@@ -44,6 +45,13 @@ esac
 if [ "$is_plan" = 0 ] && { [ "$event" = "Stop" ] || [ "$event" = "stop" ]; }; then
   stop_active=$(printf '%s' "$input" | jq -r '(.stop_hook_active // .stopHookActive) // false' 2>/dev/null) || stop_active=false
   [ "$stop_active" = "true" ] && exit 0
+  # Mode gate: Claude Code reports the live permission mode on stdin; an explicit
+  # non-plan value means this stop cannot be presenting a plan, so skip the
+  # transcript scan (which false-positives on answers that merely discuss plans).
+  # Harnesses that omit the field (Codex, Grok, ...) keep the marker backstop below.
+  if [ -n "$perm_mode" ] && [ "$perm_mode" != "plan" ]; then
+    exit 0
+  fi
   plan_signal=$(PLAN_LAST_MESSAGE="$last_message" python3 - "$tp" <<'PY' 2>/dev/null || true
 import json, os, sys
 

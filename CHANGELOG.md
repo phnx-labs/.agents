@@ -16,6 +16,27 @@
 
 ### Added
 
+- **`public-artifact-guard` blocks confidential material from the committed
+  artifacts dir (RUSH-3033).** The agi-cli GTM/monetization strategy was
+  committed to `.agents/artifacts/` on the PUBLIC agents-cli repo and stayed
+  world-readable for about two days; the tip was cleaned but git history still
+  carries it. The failure is structural — `.agents/artifacts/<date>/` is
+  documented as "durable output, committed" while `.agents/scratch/` is
+  gitignored, so an agent writing a durable strategy doc lands it on the public
+  path by following instructions, and the session-recap workflow tells agents to
+  commit any uncommitted work they find. A 2026-08-22 sweep found exactly that
+  pending in the public tree: an internal monetization doc and a 1147-line
+  compile of the operator's private global ruleset, both untracked. The new
+  PreToolUse hook denies `git add`/`git commit`/`git stage` of such material,
+  including `git add <dir>` and `git add -A` (via `git status --porcelain
+  -uall`, which unlike plain `--porcelain` does not collapse an untracked
+  directory into a single entry). It keys on a `confidential: true` frontmatter
+  key plus a small set of whole-document names — deliberately NOT on
+  `surface: internal`, which names a product surface rather than a
+  confidentiality level, and deliberately anchored rather than substring-matched
+  so ordinary engineering files like `plan-pricing-model-api.md` and
+  `monetization-service-refactor.md` are not blocked. It does not remediate the
+  original exposure, which needs an owner-authorized history rewrite.
 - **F1: "The owner is not a step in your loop."** Measured failure class
   (2026-08-22 session 1a00318e): an agent with stated intent ("you should merge
   it") re-asked it as an A/B/C option menu, proposed creating a bot account as
@@ -28,6 +49,37 @@
 
 ### Fixed
 
+- **`hooks/stop/verify-delivery-chain.py` no longer resolves the repo from the
+  hook process's own cwd (RUSH-3016).** When neither the `repo_path` hint nor a
+  transcript `cd`/`git -C` command named a repo, `_find_repo_path` fell back to
+  `Path(".git").exists()` on whatever directory the Stop hook process happened
+  to run in — so the delivery gate found a repo (and its open tickets) from a
+  repo cwd and silently found nothing from any other cwd. It now consults the
+  harness-reported session `cwd` from the hook input instead, and the stop-hook
+  test harness pins an explicit fixture `cwd`, making the suite give 0 FAIL
+  from any directory (verified from a repo root, `hooks/stop`, and a non-git
+  `/tmp` dir).
+- **Every tick wake with a live team must drive and re-arm — the stop hook
+  gains a live-team analogue of the dispatch check.** Measured failure (session
+  515b71e1, 2026-08-21, RUSH-3022): an orchestrator with 'Monitor teams every
+  3-5 min' as its own task armed six background sleep-ticks and two
+  `agents teams start --watch` loops, then produced status recaps on wakes and
+  finally declared "I'll surface on the next real event (a merge) rather than
+  another status recap" — deferring to watch loops that settle only when the
+  whole team settles, never on a single merge, so nothing could re-invoke it;
+  two green MERGEABLE PRs sat unmerged until the user asked. Now
+  **`hooks/stop/00-agent-verify-work-complete.sh`** blocks a stop when the
+  transcript shows an edit-mode team whose latest real `agents teams status`
+  result still has RUNNING teammates and neither a fresh background tick (armed
+  this turn, after the last wake, completion not yet fired) nor a durable
+  watcher (ScheduleWakeup / Monitor / `agents monitors add`) exists — a stale
+  tick from an earlier turn does not count, and grep-only marker matches cannot
+  trip it. The argue-past ramp and stand-down lists gain the park-phrase family
+  ("surface on the next (real) event", "rather than another status recap",
+  "will re-invoke me when"). **`rules/subrules/parallel-teams.md`** adds item 6
+  to "You own what you spawn": every tick wake produces a concrete drive action
+  (merge a green PR, steer/resume a stalled teammate, re-dispatch a dead track)
+  AND re-arms the next bounded tick; recap-and-park is abandonment.
 - **The instruction corpus stops teaching harness monoculture and tool
   passivity (RUSH-3020, corpus pass).** Spawn examples across `skills/run`,
   `skills/teams`, `swarm:orchestrate`, `commands/teams`, and `commands/recap`
