@@ -538,6 +538,15 @@ def evaluate(payload: dict[str, Any], db_path: Path) -> dict[str, Any]:
                  updated_at_ms=excluded.updated_at_ms""",
             (session_key, harness, native or None, launch or None, goal_ordinal, context, evidence_json, _now_ms()),
         )
+        # Identical-state signal: does this stop's evidence hash equal the
+        # SAME session+goal's previous decision? Measured before the cap
+        # existed: 630 of 1,711 consecutive stops re-fired on an unchanged
+        # hash — a third identical block adds pressure, not information.
+        prev_row = db.execute(
+            "SELECT evidence_sha256 FROM decisions WHERE session_key=? AND goal_ordinal=? ORDER BY id DESC LIMIT 1",
+            (session_key, goal_ordinal),
+        ).fetchone()
+        evidence_repeat = bool(prev_row and prev_row[0] == evidence_hash)
         db.execute(
             "INSERT INTO decisions(session_key,goal_ordinal,decision,reason,evidence_sha256,created_at_ms) VALUES(?,?,?,?,?,?)",
             (session_key, goal_ordinal, decision, reason, evidence_hash, _now_ms()),
@@ -552,6 +561,7 @@ def evaluate(payload: dict[str, Any], db_path: Path) -> dict[str, Any]:
         "delivery_evidence": delivery,
         "reason": reason,
         "evidence": evidence,
+        "evidence_repeat": evidence_repeat,
         "owned_prs": owned_prs,
         "owned_tickets": owned_tickets,
     }

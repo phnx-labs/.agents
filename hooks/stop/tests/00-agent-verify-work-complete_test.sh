@@ -1254,4 +1254,17 @@ check "ownership: reason-bearing ask cannot poison a resolved conflict" "$rc" "0
 rc=$(HOME="$FAKEHOME" FAKE_GH_STATE=OPEN run_hook "$T" "Resolved the merge conflicts with main, filed via feed post --blocked. HANDOFF: the owner - needs the credential, which is not available. Still blocking the release though." false)
 check "ownership: confession after a reason-bearing ask still blocks" "$rc" "2"
 
+# CAP1/CAP2. Identical-state cap (RUSH-3032 item a): with 2 prior fires in
+# the transcript, the FIRST evaluation of a given state blocks; a SECOND
+# evaluation of the byte-identical state (same transcript, same message —
+# evidence hash unchanged in the state db) records identical-state-capped
+# and passes. Fresh state db so decision history starts empty.
+export VERIFY_WORK_STATE_DB="$SANDBOX/cap-state.db"
+TCAPL=$(mk_looped 2)
+rc=$(FAKE_GH_STATE=OPEN run_hook "$TCAPL" "CI is green, waiting for the reviewer." false)
+check "identical-state: first evaluation still blocks" "$rc" "2"
+rc=$(FAKE_GH_STATE=OPEN run_hook "$TCAPL" "CI is green, waiting for the reviewer." false)
+check "identical-state: unchanged state after 2 fires is capped (passes)" "$rc" "0"
+export VERIFY_WORK_STATE_DB="$SANDBOX/verify-work-state.db"
+
 exit $fail
