@@ -80,7 +80,7 @@ endpoint addresses **one specific machine**:
   browser from anywhere. `--fleet` is right.
 - `cdp://localhost:9333` is evaluated **on the machine running the command**.
   Fleet-synced, that name means "port 9333 on whatever box you are on", so it
-  silently resolves to a different — usually logged-out — browser everywhere
+  silently resolves to a different (usually logged-out) browser everywhere
   else. For a profile that carries live logins, that is the worst failure mode:
   you ask for the credentialed browser by name and get a stranger.
 
@@ -99,8 +99,6 @@ its own profile:
 ```bash
 agents browser navigate --device <host> --url https://example.com
 ```
-
-
 
 ## Session Lifecycle
 
