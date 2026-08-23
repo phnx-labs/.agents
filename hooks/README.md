@@ -90,6 +90,7 @@ register time). See [§Subrule hooks](#subrule-hooks-rules-not-this-tree).
 | [`rm-guard.sh`](./pre-tool-use/rm-guard.sh) | Blocks destructive `rm` patterns |
 | [`secrets-guard.sh`](./pre-tool-use/secrets-guard.sh) | Blocks the secret-materializing one-liners (plaintext export, bundle-key `get`, non-TTY reveal) — backstop for boxes on older agents-cli builds (RUSH-2774) |
 | [`large-file-add-guard.sh`](./pre-tool-use/large-file-add-guard.sh) | Blocks `git add` of a file over 5 MiB |
+| [`public-artifact-guard.sh`](./pre-tool-use/public-artifact-guard.sh) | Blocks staging confidential business strategy into the committed `.agents/artifacts/` dir (RUSH-3033) |
 | [`01-git-require-clean-tree.sh`](./pre-tool-use/01-git-require-clean-tree.sh) | Blocks `git pull` / `rebase` / autostash while the tree is dirty |
 | [`09-mailbox-inject.py`](./pre-tool-use/09-mailbox-inject.py) | Delivers queued messages into a running session |
 | [`11-visual-readback-nudge.py`](./pre-tool-use/11-visual-readback-nudge.py) | Advises rendering and reading back a visual artifact before it leaves the session |
@@ -139,7 +140,7 @@ dir and namespaces the manifest key as `<rule>__<hook>`. Do not copy these into
 |---|---|---|
 | `gh-merge-guard` | `merge-guard` | PreToolUse (Bash) |
 | `no-pr-footer` | `footer-guard` | PreToolUse (Bash) |
-| `plan-presentation` | `plan-html-reminder`, `plan-html-stop-reminder` | PreToolUse (ExitPlanMode), Stop (cross-harness backstop) |
+| `plan-presentation` | `plan-html-reminder`, `plan-html-stop-reminder` | PreToolUse (ExitPlanMode), Stop (cross-harness backstop); authoring contract lives in `skills/artifacts/SKILL.md` |
 | `truly-agentic-git-workflow` | `main-branch-guard`, `pr-description-reminder` | PreToolUse |
 
 ## Manifest schema (`hooks:` in `../agents.yaml`)

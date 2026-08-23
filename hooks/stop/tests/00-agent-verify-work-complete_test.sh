@@ -76,6 +76,13 @@ export AGENTS_STUB_LOG="$SANDBOX/agents.log"
 
 export PATH="$SANDBOX/bin:$PATH"
 
+# Fixture session cwd. The hook input's `cwd` is what the delivery chain uses
+# to resolve a repo when the transcript carries no directory hints — never the
+# test runner's own cwd, so the suite gives the same result from any directory.
+FIXTURE_CWD_REPO="$SANDBOX/cwdrepo"
+mkdir -p "$FIXTURE_CWD_REPO/.git"
+export FIXTURE_CWD_REPO
+
 # Defaults so existing merged-PR tests pass the delivery gate.
 export FAKE_GH_JSON='{"title":"Widget","body":"","headRefName":"feature/no-ticket"}'
 export FAKE_GIT_BRANCH="feature/no-ticket"
@@ -268,13 +275,14 @@ mk_transcript() {
 
 run_hook() {   # $1 transcript, $2 last message, $3 stop_hook_active
   python3 - "$1" "$2" "$3" <<'PY' | bash "$HOOK" >/dev/null 2>"$SANDBOX/stderr"
-import hashlib, json, sys
+import hashlib, json, os, sys
 fixture_id = "fixture-" + hashlib.sha256(sys.argv[1].encode()).hexdigest()[:16]
 print(json.dumps({
     "session_id": fixture_id,
     "launch_id": fixture_id,
     "agent": "claude",
     "transcript_path": sys.argv[1],
+    "cwd": os.environ["FIXTURE_CWD_REPO"],
     "last_assistant_message": sys.argv[2],
     "stop_hook_active": sys.argv[3] == "true",
 }))
@@ -679,6 +687,15 @@ sqlite3 "$STATE_MISMATCH" "create table meta(key text primary key,value text not
 rc=$(VERIFY_WORK_STATE_DB="$STATE_MISMATCH" FAKE_GIT_BRANCH=feature/RUSH-1234 FAKE_LINEAR_STATE=Todo run_hook "$TWRITE" "All done. The widget is complete." false)
 check "state evaluation failure preserves delivery enforcement" "$rc" "2"
 grep -q "close out the delivery" "$SANDBOX/stderr" && echo "ok   - state failure reaches delivery gate" || { echo "FAIL - state failure weakened delivery gate"; fail=1; }
+
+# D8c. session_cwd is the SOLE repo resolver (RUSH-3016, review SHOULD): the
+#      repo-write transcript carries no cd / git -C / --repo command and no
+#      repo_path hint, so the transcript scan yields nothing — only the hook
+#      input's cwd (FIXTURE_CWD_REPO, injected by run_hook) can resolve the
+#      repo. Deleting the session_cwd branch in _find_repo_path must fail this.
+rc=$(FAKE_GIT_BRANCH=feature/RUSH-1234 FAKE_LINEAR_STATE=Todo run_hook "$TWRITE" "All done. The widget is complete." false)
+check "session-cwd-only repo resolution reaches the delivery gate" "$rc" "2"
+grep -q "close out the delivery" "$SANDBOX/stderr" && echo "ok   - delivery gate fired via session cwd alone" || { echo "FAIL - delivery gate not reached via session cwd alone"; fail=1; }
 
 # D9. Probe error (linear crashes/returns garbage) -> fail open.
 cat > "$SANDBOX/bin/linear" <<'STUB'

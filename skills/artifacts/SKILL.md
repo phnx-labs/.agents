@@ -1,131 +1,199 @@
 ---
 name: artifacts
-description: "Author token-efficient plans, reports, and visuals as Markdown, then render them with artifacts-cli into branded light/dark HTML and optional public shares. Triggers on: create an artifact, render this Markdown, Markdown plan, artifact report, visual report, artifacts-cli, or replace hand-written HTML with a reusable artifact template."
-argument-hint: "[plan|report|visual] [source.md]"
-user-invocable: true
-author: Phoenix Labs
-version: 0.2.1
-license: Apache-2.0
+description: "Author plans, reports, and visual explanations as Markdown, then render them with artifacts-cli into self-contained branded light/dark HTML. Use for implementation plans, plan mode, architecture diagrams, infographics, dashboards, comparisons, data stories, or any request to render or present an artifact visually."
 ---
 
 # Artifacts
 
-Use `artifacts` to keep the source concise and durable: write Markdown once, add
-semantic HTML or inline SVG only where layout requires it, then compile the same
-source to responsive HTML. Do not hand-author a complete HTML document.
+Author Markdown once, add semantic HTML or inline SVG where layout requires it,
+then compile the source to responsive HTML. Do not hand-author a complete HTML
+document and do not edit generated HTML.
 
-## Choose The Artifact
+## Choose the kind
 
-- `plan`: implementation intent, public interface, validation, risks, tracking.
-- `report`: findings, evidence, and recommendations.
-- `visual`: an infographic, comparison, diagram, or poster-led explanation.
+- `plan`: implementation intent, behavior, architecture, validation, risks, and tracking.
+- `visual`: one visual explanation, infographic, dashboard, comparison, or data story.
+- `report`: findings, evidence, and recommendations. Follow the shared pipeline;
+  choose figures that make the evidence easier to understand.
 
-Use the user's requested kind. Otherwise choose from the content, not the desired
-output format; every kind renders to the same HTML.
+The kind changes the content contract, not the rendering pipeline.
 
-## Workflow
+## Shared pipeline
 
-1. Check the installed tool:
+1. Check the installed CLI:
 
    ```bash
    command -v artifacts
    ```
 
-   If `artifacts` is missing, report that concrete prerequisite. Do not replace
-   it with a hand-written HTML fallback.
+   If it is missing, report that prerequisite. Do not replace it with a
+   hand-written HTML fallback.
 
-2. Write the Markdown source directly. Every artifact requires `kind` (plan,
-   report, or visual) and `title`; plans also require `surface` (`internal`,
-   `cli`, `web`, `native`, `api`, or `workflow`). `template` is inferred and provenance
-   (project, repository, branch, harness, agent, human, host, session, date)
-   auto-fills at render time from the Git checkout and agent environment.
-   Declared values always win — declare `links`, `tracking`, `status`, `facts`,
-   `header`, `footer`, or any provenance value you want to control.
-
-   **Attach work URLs in `links`.** Put every related ticket, PR, issue, or
-   design-doc URL (Linear, Jira, GitHub, Notion, …) in the multipurpose
-   `links` list so they render as clickable chips. Seed URLs you already have at
-   first draft; if you open or create tickets while authoring, append those URLs
-   to `links` and re-render before presenting. Entries are plain `https://`
-   strings or `{url, label?}`. Keep a short primary id in `tracking` if useful (it shows in the provenance monoline);
-   do not invent separate ticket/PR fields. Mirror the same URLs as Markdown
-   links under `## Tracking` (plans) so the body stays readable without chip
-   chrome.
-
-   Author the Markdown directly with the section structure for the kind — you do
-   **not** need to run `artifacts new`. `render` auto-fills the provenance
-   frontmatter (project · repo · branch · harness · agent · host · session · date)
-   from git + the agent env for any blank field, so your frontmatter needs only
-   `kind` + `title`. (`artifacts new <kind> --blank` shows the section structure,
-   and `artifacts new <kind> --out <source.md>` scaffolds a file — both optional.)
-   Do not repeat provenance in the body. Use normal headings, lists, tables,
-   images, and fenced code. Reach for direct HTML only for grids, panels,
-   figures, and callouts; reach for inline SVG for architecture, timelines,
-   process diagrams, and other semantic figures. **Illustrate actively**: any
-   concept that has structure — actors, layers, flows, comparisons, states —
-   gets a real SVG figure, not a paragraph approximation. A figure earns its
-   place with tinted concept boxes, labeled connectors, and a caption that names
-   the reading order; follow the palette and layout recipe in
-   [references/authoring.md](references/authoring.md#diagram-recipe) so figures
-   look designed rather than incidental. Read
-   [references/authoring.md](references/authoring.md)
-   before adding HTML or SVG.
-
-   **Plans are surface-specific.** An `internal` plan needs a live drawn SVG. Every
-   user-visible surface needs a product-faithful `.artifact-behavior` figure with
-   current and proposed states; label each state as a real `capture` or a faithful
-   `mockup`. An architecture diagram does not substitute for CLI/UI/API behavior.
-   Validation errors prevent HTML output. Load **plan-render** or this skill's
-   diagram recipe when stuck. Tables, fenced commands, and an `artifact-callout`
-   warn if missing.
-
-3. Render in one step:
+2. Resolve the dated artifact directory:
 
    ```bash
-   artifacts render <source.md>            # writes <source>.html next to it
-   artifacts render <source.md> --open     # and opens it in the default browser
+   ROOT=$(git rev-parse --show-toplevel 2>/dev/null)
+   DATE=$(date +%F)
+   ARTIFACTS_DIR="${ROOT:-.}/.agents/artifacts/$DATE"
+   mkdir -p "$ARTIFACTS_DIR"
    ```
 
-   HTML is the output. Errors fail the render; fix them at the Markdown source
-   or `DESIGN.md`, never by editing generated HTML.
+3. Author Markdown directly under that directory. Require `kind` and `title`;
+   require `surface` for plans. Provenance auto-fills from the Git checkout and
+   agent environment. Declare values only when they need overriding.
 
-4. Inspect the actual output headlessly. Verify both themes, desktop and mobile
-   widths, image loading, diagram bounds, document overflow, and browser console
-   errors. Use the available headless browser or screenshot tooling. Do not pass
-   `--open`, and do not run `open` or another interactive-browser command, unless
-   the user explicitly asked for the artifact to be opened.
+   Put every related ticket, PR, issue, or design URL in `links`. Mirror those
+   URLs under `## Tracking` in plans. Use `tracking` for a short primary id.
 
-5. Share only on explicit request:
+   Use Markdown for headings, prose, tables, lists, and fenced code. Use direct
+   HTML only for grids, panels, figures, and callouts. Use inline SVG for
+   architecture, flows, timelines, state diagrams, and other semantic figures.
+   Read [references/authoring.md](references/authoring.md) before adding HTML or
+   SVG; follow its diagram recipe.
+
+4. Preserve the target product's visual language. Keep an existing `DESIGN.md`.
+   If none exists and durable project branding is useful, create one with:
 
    ```bash
-   artifacts share <source.md> --expire 30d
+   artifacts new design
    ```
 
-   Shared links are public and unlisted, not private. Never place credentials in
-   Markdown or `DESIGN.md`; use the configured share endpoint or
-   `ARTIFACTS_SHARE_TOKEN`.
+   Probe design tokens, CSS variables, Tailwind configuration, logos, and the
+   live product. Define both light and dark palettes. Keep the in-page theme
+   toggle and default it to `prefers-color-scheme`.
 
-## Helpers
+5. Validate and render:
 
-- `artifacts new <kind> --out <source.md>` — scaffold the frontmatter and
-  section skeleton instead of writing it by hand.
-- `artifacts new design` — adopt project-wide branding (`DESIGN.md`). Preserve
-  an existing `DESIGN.md`; it owns both light and dark palettes, typography,
-  density, radius, layout spacing, content width, and print margins. If exact
-  fonts are required but unavailable, add local font files next to the artifact,
-  or add the directory to `fonts.dirs` in `~/.artifacts/config.json`; otherwise
-  retain and report the emitted fallback-font warning.
-- `artifacts check <source.md>` — validate without rendering.
-- `artifacts estimate <source.md>` — exact `o200k_base` Markdown-versus-rendered
-  token counts when the user asks about authoring-token cost. Absent from
-  `--help` by design; it still runs.
+   ```bash
+   artifacts check "$SOURCE"
+   artifacts render "$SOURCE"
+   ```
 
-## Completion Contract
+   Rendering writes `<source>.html` beside the Markdown. Fix errors in Markdown
+   or `DESIGN.md`, never in generated HTML.
 
-- Markdown remains the source of truth; the generated HTML is a build output.
-- Metadata appears once in frontmatter and renders into the document chrome.
-- Existing project branding is preserved in both light and dark themes.
-- `artifacts check` exits successfully, with any accepted warnings named.
-- The rendered HTML has been inspected at desktop/mobile widths and in both themes.
-- No user browser was opened unless explicitly requested.
-- Report the source, HTML, and optional share paths or URLs.
+6. Inspect the rendered file headlessly. Check both themes, desktop and mobile
+   widths, image loading, SVG bounds, overflow, interactive behavior, and browser
+   console errors. Do not open the user's browser unless explicitly requested.
+
+7. When the user asks to view it, reuse one browser tab on their interactive
+   machine. If the artifact was rendered elsewhere, copy it there first:
+
+   ```bash
+   scp "$SOURCE_HTML" <host>:/tmp/<slug>.html
+   agents ssh <host> 'agents browser navigate --url file:///tmp/<slug>.html'
+   ```
+
+   If no interactive host is reachable, retain the durable Markdown and HTML and
+   report their exact paths.
+
+8. Share only on explicit request:
+
+   ```bash
+   artifacts share "$SOURCE" --expire 30d
+   ```
+
+   Shared links are public and unlisted, not private. Never put credentials or
+   confidential material in the source, `DESIGN.md`, or a public share.
+
+## `kind: plan`
+
+Write `.agents/artifacts/yyyy-mm-dd/plan-<slug>.md` with frontmatter shaped like:
+
+```yaml
+---
+kind: plan
+surface: internal # internal | cli | web | native | api | workflow
+title: <plain factual headline>
+summary: <problem and intended outcome>
+status: draft
+links:
+  - <ticket-or-PR-url>
+---
+```
+
+The plan must begin with behavior the reviewer can judge, then explain the
+implementation. Use this section order:
+
+1. `## Focus for review` — two to five concrete decisions or tradeoffs.
+2. `## Intent` — restate the user's ask.
+3. `## Current architecture` — draw how affected modules communicate today;
+   add a proposed state when the architecture changes.
+4. `## Proposed Changes` — show load-bearing changes as per-file `diff` fences.
+5. `## Public Interface` — commands, flags, APIs, or visible behavior.
+6. `## Plan` — render the task checklist.
+7. `## Validation` — commands and end-to-end proof.
+8. `## Risks` — edge cases and mitigations.
+9. `## Tracking` — linked tickets and PRs.
+
+### Plan figure contract
+
+Declare `surface` exactly as `internal`, `cli`, `web`, `native`, `api`, or
+`workflow`. The plan-presentation guard reads this frontmatter before allowing a
+plan to be presented.
+
+For `surface: internal`, include at least one live drawn `<svg>` containing real
+SVG primitives. Every `## ...architecture...` section must contain its own drawn
+figure; a table names components but does not show their relationships.
+
+For `cli`, `web`, `native`, `api`, and `workflow`, include one product-faithful
+current-versus-proposed figure with this exact semantic contract:
+
+```html
+<figure class="artifact-figure artifact-behavior">
+  <section data-state="current" data-evidence="capture">...</section>
+  <section data-state="proposed" data-evidence="mockup">...</section>
+</figure>
+```
+
+Each state must use `data-evidence="capture"` or `data-evidence="mockup"`.
+Prefer a real capture; otherwise build a faithful mockup matching the actual
+layout, typography, components, and output. An architecture SVG does not replace
+this behavior figure. A plan that lists `.tsx`, `.jsx`, `.vue`, or `.svelte`
+components is treated as user-visible even if it declares `surface: internal`.
+
+Also include at least one Markdown table, one fenced code block, and one
+`artifact-callout`. Treat warnings about these as work to fix before presenting.
+For multi-step plans, create the harness task checklist before presenting; the
+Stop/plan-exit guard checks for it separately from the render.
+
+## `kind: visual`
+
+Write `.agents/artifacts/yyyy-mm-dd/<slug>.md` with `kind: visual`, a precise
+title, and a short single-takeaway summary. Choose the page shape from the
+content: infographic, explainer, status dashboard, data story, or comparison.
+
+Make one hero figure the visual spine of the page. A table alone does not count.
+Use `## Story`, optional `## Data`, and `## Figure`, with the hero figure under
+`## Figure`. Give it a clear reading order, labeled connectors or axes, a
+caption, and a legend whenever color or line style carries meaning.
+
+Use motion or interaction only when it improves comprehension: SVG/CSS hover,
+SMIL, tabs, or progressive disclosure. Prevent automated capture from freezing
+on initial animation values:
+
+```js
+if (navigator.webdriver) return;
+```
+
+Quantitative charts must use honest scales, units, source labels, and accessible
+color choices. Use inline SVG for bespoke explanatory graphics; use the
+project's established chart system when one exists.
+
+## Voice
+
+- State what the artifact shows; do not write a slogan for a plan.
+- Name concrete files, functions, flags, metrics, and error strings.
+- Avoid marketing filler and vague nouns.
+- Use at most one em dash per paragraph.
+
+## Completion contract
+
+- Markdown remains the source of truth in the dated artifact directory.
+- `artifacts check` and `artifacts render` exit successfully.
+- A plan satisfies its declared surface contract exactly.
+- A visual contains one hero figure that carries the explanation.
+- The rendered HTML is self-contained and branded in light and dark themes.
+- The output has been inspected headlessly at desktop and mobile widths.
+- No user browser was opened unless requested.
+- Report the source path, HTML path, and any accepted warnings or share URL.

@@ -2,10 +2,113 @@
 
 ## [Unreleased]
 
+### Changed
+
+- **main-branch-guard now hands over a worktree instead of describing one.** The
+  refusal fires ~131 times across ~63 sessions, and each one is an agent that wanted
+  to write, stopped, read a recipe, ran four commands, and retried. Measured recovery
+  is 72% — the best of any guard, precisely because the message already pasted a
+  runnable recipe; the remaining 28% is agents fumbling it or wandering off. The
+  guard now creates the worktree itself and names it in the refusal, removing the
+  step that can be fumbled. Named `<harness>-<yyyy-mm-dd>-<hhmm>-<session8>` (e.g.
+  `claude-2026-08-23-0509-f5b0ef02`) so it says who made it and when, sorts
+  chronologically, and traces back with `agents sessions <session8>`. One worktree
+  per session, not per blocked write — reuse matches the session chunk so it holds
+  when the clock rolls to a new minute. It still **blocks**: creation is additive and
+  reversible, and any failure (no `origin/HEAD`, no git, `AGENTS_NO_AUTO_WORKTREE=1`)
+  falls back silently to the old recipe rather than weakening the refusal.
+
+- **Tickets are for work you deliver, not for what you noticed (`conventions`).**
+  Measured on the live board: 275 open tickets, **257 of them opened in a single
+  month**, and **220 sitting in Todo never started by anyone**. No hook creates
+  tickets — the volume comes from rules telling 100+ agents to file what they
+  noticed at session close, with no cross-session dedup. The ticket clause now
+  reads: search and claim an existing ticket first; open a new one only for work
+  you are actually delivering in this session; never for a follow-up, an idea, or
+  something spotted in passing (those are one line in the owner update). Recomposed
+  `rules/AGENTS.md` alongside.
+
+### Fixed
+
+- **`agents usage` reference retired with the command (RUSH-3079).**
+  `plugins/sessions/skills/insights/SKILL.md` pointed agents at the top-level
+  `agents usage` for live quota; that command is removed in agents-cli as a
+  duplicate surface (companion: phnx-labs/agents-cli RUSH-3079). The skill now
+  names `agents view`, which renders per-account quota with auth state.
+
+- **merge-guard reads APPROVE verdicts from review bodies, not only issue
+  comments (RUSH-3080).** `pr-verdict.py`'s `has_verdict` cleared a merge on a
+  GitHub review with `state=APPROVED` or an APPROVE in an *issue comment* body,
+  but never scanned review *bodies*. Fleet agents share one GitHub identity and
+  cannot `gh pr review --approve` (GitHub blocks self-approval), so a non-author
+  verdict commonly arrives as a `state=COMMENTED` review via
+  `gh pr review --comment`. That verdict was silently ignored and the merge
+  blocked with "no non-author review verdict found" (hit live on #375). A
+  COMMENTED review body and an issue-comment body now both clear the guard, via
+  one shared `_body_approves` helper that keeps the whole-word / not-carried-from
+  rule. Only COMMENTED review bodies count: a CHANGES_REQUESTED or DISMISSED
+  review whose body contains APPROVE must not launder itself into an approval.
+
+- **`--mode auto` is per-harness, not a universal smart classifier (RUSH-3049).**
+  `skills/teams/SKILL.md` (mode table + the unattended-teammate prose) and
+  `plugins/swarm/skills/orchestrate/SKILL.md` claimed `auto` "adds a smart
+  classifier that clears safe operations" as if it applied to every harness. That
+  is false for Codex, whose `auto` is `approval_policy=never` (never prompts), not
+  a classifier. Both now state the behavior per harness: Claude/Copilot's smart
+  classifier, Codex's never-prompt `approval_policy=never`, Droid's high-auto,
+  matching the already-correct table in `skills/run/SKILL.md`.
+
 ## [0.2.2] - 2026-08-23
 
 ### Added
 
+- **The artifact pipeline now has one skill.** `skills/artifacts/SKILL.md`
+  teaches the shared Markdown → `artifacts check`/`artifacts render` → branded
+  light/dark HTML → headless inspection workflow once, with separate `kind: plan`
+  and `kind: visual` contracts. The redundant `plan-render` and `visualize`
+  skills are removed. The plan contract retains the exact `surface`,
+  `.artifact-behavior`, current/proposed state, and capture/mockup evidence
+  markup enforced by `plan-html-reminder`; its PreToolUse/ExitPlanMode and Stop
+  registrations are unchanged.
+
+- **`07-inject-device-topology.sh` carries disk and the one-line description into
+  the Host & Fleet block (RUSH-3062).** The agents-cli devices list grew a `spec`
+  cell (cores/RAM/disk) and a `disk` used column, plus a top-level `description`
+  in `devices list --json` (companion: phnx-labs/agents-cli RUSH-3062 surface
+  track). The hook no longer parses the rendered table at all: it reads
+  `health.loadPercent` / `memPercent` / `diskUsedPercent` / `headroom` and the
+  top-level `description` straight from the `--json` call it already made, and
+  computes the fleet-capacity line from `ncpu` and the byte totals rather than
+  copying it. Scraping the table produced five separate fabrication bugs, because
+  the row ends in an operator-supplied description and any field found by
+  searching the line could be fed by that prose; reading typed keys makes the
+  class unrepresentable rather than bounded. Older CLIs simply carry fewer keys,
+  so output degrades to what that version knows. One fewer subprocess per session
+  start. Covered by `tests/07-inject-device-topology_test.sh`, whose table fixture
+  is deliberately hostile so a regression to scraping fails loudly. `skills/devices/SKILL.md` teaches the
+  new columns, `agents devices describe`, and `agents devices ignored`.
+
+- **`public-artifact-guard` blocks confidential material from the committed
+  artifacts dir (RUSH-3033).** The agi-cli GTM/monetization strategy was
+  committed to `.agents/artifacts/` on the PUBLIC agents-cli repo and stayed
+  world-readable for about two days; the tip was cleaned but git history still
+  carries it. The failure is structural — `.agents/artifacts/<date>/` is
+  documented as "durable output, committed" while `.agents/scratch/` is
+  gitignored, so an agent writing a durable strategy doc lands it on the public
+  path by following instructions, and the session-recap workflow tells agents to
+  commit any uncommitted work they find. A 2026-08-22 sweep found exactly that
+  pending in the public tree: an internal monetization doc and a 1147-line
+  compile of the operator's private global ruleset, both untracked. The new
+  PreToolUse hook denies `git add`/`git commit`/`git stage` of such material,
+  including `git add <dir>` and `git add -A` (via `git status --porcelain
+  -uall`, which unlike plain `--porcelain` does not collapse an untracked
+  directory into a single entry). It keys on a `confidential: true` frontmatter
+  key plus a small set of whole-document names — deliberately NOT on
+  `surface: internal`, which names a product surface rather than a
+  confidentiality level, and deliberately anchored rather than substring-matched
+  so ordinary engineering files like `plan-pricing-model-api.md` and
+  `monetization-service-refactor.md` are not blocked. It does not remediate the
+  original exposure, which needs an owner-authorized history rewrite.
 - **F1: "The owner is not a step in your loop."** Measured failure class
   (2026-08-22 session 1a00318e): an agent with stated intent ("you should merge
   it") re-asked it as an A/B/C option menu, proposed creating a bot account as
@@ -16,8 +119,29 @@
   account/credential as the fix for a blocked path; restate option content
   inline instead of pointing at labels.
 
+### Changed
+
+- **`/share:public` and `/share:private` collapsed into one `/share` command.**
+  Public (auto OG cover) is the default: `/share <file>`. Private is a modifier:
+  `/share --private <file>` still runs `agents artifacts share <file>
+  --no-cover --expire 7d` — no preview card (the link does not unfurl) and a
+  7-day expiry (Worker returns 410 afterwards). Shared steps (resolve the file,
+  check `agents artifacts share status`, report the link) now live in the
+  `share` skill; the command file only invokes it. `/share:public` and
+  `/share:private` are gone.
+
 ### Fixed
 
+- **`hooks/stop/verify-delivery-chain.py` no longer resolves the repo from the
+  hook process's own cwd (RUSH-3016).** When neither the `repo_path` hint nor a
+  transcript `cd`/`git -C` command named a repo, `_find_repo_path` fell back to
+  `Path(".git").exists()` on whatever directory the Stop hook process happened
+  to run in — so the delivery gate found a repo (and its open tickets) from a
+  repo cwd and silently found nothing from any other cwd. It now consults the
+  harness-reported session `cwd` from the hook input instead, and the stop-hook
+  test harness pins an explicit fixture `cwd`, making the suite give 0 FAIL
+  from any directory (verified from a repo root, `hooks/stop`, and a non-git
+  `/tmp` dir).
 - **Every tick wake with a live team must drive and re-arm — the stop hook
   gains a live-team analogue of the dispatch check.** Measured failure (session
   515b71e1, 2026-08-21, RUSH-3022): an orchestrator with 'Monitor teams every

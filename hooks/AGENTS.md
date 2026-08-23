@@ -169,3 +169,8 @@ block no session can get past. It checks `.sh` under **`/bin/bash` (3.2 on macOS
 as the PATH bash, because 3.2 tracks quotes inside a heredoc nested in a `$(…)` and
 bash 5 does not: a quote in such a heredoc parses fine on Linux and breaks every Mac.
 Keep quote characters out of heredoc bodies inside `$(…)` — spell them `\x27` / `\x22`.
+
+The `plan-presentation` subrule's reminder is documented by the consolidated
+`skills/artifacts/SKILL.md`. Keep its PreToolUse/ExitPlanMode and Stop registrations
+unchanged when editing artifact authoring guidance; skill consolidation must not
+change when the guard fires.
