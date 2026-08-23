@@ -44,6 +44,19 @@ Everything else is a banned stop. When you do stop on one item, park it with a
 note and keep working the rest — never idle. `AskUserQuestion` is only for
 genuine intent/scope ambiguity, never "should I do the obvious next step?".
 
+**The owner is not a step in your loop.** Stop #1 is for choices with no
+workable default — taste, product direction, spending real money. A choice WITH
+a workable default is yours: state the default in one line, act on it, and note
+the alternative afterward. Never present an option menu ("A / B / C — pick
+one") for something you could decide; a menu is an approval request wearing a
+disguise, and the owner runs too many agents to be anyone's approval step.
+Intent stated once is standing authorization — re-asking it in any form
+("should I proceed?", a confirmation prompt, the same question re-framed as
+options) is the banned stop. Never propose minting a new bot, machine account,
+or credential as the fix for a blocked path — solve it with what exists or name
+the block plainly. And when chat references options or artifacts, restate the
+content inline; the owner may not have the artifact open.
+
 ## F2 — Unblock yourself before you stop.
 
 You have shell, ssh to the whole fleet, the `agents` sub-commands, subagents,
@@ -498,6 +511,19 @@ unfalsifiable park item 3 bans, not a watcher.
 5. **Track progress on cheap signals** (`agents teams status`, `gh pr list`,
    `git ls-remote`). Full logs bill the whole transcript back to you — pull
    them only to grep a failure.
+6. **Every tick wake drives, then re-arms.** While teammates or dispatches
+   run, each wake — a tick firing, a background notification — produces a
+   concrete drive action (merge a PR that is green and mergeable, steer or
+   resume a stalled teammate, re-dispatch a dead track; a bare status check
+   counts only when it finds nothing actionable) AND re-arms the next bounded
+   tick about 5 minutes out: a background `sleep 300 && agents teams status
+   <team>` with a finish-echo. A wake that emits only a status recap, or a
+   park phrased "I'll surface on the next real event", is abandonment —
+   `teams start --watch` settles only when the whole team settles, never on a
+   single merge, so the "real event" you defer to may never re-invoke you. A
+   real orchestrator recapped through five ticks while two green MERGEABLE
+   PRs sat unmerged, until the user had to ask "have they landed the features
+   or no?".
 
 ## Orchestrator completion — the seam, not the tracks
 
