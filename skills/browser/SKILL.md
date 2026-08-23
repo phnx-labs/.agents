@@ -28,8 +28,8 @@ different on that box.
 
 The reason this matters is not display, it is credentials. A fleet usually has
 one browser carrying the real logins, and it lives on one machine. An agent on a
-worker that needs to act as the user — post, read a dashboard, use a signed-in
-API — has to reach that browser rather than launch a logged-out one locally.
+worker that needs to act as the user (post, read a dashboard, use a signed-in
+API) has to reach that browser rather than launch a logged-out one locally.
 
 ```bash
 agents browser profiles logins                    # what is signed in here
@@ -37,9 +37,10 @@ agents browser profiles logins --device <host>    # ...and over there
 agents browser navigate --device <host> --url https://example.com
 ```
 
-`agents browser profiles logins` is the discovery step: it prints
-`PROFILE | SERVICE | ACCOUNT` per profile, so you can see which box holds the
-session you need before you drive anything.
+`agents browser profiles logins` is the discovery step: one row per detected
+session, with the profile name, the service, the signed-in account, and whether
+login credentials sit in that profile's secrets bundle. Read it to find which box
+holds the session you need before you drive anything.
 
 **Do not use `agents ssh <host> 'agents browser ...'`.** It reaches the same
 machine but skips the fleet dispatch path, so the remote-control consent marker
