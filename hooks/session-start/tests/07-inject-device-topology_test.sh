@@ -29,7 +29,8 @@ case "$*" in
  {"name":"pinnacles","platform":"macos","tailscale":{"online":false}},
  {"name":"gpu-box","platform":"linux","tailscale":{"online":true,"direct":true},"interactive":false,"description":"spot instance, 20% cheaper"},
  {"name":"loaded-box","platform":"linux","tailscale":{"online":true,"direct":true},"interactive":false,"description":"mostly idle overnight"},
- {"name":"dead-box","platform":"linux","tailscale":{"online":false},"interactive":false,"description":"spot instance, 20% cheaper, runs at 50% capacity"}]
+ {"name":"dead-box","platform":"linux","tailscale":{"online":false},"interactive":false,"description":"spot instance, 20% cheaper, runs at 50% capacity"},
+ {"name":"hostile-box","platform":"linux","tailscale":{"online":true,"direct":true},"interactive":false,"description":"idle 90% of the time, 10% busy"}]
 JSON
     ;;
   "devices list")
@@ -41,6 +42,7 @@ Devices (3)
   zion            macos    18c 127G 3.6T  31%   39%  54%  ● light  ★ interactive  personal
   gpu-box         linux    36c 96G 2T     15%   47%    —  ● busy  worker  spot instance, 20% cheaper
   loaded-box      linux    36c 96G 2T     95%   91%  88%  ● busy  worker  mostly idle overnight
+  hostile-box     linux    36c 96G 2T     77%   80%  70%  ● busy  worker  idle 90% of the time, 10% busy
   dead-box        linux    offline  worker  spot instance, 20% cheaper, runs at 50% capacity
   Fleet capacity: 38 cores · 300G free / 249G RAM (65% free) · 4T disk free across 2 reachable devices
 TBL
@@ -105,6 +107,11 @@ check_absent  "new shape: a description word never becomes the headroom" "$OUT" 
 # scan must not fall back to the whole row and read stats out of the description
 # for a box that is not even reachable.
 check_absent  "new shape: an offline row never gets stats from its description" "$OUT" "20% load / 50% mem"
+# The worst single description an adversarial sweep of the parser produced: it
+# carries a headroom word contradicting the badge AND two percentages, so it
+# attacks the disk scan and the headroom match at once.
+check_contains "new shape: a description hostile to both scans changes nothing" "$OUT" "77% load / 80% mem / 70% disk / busy"
+check_absent  "new shape: that description never supplies the disk figure" "$OUT" "90% disk"
 
 # --- legacy shape ------------------------------------------------------------
 write_agents_stub_old
