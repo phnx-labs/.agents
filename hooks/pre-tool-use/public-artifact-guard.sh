@@ -121,6 +121,11 @@ tokenize() {
         if (i <= n) { tok = tok substr($0, i, 1); have = 1 }
       } else if (q != "") {
         if (c == q) { q = "" } else { tok = tok c; have = 1 }
+      } else if (c == "$" && i < n && (substr($0, i+1, 1) == "\047" || substr($0, i+1, 1) == "\"")) {
+        # ANSI-C / locale quoting: $'...' and $"...". Drop the leading $ so the
+        # token is a plain path — leaving it made resolve() treat an absolute
+        # path as relative and the frontmatter check missed.
+        have = 1
       } else if (c == "\"" || c == "\047") {
         q = c; have = 1
       } else if (c == " " || c == "\t") {
@@ -157,20 +162,20 @@ is_strategy_name() {
   _b=$(printf '%s' "$_b" | tr ' _' '--' \
     | sed -E -e 's/^[0-9]{4}-[0-9]{2}-[0-9]{2}-//' -e 's/-+/-/g')
 
-  # Exact, then progressively trim trailing "-segment" suffixes so
-  # "gtm-strategy-v2" and "gtm-strategy copy" are caught. A trimmed candidate is
-  # only accepted if it still contains a hyphen — i.e. is a MULTI-WORD document
-  # title. That is what stops "gtm-dashboard-component" from reducing to bare
-  # "gtm" and reintroducing the fleet-wide false positives of the first version.
-  _cand=$_b
-  while : ; do
-    if _match_strategy "$_cand"; then
-      [ "$_cand" = "$_b" ] && return 0
-      case "$_cand" in *-*) return 0 ;; esac
-    fi
-    case "$_cand" in *-*) _cand=${_cand%-*} ;; *) break ;; esac
-  done
-  return 1
+  # WHOLE-NAME match only. An earlier revision also trimmed trailing "-segment"
+  # suffixes so "gtm-strategy-v2" would be caught, gated on the trimmed
+  # candidate still being multi-word. Review showed that gate stops the round-1
+  # failure mode but not this one: launch-venues-map-component,
+  # supply-vs-demand-chart-lib, how-winners-charge-back-taxes,
+  # stars-playbook-for-kids and byo-subscription-pivot-table-ui all trim to a
+  # real pattern that is still multi-word, so 5 of 18 ordinary filenames blocked.
+  #
+  # The trim bought one marginal catch and cost a whole new false-positive class.
+  # For a hook on every stage fleet-wide that is the wrong trade — a guard that
+  # blocks real work gets switched off, and then it protects nothing. So the name
+  # list stays a narrow backstop for the exact documents that leaked, and
+  # `confidential: true` frontmatter remains the signal that scales.
+  _match_strategy "$_b"
 }
 
 _match_strategy() {
@@ -291,8 +296,24 @@ unwrap_dash_c() {
     _raw=$(printf '%s' "$_raw" | sed 's/^[A-Za-z_][A-Za-z_0-9]*=[^[:space:]]*[[:space:]][[:space:]]*//')
     [ "$_raw" = "$_pre" ] && break
   done
+  # `eval "<cmd>"` takes its command directly, with no -c. Handle it first —
+  # enumerating `sh`/`bash`/`zsh` one at a time is what let `eval` through, so
+  # the interpreter set is an explicit allowlist and eval is part of it.
   case "$_raw" in
-    sh\ *|bash\ *|zsh\ *|/bin/sh\ *|/bin/bash\ *|/bin/zsh\ *|/usr/bin/sh\ *|/usr/bin/bash\ *|/usr/bin/env\ *) ;;
+    eval\ *)
+      _inner=${_raw#eval }
+      _inner=$(printf '%s' "$_inner" | sed 's/^[[:space:]]*//')
+      case "$_inner" in
+        \"*\") _inner=${_inner#\"}; _inner=${_inner%\"} ;;
+        \'*\') _inner=${_inner#\'}; _inner=${_inner%\'} ;;
+      esac
+      printf '%s' "$_inner"
+      return 0
+      ;;
+  esac
+  _interp=${_raw%% *}
+  case "${_interp##*/}" in
+    sh|bash|zsh|dash|ksh|env) ;;
     *) return 1 ;;
   esac
   case "$_raw" in *" -c "*) ;; *) return 1 ;; esac
@@ -342,7 +363,10 @@ done
 # Capture `cd <dir>` from the SEGMENTS, not the raw command, so a cd inside an
 # `sh -c` wrapper is seen too. Later segments resolve relative paths against it
 # (`cd repo && git add <relative>` was a reported bypass).
-_cd_target=$(sed -n 's/^[[:space:]]*cd[[:space:]][[:space:]]*\([^[:space:];&|]*\).*/\1/p' "$_SEG_FILE" | head -1)
+# tail -1, not head -1: with several `cd` hops the effective directory is the
+# LAST one. Switching this to head during the segment-file rewrite silently
+# regressed multi-hop resolution.
+_cd_target=$(sed -n 's/^[[:space:]]*cd[[:space:]][[:space:]]*\([^[:space:];&|]*\).*/\1/p' "$_SEG_FILE" | tail -1)
 if [ -n "$_cd_target" ]; then
   _cd_target=$(strip_quotes "$_cd_target")
   [ -d "$_cd_target" ] && SEG_CWD=$_cd_target
@@ -380,8 +404,19 @@ while IFS= read -r seg; do
       -C*)           _cdir=$(strip_quotes "${1#-C}")
                      [ -d "$_cdir" ] && SEG_CWD=$_cdir
                      shift ;;
-      --git-dir=*|--work-tree=*|--namespace=*) shift ;;
-      --git-dir|--work-tree|--namespace)      shift; [ $# -gt 0 ] && shift ;;
+      # --work-tree names the tree paths resolve against, exactly like -C, so it
+      # must feed SEG_CWD too — same bug as -C, sibling flag, two lines away.
+      --work-tree=*) _wt=$(strip_quotes "${1#--work-tree=}")
+                     [ -d "$_wt" ] && SEG_CWD=$_wt
+                     shift ;;
+      --work-tree)   shift
+                     if [ $# -gt 0 ]; then
+                       _wt=$(strip_quotes "$1")
+                       [ -d "$_wt" ] && SEG_CWD=$_wt
+                       shift
+                     fi ;;
+      --git-dir=*|--namespace=*) shift ;;
+      --git-dir|--namespace)     shift; [ $# -gt 0 ] && shift ;;
       -c)            shift; [ $# -gt 0 ] && shift ;;
       --no-pager|--paginate|--bare|--literal-pathspecs|--no-optional-locks) shift ;;
       -*)            shift ;;

@@ -193,31 +193,70 @@ check "N1: unwraps sh -c with a cd inside it" 2 "$RC"
 run_guard "git -C $SANDBOX/repo add .agents/artifacts/2026-08-19/notes.md"
 check "N2: resolves paths against git -C <dir>" 2 "$RC"
 
-# N3: the tokenizer honored quotes but not backslash escapes.
-ESCD="$SANDBOX/repo/.agents/artifacts/esc"
+# N3: the tokenizer honored quotes but not backslash escapes. The space goes in
+# the DIRECTORY, not the basename: name matching is whole-name, so a basename of
+# "gtm-strategy copy" would not match anyway and the case would prove nothing
+# about escape handling.
+ESCD="$SANDBOX/repo/.agents/artifacts/my docs"
 mkdir -p "$ESCD"
-printf -- '---\ntitle: "G"\n---\n' > "$ESCD/gtm-strategy copy.md"
-run_guard "git add $ESCD/gtm-strategy\\ copy.md"
-check "N3: handles a backslash-escaped space" 2 "$RC"
+printf -- '---\ntitle: "G"\n---\n' > "$ESCD/gtm-strategy.md"
+printf -- '---\ntitle: "C"\nconfidential: true\n---\n' > "$ESCD/board.md"
+ESC_ESCAPED="${ESCD// /\\ }"   # real backslash-escaped spaces in the command
+run_guard "git add $ESC_ESCAPED/gtm-strategy.md"
+check "N3: handles a backslash-escaped space (name check)" 2 "$RC"
+run_guard "git add $ESC_ESCAPED/board.md"
+check "N3: handles a backslash-escaped space (frontmatter check)" 2 "$RC"
+run_guard "git add \"$ESCD/board.md\""
+check "N3: quoted form of the same path still works" 2 "$RC"
 
 # N4: only the exact token -a matched, so the combined form slipped through.
-run_guard "git commit -am wip"
+# This case MUST build its own repo. `git commit -am` triggers the sweep, which
+# reads `git status` of the CURRENT directory — so a bare run_guard here silently
+# depended on whatever the caller's cwd happened to have pending. It passed when
+# run from a tree that had a confidential file pending and failed from a clean
+# one, which is how a "42/42" was reported that a reviewer could not reproduce.
+N4REPO="$SANDBOX/n4repo"
+mkdir -p "$N4REPO/.agents/artifacts/2026-08-19"
+git -C "$N4REPO" init -q 2>/dev/null
+git -C "$N4REPO" config user.email t@t.t 2>/dev/null
+git -C "$N4REPO" config user.name t 2>/dev/null
+printf -- '---\ntitle: "GTM"\n---\n' > "$N4REPO/.agents/artifacts/2026-08-19/gtm-strategy.md"
+RC=0
+printf '{"tool_input":{"command":"git commit -am wip"}}' \
+  | (cd "$N4REPO" && AGENTS_DISABLE_FRICTION_LOG=1 "$SH_BIN" "$HOOK") 2>/dev/null || RC=$?
 check "N4: catches combined short flags (git commit -am)" 2 "$RC"
 run_guard "git commit --amend --no-edit"
 check "N4: --amend is not mistaken for -a" 0 "$RC"
 
-# The name matcher trims trailing segments so "gtm-strategy-v2" is caught, but
-# only accepts MULTI-WORD candidates — otherwise "gtm-dashboard-component" would
-# reduce to bare "gtm" and reintroduce the round-1 false positives.
-printf -- '---\ntitle: "v2"\n---\n' > "$ART/gtm-strategy-v2.md"
-run_guard "git add $ART/gtm-strategy-v2.md"
-check "trailing-segment trim catches gtm-strategy-v2.md" 2 "$RC"
-rm -f "$ART/gtm-strategy-v2.md"
-for eng2 in gtm-dashboard-component gtm-analytics-service plan-gtm-integration-api; do
-  printf -- '---\ntitle: "e"\n---\n' > "$ART/$eng2.md"
-  run_guard "git add $ART/$eng2.md"
-  check "trim does NOT reduce $eng2.md to bare gtm" 0 "$RC"
-  rm -f "$ART/$eng2.md"
+# N5: `eval "<cmd>"` — same class as the sh -c bypass, and the reason the
+# interpreter set is now an explicit allowlist rather than a growing case arm.
+run_guard "eval \"git add $ART/monetize-agents-cli.md\""
+check "N5: unwraps eval \"<staging cmd>\"" 2 "$RC"
+run_guard "eval 'git add $ART/notes.md'"
+check "N5: unwraps eval '<staging cmd>'" 2 "$RC"
+
+# Name matching is WHOLE-NAME. A previous revision trimmed trailing segments to
+# catch gtm-strategy-v2, gated on the trimmed candidate staying multi-word.
+# These five are why that was reverted: each trims to a real pattern AND stays
+# multi-word, so the gate did not stop them and 5 of 18 ordinary filenames
+# blocked. They are the regression test for not reintroducing the trim.
+for fp in launch-venues-map-component supply-vs-demand-chart-lib \
+          how-winners-charge-back-taxes stars-playbook-for-kids \
+          byo-subscription-pivot-table-ui gtm-dashboard-component \
+          gtm-analytics-service plan-gtm-integration-api; do
+  printf -- '---\ntitle: "e"\n---\n' > "$ART/$fp.md"
+  run_guard "git add $ART/$fp.md"
+  check "whole-name only: ALLOWS $fp.md" 0 "$RC"
+  rm -f "$ART/$fp.md"
+done
+
+# ...while the exact document names still block.
+for real in launch-venues supply-vs-demand how-winners-charge \
+            stars-playbook byo-subscription-pivot pricing-models; do
+  printf -- '---\ntitle: "r"\n---\n' > "$ART/$real.md"
+  run_guard "git add $ART/$real.md"
+  check "whole-name only: still blocks $real.md" 2 "$RC"
+  rm -f "$ART/$real.md"
 done
 
 # --- the sweeping forms -----------------------------------------------------
