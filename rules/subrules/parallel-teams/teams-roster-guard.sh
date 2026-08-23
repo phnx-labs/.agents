@@ -29,35 +29,24 @@
 
 input=$(cat)
 
-# --- portable JSON field extractor (jq -> python3) ---------------------------
-_json_field() { # $1=json $2=snake.path $3=camel.path
-  if command -v jq >/dev/null 2>&1; then
-    printf '%s' "$1" | jq -r "((.$2) // (.${3:-$2})) // empty" 2>/dev/null
-  elif command -v python3 >/dev/null 2>&1; then
-    printf '%s' "$1" | python3 -c '
-import json, sys
-paths = [p.split(".") for p in sys.argv[1:] if p]
-try:
-    data = json.load(sys.stdin)
-except Exception:
-    sys.exit(0)
-for path in paths:
-    cur = data
-    ok = True
-    for key in path:
-        if isinstance(cur, dict) and key in cur:
-            cur = cur[key]
-        else:
-            ok = False
-            break
-    if ok and isinstance(cur, str) and cur:
-        print(cur)
-        break
-' "$2" "${3:-}" 2>/dev/null
-  else
-    return 1
+# --- shared JSON field extractor -------------------------------------------
+# _json_field lives in hooks/lib/json-field.sh (one definition; formerly copied
+# into 12 hook scripts — the lib body is a superset of the local one, adding a
+# node fallback between jq and python). Source it relative to this script, fall
+# back to the absolute system-install path. This guard fails OPEN on a parse
+# failure (it only advises on roster mix), so a missing lib skips quietly
+# (exit 0). ${0%/*} (POSIX, no subprocess) locates the lib even when PATH
+# carries no coreutils.
+_LIB_DIR=$(CDPATH= cd "${0%/*}" 2>/dev/null && pwd) || _LIB_DIR=""
+for _cand in "$_LIB_DIR/../../../hooks/lib/json-field.sh" "${HOME}/.agents/.system/hooks/lib/json-field.sh"; do
+  if [ -f "$_cand" ]; then
+    # shellcheck source=../../../hooks/lib/json-field.sh
+    . "$_cand"
+    if command -v _json_field >/dev/null 2>&1; then break; fi
   fi
-}
+done
+unset _LIB_DIR _cand
+command -v _json_field >/dev/null 2>&1 || exit 0
 
 cmd=$(_json_field "$input" "tool_input.command" "toolInput.command") || exit 0
 [ -n "$cmd" ] || exit 0
