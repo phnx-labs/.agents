@@ -18,7 +18,30 @@
   reversible, and any failure (no `origin/HEAD`, no git, `AGENTS_NO_AUTO_WORKTREE=1`)
   falls back silently to the old recipe rather than weakening the refusal.
 
+- **Tickets are for work you deliver, not for what you noticed (`conventions`).**
+  Measured on the live board: 275 open tickets, **257 of them opened in a single
+  month**, and **220 sitting in Todo never started by anyone**. No hook creates
+  tickets — the volume comes from rules telling 100+ agents to file what they
+  noticed at session close, with no cross-session dedup. The ticket clause now
+  reads: search and claim an existing ticket first; open a new one only for work
+  you are actually delivering in this session; never for a follow-up, an idea, or
+  something spotted in passing (those are one line in the owner update). Recomposed
+  `rules/AGENTS.md` alongside.
+
 ### Fixed
+
+- **merge-guard reads APPROVE verdicts from review bodies, not only issue
+  comments (RUSH-3080).** `pr-verdict.py`'s `has_verdict` cleared a merge on a
+  GitHub review with `state=APPROVED` or an APPROVE in an *issue comment* body,
+  but never scanned review *bodies*. Fleet agents share one GitHub identity and
+  cannot `gh pr review --approve` (GitHub blocks self-approval), so a non-author
+  verdict commonly arrives as a `state=COMMENTED` review via
+  `gh pr review --comment`. That verdict was silently ignored and the merge
+  blocked with "no non-author review verdict found" (hit live on #375). A
+  COMMENTED review body and an issue-comment body now both clear the guard, via
+  one shared `_body_approves` helper that keeps the whole-word / not-carried-from
+  rule. Only COMMENTED review bodies count: a CHANGES_REQUESTED or DISMISSED
+  review whose body contains APPROVE must not launder itself into an approval.
 
 - **`--mode auto` is per-harness, not a universal smart classifier (RUSH-3049).**
   `skills/teams/SKILL.md` (mode table + the unattended-teammate prose) and
@@ -30,6 +53,15 @@
   matching the already-correct table in `skills/run/SKILL.md`.
 
 ### Added
+
+- **The artifact pipeline now has one skill.** `skills/artifacts/SKILL.md`
+  teaches the shared Markdown → `artifacts check`/`artifacts render` → branded
+  light/dark HTML → headless inspection workflow once, with separate `kind: plan`
+  and `kind: visual` contracts. The redundant `plan-render` and `visualize`
+  skills are removed. The plan contract retains the exact `surface`,
+  `.artifact-behavior`, current/proposed state, and capture/mockup evidence
+  markup enforced by `plan-html-reminder`; its PreToolUse/ExitPlanMode and Stop
+  registrations are unchanged.
 
 - **`07-inject-device-topology.sh` carries disk and the one-line description into
   the Host & Fleet block (RUSH-3062).** The agents-cli devices list grew a `spec`

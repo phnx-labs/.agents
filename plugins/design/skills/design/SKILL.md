@@ -9,7 +9,7 @@ user-invocable: true
 
 Design work is scattered and often locked behind paid image backends. This plugin is the
 single, brand-agnostic entry: `/design` reads the intent, picks a mode, and renders the
-result on the **offline HTML/SVG substrate** (the `visualize`/`plan-render` engine —
+result on the **offline HTML/SVG substrate** (the `artifacts` engine —
 self-contained, inline CSS/SVG, no CDN, no keys). It ships in the default distribution, so
 a fresh install has it.
 
@@ -67,7 +67,7 @@ Each mode file lives beside this one. Read design-core first, then the mode:
   design laws for the project's docs. Direct door: `/design:critique <target>`.
 - **`anticipate.md`** — diagnose a dead-end flow and propose the continuation (before/after ASCII, no implementation).
 
-## Deliver it (reuse the plan-render/visualize transport)
+## Deliver it (reuse the artifacts transport)
 
 Write the artifact self-contained. Pick its home once: if the repo has an `.agents/` dir,
 `"$ROOT/.agents/design/<slug>.html"`; else `/tmp/<slug>.html`. Then render it, **look at
@@ -77,13 +77,13 @@ tab with `agents browser navigate --url file://<path>` locally, or
 `agents ssh <host> 'agents browser navigate --url file://…'` when remote — a raw `open`
 spawns a duplicate tab every call; fall back to `open`/`xdg-open` only if no drivable
 browser profile exists). For a shareable asset, also drop a PDF/PNG in
-`~/Downloads`. See `plan-render/SKILL.md` for the full delivery and PDF steps; do not
+`~/Downloads`. See `artifacts/SKILL.md` for the full delivery and PDF steps; do not
 re-derive them.
 
 ## Portability (why this works for any user)
 
 - **Ships default.** This plugin lives in the system repo (the npm defaults), beside
-  `plan-render`/`visualize`, not in `.agents-extras` and not in a personal repo.
+  `artifacts`, not in `.agents-extras` and not in a personal repo.
 - **Keyless core.** The HTML/SVG substrate needs no API key and works offline. That covers
   interface, prototype, system, diagram, dataviz, deck, critique, and vector assets.
 - **Raster degrades.** True raster uses a backend if one exists, otherwise emits a spec +

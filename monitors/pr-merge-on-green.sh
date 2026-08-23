@@ -5,7 +5,8 @@
 # name its repository explicitly — never `gh pr list` without `--repo`.
 # Listing uses `gh search prs` (cwd-independent). Per-PR detail uses
 # `gh pr view --repo <owner/name>`. Verdict reuse is pr-verdict.py, the same
-# check merge-guard.sh runs (APPROVED review OR a non-carried APPROVE comment).
+# check merge-guard.sh runs (APPROVED review, OR a non-carried APPROVE in a
+# COMMENTED review body or an issue comment).
 #
 # Usage:
 #   pr-merge-on-green.sh            # live poll: print "owner/repo#n ..." (or empty)
