@@ -76,7 +76,14 @@ for rawline in os.environ.get("DEVICES_TABLE", "").splitlines():
     if not m:
         continue
     name, rest = m.group(1), m.group(3)
-    pcts = re.findall(r"(\d+)%", rest)
+    # Scan ONLY the numeric region — everything before the headroom badge. The
+    # row continues past it with a role and a free-text description, and a
+    # description is operator-supplied ("spot instance, 20% cheaper"). Scanning
+    # the whole row let that 20% become pcts[2] whenever the disk probe itself
+    # failed and rendered as a dash, fabricating disk telemetry from prose and
+    # injecting it fleet-wide. The badge glyph is the column boundary.
+    numeric = re.split(r"[\u25cf\u25cb]", rest, 1)[0]
+    pcts = re.findall(r"(\d+)%", numeric)
     if len(pcts) < 2:
         continue  # no live stats for this box (offline / probe failed)
     hr = next((w for w in HEADROOM_WORDS if re.search(r"\b" + w + r"\b", rest)), None)
