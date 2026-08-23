@@ -144,6 +144,8 @@ if devices:
             f"`agents browser profiles logins --device {interactive}` shows which "
             f"services it is signed in to, so you can act as the user rather than "
             f"launching a logged-out browser here. "
+            f"Fall back to `agents ssh {interactive} '"'"'open /tmp/<file>'"'"'` only if "
+            f"that host has no drivable browser profile. "
             f"Do not open it locally — the user is not watching this machine."
         )
     elif interactive:
