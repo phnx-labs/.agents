@@ -30,7 +30,8 @@ case "$*" in
  {"name":"gpu-box","platform":"linux","tailscale":{"online":true,"direct":true},"interactive":false,"description":"spot instance, 20% cheaper"},
  {"name":"loaded-box","platform":"linux","tailscale":{"online":true,"direct":true},"interactive":false,"description":"mostly idle overnight"},
  {"name":"dead-box","platform":"linux","tailscale":{"online":false},"interactive":false,"description":"spot instance, 20% cheaper, runs at 50% capacity"},
- {"name":"hostile-box","platform":"linux","tailscale":{"online":true,"direct":true},"interactive":false,"description":"idle 90% of the time, 10% busy"}]
+ {"name":"hostile-box","platform":"linux","tailscale":{"online":true,"direct":true},"interactive":false,"description":"idle 90% of the time, 10% busy"},
+ {"name":"ghost-box","platform":"linux","tailscale":{"online":false},"interactive":false,"description":"load 12% steady, mem 8% steady, ● idle mostly, some 30% spikes"}]
 JSON
     ;;
   "devices list")
@@ -44,6 +45,7 @@ Devices (3)
   loaded-box      linux    36c 96G 2T     95%   91%  88%  ● busy  worker  mostly idle overnight
   hostile-box     linux    36c 96G 2T     77%   80%  70%  ● busy  worker  idle 90% of the time, 10% busy
   dead-box        linux    offline  worker  spot instance, 20% cheaper, runs at 50% capacity
+  ghost-box       linux    offline  worker  load 12% steady, mem 8% steady, ● idle mostly, some 30% spikes
   Fleet capacity: 38 cores · 300G free / 249G RAM (65% free) · 4T disk free across 2 reachable devices
 TBL
     ;;
@@ -112,6 +114,10 @@ check_absent  "new shape: an offline row never gets stats from its description" 
 # attacks the disk scan and the headroom match at once.
 check_contains "new shape: a description hostile to both scans changes nothing" "$OUT" "77% load / 80% mem / 70% disk / busy"
 check_absent  "new shape: that description never supplies the disk figure" "$OUT" "90% disk"
+# An offline row is identified by the renderer's own "offline" token, never by
+# the absence of a badge glyph: a description carrying its own badge satisfied
+# that inference and reopened the fabrication on explicitly-offline boxes.
+check_absent  "new shape: a description's own badge glyph never revives an offline row" "$OUT" "12% load / 8% mem"
 
 # --- legacy shape ------------------------------------------------------------
 write_agents_stub_old
