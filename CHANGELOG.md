@@ -2,6 +2,20 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- **The done-claim gate no longer tells every agent to ring the owner's phone.**
+  `00-agent-verify-work-complete.sh` closed its self-audit block by prescribing
+  `agents feed post ... --level important`, and `feed.broadcast.owner` forwards an
+  important post to iMessage. Measured across fleet transcripts on 2026-08-23:
+  **811 fires over 272 sessions** (three per session, more than every PreToolUse
+  guard combined), **58% ignored** — and each of the 42% that complied produced a
+  phone buzz whether or not the session shipped anything worth one. The reminder
+  now asks for a plain, record-only post and says the agent adds `--level
+  important` only when the outcome genuinely needs the owner, matching what
+  `feed-status-posts` already said. Its test asserted the old hardcode and now
+  asserts the absence of it.
+
 ### Added
 
 - **F1: "The owner is not a step in your loop."** Measured failure class

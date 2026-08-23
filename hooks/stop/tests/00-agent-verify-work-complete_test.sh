@@ -418,7 +418,13 @@ check "mixed create+review only gates the created PR" "$rc" "0"
 #    with the old top-level read the turn count was 0 and this never blocked.
 rc=$(FAKE_GH_STATE=MERGED run_hook "$T" "All done. The widget feature is merged." false)
 check "done-claim on real transcript shape blocks for self-audit" "$rc" "2"
-grep -q 'agents feed post.*--level important' "$SANDBOX/stderr" && echo "ok   - completion post is phone-worthy" || { echo "FAIL - completion post is not important"; fail=1; }
+# The reminder asks for a post, but must NOT prescribe --level important: that
+# level is forwarded to the owner's phone by feed.broadcast.owner, and this gate
+# fires on every done-claim regardless of whether the session shipped anything
+# worth a buzz (811 fires / 272 sessions measured 2026-08-23). The level is the
+# agent's call from the outcome; the hook only asks for the record.
+grep -q 'agents feed post' "$SANDBOX/stderr" && echo "ok   - completion asks for a feed post" || { echo "FAIL - completion post not requested"; fail=1; }
+grep -qE 'agents feed post[^\n]*--level important' "$SANDBOX/stderr" && { echo "FAIL - reminder still hardcodes --level important"; fail=1; } || echo "ok   - reminder does not hardcode a phone ping"
 grep -qi "you claimed this work is done" "$SANDBOX/stderr" && echo "ok   - done-claim gate cites the original request" || { echo "FAIL - no done-claim gate message"; fail=1; }
 
 # 8a. The concise completion nudge keeps only the load-bearing instructions.
