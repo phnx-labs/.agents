@@ -32,12 +32,8 @@ case "$(uname -s 2>/dev/null)" in
 esac
 
 DEVICES_JSON=$(agents devices list --json 2>/dev/null)
-# Rendered table — carries the live load/mem/disk/headroom columns and the fleet
-# capacity summary that `--json` omits. chalk auto-strips its color codes when
-# stdout is not a TTY (as here), so the capture is plain text.
-DEVICES_TABLE=$(agents devices list 2>/dev/null)
 
-SELF_HOST="$SELF_HOST" SELF_OS="$SELF_OS" DEVICES_TABLE="$DEVICES_TABLE" python3 -c '
+SELF_HOST="$SELF_HOST" SELF_OS="$SELF_OS" python3 -c '
 import json, os, re, sys
 
 self_host = os.environ.get("SELF_HOST", "").strip()
@@ -53,66 +49,75 @@ if raw:
     except Exception:
         devices = []
 
-# Parse the rendered table into a per-device stats map + the fleet summary line.
-# Each data row looks like:  "[▸ ]<name> <platform> [<spec cell>] <load>% <mem>% [<disk>%] <badge> <word>[ ← this machine][ role][ description]"
-# where the <spec cell> ("12c 64G 1T") carries no % and the <disk>% column only
-# exists on newer CLIs — so pcts[0]/pcts[1] stay load/mem on every version and a
-# third percentage, when present, is disk used.
-# Offline/no-stats rows have no percentages and are simply skipped (the row still
-# renders from JSON reachability, just without a stats suffix).
+# Stats come from `--json`, NOT from the rendered table.
+#
+# This used to scrape the human table with regexes, and that approach produced
+# four separate fabrication bugs — because the row ENDS in an operator-supplied
+# free-text description, so every field found by searching the line could be fed
+# by prose: a disk percentage read out of "spot instance, 20% cheaper"; a box at
+# 95% load reported "idle" because its description said "mostly idle overnight";
+# an explicitly-offline box given load/mem from its own text; and, after that was
+# guarded by looking for a badge glyph, a description carrying its own glyph
+# reviving the same bug. Each fix bounded one more scan; none of them removed the
+# reason a scan could go wrong.
+#
+# `agents devices list --json` carries every field this needs — `health.loadPercent`,
+# `health.memPercent`, `health.diskUsedPercent`, `health.headroom`, plus `ncpu` and
+# the byte totals for the capacity line — and it is already fetched above. Reading
+# typed values makes the whole class impossible: a missing field is absent, never a
+# number scraped out of a sentence. Older CLIs simply carry fewer keys, so the
+# output degrades to what that version actually knows.
+def _fmt_bytes(n):
+    if not isinstance(n, (int, float)) or n < 0:
+        return None
+    v, units = float(n), ["B", "K", "M", "G", "T", "P"]
+    i = 0
+    while v >= 1024 and i < len(units) - 1:
+        v /= 1024.0
+        i += 1
+    return f"{round(v)}{units[i]}" if (v >= 100 or i <= 1) else f"{v:.1f}".rstrip("0").rstrip(".") + units[i]
+
 stats = {}          # name -> "<load>% load / <mem>% mem [/ <disk>% disk] / <headroom>"
-fleet = ""
-HEADROOM_WORDS = ("idle", "light", "busy", "loaded")
-for rawline in os.environ.get("DEVICES_TABLE", "").splitlines():
-    s = rawline.strip()
-    if not s:
+cores = mem_free = mem_total = disk_free = 0
+reachable = 0
+for d in devices:
+    h = d.get("health") or {}
+    if not h.get("reachable"):
         continue
-    if s.startswith("Fleet capacity:"):
-        fleet = s
-        continue
-    # Drop the leading self marker ("▸ ") if present, then match name + platform.
-    s = s.lstrip("▸ ").strip()
-    m = re.match(r"^(\S+)\s+(macos|linux|windows)\b(.*)$", s)
-    if not m:
-        continue
-    name, rest = m.group(1), m.group(3)
-    # Scan ONLY the numeric region — everything before the headroom badge. The
-    # row continues past it with a role and a free-text description, and a
-    # description is operator-supplied ("spot instance, 20% cheaper"). Scanning
-    # the whole row let that 20% become pcts[2] whenever the disk probe itself
-    # failed and rendered as a dash, fabricating disk telemetry from prose and
-    # injecting it fleet-wide. The badge glyph is the column boundary.
-    # An offline row is identified by the literal token the renderer emits right
-    # after the platform, NOT by the absence of a badge glyph. Inferring it from
-    # glyph presence was itself exploitable: a description containing its own
-    # "\u25cf" satisfied the badge check, and an explicitly-offline box got stats
-    # fabricated from its own description. Key off what the renderer guarantees.
-    if rest.strip().startswith("offline"):
-        continue
-    parts = re.split(r"[\u25cf\u25cb]", rest, 1)
-    if len(parts) < 2:
-        # No headroom badge means the renderer had no live stats to show — an
-        # offline row, or a probe that produced nothing. Skip BEFORE scanning:
-        # without a badge there is no column boundary, so the scan would fall
-        # back to the whole row and read percentages out of the description,
-        # inventing load/mem for a box that is not even reachable.
-        continue
-    numeric, after_badge = parts[0], parts[1]
-    pcts = re.findall(r"(\d+)%", numeric)
-    if len(pcts) < 2:
-        continue  # badge present but the numbers did not parse
-    # The headroom word is the FIRST token after the badge. Anchor it there
-    # rather than searching the row: the row continues with a role and a
-    # free-text description, and searching found "idle" inside a description
-    # like "mostly idle overnight" — reporting a box at 95% load as idle, which
-    # is worse than no reading because it routes work ONTO a saturated machine.
-    hr = next((w for w in HEADROOM_WORDS if re.match(r"\s*" + w + r"\b", after_badge)), None)
-    detail = f"{pcts[0]}% load / {pcts[1]}% mem"
-    if len(pcts) >= 3:
-        detail += f" / {pcts[2]}% disk"
-    if hr:
+    reachable += 1
+    if isinstance(h.get("ncpu"), int):
+        cores += h["ncpu"]
+    for key, acc in (("memFreeBytes", "mem_free"), ("memTotalBytes", "mem_total"), ("diskFreeBytes", "disk_free")):
+        v = h.get(key)
+        if isinstance(v, (int, float)):
+            if acc == "mem_free":
+                mem_free += v
+            elif acc == "mem_total":
+                mem_total += v
+            else:
+                disk_free += v
+    load, memp = h.get("loadPercent"), h.get("memPercent")
+    if not isinstance(load, (int, float)) or not isinstance(memp, (int, float)):
+        continue  # no live numbers for this box on this CLI version
+    detail = f"{round(load)}% load / {round(memp)}% mem"
+    diskp = h.get("diskUsedPercent")
+    if isinstance(diskp, (int, float)):
+        detail += f" / {round(diskp)}% disk"
+    hr = h.get("headroom")
+    if isinstance(hr, str) and hr:
         detail += f" / {hr}"
-    stats[name] = detail
+    stats[d.get("name")] = detail
+
+fleet = ""
+if reachable:
+    bits = [f"{cores} cores"] if cores else []
+    if mem_total:
+        pct = round(mem_free / mem_total * 100)
+        bits.append(f"{_fmt_bytes(mem_free)} free / {_fmt_bytes(mem_total)} RAM ({pct}% free)")
+    if disk_free:
+        bits.append(f"{_fmt_bytes(disk_free)} disk free")
+    if bits:
+        fleet = "Fleet capacity: " + " · ".join(bits) + f" across {reachable} reachable device" + ("" if reachable == 1 else "s")
 
 # Header line always establishes "where am I".
 where = f"**{self_host}**" if self_host else "an unregistered host"
