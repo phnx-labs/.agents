@@ -181,3 +181,16 @@ hooks:
     matcher: Bash
     script: pre-tool-use/large-file-add-guard.sh
     timeout: 5
+  # RUSH-3033 item 3. The GTM/monetization strategy was committed to
+  # .agents/artifacts/ on the PUBLIC agents-cli repo and stayed world-readable
+  # for ~2 days; the tip was cleaned but history still carries it. Two
+  # documented rules compose into that leak — artifacts/ is "durable, committed"
+  # while scratch/ is ignored, and the recap workflow tells agents to commit any
+  # stray work they find. Local file checks only, no network: it must not add
+  # latency to every git add.
+  public-artifact-guard:
+    events:
+      - PreToolUse
+    matcher: Bash
+    script: pre-tool-use/public-artifact-guard.sh
+    timeout: 5
