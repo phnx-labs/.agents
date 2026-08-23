@@ -22,3 +22,9 @@ pr-description-reminder:
   events: [PreToolUse]
   matcher: Bash
   timeout: 5
+  # Skipped in plan mode. Nothing opens a PR from a planning turn.
+  # Uses permission_mode_not, not an enumerated permission_mode allowlist:
+  # an allowlist stops matching when a harness renames a mode, which for a
+  # guard means it silently stops guarding.
+  matches:
+    permission_mode_not: plan

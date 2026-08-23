@@ -2,6 +2,24 @@
 
 ## [Unreleased]
 
+### Changed
+
+- **Four delivery-phase guards no longer fire in plan mode.** Measured from
+  `~/.agents/.cache/perf/perf.db` (2026-08-03 → 08-08, 4.2 days): nine guards fire on
+  **every** `Bash` tool call for a combined **292 ms** before the command runs, across
+  285,667 fires of which 284 — **0.099%** — changed the outcome. Four of them cannot
+  fire usefully while an agent is planning, because nothing merges, opens a PR,
+  `git add`s, or rebases from a planning turn: `merge-guard`,
+  `pr-description-reminder`, `large-file-add-guard`, `git-require-clean-tree`. Each now
+  carries `matches: {permission_mode_not: plan}`, cutting the per-`Bash` tax in plan
+  mode from **292 ms to 176 ms**. The data-loss guards — `git-guard`, `rm-guard`,
+  `secrets-guard` — are deliberately **not** gated: Bash still runs in plan mode, so
+  `reset --hard` and `rm -rf` stay reachable and those guards fire in every mode.
+  Uses `permission_mode_not` rather than an enumerated `permission_mode` allowlist,
+  because an allowlist silently stops matching when a harness adds or renames a mode —
+  and for a guard, that means it quietly stops guarding.
+
+
 ### Added
 
 - **`public-artifact-guard` blocks confidential material from the committed

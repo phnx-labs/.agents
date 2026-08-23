@@ -8,3 +8,10 @@ merge-guard:
   events: [PreToolUse]
   matcher: Bash
   timeout: 5
+  # Skipped in plan mode. Nothing merges from a planning turn — `gh pr merge` is not a
+  # planning action, so this cannot fire usefully in plan mode.
+  # Uses permission_mode_not, not an enumerated permission_mode allowlist:
+  # an allowlist stops matching when a harness renames a mode, which for a
+  # guard means it silently stops guarding.
+  matches:
+    permission_mode_not: plan
