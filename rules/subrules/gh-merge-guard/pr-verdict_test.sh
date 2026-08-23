@@ -30,6 +30,11 @@ check ok "fresh APPROVE comment" '[]' '[{"body":"## Verdict: APPROVE\nRe-verifie
 check ok "APPROVE in a state=COMMENTED review body" '[{"state":"COMMENTED","body":"VERDICT: APPROVE\nRe-verified, docs-only."}]' '[]'
 check missing "carried-from in a review body" '[{"state":"COMMENTED","body":"APPROVE carried from #2731."}]' '[]'
 check missing "non-approving review body" '[{"state":"COMMENTED","body":"VERDICT: REQUEST CHANGES\nem-dash cap violated."}]' '[]'
+# RUSH-3080 blocker (caught in review): a review body is only trusted when its
+# own state is COMMENTED. A CHANGES_REQUESTED or DISMISSED review whose body
+# contains the word APPROVE must NOT launder itself into an approval.
+check missing "CHANGES_REQUESTED review body mentioning APPROVE" '[{"state":"CHANGES_REQUESTED","body":"I cannot APPROVE until the null check is fixed."}]' '[]'
+check missing "DISMISSED stale approving review body" '[{"state":"DISMISSED","body":"VERDICT: APPROVE"}]' '[]'
 check missing "no verdict" '[]' '[{"body":"looks big, did not review"}]'
 check missing "carried from another PR" '[]' '[{"body":"Non-author APPROVE carried from #2731."}]'
 check missing "APPROVE on #N citation" '[]' '[{"body":"Non-author APPROVE on #2731 covers this."}]'

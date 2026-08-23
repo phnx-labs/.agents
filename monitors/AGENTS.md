@@ -51,8 +51,8 @@ rateLimit:                   # optional firehose guard
   evaluates the command from a non-repo cwd — any `gh pr list` / `gh pr view`
   must pass `--repo` (or use `gh search prs`); see `pr-merge-on-green.sh`.
 - **Verdict reuse.** Merge-clearing review is `rules/subrules/gh-merge-guard/pr-verdict.py`
-  (APPROVED review OR a non-carried APPROVE comment). Do not re-inline that
-  python in a monitor poll.
+  (APPROVED review, OR a non-carried APPROVE in a COMMENTED review body or an
+  issue comment). Do not re-inline that python in a monitor poll.
 
 - **`mode: match` fires once per distinct matched value**, not every tick — the
   engine only fires when the matched value differs from the last fire, so a

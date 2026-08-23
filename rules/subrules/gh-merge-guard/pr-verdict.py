@@ -3,8 +3,11 @@
 
 A PR is merge-clearing when EITHER:
   - a GitHub review has state APPROVED, OR
-  - an issue/PR comment body contains a whole-word APPROVE that is not a
-    carried-from citation (the #2736 laundering pattern).
+  - a whole-word APPROVE that is not a carried-from citation (the #2736
+    laundering pattern) appears in the body of a COMMENTED review
+    (`gh pr review --comment` — the fleet convention when self-approval is
+    blocked) or an issue comment. A CHANGES_REQUESTED or DISMISSED review body
+    never clears the guard even if it contains the word APPROVE.
 
 Stdin contract (kept identical to the python that used to be inlined in
 merge-guard.sh): reviews JSON, then the line `---AGENTS-SPLIT---`, then
@@ -48,11 +51,14 @@ def has_verdict(reviews, comments) -> bool:
         return True
     # Fleet agents share one GitHub identity and cannot `gh pr review --approve`
     # (GitHub blocks approving your own PR), so a non-author APPROVE arrives as a
-    # verdict in the BODY of either a review (state=COMMENTED, via
-    # `gh pr review --comment`) or an issue comment (`gh pr comment`). Both must
-    # clear the guard — reading only issue comments silently ignored a genuine
-    # verdict and blocked the merge (RUSH-3080).
-    return _body_approves(reviews) or _body_approves(comments)
+    # verdict in the BODY of a COMMENTED review (`gh pr review --comment`) or an
+    # issue comment (`gh pr comment`) — reading only issue comments silently
+    # ignored a genuine review-body verdict and blocked the merge (RUSH-3080).
+    # Only COMMENTED review bodies count: a CHANGES_REQUESTED or DISMISSED review
+    # whose body happens to contain APPROVE must NOT clear the guard, or a
+    # rejecting/stale review would launder itself into an approval.
+    commented = [r for r in reviews if r.get("state") == "COMMENTED"] if isinstance(reviews, list) else []
+    return _body_approves(commented) or _body_approves(comments)
 
 
 def verdict_from_stdin(raw: str) -> str:
