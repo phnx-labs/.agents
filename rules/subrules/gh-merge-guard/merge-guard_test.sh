@@ -190,6 +190,8 @@ FAKE_MG_COMMENTS='[{"body":"VERDICT: APPROVE"}]' \
   check 0 "-R short-flag repo with APPROVE verdict passes" "gh pr $M 42 -R acme/widgets"
 FAKE_MG_COMMENTS='[{"body":"no verdict"}]' \
   check 2 "-R short-flag repo without verdict blocks" "gh pr $M 42 -R acme/widgets"
+FAKE_MG_COMMENTS='[{"body":"VERDICT: APPROVE"}]' \
+  check 0 "-Rrepo concatenated form resolves the repo" "gh pr $M 42 -Racme/widgets"
 
 printf -- '---\nmerge-guard: %s passed, %s failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]
