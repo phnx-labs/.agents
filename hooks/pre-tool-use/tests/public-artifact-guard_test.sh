@@ -129,6 +129,43 @@ rm -f "$CLEANDAY/compiled-ruleset.md"
 run_guard "git add $ART/does-not-exist.md"
 check "tolerates a nonexistent path without erroring" 0 "$RC"
 
+# --- the sweeping forms -----------------------------------------------------
+# `git add -A` is the MOST likely leak vector, not an edge case: the recap
+# workflow tells agents to commit any uncommitted work they find, and this is
+# how that gets done. The guard reads `git status --porcelain` to see exactly
+# what git is about to stage. Both directions are asserted, because a guard that
+# fires on every clean `git add -A` would be turned off fleet-wide within a day.
+SWEEP="$SANDBOX/sweeprepo"
+mkdir -p "$SWEEP/.agents/artifacts/2026-08-19"
+git -C "$SWEEP" init -q 2>/dev/null
+git -C "$SWEEP" config user.email t@t.t 2>/dev/null
+git -C "$SWEEP" config user.name t 2>/dev/null
+
+# Clean first: an ordinary plan pending, nothing confidential.
+printf -- '---\ntitle: "A plan"\nsurface: internal\n---\n' > "$SWEEP/.agents/artifacts/2026-08-19/plan-thing.md"
+RC=0
+printf '{"tool_input":{"command":"git add -A"}}' \
+  | (cd "$SWEEP" && AGENTS_DISABLE_FRICTION_LOG=1 "$SH_BIN" "$HOOK") 2>/dev/null || RC=$?
+check "ALLOWS git add -A when nothing confidential is pending" 0 "$RC"
+
+# Now drop a confidential file into the same pending set.
+printf -- '---\ntitle: "GTM"\n---\n' > "$SWEEP/.agents/artifacts/2026-08-19/gtm-strategy.md"
+RC=0
+printf '{"tool_input":{"command":"git add -A"}}' \
+  | (cd "$SWEEP" && AGENTS_DISABLE_FRICTION_LOG=1 "$SH_BIN" "$HOOK") 2>/dev/null || RC=$?
+check "denies git add -A when a confidential file is pending" 2 "$RC"
+
+RC=0
+printf '{"tool_input":{"command":"git commit -a -m wip"}}' \
+  | (cd "$SWEEP" && AGENTS_DISABLE_FRICTION_LOG=1 "$SH_BIN" "$HOOK") 2>/dev/null || RC=$?
+check "denies git commit -a the same way" 2 "$RC"
+
+# Outside a git repo the status probe must fail open, not error under set -eu.
+RC=0
+printf '{"tool_input":{"command":"git add -A"}}' \
+  | (cd "$SANDBOX" && AGENTS_DISABLE_FRICTION_LOG=1 "$SH_BIN" "$HOOK") 2>/dev/null || RC=$?
+check "tolerates git add -A outside a git repo" 0 "$RC"
+
 # --- fail closed with no JSON parser --------------------------------------
 NOPARSE="$SANDBOX/noparse-bin"
 mkdir -p "$NOPARSE"

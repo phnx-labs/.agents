@@ -190,6 +190,51 @@ check_path() {
   check_file "$_p"
 }
 
+# --- the sweeping forms: `git add -A`, `git add .`, `git commit -a` ----------
+# large-file-add-guard treats these as out of scope, and for a SIZE check that
+# is right — it would have to stat the whole tree. For a LEAK check it is the
+# opposite: these are the most likely vector, because the session-recap workflow
+# instructs agents to commit any uncommitted work they find, and "commit
+# everything" is how that gets done. `git status --porcelain` gives exactly the
+# set git is about to stage, cheaply, so there is no excuse to skip it.
+case " $cmd " in
+  *" git add -A"*|*" git add --all"*|*" git add ."*|*" git add -A."*|\
+  *"git add -A "*|*"git add --all "*|*"git add . "*|*"git commit -a"*|*"git commit --all"*)
+    # -uall is load-bearing: plain --porcelain COLLAPSES an untracked directory
+    # to a single "?? .agents/" entry, so a filter on .agents/artifacts/* never
+    # matches and the guard silently passes. It only appeared to work on repos
+    # where those parent dirs are already tracked.
+    if pending=$(git status --porcelain -uall 2>/dev/null); then
+      root=$(git rev-parse --show-toplevel 2>/dev/null || printf '.')
+      printf '%s\n' "$pending" | while IFS= read -r line; do
+        # Strip the 2-char status field; handle renames (a -> b) by taking the target.
+        p=$(printf '%s' "$line" | cut -c4-)
+        case "$p" in *" -> "*) p=${p##* -> } ;; esac
+        p=$(printf '%s' "$p" | sed -e 's/^"//' -e 's/"$//')
+        case "$p" in .agents/artifacts/*|*/.agents/artifacts/*) ;; *) continue ;; esac
+        full="$root/$p"
+        if [ -d "$full" ]; then
+          hit=$(find "$full" -type f \( -name '*.md' -o -name '*.markdown' -o -name '*.mdx' \
+            -o -name '*.html' -o -name '*.yaml' -o -name '*.yml' \) 2>/dev/null | head -400 \
+            | while IFS= read -r f; do
+                if is_strategy_name "$f" || has_confidential_frontmatter "$f"; then printf '%s' "$f"; break; fi
+              done)
+          [ -n "$hit" ] && printf '%s\n' "$hit" > "$_HIT_FILE" && break
+        elif [ -f "$full" ]; then
+          if is_strategy_name "$full" || has_confidential_frontmatter "$full"; then
+            printf '%s\n' "$full" > "$_HIT_FILE"; break
+          fi
+        fi
+      done
+      if [ -s "$_HIT_FILE" ]; then
+        bad=$(cat "$_HIT_FILE")
+        emit_deny "$bad" "is pending and would be swept in by this stage-everything command"
+        exit 2
+      fi
+    fi
+    ;;
+esac
+
 # Walk the command's words; skip flags and the git verbs themselves.
 # shellcheck disable=SC2086
 for word in $cmd; do
