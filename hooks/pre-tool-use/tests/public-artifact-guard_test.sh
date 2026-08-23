@@ -242,6 +242,31 @@ check "N8: -F consumes its value (not treated as a staged path)" 0 "$RC"
 run_guard "git commit -m wip $ART/monetize-agents-cli.md"
 check "N8: a real path after -m <value> is still caught" 2 "$RC"
 
+# N9: CLUSTERED short flags. `git commit -am "<msg>"` is the most common way the
+# idiom is written, and matching exact tokens (-m, -F, ...) never saw it: git
+# clusters short options, so -am is -a plus -m and equals no listed flag. These
+# run in their own repo because -a triggers the stage-everything sweep, which
+# reads the CALLER's git status — from a tree with something confidential
+# pending the block would be correct for a different reason and prove nothing.
+N9REPO="$SANDBOX/n9repo"
+mkdir -p "$N9REPO/.agents/artifacts/d"
+git -C "$N9REPO" init -q 2>/dev/null
+printf -- '---\ntitle: "ok"\nsurface: internal\n---\n' > "$N9REPO/.agents/artifacts/d/plan-thing.md"
+n9() {  # $1=command  $2=label  $3=expected-rc
+  RC=0
+  printf '%s' "$(printf '{"tool_input":{"command":"%s"}}' "$(json_escape "$1")")" \
+    | (cd "$N9REPO" && AGENTS_DISABLE_FRICTION_LOG=1 "$SH_BIN" "$HOOK") >/dev/null 2>&1 || RC=$?
+  check "$2" "$3" "$RC"
+}
+LEAKMSG="remove leaked repo/.agents/artifacts/2026-08-01/pricing-models.md"
+n9 "git commit -am '$LEAKMSG'"  "N9: -am message naming a leaked path is not a path" 0
+n9 "git commit -qam '$LEAKMSG'" "N9: -qam (longer cluster) likewise"                 0
+n9 "git commit -a -m '$LEAKMSG'" "N9: the two-token -a -m form likewise"             0
+# -ma takes 'a' as its INLINE value and consumes nothing, so what follows is a
+# real path and must still be inspected.
+n9 "git commit -ma msg .agents/artifacts/d/gtm-strategy.md" "N9: -ma consumes inline, real path after it still caught" 2
+n9 "git commit -am wip .agents/artifacts/d/gtm-strategy.md" "N9: real path after -am <value> still caught" 2
+
 # N6: prefix wrappers. The walker required a segment's first token to be exactly
 # `git`, so any wrapper silently skipped the whole segment — six bypasses from
 # one root cause, all ordinary shell idioms rather than adversarial constructions.

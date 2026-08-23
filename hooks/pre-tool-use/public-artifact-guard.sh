@@ -173,6 +173,29 @@ strip_quotes() {
 # the entire basename (modulo an extension and an optional date/dir prefix), so
 # `plan-pricing-model-api.md` and `monetization-service-refactor.md` — real
 # engineering work — do not match, while the actual leaked documents do.
+# Does a SHORT-option cluster consume the following token as its value?
+# Matching exact tokens (-m, -F, …) missed `git commit -am "<msg>"`, which is the
+# most common way that idiom is written: git clusters short options, so -am is
+# -a plus -m and the token equals no listed flag. The sweep logic in this file
+# already reads clusters (`-*[aA]*`); this applies the same idea.
+#
+# Left to right, the FIRST value-taking option takes the remainder of the
+# cluster when there is one, otherwise the next argument. So -am consumes the
+# next token, while -ma takes "a" as its inline value and consumes nothing —
+# meaning a path following -ma is a REAL path and must still be inspected.
+cluster_consumes_next() {
+  _c=${1#-}
+  while [ -n "$_c" ]; do
+    _ch=${_c%"${_c#?}"}
+    _rest=${_c#?}
+    case "$_ch" in
+      m|F|t|C|c) [ -z "$_rest" ] && return 0; return 1 ;;
+    esac
+    _c=$_rest
+  done
+  return 1
+}
+
 is_strategy_name() {
   _b=${1##*/}
   _b=$(printf '%s' "$_b" | tr '[:upper:]' '[:lower:]')
@@ -627,14 +650,16 @@ while IFS= read -r seg; do
   _skip=0
   for a in "$@"; do
     if [ "$_skip" = 1 ]; then _skip=0; continue; fi
-    case "$(strip_quotes "$a")" in
+    _t=$(strip_quotes "$a")
+    case "$_t" in
       # `--flag=value` carries its value inline; nothing to skip.
       --*=*) continue ;;
-      -m|--message|-F|--file|-t|--template|--author|--date|--cleanup|--fixup|--squash|-C|--reuse-message|-c|--reedit-message|--trailer|--pathspec-from-file)
+      --message|--file|--template|--author|--date|--cleanup|--fixup|--squash|--reuse-message|--reedit-message|--trailer|--pathspec-from-file)
         _skip=1; continue ;;
-      -*) continue ;;
+      --*) continue ;;
+      -*) cluster_consumes_next "$_t" && _skip=1; continue ;;
     esac
-    inspect_path "$a"
+    inspect_path "$_t"
   done
 done < "$_SEG_FILE"
 
