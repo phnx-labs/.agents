@@ -100,8 +100,11 @@ agents teams start <slug> --watch
 
 - **`--strategy balanced`** / bare `claude` (no pin) so accounts rotate by headroom.
 - **Never** three of the same exhausted account "verifying" each other.
-- **Hosts:** pin workers (`yosemite-s0`, `yosemite-s1`, …) or `--device auto`. Interactive
-  machine (zion when interactive) stays light — orchestrator only.
+- **Hosts:** pin workers (`yosemite-s0`, `yosemite-s1`, …) or `--device auto`. The
+  interactive machine stays light — orchestrator only. Address it as
+  `--device interactive` rather than by name: it resolves to whatever
+  `interactive.host` pins, so the guidance stays correct on any fleet and after
+  the pin changes.
 - **Cap concurrency** by judgment and live capacity; prefer more smaller tracks over one
   fat track that dies with one logout.
 - On track failure that is **auth/limit/infra**: re-home; do not rewrite the product code

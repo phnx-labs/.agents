@@ -27,7 +27,7 @@ agents teams disband <slug>                                  # tear down when sy
 ```
 
 - **Mix agents** when available (`claude`, `codex`, `antigravity`, `cursor`, `opencode`) — different models have different blind spots. That diversity is the entire point of a swarm; never spawn three of the same model to "verify" each other.
-- **`--mode plan`** (read-only) for research, audit, planning, verification. For a track that changes code, prefer **`--mode auto`** over plain `edit` — teammates run headless, and `edit` alone can stall waiting on an approval prompt nobody is there to answer; `auto` adds a smart classifier that clears safe operations on its own. Reach for plain `edit` only when a human is actively watching that teammate's session.
+- **`--mode plan`** (read-only) for research, audit, planning, verification. For a track that changes code, prefer **`--mode auto`** over plain `edit` — teammates run headless, and `edit` alone can stall waiting on an approval prompt nobody is there to answer; `auto` clears safe operations on its own through each harness's native auto-approval (Claude/Copilot's smart classifier, Codex's never-prompt `approval_policy=never`, Droid's high-auto). Reach for plain `edit` only when a human is actively watching that teammate's session.
 - **Steer cost per track** with `--model cheap|default|best|ultra` on `teams add` — a stable tier that resolves per harness+version to a supported model (cheap for grunt tracks, best/ultra for the hard one). See `agents models <agent>` for the resolved map.
 - **Never** leave a team running. Disband when done.
 

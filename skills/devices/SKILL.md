@@ -30,12 +30,22 @@ agents devices unignore <name>    # undo an ignore
 ## Inspect
 
 ```bash
-agents devices list               # platform, address, reachability (alias: ls)
-agents devices list --json        # registry as a JSON array (for scripts/hooks)
+agents devices list               # spec (cores/RAM/disk), live load/mem/disk, headroom, role, description (alias: ls)
+agents devices list --json        # same rows as a JSON array + top-level `description` and health.disk* fields (for scripts/hooks)
+agents devices list --no-stats    # instant: platform, address, reachability only
 agents devices show <name>        # full profile for one device
+agents devices ignored            # dismissed nodes — when, and which machine dismissed them
 ```
 
-`list` marks the machine you are on with `▸ <name>  ← this machine`.
+`list` marks the machine you are on with `▸ <name>  ← this machine`. On a narrow
+terminal the description truncates first, then the role — the numbers never
+truncate. `-f/--full` adds free/total RAM detail.
+
+Set the one-line purpose shown in the tail column (synced fleet-wide):
+
+```bash
+agents devices describe <name> "gpu box — cuda 12.4"   # == devices config <name> description "…"
+```
 
 ## Add / edit manually
 
