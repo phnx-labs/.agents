@@ -42,6 +42,23 @@ check ok "APPROVE comment that quotes the split marker still clears" '[]' '[{"bo
 check missing "no verdict" '[]' '[{"body":"looks big, did not review"}]'
 check missing "carried from another PR" '[]' '[{"body":"Non-author APPROVE carried from #2731."}]'
 check missing "APPROVE on #N citation" '[]' '[{"body":"Non-author APPROVE on #2731 covers this."}]'
+# RUSH-3099: the past tense is the natural word AND GitHub's own review state,
+# and the guard's own block message says "Post a GitHub APPROVED review" -- so a
+# reviewer writing **APPROVED.** was rejected by the very form it was told to
+# use. Real incident: agi-cli#2972, CI green, verdict correct, merge blocked.
+check ok "APPROVED (past tense) in an issue comment" '[]' '[{"body":"## Verdict\n**APPROVED.**"}]'
+check ok "APPROVED in a state=COMMENTED review body" '[{"state":"COMMENTED","body":"Verdict at 641f33cf3: APPROVED."}]' '[]'
+check ok "bare stem APPROVE still clears" '[]' '[{"body":"VERDICT: APPROVE"}]'
+# The optional D has to be in the CARRIED filter too, or widening the verdict
+# regex silently reopens the #2736 laundering pattern for the past tense only.
+check missing "APPROVED on #N citation is still laundering" '[]' '[{"body":"Non-author APPROVED on #2731 covers this."}]'
+check missing "APPROVED carried from another PR" '[{"state":"COMMENTED","body":"APPROVED carried from #2731."}]' '[]'
+check missing "CHANGES_REQUESTED body saying APPROVED does not launder" '[{"state":"CHANGES_REQUESTED","body":"Not APPROVED until the null check is fixed."}]' '[]'
+# Guard the word boundary itself: a longer word starting with APPROVE must not
+# clear. Without \b this would match, and "APPROVES"/"APPROVEDLY" are the kind
+# of prose a reviewer writes about someone else's verdict.
+check missing "APPROVES is not a verdict" '[]' '[{"body":"The other reviewer APPROVES of this direction."}]'
+
 check missing "empty both" '[]' '[]'
 
 printf -- '---\npr-verdict: %s passed, %s failed\n' "$pass" "$fail"

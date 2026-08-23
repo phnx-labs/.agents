@@ -3,7 +3,7 @@
 
 A PR is merge-clearing when EITHER:
   - a GitHub review has state APPROVED, OR
-  - a whole-word APPROVE that is not a carried-from citation (the #2736
+  - a whole-word APPROVE or APPROVED that is not a carried-from citation (the #2736
     laundering pattern) appears in the body of a COMMENTED review
     (`gh pr review --comment` — the fleet convention when self-approval is
     blocked) or an issue comment. A CHANGES_REQUESTED or DISMISSED review body
@@ -23,11 +23,16 @@ import sys
 
 SPLIT = "---AGENTS-SPLIT---"
 
+# `APPROVED` is both the natural English word and GitHub's own review state, and
+# the block message itself says "Post a GitHub APPROVED review" -- so matching
+# only the bare stem rejected the exact form it asked for. The optional D must
+# be in the CARRIED filter too, or `APPROVED on #1234` walks straight past the
+# laundering check that `APPROVE on #1234` is caught by (RUSH-3099).
 CARRIED = re.compile(
-    r"\bcarried\s+(?:over\s+)?from\b|\bAPPROVE\s+(?:on|from)\s+#\d+",
+    r"\bcarried\s+(?:over\s+)?from\b|\bAPPROVED?\s+(?:on|from)\s+#\d+",
     re.I,
 )
-APPROVE = re.compile(r"\bAPPROVE\b")
+APPROVE = re.compile(r"\bAPPROVED?\b")
 
 
 def _body_approves(items) -> bool:
