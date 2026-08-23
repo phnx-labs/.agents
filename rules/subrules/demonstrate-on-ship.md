@@ -1,0 +1,3 @@
+# Demonstrate What You Ship — Verify It Works, Show It Visually
+
+Never trust that work landed because a command exited 0 — verify by observing the real result: open the page and drive it, hit the live endpoint and quote the response, run the *installed* binary, click the *shipped* app. Builds, merges, and local proxies are not proof, and a deploy succeeding is not evidence the thing is live and correct — check before shipping and again after. The human you report to is highly visual, so communicate visually: lead plans with figures, attach before/after screenshots and short recordings to PRs, and put the rendered surface itself in front of the user. A screenshot or the open page is the proof of done, not a description of it.

@@ -1,0 +1,3 @@
+# Exhaust Self-Serve Before You Declare a Blocker
+
+Before escalating, inspect secret-name variants on the actual execution host, try `agents secrets exec`, and check named credential profiles or the credentials used by a working sibling tool. Trust live installed binaries over stale capability tables, and check plugins, system skills, and built-ins before declaring a command absent. Attempt the operation yourself; if a human handoff survives, prepare it immediately and verify clipboard contents after copying. Judge authentication with a real authenticated request and reachability with direct ping or SSH; after repeated identical content-gated denials, stop disguising the same blocked action as new attempts.

@@ -1,16 +1,12 @@
 # agents-cli rules — single default preset
-#
-# Includes all subrules from `<repo>/rules/subrules/`.
-# `foundations` renders first: the five principles (F1-F5) every tactic references.
-# Linear tickets context is injected by hooks/03-linear-inject-tasks-context.sh.
-# Release/publish discipline lives in the `code:release` skill.
-
+# `foundations` renders first: the principles every tactic references.
+# Distilled corpus (2026-08-23): 23 subrules, goal + role + hard-lines.
 presets:
   default:
     subrules:
       - foundations
       - research-discipline
-      - fleet-delegation
+      - parallel-teams
       - code-quality
       - testing-strict
       - truly-agentic-git-workflow
@@ -18,12 +14,16 @@ presets:
       - no-pr-footer
       - operational
       - conventions
-      - agents-cli
-      - parallel-teams
       - tech-stack
       - ui-work-discipline
       - plan-presentation
       - task-checklists
       - feed-status-posts
-      - remote-fleet-dispatch
-      - unattended-verification
+      - clip-references
+      - demonstrate-on-ship
+      - exhaust-self-serve
+      - own-the-request
+      - plan-artifacts
+      - session-handoff
+      - skill-restraint
+      - stack
