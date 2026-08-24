@@ -40,4 +40,12 @@ else
   fail=$((fail + 1))
 fi
 
+run_hook '{malformed "command":"git pull"'
+if [ "$RC" -eq 2 ] && grep -q 'no JSON parser' "$SANDBOX/stderr"; then
+  echo 'ok   - malformed payload fails closed'
+else
+  echo "FAIL - malformed payload must fail closed (rc=$RC)"
+  fail=$((fail + 1))
+fi
+
 [ "$fail" -eq 0 ]

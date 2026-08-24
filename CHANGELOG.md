@@ -13,8 +13,10 @@
   the shared `hooks/lib/json-field.sh` helper and exits before command analysis when
   the value is `plan`. This cuts their measured 80 ms from plan-mode Bash calls
   without waiting for an agents-cli release or adding the generated shim's Python
-  matcher subprocess. An absent, unknown, or unparsable mode keeps the guard active,
-  so the gate fails safe. The data-loss guards —
+  matcher subprocess. An absent or unknown mode keeps the guard active. The shared
+  parser now also reports malformed hook JSON as an error instead of returning a
+  successful empty field, so safety guards follow their documented fail-closed path
+  while advisory hooks retain their explicit fail-open policy. The data-loss guards —
   `git-guard`, `rm-guard`, `secrets-guard` — are deliberately **not** gated, because
   Bash still runs in plan mode and `reset --hard` / `rm -rf` stay reachable.
 

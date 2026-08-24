@@ -78,7 +78,7 @@ case "$input" in *secrets*) ;; *) exit 0 ;; esac
 
 # Fail CLOSED if no JSON parser is available.
 if ! cmd=$(_json_field "$input" tool_input.command); then
-  printf 'secrets-guard: no JSON parser (jq/node/python) available — refusing to run the command unchecked (fail-closed). Ensure node or jq is on PATH.\n' >&2
+  printf 'secrets-guard: no JSON parser succeeded (malformed payload or jq/node/python unavailable) — refusing to run the command unchecked (fail-closed).\n' >&2
   exit 2
 fi
 [ -z "$cmd" ] && cmd=$(_json_field "$input" toolInput.command) || true

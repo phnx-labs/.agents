@@ -46,7 +46,7 @@ report_friction() {  # $1=failureId  $2=error-message
 
 # Claude/Codex/Kimi/Cursor/Droid: tool_input.command; Grok: toolInput.command.
 if ! cmd=$(_json_field "$input" tool_input.command); then
-  echo "git-require-clean-tree: no JSON parser (jq/node/python) available — refusing git pull/rebase unchecked (fail-closed)." >&2
+  echo "git-require-clean-tree: no JSON parser succeeded (malformed payload or jq/node/python unavailable) — refusing git pull/rebase unchecked (fail-closed)." >&2
   exit 2
 fi
 [ -z "$cmd" ] && cmd=$(_json_field "$input" toolInput.command) || true

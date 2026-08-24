@@ -61,6 +61,14 @@ else
   printf 'FAIL: explicit plan mode should skip the guard\n'
 fi
 
+printf '%s' "{malformed \"command\":\"gh pr $M 40 $A\"" | "$GUARD" >/dev/null 2>&1
+if [ "$?" -eq 2 ]; then
+  pass=$((pass + 1))
+else
+  fail=$((fail + 1))
+  printf 'FAIL: malformed admin-merge payload must fail closed\n'
+fi
+
 # check <want_exit> <description> <command>
 check() {
   want=$1
