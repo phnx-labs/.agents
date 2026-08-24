@@ -53,9 +53,14 @@ hooks/<event-name>/<hook-file>.{sh,py}
   — leave them alone. This is a different thing from the per-event
   `hooks/<event-name>/tests/` above: the top-level one is cross-cutting infra,
   the per-event ones hold that event's own hook tests.
-- **`hooks/lib/`** holds shared helpers sourced by hooks (e.g. `git-facts.sh`). Not
-  event scripts: no `agents.yaml` entry, skipped by `registration_test.sh`. Source
-  them by path; do not register them as hooks.
+- **`hooks/lib/`** holds shared helpers sourced by hooks: `json-field.sh` (the JSON
+  field extractor), `git-facts.sh` (HEAD-validated git-fact cache), and
+  `git-parse.sh` (the git-command parser — `sh -c` unwrapping, chain splitting,
+  env/quote stripping, global-flag peeling — shared by `git-guard`,
+  `large-file-add-guard`, and `main-branch-guard`, which supply their own
+  `git_on_command` policy callback). Not event scripts: no `agents.yaml` entry,
+  skipped by `registration_test.sh`. Source them by path; do not register them as
+  hooks.
 - **`promptcuts.yaml`** stays at `hooks/promptcuts.yaml` (hardcoded consumer paths).
 
 ## The script alone does nothing
@@ -147,6 +152,12 @@ load its parser must fail closed, not run unchecked. Advisory (non-blocking)
 hooks may fail open (`exit 0`) instead. Use `${0%/*}` (not `dirname`) to locate
 the lib so the source works under a stripped PATH; fall back to the absolute
 `${HOME}/.agents/.system/hooks/lib/json-field.sh`.
+
+The same source-then-verify contract governs `hooks/lib/git-parse.sh`: a guard
+that inspects a git command string sources it (verifying `git_scan_segment` is
+defined) and `exit 2`s if the lib is unreachable — a guard that cannot parse a
+git command must refuse, not wave it through. `git-parse-sourcing_test.sh` pins
+this for all three consumers.
 
 ## Exit codes and streams
 

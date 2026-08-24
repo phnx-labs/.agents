@@ -19,6 +19,24 @@
 
 ### Changed
 
+- **One shared git-command parser for the four git guards (behavior-preserving).**
+  `git-guard`, `large-file-add-guard`, and `main-branch-guard` each open-coded the
+  same ~90 lines of git-command parsing — `sh -c` unwrapping, chain splitting on
+  `&& || ; |`, env-prefix and quote stripping, `git` detection, and global-flag
+  peeling — so a parser fix had to land in three places and had already drifted
+  (large-file grew a redundant `sh|bash` arm; main-branch grew `-C` capture the
+  others lacked). That machinery now lives once in `hooks/lib/git-parse.sh`
+  (`git_extract_sh_c_inner`, `git_split_chains`, `git_unwrap_quotes`,
+  `git_scan_segment`), which finds the git invocation and dispatches it to each
+  guard's own `git_on_command` policy callback — the WHAT/WHERE/large-add policy
+  is unchanged, only the shared plumbing moved. Consumers source the lib with the
+  same fail-closed contract as `json-field.sh` (#385): a guard that cannot load
+  the parser refuses (`exit 2`) rather than run a git command unchecked, pinned by
+  the new `hooks/lib/tests/git-parse-sourcing_test.sh`. The three guards shrank by
+  175 lines total; every existing guard test still passes unchanged.
+  `01-git-require-clean-tree` keeps its cheap substring match (routing it through
+  the parser would change what it blocks).
+
 - **main-branch-guard now hands over a worktree instead of describing one.** The
   refusal fires ~131 times across ~63 sessions, and each one is an agent that wanted
   to write, stopped, read a recipe, ran four commands, and retried. Measured recovery

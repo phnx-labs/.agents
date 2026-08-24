@@ -47,7 +47,9 @@ hooks/
   stop/                   Stop
     tests/                  its *_test.sh files
   notification/           Notification (+ multi-event hooks that start there)
-  lib/                    shared helpers sourced by hooks (not event scripts)
+  lib/                    shared helpers sourced by hooks (not event scripts):
+                            json-field.sh (JSON extractor), git-facts.sh (git-fact
+                            cache), git-parse.sh (git-command parser)
     tests/                  its *_test.sh files
   promptcuts.yaml         data for promptcuts (internal hook: expand-promptcuts)
   registration_test.sh    integrity check (top-level)
