@@ -42,6 +42,18 @@
   `feed-status-posts` already said. Its test asserted the old hardcode and now
   asserts the absence of it.
 
+- **merge-guard accepts `APPROVED`, the word its own message asks for
+  (RUSH-3099).** `pr-verdict.py` matched only the bare stem — `\bAPPROVE\b` — so
+  the trailing `D` in `APPROVED` (a word character) broke the closing boundary
+  and the past tense read as *no verdict at all*. A non-author review writing
+  `**APPROVED.**` was blocked even though the block message says *"Post a GitHub
+  APPROVED review."* Widened both the verdict pattern and the `CARRIED`
+  laundering filter to `\bAPPROVED?\b` in lockstep, so `APPROVED on #1234` is
+  still caught as laundering (the #2736 pattern). `APPROVES` stays a non-verdict
+  — it appears in prose about another reviewer's stance — keeping the word
+  boundary load-bearing. Tests pin both tenses, both laundering forms, and the
+  boundary.
+
 - **`agents usage` reference retired with the command (RUSH-3079).**
   `plugins/sessions/skills/insights/SKILL.md` pointed agents at the top-level
   `agents usage` for live quota; that command is removed in agents-cli as a
