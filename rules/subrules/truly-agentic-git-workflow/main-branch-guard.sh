@@ -348,30 +348,29 @@ case "$input" in *git*) ;; *) exit 0 ;; esac
 cmd=$(_json_field "$input" tool_input.command toolInput.command) || cmd=""
 [ -z "$cmd" ] && exit 0
 
-# Detect `sh|bash -c <inner>` at raw-string level (mirrors git-guard.sh) so a
-# quoted inner command isn't shredded by naive token splitting.
-extract_sh_c_inner() {
-  _raw=$1
-  _raw=$(printf '%s' "$_raw" | sed 's/^[[:space:]]*//')
-  while :; do
-    _pre=$_raw
-    _raw=$(printf '%s' "$_raw" | sed 's/^[A-Za-z_][A-Za-z_0-9]*=[^[:space:]]*[[:space:]][[:space:]]*//')
-    [ "$_raw" = "$_pre" ] && break
-  done
-  case "$_raw" in
-    sh\ *|bash\ *|/bin/sh\ *|/bin/bash\ *|/usr/bin/sh\ *|/usr/bin/bash\ *) ;;
-    *) return 1 ;;
-  esac
-  case "$_raw" in *" -c "*) ;; *) return 1 ;; esac
-  _inner=${_raw#* -c }
-  _inner=$(printf '%s' "$_inner" | sed 's/^[[:space:]]*//')
-  case "$_inner" in
-    \"*\") _inner=${_inner#\"}; _inner=${_inner%\"} ;;
-    \'*\') _inner=${_inner#\'}; _inner=${_inner%\'} ;;
-  esac
-  _dash_c_inner=$_inner
-  return 0
-}
+# --- shared git-command parser ---------------------------------------------
+# The git-invocation finder — `sh|bash -c` unwrapping (git_extract_sh_c_inner),
+# chain splitting (git_split_chains), and the env/quote/global-flag reducer
+# (git_scan_segment, which captures any `-C <path>` into GIT_C_PATH) — lives in
+# hooks/lib/git-parse.sh (one definition, shared with git-guard and
+# large-file-add-guard). Source it relative to this script, fall back to the
+# absolute system-install path, then verify — this guard is the primary-tree
+# choke point, so if it cannot parse it must refuse rather than allow (fail
+# CLOSED, exit 2). Same source-then-verify contract used for json-field.sh and
+# git-facts.sh above.
+_LIB_DIR=$(CDPATH= cd "${0%/*}" 2>/dev/null && pwd) || _LIB_DIR=""
+for _cand in "$_LIB_DIR/../../../hooks/lib/git-parse.sh" "${HOME}/.agents/.system/hooks/lib/git-parse.sh"; do
+  if [ -f "$_cand" ]; then
+    # shellcheck source=../../../hooks/lib/git-parse.sh
+    . "$_cand"
+    if command -v git_scan_segment >/dev/null 2>&1; then break; fi
+  fi
+done
+unset _LIB_DIR _cand
+if ! command -v git_scan_segment >/dev/null 2>&1; then
+  printf 'main-branch-guard: shared git-parse lib not found — refusing the tool call unchecked (fail-closed). Ensure ~/.agents/.system/hooks/lib/git-parse.sh is present.\n' >&2
+  exit 2
+fi
 
 # --- `-C <path>` variable resolution (RUSH-2743) -----------------------------
 # The guard parses command STRINGS, so `git -C "$REPO" commit` reaches it with
@@ -672,69 +671,19 @@ check_worktree_base() {
   esac
 }
 
-check_segment() {
-  _seg=$1
-
-  if extract_sh_c_inner "$_seg"; then
-    if ! check_command_string "$_dash_c_inner"; then return 1; fi
-    return 0
-  fi
-
-  unset IFS
-  # shellcheck disable=SC2086
-  set -- $_seg
-
-  while [ $# -gt 0 ]; do
-    case "$1" in
-      *=*) shift ;;
-      *) break ;;
-    esac
-  done
-  [ $# -eq 0 ] && return 0
-
-  first=$1
-  case "$first" in
-    \"*\") first=$(printf '%s' "$first" | sed 's/^"\(.*\)"$/\1/') ;;
-    \'*\') first=$(printf '%s' "$first" | sed "s/^'\(.*\)'$/\1/") ;;
-  esac
-  case "$first" in
-    git|*/git) ;;
-    *) return 0 ;;
-  esac
+# WHERE policy: given a git subcommand and its args (git-parse has stripped the
+# sh -c wrapper, env prefix, quotes, and git's global flags, and captured any
+# `-C <path>` into GIT_C_PATH), block `git commit|add|stage` aimed at the primary
+# working tree and vet `git worktree add -b/-B`. Invoked by git_scan_segment.
+git_on_command() {
+  _sub=$1
   shift
-
-  # Peel git global flags before the subcommand; capture -C <path>.
-  cpath=""
-  while [ $# -gt 0 ]; do
-    case "$1" in
-      -C)            shift
-                     if [ $# -gt 0 ]; then
-                       cpath=$1; shift
-                       # A Windows-style path with a bare drive letter never
-                       # needs quoting, but callers may still quote it (e.g. it
-                       # contains spaces) — strip the same way `first` is above,
-                       # otherwise the leading `"`/`'` breaks the absolute-path
-                       # glob in resolve_repo_dir and it's treated as relative.
-                       case "$cpath" in
-                         \"*\") cpath=$(printf '%s' "$cpath" | sed 's/^"\(.*\)"$/\1/') ;;
-                         \'*\') cpath=$(printf '%s' "$cpath" | sed "s/^'\(.*\)'$/\1/") ;;
-                       esac
-                     fi ;;
-      --git-dir=*|--work-tree=*|--namespace=*) shift ;;
-      --git-dir|--work-tree|--namespace)      shift; [ $# -gt 0 ] && shift ;;
-      -c)            shift; [ $# -gt 0 ] && shift ;;
-      --no-pager|--paginate|--no-replace-objects|--bare|--exec-path=*|--literal-pathspecs|--no-optional-locks)
-                     shift ;;
-      -*)            shift ;;
-      *)             break ;;
-    esac
-  done
-  [ $# -eq 0 ] && return 0
 
   # Expand a leading `$NAME`/`${NAME}` in the -C target from assignments seen
   # earlier in this command string (RUSH-2743). If a `$` survives, the target
   # is unresolvable — the checks below must fail toward the PARSED target,
   # never fall back to the session cwd.
+  cpath=$GIT_C_PATH
   _c_unres=0
   case "$cpath" in
     *'$'*)
@@ -746,9 +695,7 @@ check_segment() {
       fi ;;
   esac
 
-  sub=$1
-  shift
-  case "$sub" in
+  case "$_sub" in
     commit|add|stage)
       # RUSH-2743: an explicit -C target that is unresolvable or nonexistent
       # never falls back to the session cwd. Before this rule, the
@@ -762,7 +709,7 @@ check_segment() {
         return 0
       fi
       if in_primary_tree "$_repo"; then
-        set_deny_reason "\`git $sub\`"
+        set_deny_reason "\`git $_sub\`"
         return 1
       fi
       return 0
@@ -777,6 +724,17 @@ check_segment() {
   return 0
 }
 
+# Check one already-split segment: unwrap an `sh|bash -c` wrapper (recurse), else
+# hand the segment to the shared git-parse reducer, which dispatches any git
+# invocation to git_on_command above.
+check_segment() {
+  if git_extract_sh_c_inner "$1"; then
+    check_command_string "$_dash_c_inner"
+    return
+  fi
+  git_scan_segment "$1"
+}
+
 check_command_string() {
   _input=$1
   # Heredoc bodies are data, not commands — drop terminated ones before the
@@ -785,16 +743,10 @@ check_command_string() {
     *'<<'*) _input=$(printf '%s\n' "$_input" | _mbg_strip_heredoc_bodies) ;;
   esac
   IFS=$(printf ' \t\n.'); IFS=${IFS%.}
-  _chains=$(printf '%s' "$_input" | sed 's/&&/\
-/g; s/||/\
-/g; s/;/\
-/g; s/|/\
-/g')
-
   OLDIFS=$IFS
   IFS='
 '
-  for seg in $_chains; do
+  for seg in $(git_split_chains "$_input"); do
     seg=$(printf '%s' "$seg" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')
     [ -z "$seg" ] && continue
     # A plain `NAME=value` segment feeds later `-C "$NAME"` resolution; it is

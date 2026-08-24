@@ -54,6 +54,27 @@ if ! command -v _json_field >/dev/null 2>&1; then
   exit 2
 fi
 
+# --- shared git-command parser ---------------------------------------------
+# The git-invocation finder (sh -c unwrapping, chain splitting, quote/env
+# stripping, global-flag peeling) lives in hooks/lib/git-parse.sh (one
+# definition, shared with git-guard and main-branch-guard). Source it like
+# json-field.sh above, then verify — a guard that cannot parse must refuse, not
+# wave a `git add` through, so a missing lib fails CLOSED (exit 2). Only git-add
+# payloads reach here (past the fast path), so nothing else pays the source cost.
+_LIB_DIR=$(CDPATH= cd "${0%/*}" 2>/dev/null && pwd) || _LIB_DIR=""
+for _cand in "$_LIB_DIR/../lib/git-parse.sh" "${HOME}/.agents/.system/hooks/lib/git-parse.sh"; do
+  if [ -f "$_cand" ]; then
+    # shellcheck source=../lib/git-parse.sh
+    . "$_cand"
+    if command -v git_scan_segment >/dev/null 2>&1; then break; fi
+  fi
+done
+unset _LIB_DIR _cand
+if ! command -v git_scan_segment >/dev/null 2>&1; then
+  printf 'large-file-add-guard: shared git-parse lib not found — refusing to run a git add unchecked (fail-closed). Ensure ~/.agents/.system/hooks/lib/git-parse.sh is present.\n' >&2
+  exit 2
+fi
+
 if ! cmd=$(_json_field "$input" tool_input.command); then
   # No parser: fail closed only when the payload clearly looks like git add —
   # we already matched *git*add* above.
@@ -162,99 +183,10 @@ check_path() {
   return 0
 }
 
-# Detect `sh|bash -c <inner>` at raw string level (see git-guard.sh).
-extract_sh_c_inner() {
-  _raw=$1
-  _raw=$(printf '%s' "$_raw" | sed 's/^[[:space:]]*//')
-  while :; do
-    _pre=$_raw
-    _raw=$(printf '%s' "$_raw" | sed 's/^[A-Za-z_][A-Za-z_0-9]*=[^[:space:]]*[[:space:]][[:space:]]*//')
-    [ "$_raw" = "$_pre" ] && break
-  done
-  case "$_raw" in
-    sh\ *|bash\ *|/bin/sh\ *|/bin/bash\ *|/usr/bin/sh\ *|/usr/bin/bash\ *) ;;
-    *) return 1 ;;
-  esac
-  case "$_raw" in
-    *" -c "*) ;;
-    *) return 1 ;;
-  esac
-  _inner=${_raw#* -c }
-  _inner=$(printf '%s' "$_inner" | sed 's/^[[:space:]]*//')
-  case "$_inner" in
-    \"*\") _inner=${_inner#\"}; _inner=${_inner%\"} ;;
-    \'*\') _inner=${_inner#\'}; _inner=${_inner%\'} ;;
-  esac
-  _dash_c_inner=$_inner
-  return 0
-}
-
-check_segment() {
-  _seg=$1
-
-  if extract_sh_c_inner "$_seg"; then
-    if ! check_command_string "$_dash_c_inner"; then return 1; fi
-    return 0
-  fi
-
-  unset IFS
-  # shellcheck disable=SC2086
-  set -- $_seg
-
-  while [ $# -gt 0 ]; do
-    case "$1" in
-      *=*) shift ;;
-      *) break ;;
-    esac
-  done
-  [ $# -eq 0 ] && return 0
-
-  first=$1
-  case "$first" in
-    \"*\") first=$(printf '%s' "$first" | sed 's/^"\(.*\)"$/\1/') ;;
-    \'*\') first=$(printf '%s' "$first" | sed "s/^'\(.*\)'$/\1/") ;;
-  esac
-
-  case "$first" in
-    sh|bash|/bin/sh|/bin/bash|/usr/bin/sh|/usr/bin/bash)
-      shift
-      while [ $# -gt 0 ]; do
-        case "$1" in
-          -c)
-            shift
-            [ $# -eq 0 ] && return 0
-            if ! check_command_string "$1"; then return 1; fi
-            return 0
-            ;;
-          -*) shift ;;
-          *) break ;;
-        esac
-      done
-      return 0
-      ;;
-  esac
-
-  case "$first" in
-    git|*/git) ;;
-    *) return 0 ;;
-  esac
-  shift
-
-  # Peel git's global flags.
-  while [ $# -gt 0 ]; do
-    case "$1" in
-      -C)            shift; [ $# -gt 0 ] && shift ;;
-      --git-dir=*|--work-tree=*|--namespace=*) shift ;;
-      --git-dir|--work-tree|--namespace)      shift; [ $# -gt 0 ] && shift ;;
-      -c)            shift; [ $# -gt 0 ] && shift ;;
-      --no-pager|--paginate|--no-replace-objects|--bare|--exec-path=*|--literal-pathspecs|--no-optional-locks)
-                     shift ;;
-      -*)            shift ;;
-      *)             break ;;
-    esac
-  done
-  [ $# -eq 0 ] && return 0
-
+# `git add`/`git stage` policy: given the subcommand and its args (git-parse has
+# already stripped the sh -c wrapper, env prefix, quotes, and git's global
+# flags), check every explicit path argument. Invoked by git_scan_segment.
+git_on_command() {
   sub=$1
   shift
   case "$sub" in
@@ -284,21 +216,25 @@ check_segment() {
   return 0
 }
 
-check_command_string() {
-  _input=$1
-  # Restore POSIX-default IFS before reading it — check_segment may have
-  # unset IFS, and `OLDIFS=$IFS` under `set -u` would error on unset.
-  IFS=$(printf ' \t\n.'); IFS=${IFS%.}
-  _chains=$(printf '%s' "$_input" | sed 's/&&/\
-/g; s/||/\
-/g; s/;/\
-/g; s/|/\
-/g')
+# Check one already-split segment: unwrap an `sh|bash -c` wrapper (recurse), else
+# hand the segment to the shared git-parse reducer, which dispatches any git
+# invocation to git_on_command above.
+check_segment() {
+  if git_extract_sh_c_inner "$1"; then
+    check_command_string "$_dash_c_inner"
+    return
+  fi
+  git_scan_segment "$1"
+}
 
+check_command_string() {
+  # Restore POSIX-default IFS before reading it — git_scan_segment leaves IFS
+  # unset, and `OLDIFS=$IFS` under `set -u` would error on unset.
+  IFS=$(printf ' \t\n.'); IFS=${IFS%.}
   OLDIFS=$IFS
   IFS='
 '
-  for seg in $_chains; do
+  for seg in $(git_split_chains "$1"); do
     seg=$(printf '%s' "$seg" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')
     [ -z "$seg" ] && continue
     if ! check_segment "$seg"; then
