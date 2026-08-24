@@ -8,11 +8,11 @@
 # through. This is the same source-then-verify contract main-branch-guard uses
 # for git-facts.sh.
 #
-# History: this body was copy-pasted verbatim into 12 hook scripts (git-guard,
-# main-branch-guard, merge-guard, rm-guard, secrets-guard, footer-guard,
+# History: this body was copy-pasted verbatim into 11 hook scripts (git-guard,
+# main-branch-guard, merge-guard, rm-guard, secrets-guard,
 # large-file-add-guard, teams-roster-guard, pr-description-reminder,
 # public-artifact-guard, 01-git-require-clean-tree, 09-git-pull-forward). A
-# parser fix therefore had to land in 12 places and demonstrably did not — the
+# parser fix therefore had to land in 11 places and demonstrably did not — the
 # camelCase alternate-path arg reached main-branch-guard first and the rest
 # open-coded the same fallback at their call sites instead. One definition, one
 # place to fix.
