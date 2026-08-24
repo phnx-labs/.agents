@@ -2,6 +2,21 @@
 
 ## [Unreleased]
 
+### Removed
+
+- **Cut `footer-guard` — a standing deterrent the rule has fully internalized.**
+  Across 7,493 fleet transcripts it fired **0 times**: no agent has attempted the
+  banned "Generated with Claude Code" footer in the measured corpus, because the
+  `no-pr-footer` prose rule alone carries it. Its first-ever fire (while the
+  `hooks-battlefield` analysis was being written) was a **false positive** — it
+  matched the banned literal inside documentation *about* the guard. A guard whose
+  only recorded fire is a false positive is a tax, not a deterrent: it added ~18 ms
+  to every `Bash` call and risked blocking docs that merely quote the string.
+  The **`no-pr-footer` rule stays as prose** (`rules/subrules/no-pr-footer/rule.md`)
+  — enforcement was already the rule, not the hook. Removes `footer-guard.sh`, its
+  test, and its `hooks.yaml`; drops footer-guard from the shared-lib sourcing test
+  and the 12→11 consumer list. Part of the 14→8 hook-corpus refinement.
+
 ### Changed
 
 - **main-branch-guard now hands over a worktree instead of describing one.** The

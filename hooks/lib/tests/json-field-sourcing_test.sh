@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Regression test for the lib-sourcing fail-safe added when _json_field moved to
-# hooks/lib/json-field.sh. Each of the 12 consumers sources the lib and, if it
+# hooks/lib/json-field.sh. Each of the 11 consumers sources the lib and, if it
 # cannot be found, must take its declared fail-safe: block guards refuse
 # (exit 2), advisory hooks skip (exit 0). The shipped "no JSON parser" tests
 # strip PATH but leave the lib file on disk, so they exercise the downstream
@@ -32,7 +32,6 @@ hooks/pre-tool-use/public-artifact-guard.sh|2|git add .agents/artifacts/2026-08-
 hooks/pre-tool-use/01-git-require-clean-tree.sh|2|git pull
 rules/subrules/truly-agentic-git-workflow/main-branch-guard.sh|2|git commit -m x
 rules/subrules/gh-merge-guard/merge-guard.sh|2|gh pr merge --admin 1
-rules/subrules/no-pr-footer/footer-guard.sh|2|gh pr create --body x
 rules/subrules/parallel-teams/teams-roster-guard.sh|0|agents teams add t kimi x
 rules/subrules/truly-agentic-git-workflow/pr-description-reminder.sh|0|gh pr create --body x
 "
