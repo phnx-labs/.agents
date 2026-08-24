@@ -43,46 +43,28 @@ _to() {
   fi
 }
 
-# --- portable JSON field extractor (jq -> node -> python) -------------------
-# jq is absent on Windows git-bash; the old `… | jq …` extraction then returned
-# empty and this guard fail-OPEN'd (waved `gh pr merge --admin` through). Prefer
-# jq (fast, present on mac/Linux), fall back to node (always shipped with
-# agents-cli) then python. Returns 1 ONLY when NO parser exists -> fail CLOSED.
-#
-# Harness portability: Claude Code sends snake_case (tool_input.command); Grok
-# CLI sends camelCase (toolInput.command). A call passes the snake_case path as
-# $2 and its camelCase equivalent as an optional $3 — the first path that
-# resolves non-empty wins. Keeping the fallback in the extractor keeps all three
-# parser branches uniform.
-_json_field() {  # $1=json  $2=dotted.path  [$3=alternate.dotted.path]
-  if command -v jq >/dev/null 2>&1; then
-    if [ -n "${3:-}" ]; then
-      printf '%s' "$1" | jq -r "((.$2) // (.$3)) // empty" 2>/dev/null
-    else
-      printf '%s' "$1" | jq -r "(.$2) // empty" 2>/dev/null
-    fi
-    return 0
+# --- shared JSON field extractor -------------------------------------------
+# _json_field lives in hooks/lib/json-field.sh (one definition; formerly copied
+# into 12 hook scripts). Source it relative to this script, fall back to the
+# absolute system-install path, then verify it is defined — this guard blocks
+# admin-bypass merges, so if it cannot parse it must refuse rather than allow
+# (fail CLOSED, exit 2). ${0%/*} (POSIX, no subprocess) locates the lib even
+# when PATH carries no coreutils.
+_LIB_DIR=$(CDPATH= cd "${0%/*}" 2>/dev/null && pwd) || _LIB_DIR=""
+for _cand in "$_LIB_DIR/../../../hooks/lib/json-field.sh" "${HOME}/.agents/.system/hooks/lib/json-field.sh"; do
+  if [ -f "$_cand" ]; then
+    # shellcheck source=../../../hooks/lib/json-field.sh
+    . "$_cand"
+    if command -v _json_field >/dev/null 2>&1; then break; fi
   fi
-  if command -v node >/dev/null 2>&1; then
-    printf '%s' "$1" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const dig=(o,p)=>{for(const k of p.split("."))o=(o==null?null:o[k]);return o};try{let o=JSON.parse(s);let v=dig(o,process.argv[1]);if((v==null||v==="")&&process.argv[2])v=dig(o,process.argv[2]);process.stdout.write(v==null?"":String(v))}catch(e){}})' "$2" "${3:-}" 2>/dev/null; return 0
-  fi
-  for _py in python3 python; do
-    command -v "$_py" >/dev/null 2>&1 && "$_py" -c '' >/dev/null 2>&1 || continue
-    printf '%s' "$1" | "$_py" -c 'import json,sys
-try: o=json.load(sys.stdin)
-except Exception: o=None
-def dig(o,p):
-    for k in p.split("."):
-        o=o.get(k) if isinstance(o,dict) else None
-    return o
-v=dig(o,sys.argv[1])
-if (v is None or v=="") and len(sys.argv)>2 and sys.argv[2]:
-    v=dig(o,sys.argv[2])
-sys.stdout.write("" if v is None else str(v))' "$2" "${3:-}" 2>/dev/null
-    return 0
-  done
-  return 1
-}
+done
+unset _LIB_DIR _cand
+if ! command -v _json_field >/dev/null 2>&1; then
+  printf 'merge-guard: shared json-field lib not found — cannot verify the merge command; refusing (fail-closed). Ensure ~/.agents/.system/hooks/lib/json-field.sh is present.\n' >&2
+  exit 2
+fi
+
+_hook_skip_plan_mode "$input" && exit 0
 
 # Fast path: a command that never mentions "merge" can't be a bypass merge.
 case "$input" in
@@ -173,8 +155,9 @@ case "$norm" in
     # non-author-review convention with "Non-author APPROVE on #2731" — an
     # approval carried from a DIFFERENT PR. A verdict only counts on the PR it
     # was posted on. Accept either a real GitHub APPROVED review, or the fleet
-    # convention of an APPROVE verdict comment on this PR that is not a
-    # carried-from citation. Fail OPEN on anything the guard cannot resolve
+    # convention of a non-carried APPROVE verdict in a COMMENTED review body
+    # (`gh pr review --comment`) or an issue comment on this PR. Fail OPEN on
+    # anything the guard cannot resolve
     # (no number, no repo, API error, rate limit) — a review guard must never
     # block a legit merge because GitHub hiccuped; --admin blocking above never
     # fails open.
@@ -185,7 +168,10 @@ case "$norm" in
       _pr_repo=$(printf '%s' "$_pr_url" | sed -E 's#https://github\.com/([^/]+/[^/]+)/pull/.*#\1#')
     else
       _pr_num=$(printf '%s' "$cmd" | grep -oE 'pr merge[[:space:]]+[0-9]+' | grep -oE '[0-9]+' | head -1)
-      _pr_repo=$(printf '%s' "$cmd" | grep -oE '\-\-repo[= ][A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+' | sed -E 's/--repo[= ]//' | head -1)
+      # Both spellings gh accepts: --repo and -R. Missing -R sent the verdict
+      # probe to the CWD repo's origin and blocked a legitimate merge whose
+      # APPROVE lived on the -R repo's PR (RUSH-3032; hit live 2026-08-22).
+      _pr_repo=$(printf '%s' "$cmd" | grep -oE '(\-\-repo[= ]|-R[= ]?)[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+' | sed -E 's/(--repo|-R)[= ]?//' | head -1)
       if [ -z "$_pr_repo" ]; then
         _pr_repo=$(git remote get-url origin 2>/dev/null | sed -E 's#(git@github\.com:|https://github\.com/)([^/]+/[^/.]+)(\.git)?#\2#' | head -1)
       fi
@@ -203,7 +189,7 @@ case "$norm" in
         _GUARD_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
         _verdict=$(printf '%s\n---AGENTS-SPLIT---\n%s' "$_reviews" "$_comments" | python3 "$_GUARD_DIR/pr-verdict.py" 2>/dev/null) || _verdict="ok"
         if [ "$_verdict" = "missing" ]; then
-          printf '%s\n' "Blocked: no non-author review verdict found ON this PR ($_pr_repo#$_pr_num). A GitHub APPROVED review or an APPROVE verdict comment must be posted on the PR being merged — a verdict 'carried from' another PR satisfies nothing (the #2736 laundering pattern). Get the automated reviewer's verdict or spawn a non-author subagent review on THIS PR, then retry." >&2
+          printf '%s\n' "Blocked: no non-author review verdict found ON this PR ($_pr_repo#$_pr_num). Post a GitHub APPROVED review, or an APPROVE verdict in a COMMENTED review body (gh pr review --comment) or an issue comment (gh pr comment), ON the PR being merged — a verdict 'carried from' another PR satisfies nothing (the #2736 laundering pattern). Get the automated reviewer's verdict or spawn a non-author subagent review on THIS PR, then retry." >&2
           exit 2
         fi
       fi

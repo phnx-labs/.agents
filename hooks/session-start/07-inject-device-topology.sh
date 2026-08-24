@@ -10,10 +10,12 @@
 # We inject two things from `agents devices list`:
 #   1. Reachability (from `--json`, always fast) — where each box is and whether
 #      it is online / relayed / offline.
-#   2. Live resource headroom (load / memory / a headroom badge, plus a fleet
-#      capacity summary) — so the agent can pick an idle box when offloading work
-#      off this machine instead of guessing. Stats come from the rendered table
-#      (`--json` is registry-only and carries no live probe). The probe SSHes each
+#   2. Live resource headroom (load / memory / disk / a headroom badge, plus a
+#      fleet capacity summary) and each box's one-line description (what it is
+#      FOR) — so the agent can pick a fitting idle box when offloading work
+#      off this machine instead of guessing. Both come from the SAME `--json`
+#      call: it embeds the live `health` fields as well as the registry, so
+#      there is no second command and no table to parse. That call SSHes each
 #      reachable box, bounded at ~2.5s/box in parallel, so worst case is a couple
 #      of seconds; if it fails or is empty we fall back to reachability-only.
 #
@@ -31,13 +33,9 @@ case "$(uname -s 2>/dev/null)" in
 esac
 
 DEVICES_JSON=$(agents devices list --json 2>/dev/null)
-# Rendered table — carries the live load/mem/headroom columns and the fleet
-# capacity summary that `--json` omits. chalk auto-strips its color codes when
-# stdout is not a TTY (as here), so the capture is plain text.
-DEVICES_TABLE=$(agents devices list 2>/dev/null)
 
-SELF_HOST="$SELF_HOST" SELF_OS="$SELF_OS" DEVICES_TABLE="$DEVICES_TABLE" python3 -c '
-import json, os, re, sys
+SELF_HOST="$SELF_HOST" SELF_OS="$SELF_OS" python3 -c '
+import json, os, sys
 
 self_host = os.environ.get("SELF_HOST", "").strip()
 self_os = os.environ.get("SELF_OS", "").strip()
@@ -52,34 +50,75 @@ if raw:
     except Exception:
         devices = []
 
-# Parse the rendered table into a per-device stats map + the fleet summary line.
-# Each data row looks like:  "[▸ ]<name> <platform> <load>% <mem>% <badge> <word>[ ← this machine]"
-# Offline/no-stats rows have no percentages and are simply skipped (the row still
-# renders from JSON reachability, just without a stats suffix).
-stats = {}          # name -> "<load>% load / <mem>% mem / <headroom>"
-fleet = ""
-HEADROOM_WORDS = ("idle", "light", "busy", "loaded")
-for rawline in os.environ.get("DEVICES_TABLE", "").splitlines():
-    s = rawline.strip()
-    if not s:
+# Stats come from `--json`, NOT from the rendered table.
+#
+# This used to scrape the human table with regexes, and that approach produced
+# four separate fabrication bugs — because the row ENDS in an operator-supplied
+# free-text description, so every field found by searching the line could be fed
+# by prose: a disk percentage read out of "spot instance, 20% cheaper"; a box at
+# 95% load reported "idle" because its description said "mostly idle overnight";
+# an explicitly-offline box given load/mem from its own text; and, after that was
+# guarded by looking for a badge glyph, a description carrying its own glyph
+# reviving the same bug. Each fix bounded one more scan; none of them removed the
+# reason a scan could go wrong.
+#
+# `agents devices list --json` carries every field this needs — `health.loadPercent`,
+# `health.memPercent`, `health.diskUsedPercent`, `health.headroom`, plus `ncpu` and
+# the byte totals for the capacity line — and it is already fetched above. Reading
+# typed values makes the whole class impossible: a missing field is absent, never a
+# number scraped out of a sentence. Older CLIs simply carry fewer keys, so the
+# output degrades to what that version actually knows.
+def _fmt_bytes(n):
+    if not isinstance(n, (int, float)) or n < 0:
+        return None
+    v, units = float(n), ["B", "K", "M", "G", "T", "P"]
+    i = 0
+    while v >= 1024 and i < len(units) - 1:
+        v /= 1024.0
+        i += 1
+    return f"{round(v)}{units[i]}" if (v >= 100 or i <= 1) else f"{v:.1f}".rstrip("0").rstrip(".") + units[i]
+
+stats = {}          # name -> "<load>% load / <mem>% mem [/ <disk>% disk] / <headroom>"
+cores = mem_free = mem_total = disk_free = 0
+reachable = 0
+for d in devices:
+    h = d.get("health") or {}
+    if not h.get("reachable"):
         continue
-    if s.startswith("Fleet capacity:"):
-        fleet = s
-        continue
-    # Drop the leading self marker ("▸ ") if present, then match name + platform.
-    s = s.lstrip("▸ ").strip()
-    m = re.match(r"^(\S+)\s+(macos|linux|windows)\b(.*)$", s)
-    if not m:
-        continue
-    name, rest = m.group(1), m.group(3)
-    pcts = re.findall(r"(\d+)%", rest)
-    if len(pcts) < 2:
-        continue  # no live stats for this box (offline / probe failed)
-    hr = next((w for w in HEADROOM_WORDS if re.search(r"\b" + w + r"\b", rest)), None)
-    detail = f"{pcts[0]}% load / {pcts[1]}% mem"
-    if hr:
+    reachable += 1
+    if isinstance(h.get("ncpu"), int):
+        cores += h["ncpu"]
+    for key, acc in (("memFreeBytes", "mem_free"), ("memTotalBytes", "mem_total"), ("diskFreeBytes", "disk_free")):
+        v = h.get(key)
+        if isinstance(v, (int, float)):
+            if acc == "mem_free":
+                mem_free += v
+            elif acc == "mem_total":
+                mem_total += v
+            else:
+                disk_free += v
+    load, memp = h.get("loadPercent"), h.get("memPercent")
+    if not isinstance(load, (int, float)) or not isinstance(memp, (int, float)):
+        continue  # no live numbers for this box on this CLI version
+    detail = f"{round(load)}% load / {round(memp)}% mem"
+    diskp = h.get("diskUsedPercent")
+    if isinstance(diskp, (int, float)):
+        detail += f" / {round(diskp)}% disk"
+    hr = h.get("headroom")
+    if isinstance(hr, str) and hr:
         detail += f" / {hr}"
-    stats[name] = detail
+    stats[d.get("name")] = detail
+
+fleet = ""
+if reachable:
+    bits = [f"{cores} cores"] if cores else []
+    if mem_total:
+        pct = round(mem_free / mem_total * 100)
+        bits.append(f"{_fmt_bytes(mem_free)} free / {_fmt_bytes(mem_total)} RAM ({pct}% free)")
+    if disk_free:
+        bits.append(f"{_fmt_bytes(disk_free)} disk free")
+    if bits:
+        fleet = "Fleet capacity: " + " · ".join(bits) + f" across {reachable} reachable device" + ("" if reachable == 1 else "s")
 
 # Header line always establishes "where am I".
 where = f"**{self_host}**" if self_host else "an unregistered host"
@@ -92,7 +131,7 @@ if devices:
     have_stats = any(d.get("name") in stats for d in devices)
     lines.append("")
     if have_stats:
-        lines.append("Machines you can reach (from `agents devices`), with live load / memory / headroom:")
+        lines.append("Machines you can reach (from `agents devices`), with live load / memory / disk / headroom:")
     else:
         lines.append("Machines you can reach (from `agents devices`):")
     lines.append("")
@@ -109,6 +148,11 @@ if devices:
         row = f"- {name} — {plat} — {reach}"
         if name in stats:
             row += f" — {stats[name]}"
+        # One-line operator description (newer CLIs: top-level `description` in
+        # `devices list --json`; absent on older ones) — what the box is FOR.
+        desc = d.get("description")
+        if isinstance(desc, str) and desc:
+            row += f" — {desc}"
         lines.append(row)
     if fleet:
         lines.append("")
@@ -135,10 +179,17 @@ if devices:
             f"The user sits at **{interactive}** (interactive host). To show them anything "
             f"visual (an HTML plan, a screenshot, a dashboard), deliver it THERE: "
             f"`scp <file> {interactive}:/tmp/` then show it in ONE reused browser tab — "
-            f"`agents ssh {interactive} '"'"'agents browser navigate --url file:///tmp/<file>'"'"'`. "
+            f"`agents browser navigate --device {interactive} --url file:///tmp/<file>`. "
             f"Re-run that to refresh the SAME tab in place; a raw `open` spawns a new "
-            f"duplicate tab every call. Fall back to `agents ssh {interactive} "
-            f"'"'"'open /tmp/<file>'"'"'` only if that host has no drivable browser profile. "
+            f"duplicate tab every call. Use `--device`, NOT "
+            f"`agents ssh {interactive} '"'"'agents browser ...'"'"'` — the ssh form skips the "
+            f"fleet dispatch path, so the target never sees the remote-control consent "
+            f"marker. That box also holds the logged-in browser profile for this fleet: "
+            f"`agents browser profiles logins --device {interactive}` shows which "
+            f"services it is signed in to, so you can act as the user rather than "
+            f"launching a logged-out browser here. "
+            f"Fall back to `agents ssh {interactive} '"'"'open /tmp/<file>'"'"'` only if "
+            f"that host has no drivable browser profile. "
             f"Do not open it locally — the user is not watching this machine."
         )
     elif interactive:
@@ -176,7 +227,8 @@ if devices:
     lines.append(
         "Browser: a bare `agents browser start` on any machine uses THAT machine"
         "'"'"'s configured profile — never pass --profile and never name a browser binary; "
-        "the machine knows."
+        "the machine knows. To drive another box, add `--device <host>` (still no "
+        "--profile: the target picks its own)."
     )
 
 print("\n".join(lines))

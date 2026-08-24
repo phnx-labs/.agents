@@ -32,7 +32,13 @@ run_guard() {
   local cmdstr="$1" path_override="${2:-}"
   local json esc_cmd errfile
   esc_cmd=$(json_escape "$cmdstr")
-  json=$(printf '{"tool_input":{"command":"%s"}}' "$esc_cmd")
+  # KEY_STYLE=camel emits a Grok-shaped payload (toolName/toolInput); default
+  # snake_case is byte-identical to before.
+  if [ "${KEY_STYLE:-snake}" = camel ]; then
+    json=$(printf '{"toolName":"Bash","toolInput":{"command":"%s"}}' "$esc_cmd")
+  else
+    json=$(printf '{"tool_input":{"command":"%s"}}' "$esc_cmd")
+  fi
   errfile="$SANDBOX/err.$$.$RANDOM"
   if [ -n "$path_override" ]; then
     RC=0; printf '%s' "$json" | PATH="$path_override" AGENTS_DISABLE_FRICTION_LOG=1 "$SH_BIN" "$HOOK" 2>"$errfile" || RC=$?
@@ -411,6 +417,18 @@ for t in cat sed awk head tr printf; do
 done
 run_guard "git add $ART/monetize-agents-cli.md" "$NOPARSE"
 check "fails CLOSED when no jq/node/python is available" 2 "$RC"
+
+# --- Harness portability: Grok CLI camelCase payloads (toolName/toolInput) ----
+# Grok delivers camelCase hook stdin; the guard MUST deny publishing a
+# confidential artifact exactly as for the snake_case twins above, and MUST NOT
+# false-block an ordinary one. Regression fixture for the dual-path extraction
+# (efc7fef) the Bash guards previously carried untested.
+KEY_STYLE=camel
+run_guard "git add $ART/notes.md"
+check "camelCase: confidential 'confidential: true' add still denied" 2 "$RC"
+run_guard "git add $ART/plan-guard-design.md"
+check "camelCase: ordinary artifact (confidential only in prose) still allowed" 0 "$RC"
+KEY_STYLE=snake
 
 printf '\n%s passed, %s failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]

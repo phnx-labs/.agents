@@ -418,7 +418,24 @@ check "mixed create+review only gates the created PR" "$rc" "0"
 #    with the old top-level read the turn count was 0 and this never blocked.
 rc=$(FAKE_GH_STATE=MERGED run_hook "$T" "All done. The widget feature is merged." false)
 check "done-claim on real transcript shape blocks for self-audit" "$rc" "2"
-grep -q 'agents feed post.*--level important' "$SANDBOX/stderr" && echo "ok   - completion post is phone-worthy" || { echo "FAIL - completion post is not important"; fail=1; }
+# The reminder asks for a post, but must NOT prescribe --level important: that
+# level is forwarded to the owner's phone by feed.broadcast.owner, and this gate
+# fires on every done-claim regardless of whether the session shipped anything
+# worth a buzz (811 fires / 272 sessions measured 2026-08-23). The level is the
+# agent's call from the outcome; the hook only asks for the record.
+grep -q 'agents feed post' "$SANDBOX/stderr" && echo "ok   - completion asks for a feed post" || { echo "FAIL - completion post not requested"; fail=1; }
+# The recognizer, factored out so the mutation probe below exercises the SAME
+# expression the assertion uses. `[^\n]*` was wrong here: in ERE a bracket
+# expression excludes the literal characters \ and n, so it failed to match the
+# very line it was meant to catch and the guard could never fire.
+_hardcodes_ping() { grep -qE 'agents feed post.*--level important' "$1"; }
+_hardcodes_ping "$SANDBOX/stderr" && { echo "FAIL - reminder still hardcodes --level important"; fail=1; } || echo "ok   - reminder does not hardcode a phone ping"
+
+# Mutation probe: a guard assertion that cannot fail is not an assertion. Feed
+# the recognizer the exact line this PR removed and require it to catch it.
+_mut="$SANDBOX/mutation-probe"
+printf 'update: agents feed post --title "<outcome>" "<delivered + next step>" --level important\n' > "$_mut"
+_hardcodes_ping "$_mut" && echo "ok   - the ping recognizer catches the removed line" || { echo "FAIL - recognizer cannot catch the old hardcode; the guard above is dead"; fail=1; }
 grep -qi "you claimed this work is done" "$SANDBOX/stderr" && echo "ok   - done-claim gate cites the original request" || { echo "FAIL - no done-claim gate message"; fail=1; }
 
 # 8a. The concise completion nudge keeps only the load-bearing instructions.
@@ -1253,5 +1270,18 @@ check "ownership: reason-bearing ask cannot poison a resolved conflict" "$rc" "0
 #        still caught, because the confession idiom is FIXABLE on its own.
 rc=$(HOME="$FAKEHOME" FAKE_GH_STATE=OPEN run_hook "$T" "Resolved the merge conflicts with main, filed via feed post --blocked. HANDOFF: the owner - needs the credential, which is not available. Still blocking the release though." false)
 check "ownership: confession after a reason-bearing ask still blocks" "$rc" "2"
+
+# CAP1/CAP2. Identical-state cap (RUSH-3032 item a): with 2 prior fires in
+# the transcript, the FIRST evaluation of a given state blocks; a SECOND
+# evaluation of the byte-identical state (same transcript, same message —
+# evidence hash unchanged in the state db) records identical-state-capped
+# and passes. Fresh state db so decision history starts empty.
+export VERIFY_WORK_STATE_DB="$SANDBOX/cap-state.db"
+TCAPL=$(mk_looped 2)
+rc=$(FAKE_GH_STATE=OPEN run_hook "$TCAPL" "CI is green, waiting for the reviewer." false)
+check "identical-state: first evaluation still blocks" "$rc" "2"
+rc=$(FAKE_GH_STATE=OPEN run_hook "$TCAPL" "CI is green, waiting for the reviewer." false)
+check "identical-state: unchanged state after 2 fires is capped (passes)" "$rc" "0"
+export VERIFY_WORK_STATE_DB="$SANDBOX/verify-work-state.db"
 
 exit $fail

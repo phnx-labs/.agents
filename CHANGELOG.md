@@ -4,35 +4,132 @@
 
 ### Changed
 
-- **Four delivery-phase guards are configured to skip plan mode — INERT until an
-  agents-cli release ships the predicate.** Measured from
+- **Four delivery-phase guards skip plan mode inside their own scripts.** Measured from
   `~/.agents/.cache/perf/perf.db` (2026-08-03 → 08-08): nine guards fire on **every**
   `Bash` tool call for a combined **292 ms**, across 285,667 fires of which 284 —
   **0.099%** — changed the outcome. Four cannot fire usefully while an agent is
   planning: `merge-guard`, `pr-description-reminder`, `large-file-add-guard`,
-  `git-require-clean-tree`. Each now carries
-  `matches: {permission_mode_not: plan}`, which **will** cut the per-`Bash` tax in
-  plan mode from **293 ms to 213 ms once the predicate is live** — these four are
-  80 ms of the 293 (19 + 18 + 25 + 18). An earlier draft of this entry claimed
-  292 → 176 ms; that added a mode *gate* to a *deletion* (cutting `footer-guard`
-  and `user-message-guard` outright is a further 36 ms, in every mode, and is not
-  this PR). It is not live yet:
-  `permission_mode_not` merged in agents-cli #2930 but the published CLI is 1.22.46,
-  cut before that merge, and `main` is 59 commits ahead of it. Until a release
-  containing #2930 reaches the fleet, `should_fire()` does not recognise the key,
-  falls through to `return True`, and every gated guard still fires — fail-safe (no
-  guard is silently disabled) but with **72 ms of gate subprocess added per `Bash`
-  call**, since a `matches:` block spawns a Python evaluation per fire
-  (`dist/lib/hooks/cache.js:426-427`, measured at 18 ms × 4). Do not merge this
-  ahead of the release: today it is a net cost, not a saving. The data-loss guards —
+  `git-require-clean-tree`. Each reads `permission_mode` from the hook event through
+  the shared `hooks/lib/json-field.sh` helper and exits before command analysis when
+  the value is `plan`. This cuts their measured 80 ms from plan-mode Bash calls
+  without waiting for an agents-cli release or adding the generated shim's Python
+  matcher subprocess. An absent, unknown, or unparsable mode keeps the guard active,
+  so the gate fails safe. The data-loss guards —
   `git-guard`, `rm-guard`, `secrets-guard` — are deliberately **not** gated, because
   Bash still runs in plan mode and `reset --hard` / `rm -rf` stay reachable.
-  `permission_mode_not` is used rather than an enumerated `permission_mode`
-  allowlist, because an allowlist silently stops matching when a harness adds or
-  renames a mode — and for a guard, that means it quietly stops guarding.
 
+### Removed
+
+- **Cut `footer-guard` — a standing deterrent the rule has fully internalized.**
+  Across 7,493 fleet transcripts it fired **0 times**: no agent has attempted the
+  banned "Generated with Claude Code" footer in the measured corpus, because the
+  `no-pr-footer` prose rule alone carries it. Its first-ever fire (while the
+  `hooks-battlefield` analysis was being written) was a **false positive** — it
+  matched the banned literal inside documentation *about* the guard. A guard whose
+  only recorded fire is a false positive is a tax, not a deterrent: it added ~18 ms
+  to every `Bash` call and risked blocking docs that merely quote the string.
+  The **`no-pr-footer` rule stays as prose** (`rules/subrules/no-pr-footer/rule.md`)
+  — enforcement was already the rule, not the hook. Removes `footer-guard.sh`, its
+  test, and its `hooks.yaml`; drops footer-guard from the shared-lib sourcing test
+  and the 12→11 consumer list. Part of the 14→8 hook-corpus refinement.
+
+### Changed
+
+- **main-branch-guard now hands over a worktree instead of describing one.** The
+  refusal fires ~131 times across ~63 sessions, and each one is an agent that wanted
+  to write, stopped, read a recipe, ran four commands, and retried. Measured recovery
+  is 72% — the best of any guard, precisely because the message already pasted a
+  runnable recipe; the remaining 28% is agents fumbling it or wandering off. The
+  guard now creates the worktree itself and names it in the refusal, removing the
+  step that can be fumbled. Named `<harness>-<yyyy-mm-dd>-<hhmm>-<session8>` (e.g.
+  `claude-2026-08-23-0509-f5b0ef02`) so it says who made it and when, sorts
+  chronologically, and traces back with `agents sessions <session8>`. One worktree
+  per session, not per blocked write — reuse matches the session chunk so it holds
+  when the clock rolls to a new minute. It still **blocks**: creation is additive and
+  reversible, and any failure (no `origin/HEAD`, no git, `AGENTS_NO_AUTO_WORKTREE=1`)
+  falls back silently to the old recipe rather than weakening the refusal.
+
+- **Tickets are for work you deliver, not for what you noticed (`conventions`).**
+  Measured on the live board: 275 open tickets, **257 of them opened in a single
+  month**, and **220 sitting in Todo never started by anyone**. No hook creates
+  tickets — the volume comes from rules telling 100+ agents to file what they
+  noticed at session close, with no cross-session dedup. The ticket clause now
+  reads: search and claim an existing ticket first; open a new one only for work
+  you are actually delivering in this session; never for a follow-up, an idea, or
+  something spotted in passing (those are one line in the owner update). Recomposed
+  `rules/AGENTS.md` alongside.
+
+### Fixed
+
+- **The done-claim gate no longer tells every agent to ring the owner's phone.**
+  `00-agent-verify-work-complete.sh` closed its self-audit block by prescribing
+  `agents feed post ... --level important`, and `feed.broadcast.owner` forwards an
+  important post to iMessage. Measured across fleet transcripts on 2026-08-23:
+  **811 fires over 272 sessions** (three per session — more than any single guard
+  fires), **58% ignored** — and each of the 42% that complied produced a phone
+  buzz whether or not the session shipped anything worth one. The reminder now
+  asks for a plain, record-only post and says the agent adds `--level important`
+  only when the outcome genuinely needs the owner, matching what
+  `feed-status-posts` already said. Its test asserted the old hardcode and now
+  asserts the absence of it.
+
+- **`agents usage` reference retired with the command (RUSH-3079).**
+  `plugins/sessions/skills/insights/SKILL.md` pointed agents at the top-level
+  `agents usage` for live quota; that command is removed in agents-cli as a
+  duplicate surface (companion: phnx-labs/agents-cli RUSH-3079). The skill now
+  names `agents view`, which renders per-account quota with auth state.
+
+- **merge-guard reads APPROVE verdicts from review bodies, not only issue
+  comments (RUSH-3080).** `pr-verdict.py`'s `has_verdict` cleared a merge on a
+  GitHub review with `state=APPROVED` or an APPROVE in an *issue comment* body,
+  but never scanned review *bodies*. Fleet agents share one GitHub identity and
+  cannot `gh pr review --approve` (GitHub blocks self-approval), so a non-author
+  verdict commonly arrives as a `state=COMMENTED` review via
+  `gh pr review --comment`. That verdict was silently ignored and the merge
+  blocked with "no non-author review verdict found" (hit live on #375). A
+  COMMENTED review body and an issue-comment body now both clear the guard, via
+  one shared `_body_approves` helper that keeps the whole-word / not-carried-from
+  rule. Only COMMENTED review bodies count: a CHANGES_REQUESTED or DISMISSED
+  review whose body contains APPROVE must not launder itself into an approval.
+
+- **`--mode auto` is per-harness, not a universal smart classifier (RUSH-3049).**
+  `skills/teams/SKILL.md` (mode table + the unattended-teammate prose) and
+  `plugins/swarm/skills/orchestrate/SKILL.md` claimed `auto` "adds a smart
+  classifier that clears safe operations" as if it applied to every harness. That
+  is false for Codex, whose `auto` is `approval_policy=never` (never prompts), not
+  a classifier. Both now state the behavior per harness: Claude/Copilot's smart
+  classifier, Codex's never-prompt `approval_policy=never`, Droid's high-auto,
+  matching the already-correct table in `skills/run/SKILL.md`.
+
+## [0.2.2] - 2026-08-23
 
 ### Added
+
+- **The artifact pipeline now has one skill.** `skills/artifacts/SKILL.md`
+  teaches the shared Markdown → `artifacts check`/`artifacts render` → branded
+  light/dark HTML → headless inspection workflow once, with separate `kind: plan`
+  and `kind: visual` contracts. The redundant `plan-render` and `visualize`
+  skills are removed. The plan contract retains the exact `surface`,
+  `.artifact-behavior`, current/proposed state, and capture/mockup evidence
+  markup enforced by `plan-html-reminder`; its PreToolUse/ExitPlanMode and Stop
+  registrations are unchanged.
+
+- **`07-inject-device-topology.sh` carries disk and the one-line description into
+  the Host & Fleet block (RUSH-3062).** The agents-cli devices list grew a `spec`
+  cell (cores/RAM/disk) and a `disk` used column, plus a top-level `description`
+  in `devices list --json` (companion: phnx-labs/agents-cli RUSH-3062 surface
+  track). The hook no longer parses the rendered table at all: it reads
+  `health.loadPercent` / `memPercent` / `diskUsedPercent` / `headroom` and the
+  top-level `description` straight from the `--json` call it already made, and
+  computes the fleet-capacity line from `ncpu` and the byte totals rather than
+  copying it. Scraping the table produced five separate fabrication bugs, because
+  the row ends in an operator-supplied description and any field found by
+  searching the line could be fed by that prose; reading typed keys makes the
+  class unrepresentable rather than bounded. Older CLIs simply carry fewer keys,
+  so output degrades to what that version knows. One fewer subprocess per session
+  start. Covered by `tests/07-inject-device-topology_test.sh`, whose table fixture
+  is deliberately hostile so a regression to scraping fails loudly. `skills/devices/SKILL.md` teaches the
+  new columns, `agents devices describe`, and `agents devices ignored`.
 
 - **`public-artifact-guard` blocks confidential material from the committed
   artifacts dir (RUSH-3033).** The agi-cli GTM/monetization strategy was
@@ -65,7 +162,32 @@
   account/credential as the fix for a blocked path; restate option content
   inline instead of pointing at labels.
 
+### Changed
+
+- **`/share:public` and `/share:private` collapsed into one `/share` command.**
+  Public (auto OG cover) is the default: `/share <file>`. Private is a modifier:
+  `/share --private <file>` still runs `agents artifacts share <file>
+  --no-cover --expire 7d` — no preview card (the link does not unfurl) and a
+  7-day expiry (Worker returns 410 afterwards). Shared steps (resolve the file,
+  check `agents artifacts share status`, report the link) now live in the
+  `share` skill; the command file only invokes it. `/share:public` and
+  `/share:private` are gone.
+
 ### Fixed
+
+- **Stop-hook and guard follow-ups from the 2026-08-22 wave (RUSH-3032).**
+  The delivery gate's "worked ticket" attribution no longer sweeps base-branch
+  history (squash commits carrying another PR's "(#N)" suffix are excluded)
+  and no longer counts comment-only `linear update`s as ownership — both were
+  measured misattributions. The open-PR check gains the identical-state cap:
+  after two blocks with an unchanged evidence hash (verify-work-state's new
+  `evidence_repeat` signal), a third identical block records
+  `identical-state-capped` and passes — measured before: 630 of 1,711
+  consecutive stops re-fired on an unchanged hash. merge-guard now parses
+  `-R` like `--repo` (missing it probed the CWD repo's PR for a verdict and
+  blocked a legitimate cross-repo merge). New weekly `backfill-check-outcomes`
+  routine derives check outcomes per box so gate changes finally have a
+  false-positive denominator (first --write populated 1,030 rows).
 
 - **`hooks/stop/verify-delivery-chain.py` no longer resolves the repo from the
   hook process's own cwd (RUSH-3016).** When neither the `repo_path` hint nor a
@@ -98,6 +220,7 @@
   to "You own what you spawn": every tick wake produces a concrete drive action
   (merge a green PR, steer/resume a stalled teammate, re-dispatch a dead track)
   AND re-arms the next bounded tick; recap-and-park is abandonment.
+
 - **The instruction corpus stops teaching harness monoculture and tool
   passivity (RUSH-3020, corpus pass).** Spawn examples across `skills/run`,
   `skills/teams`, `swarm:orchestrate`, `commands/teams`, and `commands/recap`
@@ -129,6 +252,7 @@
   substitute-from-`agents view` note, and `fleet-delegation` names the guard
   plus the two non-derivable facts (a profile diversifies the model, not the
   harness; read-only verifier tracks need real headless plan support).
+
 - **Ownership is absolute: the stop hook's open-PR gate no longer offers
   "merge it or name an owner" as peers, and hand-backs to the owner require a
   filed receipt (RUSH-3013).** The STOP message is now ownership-first: rebase
@@ -168,6 +292,8 @@
   gain the measured phrases ("I'm done unless…", "dispatched agents will
   post…"). `parallel-teams` states the rule at the top of "You own what you
   spawn".
+
+## [0.2.1] - 2026-08-20
 
 ### Changed
 
@@ -307,6 +433,7 @@
   from #N" satisfies nothing (measured 2026-08-15: PR #2736 was staged for
   merge on "Non-author APPROVE on #2731"). Fails open on any API error or an
   unresolvable PR reference; the --admin block never fails open.
+
 - **pr-description-reminder: checkable no-run declarations are verified against
   the branch diff.** "test-only" with non-test files changed, or "docs-only"
   with code changed, now blocks instead of clearing — PR #2736 declared
@@ -315,6 +442,7 @@
   release-shaped phrases (`chore(release)` / "release PR" / "release:" /
   "release v"). Unverifiable declarations (refactor / no-behavior-change)
   and unreadable diffs keep failing open.
+
 - **Argue-past ramp in the verify-work-complete Stop gate.** A retried stop
   (stop_hook_active) used to pass unconditionally — the ramp three sessions used
   on 2026-08-15 to clear blocked stops by restating "correct stopping point" /
@@ -323,11 +451,13 @@
   times with a demand for verifiable evidence (live probes, real output); after
   that it passes (a gate must never wedge a session) but files an
   `agents feed post --blocked` so the evasion reaches the owner.
+
 - **Stand-down phrase list extended** with the exact rationalizations measured
   that day: "stays open by design", "someone else's in-flight work", "owned by
   another/two live sessions", "correct stopping point", "nothing needs you",
   "ships on the next train", "permission classifier bars/denies". Each routes
   the stop into the delivery gate, where evidence decides.
+
 - **Every-prompt worktree-law reminder** (`user-prompt-submit/05-worktree-law-reminder.sh`):
   one line injected into every prompt of every session — writes go through a
   linked worktree + PR, primary checkouts are untouchable — per the owner's
@@ -356,6 +486,7 @@
   reconciles the trivial-change escape hatch with the gate: a trivial plan skips
   the whole architecture *section*, which only warns; a section that exists must
   carry a figure at any size. Omit it or draw it; there is no table-shaped middle.
+
 - **`/work:loop` told agents to leave every PR for Muqsit to review and merge —
   the skill was the banned stop, not the agent.** An overnight drain ended with
   *"Owner of the one open thread: Muqsit reviews and merges PR #2833. Nothing else
@@ -431,6 +562,7 @@
   result — an errored or cancelled arm cleared the gate (ea913c60 idled on a
   claimed watcher no process backed). A watcher now counts only with a
   non-error paired tool_result.
+
 - **`/next` no longer tells agents a lease-claiming release script means "done at merged".**
   `commands/next.md`'s release step said a repo whose release script claims a lease has a
   "release train" and the agent "is done at merged + a changelog fragment" — agents-cli's
@@ -730,6 +862,7 @@
 ### Fixed
 
 - **`hooks/promptcuts.yaml` #275: `#debugit` is no longer swallowed into `#rethink`'s block scalar.** The shortcut key was mis-indented 6 spaces, so YAML parsed it as part of `#rethink`'s value, making `#debugit` / `!!debugit` a no-op and gluing the debug root-cause block onto every `#rethink` expansion. Re-indented `#debugit` to the canonical 2-space key + 4-space body and fixed the same mid-block drift in `#simplifyit`. Added `hooks/tests/promptcuts_test.sh` to assert the expected shortcut key set on every load so a swallowed cut fails loudly. Source: `hooks/promptcuts.yaml`, `hooks/tests/promptcuts_test.sh`.
+
 - **`verify-work-complete` scopes PR refs to their repo (#264) and stops blaming
   no-op sessions for repo history (#245).** Bare-number PR refs used with
   `--repo owner/repo` now resolve against that repo, not the session cwd, closing
@@ -740,6 +873,7 @@
   Source: `hooks/stop/00-agent-verify-work-complete.sh`,
   `hooks/stop/verify-delivery-chain.py`,
   `hooks/stop/tests/00-agent-verify-work-complete_test.sh`.
+
 - **`parallel-teams` brief feed line now matches the canonical `--title` form
   (#211).** `rules/subrules/parallel-teams.md`, `skills/teams/SKILL.md`, and
   `plugins/swarm/skills/orchestrate/SKILL.md` all carried the verbatim teammate
@@ -768,6 +902,7 @@
 ### Added
 
 - **Bangcuts are on by default; promptcuts and bangcuts get stable public names (RUSH-2405).** `promptcuts` expands saved prompt shortcuts; `bangcuts` executes explicit backticked bang commands. Only `bangcuts` changes state here — it shipped `enabled: false` ("paste of untrusted text with a bang block is local RCE") and that line is now removed, so a prompt containing `` `!cmd` `` runs that command in the local shell on every machine, including a prompt injected by a watchdog, monitor, or another agent. `promptcuts` had no `enabled: false` on `main` and was already on; only its comments change. Turn either off from the user layer with `expand-bang-commands: {enabled: false}` / `expand-promptcuts: {enabled: false}` in `~/.agents/agents.yaml` plus `agents sync` — verified against `dist/lib/hooks.js:1562-1565`, which deletes a disabled hook before the registrar sees it. The `agents hooks enable|disable <feature>` CLI that would take the public names is **not shipped** (`agents hooks` has only `list|add|remove|view|profile`), so it is not documented as the off-switch. The internal manifest keys remain `expand-promptcuts` and `expand-bang-commands` so existing user-layer YAML keeps working. Source: `agents.yaml`, `hooks/README.md`, `hooks/promptcuts.yaml`, `hooks/registration_test.sh`.
+
 - **Built-in `pr-merge-on-green` monitor (RUSH-2472).** A system-layer monitor
   that rebase-merges this machine's own pull requests once CI is green and a
   non-author has approved them. It is opt-in — shipped with no `enabled:` field,
@@ -811,6 +946,7 @@
     `plugins/sessions/{README.md,.claude-plugin/plugin.json,skills/restore/SKILL.md}`,
     `skills/sessions/SKILL.md`, `skills/learn/SKILL.md`, `commands/blame.md`, root `README.md`,
     and the `permissions/groups/12-self.yaml` comment (`permissions/default.yaml` rebuilt).
+
 - **`verify-work-complete` evaluates the current goal instead of the entire
   session (RUSH-2113).** Each UserPromptSubmit boundary now records the transcript
   byte offset, and Stop classification plus delivery-chain checks read only the
@@ -929,9 +1065,11 @@
 ### Added
 
 - **The reviewer defends the concept budget.** New hunt class: *a new concept where an existing one could have been extended*. Deliberately distinct from `Duplicate surface, bypassed seam` — that one is two ways to do one thing, this one is a new thing that should have been a parameter of an existing thing. Every new flag, command, config key, status value, type, or module is a surface every future reader learns and every future change keeps consistent, so it has to earn that cost. One test: could this be a value, mode, or argument of something that already exists? A `--json-pretty` beside `--json`, a `list-active` beside `list`, a `PendingRetry` beside `Pending` — variants wearing the costume of new concepts. The finding requires naming the existing concept by file:line and what the extension would be, so it cannot degrade into "do not add things"; a genuinely new operation is exactly what should be added. Source: `subagents/code-reviewer/AGENT.md`.
+
 - **Review findings land on the diff lines, not in one wall of text.** `code:review` B6 now posts a single review through `POST /repos/{owner}/{repo}/pulls/{n}/reviews` with a `comments[]` array — one notification, each finding anchored to the line it is about. Findings are split first: `IN-DIFF` ones (the cited line is on the right side of this diff) become inline comments, `OUT-OF-DIFF` ones (an absent call site, an orphaned path, a missing test — often the most valuable) go in the review body with the verdict and the `Filtered:` line. The subagent's output format gained an `Anchor:` field so the split is stated rather than guessed. `event: COMMENT`, never `REQUEST_CHANGES` unless `formal-review` is passed, never `APPROVE`. If anchoring fails — stale `commit_id` after a force-push, a moved line — it falls back to the whole report as one comment and says why, rather than dropping findings. Source: `plugins/code/skills/review/SKILL.md`, `subagents/code-reviewer/AGENT.md`.
 
 - **The `code-reviewer` subagent hunts the expedient mechanism.** A new class for the change that *works* and works by reaching around the surface built for the job — which is exactly why it survives review. Two faces. **Ambient global state instead of declared configuration**: a new env var carrying a flag, endpoint, toggle, or inter-process value when the project already has a config file, CLI flag, or function argument that owns it. The reviewer names why that is not a neutral choice — every child inherits the whole environment, a Linux co-tenant can read `/proc/<pid>/environ`, values land in crash dumps and any log line printing the environment, and anything in the process tree can silently *override* it, so it is a disclosure surface and a hijack surface at once, invisible to whoever reads the config expecting to see current behavior. It counts the delta and cites the surface that should have carried it; a secret in an env var is a finding on its own. **Silencing the signal instead of fixing the cause**: a lint disable, type ignore, skipped or quarantined test, widened `catch`, retry wrapping a race, `sleep` standing in for a real wait, or a hook-bypassing commit — asking what the check was telling the author and whether the diff answers it or mutes it. Report a line under one class only, the most specific; face 1 is a finding only when the durable mechanism can be named by file:line, face 2 only when the suppression is live rather than inert. Publishable values are carved out by name (`VITE_`/`NEXT_PUBLIC_`, Stripe `pk_`, PostHog `phc_`, anon JWTs, referrer-restricted `AIza`, OAuth `client_id`), as is the case where the environment *is* the declared surface (12-factor, CI-provided, container entrypoint). Source: `subagents/code-reviewer/AGENT.md`.
+
 - **Corrected what the rules claim about environment variables.** `operational.md` said "any co-tenant process can read another's via `/proc/<pid>/environ`" and that "anything in the same shell or process tree can read — or silently override — whatever you set". Measured on yosemite-s0: `/proc/<pid>/environ` is mode 400, so a same-user read succeeds and a cross-user read is denied; and a child's `export` does not reach its parent — only an ancestor sets what it spawns. The claims now say same-user rather than any co-tenant, and ancestor-sets rather than anything-overrides, in both the subrule and the composed ruleset. The old wording would have collapsed the moment an author pushed back with `ls -l /proc/<pid>/environ`, in exactly the place the argument has to hold. Source: `rules/subrules/operational.md`, `rules/AGENTS.md`.
 
 - **A rendered artifact's `session` provenance is now a deep link back into the session.** Documented in the artifacts authoring reference: the session value
@@ -943,7 +1081,9 @@
 - **A `code-reviewer` subagent ships in the system layer, reaching every subagents-capable harness.** Installing agents-cli now gives you a non-author reviewer with no per-repo setup — the case `agents-cli` is in today with `prix/code-reviewer` paused (#1767). It is adversarial twice: it hunts the input that breaks the change, then tries to kill each candidate finding (the guard is elsewhere / the line is unreachable / the repo sanctions it) and reports only survivors plus a count of what it filtered. Before judging it reads the **requirement** — the ticket the branch names and any committed plan — and answers conformance per acceptance criterion. It bounds what it reports to a **finding radius**: the diff, plus what the diff broke (stale callers, disagreeing siblings, and the old path this change orphaned but nobody deleted); pre-existing rot gets one line, never a finding. New hunt class: **design divergence at a declared surface**, diffing a new endpoint / CLI command / schema / component against three to five existing siblings (API envelope, error shape, pagination, auth attachment; CLI noun-then-verb and `--json`; UI tokens, scale, component reuse, full state set). It never edits, pushes, or merges. `code:review` spawns it as `subagent_type: "code-reviewer"` and its per-PR brief carries only the requirement, context, and canonical patterns.
 
   It lives at `subagents/code-reviewer/AGENT.md`, **not** inside the `code` plugin. A plugin's `agents/<name>.md` is the Claude plugin format: the file is copied into every harness home but only a plugin-format harness registers it. Measured on yosemite-m1 with the plugin installed and that file present, `~/.claude/agents/`, `~/.grok/agents/`, `~/.kimi-code/agents/`, `~/.cursor/agents/`, and `~/.codex/agents/` were all empty. The top-level `subagents/` layer writes those native paths via `SUBAGENT_TARGETS`, so one definition reaches Claude, Codex, Grok, Kimi, Cursor, Droid, OpenCode, Copilot, Kiro, Goose, Antigravity, and OpenClaw. `code:review`'s security pass also became its own concurrent agent instead of check #6 inside the reviewer's brief, and it defers to an installed `security`/`audit` skill when the box has one. Source: `subagents/code-reviewer/AGENT.md`, `plugins/code/skills/review/SKILL.md`, `subagents/README.md`.
+
 - **`#noslop` promptcut — a hard gate against vague, imprecise prose.** Type `#noslop` / `` `#noslop` `` / `!!noslop` alongside a prompt and it expands into a discipline that bans the words agents reach for to avoid committing to a verifiable claim: approximation hedges (`directionally`, `roughly`, `basically`, `-ish`), vague placeholder nouns (`things`, `stuff`, `various`, `several`), empty verbs that hide the mechanism (`gate`, `handle`, `manage`, `leverage`), unearned marketing adjectives (`seamless`, `powerful`, `robust`, `simply`), false-confidence connectives (`clearly`, `obviously`), and drama headers (`Critically:`, `Notably:`). It requires naming the concrete referent (file, function, flag, error, count, byte size) and describing the topic at full resolution — including the edge cases the tidy summary omits — and ends with a pre-send self-check that replaces each banned word with the fact it stood in for. It is `code-quality` ("Write prose precisely; don't market") turned up to a per-turn gate. Verified end-to-end through the real UserPromptSubmit hook on all four markers plus the codex append path. Source: `hooks/promptcuts.yaml`.
+
 - **Plans carry a cross-harness planning contract.** Built-in plan mode (`/plan`, Shift+Tab, `--mode plan`) only toggles a permission mode and injects no methodology on any harness — so the `plan-presentation` rule (the one lever loaded during plan mode on claude/codex/kimi/grok/droid) now carries what every plan must do: search prior sessions on the feature first (`agents sessions`, so agents extend rather than revert prior work), locate/propose the module spec, and lead with **Focus for review** + restated **Intent**, a **Current architecture** section (before/after figure for architectural changes), an implementation shown as a **per-file diff** (not a path table), and a **rendered to-do list**. Two gates before presenting: a non-author **adversarial review** of API-surface cleanliness + adherence to existing architectural conventions (via a subagent or `agents run`), and render+open. `commands/plan.md` gains the prior-work step (Step 0) and the panel's API/convention criterion (Step 7); `skills/plan-render/SKILL.md` documents the section order and the `code-diff`/`checklist` render components. Motivated by two real sessions (codex `019fe962`, kimi `5908db92`) where the agent never showed the interface, never restated intent, and iterated a bad API surface until the user authored it. Sibling of RUSH-2140; coordinates with PR #256. Source: `rules/subrules/plan-presentation/rule.md`, `commands/plan.md`, `skills/plan-render/SKILL.md`.
 
 ### Changed
@@ -979,6 +1119,7 @@
 ### Removed
 
 - Removed the 8 daemon-housekeeping routines (usage-refresh, fleet-cache-warm, session-cache-warm, device-probe, auto-dispatch, watchdog, tmux-reconcile, launch-health) — each was a thin `agents __daemon-tick <name>` cron wrapper. RUSH-2495 takes this housekeeping out of routines entirely as a hard cut: `tmux-reconcile`, `launch-health`, and `auto-dispatch` are deleted outright; `session-cache-warm` is dropped because `agents sessions --active` self-refreshes on read; and `watchdog`, `device-probe`, `usage-refresh`, and `fleet-cache-warm` become plain daemon-core timers. Only `check-updates` remains a system-level routine. This is the config-repo half; RUSH-2495 does the daemon side separately. Removing the YAMLs is safe on its own — a removed routine is simply not fired, and the reader commands self-refresh their caches.
+
 - **The `escalate` skill and its `escalate-on-notification` hook.** Reaching the owner when genuinely blocked is now `agents feed post --blocked` (opens a needs-you record + delivers out-of-band) — the escalate ladder was superseded by it and still hard-wired Telegram, which the no-Telegram rule forbids. Deletes `skills/escalate/` (incl. `escalate.sh`, `owner.py`), `hooks/notification/12-escalate-on-notification.{sh,_test.sh}`, and the `escalate-on-notification` entry in `agents.yaml` (hook count 19 → 18); removes the rows from `skills/README.md` and `hooks/README.md`.
 
 ### Added
@@ -994,9 +1135,11 @@
 ### Changed
 
 - **`reflect` skill consolidated into the self plugin.** The flat top-level `skills/reflect` moved to `plugins/self/skills/reflect` (now the `self:reflect` skill), so the skill lives with its `/self:reflect` command instead of floating in the shared `skills/` list. Source: `plugins/self/skills/reflect/`, `plugins/self/commands/reflect.md`, `plugins/self/README.md`, `skills/README.md`.
+
 - **`skills/README.md` now lists the `artifacts` skill** (it was on disk but missing from the catalog).
 
 - **`/blame` — regression forensics.** A new top-level command that traces a regression (a feature that worked and silently broke) to the culprit change, the removed/skipped/commented-out test that let it through, and the agent + session behind it — read-only, no fix. It pins expected vs observed, maps the code path, bisects the suspect commits, hunts for disabled tests in the same window, and attributes via `git blame` + `agents sessions`. Hand the verdict to `/debug` or `/finish` to repair. Source: `commands/blame.md`, `commands/README.md`.
+
 - **`/output` moved into the work plugin as `/work:output`.** The fleet token-burn/output report is a work action, so it now lives beside `/work:loop` and `/work:dispatch` (top-level `/output` removed). Source: `plugins/work/commands/output.md`, `commands/README.md`, `plugins/work/README.md`, `plugins/README.md`.
 
 - **git-guard now blocks remote branch deletion.** The `git push` handler denies `--delete`/`-d` and a leading-colon refspec (`git push <remote> :<branch>`), closing the remote counterpart to the already-denied local `git branch -d/-D`. Deleting an *already-merged* PR branch is safe and stays allowed via `gh pr merge --delete-branch` — only the forms that can drop unmerged commits are banned. Source: `hooks/pre-tool-use/git-guard.sh`, `git-guard_test.sh`, `git-guard.md`, plus the `AGENTS.md` north-star wording.
@@ -1132,6 +1275,7 @@
   by the top-level `learn` engine. Source: `plugins/code/`, `commands/{release,review}.md`,
   `commands/README.md`, `skills/release/SKILL.md`, `skills/computer/SKILL.md`,
   `plugins/swarm/README.md`, `plugins/README.md`, `.claude-plugin/marketplace.json`.
+
 - **`swarm` plugin simplified to 0.5.0 — four modes + top-level `/swarm`.** Dropped
   unused `/swarm:test` and `/swarm:qa` (commands + skills). Kept `/swarm:run`,
   `/swarm:plan`, `/swarm:spec`, `/swarm:debug` on the shared `swarm:orchestrate`
@@ -1164,6 +1308,7 @@
   mode. Source: `plugins/sessions/`, `commands/{continue,insights,restore,recover}.md`,
   `.claude-plugin/marketplace.json`, `plugins/README.md`, `commands/README.md`,
   `skills/sessions/SKILL.md`.
+
 - **Keep browser action loops warm with `agents browser stream`.** Agents can send
   newline-delimited JSON requests through one long-lived CLI process instead of
   launching Node once per screenshot, ref lookup, click, or type action.

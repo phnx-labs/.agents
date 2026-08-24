@@ -35,7 +35,13 @@ run_guard() {
   local cmdstr="$1" max_kb="${2:-}" path_override="${3:-}"
   local json esc_cmd errfile
   esc_cmd=$(json_escape "$cmdstr")
-  json=$(printf '{"tool_input":{"command":"%s"}}' "$esc_cmd")
+  # KEY_STYLE=camel emits a Grok-shaped payload (toolName/toolInput); default
+  # snake_case is byte-identical to before.
+  if [ "${KEY_STYLE:-snake}" = camel ]; then
+    json=$(printf '{"toolName":"Bash","toolInput":{"command":"%s"}}' "$esc_cmd")
+  else
+    json=$(printf '{"tool_input":{"command":"%s"}}' "$esc_cmd")
+  fi
   errfile="$SANDBOX/err.$$.$RANDOM"
   if [ -n "$path_override" ]; then
     OUT=$(printf '%s' "$json" | PATH="$path_override" "$SH_BIN" "$HOOK" 2>"$errfile")
@@ -75,6 +81,18 @@ check_allow() { # name, command-string, [max-kb-override]
 }
 
 echo "large-file-add-guard"
+
+json='{"permission_mode":"plan","tool_input":{"command":"git add oversized.bin"}}'
+OUT=$(printf '%s' "$json" | "$SH_BIN" "$HOOK" 2>"$SANDBOX/plan.err")
+RC=$?
+ERR=$(cat "$SANDBOX/plan.err")
+if [ "$RC" -eq 0 ] && [ -z "$OUT" ] && [ -z "$ERR" ]; then
+  echo "ok   - explicit plan mode skips the guard"
+  pass=$((pass+1))
+else
+  echo "FAIL - explicit plan mode should skip cleanly (rc=$RC stdout=$OUT stderr=$ERR)"
+  fail=$((fail+1))
+fi
 
 # RUSH-2295 structured denial shape
 check_deny_structured() {
@@ -154,6 +172,15 @@ if [ "$RC" -eq 0 ] && [ -z "$OUT" ]; then
 else
   echo "FAIL - no-parser PATH broke the non-git-add fast path: rc=$RC out=[$OUT]"; fail=$((fail+1))
 fi
+
+# --- Harness portability: Grok CLI camelCase payloads (toolName/toolInput) ----
+# Grok delivers camelCase hook stdin; the guard MUST deny adding an oversized
+# file exactly as for the snake_case twins above. Regression fixture for the
+# dual-path extraction (efc7fef) the Bash guards previously carried untested.
+KEY_STYLE=camel
+check_deny  "camelCase: large file add still denied" "git add $BIGFILE_DEFAULT" "limit"
+check_allow "camelCase: small file add still allowed" "git add $SMALLFILE"
+KEY_STYLE=snake
 
 echo "  $pass passed, $fail failed"
 [ "$fail" -eq 0 ]

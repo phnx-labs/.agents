@@ -11,6 +11,7 @@ If you want something to fire on a **change** instead of a clock, that is a
 | Routine | Schedule | What it does |
 |---|---|---|
 | [`check-updates`](./check-updates.yml) | Mondays 09:00 | Keeps the box current — upgrades `agents-cli` when npm is ahead, fast-forwards `~/.agents/.system` to `origin/main`, and notifies only if something actually changed |
+| `backfill-check-outcomes` | weekly Mon 07:00 | Derive stop-hook check outcomes from this box's transcripts into state.db (`check-outcome-backfill.py --write`) so gate changes have a false-positive denominator (RUSH-3032) |
 
 `check-updates` runs on **every** box independently — no designated primary, no
 SSH fan-out. It fails soft: a failing step never aborts the rest.

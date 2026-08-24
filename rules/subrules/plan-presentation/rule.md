@@ -39,7 +39,7 @@ and follows existing conventions); and render + inspect the HTML.
 `.agents/artifacts/yyyy-mm-dd/<slug>.md` (plans as `plan-<slug>.md`), HTML
 rendered next to the source. One dated layout, no kind subdirs.
 
-**Mechanics** (the full look lives in the `plan-render` skill):
+**Mechanics** (the full look lives in the `artifacts` skill):
 
 - Markdown is the source of truth; compile with `artifacts render <source>.md`.
   Never hand-author the HTML.

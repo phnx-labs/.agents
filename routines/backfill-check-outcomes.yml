@@ -1,0 +1,21 @@
+# Built-in routine: derive stop-hook check outcomes from local transcripts
+# weekly, so every gate change has a false-positive denominator (RUSH-3032).
+#
+# Before this ran anywhere, check_outcomes had 0 rows on every box — the
+# backfill tool existed but was never invoked with --write, so no gate edit
+# could ever be shown to be an improvement (the events table's own comment:
+# "325 rows and every single one read 'blocked'").
+#
+# Runs as a `command:` routine, not an LLM agent: the derivation is
+# deterministic transcript scanning (check-outcome-backfill.py is offline by
+# design — "never on a hook path"). EACH box backfills its own state.db from
+# its own transcripts; per-device firing is correct because the input is
+# device-local — no shared queue, no owner pin needed.
+name: backfill-check-outcomes
+schedule: 0 7 * * 1        # weekly, Monday 07:00 (daemon-local time)
+enabled: true
+timeout: 10m
+command: |
+  script="$HOME/.agents/.system/hooks/stop/check-outcome-backfill.py"
+  [ -f "$script" ] || { echo "backfill script missing; skipping"; exit 0; }
+  python3 "$script" --write 2>&1 | tail -3

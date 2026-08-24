@@ -28,7 +28,13 @@ run_guard() {
   local cmdstr="$1" path_override="${2:-}"
   local json esc_cmd errfile
   esc_cmd=$(json_escape "$cmdstr")
-  json=$(printf '{"tool_input":{"command":"%s"}}' "$esc_cmd")
+  # KEY_STYLE=camel emits a Grok-shaped payload (toolName/toolInput); default
+  # snake_case is byte-identical to before.
+  if [ "${KEY_STYLE:-snake}" = camel ]; then
+    json=$(printf '{"toolName":"Bash","toolInput":{"command":"%s"}}' "$esc_cmd")
+  else
+    json=$(printf '{"tool_input":{"command":"%s"}}' "$esc_cmd")
+  fi
   errfile="$SANDBOX/err.$$.$RANDOM"
   if [ -n "$path_override" ]; then
     OUT=$(printf '%s' "$json" | PATH="$path_override" "$SH_BIN" "$HOOK" 2>"$errfile")
@@ -152,6 +158,21 @@ if [ "$RC" -eq 2 ] && [ "${ERR#*fail-closed}" != "$ERR" ]; then
 else
   echo "FAIL - fails closed with no JSON parser: rc=$RC err=$ERR"; fail=$((fail+1))
 fi
+
+# --- Harness portability: Grok CLI camelCase payloads (toolName/toolInput) ----
+# Grok delivers camelCase hook stdin; the guard MUST deny a plaintext secret
+# export exactly as for the snake_case twins above. Regression fixture for the
+# dual-path extraction (efc7fef) the Bash guards previously carried untested.
+KEY_STYLE=camel
+check_deny  "camelCase: bare plaintext export still denied" \
+  "agents secrets export npmjs.com --plaintext" \
+  "secrets.export-plaintext"
+check_deny  "camelCase: bundle-key get still denied" \
+  "agents secrets get npmjs.com NPM_TOKEN" \
+  "secrets.get-bundle-key"
+check_allow "camelCase: export to encrypted file still allowed" \
+  "agents secrets export prod --to-file prod.enc"
+KEY_STYLE=snake
 
 echo
 echo "secrets-guard: $pass passed, $fail failed"

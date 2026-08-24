@@ -1,16 +1,17 @@
 ---
 name: insights
-description: "Analyze how you and your agents work across harnesses — orchestrates agents insights, trends, perf, and sessions stats into one evidence-backed action list. No separate trends/perf slash commands. Triggers on: /insights, /sessions:insights, 'session insights', 'how have I been working', 'where do agents stall', 'skill dead weight', usage friction, harness mix."
+description: "Analyze how you and your agents work across harnesses — orchestrates agents insights, insights mix, perf, and sessions stats into one evidence-backed action list. No separate trends/perf slash commands. Triggers on: /insights, /sessions:insights, 'session insights', 'how have I been working', 'where do agents stall', 'skill dead weight', usage friction, harness mix."
 argument-hint: "[--since 30d | --all] [--agent <harness>] [--project <name>] [--json] [--narrative]"
-allowed-tools: Bash(agents insights*), Bash(agents trends*), Bash(agents perf*), Bash(agents sessions*), Bash(agents cost*), Bash(agents output*), Bash(jq *), Bash(ls *), Read(*), Write(*), Task(*)
+allowed-tools: Bash(agents insights*), Bash(agents perf*), Bash(agents sessions*), Bash(agents cost*), Bash(agents output*), Bash(jq *), Bash(ls *), Read(*), Write(*), Task(*)
 user-invocable: true
 ---
 
 # sessions:insights
 
 You are the **conductor** over the local analytics engines. There is no separate
-`/trends` or `/perf` plugin command — this skill decides which engines to run, stitches
-their output, and returns a short list of **evidence-backed actions**.
+`/trends` or `/perf` plugin command — mix lives under `agents insights mix`. This skill
+decides which engines to run, stitches their output, and returns a short list of
+**evidence-backed actions**.
 
 Never upload raw transcripts. Everything below stays on-machine unless the user
 explicitly asked for a shareable HTML artifact.
@@ -20,7 +21,7 @@ explicitly asked for a shareable HTML artifact.
 | Engine | CLI | Answers |
 |---|---|---|
 | **How you work** | `agents insights` | Tools, friction, rhythm; default group-by account (Claude attribution; other harnesses under `unattributed:<agent>`) |
-| **Usage mix** | `agents trends` | Harness/model mix, token ratios, session volume, secrets-hot, browser activity |
+| **Usage mix** | `agents insights mix` | Harness/model mix, token ratios, session volume, secrets-hot, browser activity |
 | **Latency / friction** | `agents perf` | Slow hooks/commands/runs; `agents perf friction` for guard-block loops |
 | **Resource dead weight** | `agents sessions stats` | Explicit skill/command invocations; installed-but-never-invoked |
 
@@ -28,9 +29,9 @@ Related (only if the ask needs them; not the default path):
 
 - `agents cost` — what it cost
 - `agents output` — what shipped
-- `agents usage` — live quota
+- `agents view` — live quota
 
-If `$ARGUMENTS` already names one engine (`trends`, `perf`, `stats`, `insights` alone),
+If `$ARGUMENTS` already names one engine (`mix`, `perf`, `stats`, `insights` alone),
 run that engine and still synthesize actions — do not dump a raw table as the whole
 answer.
 
@@ -43,7 +44,7 @@ Run in parallel when the shell allows:
 
 ```bash
 agents insights --since 30d --json
-agents trends --days 30 --json          # or: agents trends harness-mix --json
+agents insights mix --days 30 --json    # or: agents insights harness-mix --json
 agents perf --days 30 --json            # plus: agents perf friction --days 30 --json when relevant
 agents sessions stats --since 30d --json
 agents sessions stats --zero --since 30d --json   # dead weight

@@ -3,7 +3,7 @@
 One keyless, offline-first front door for design. `/design` routes a design intent to a
 mode and renders it as self-contained HTML/SVG: no CDN, no paid keys, opens offline.
 
-Ships in the default distribution (beside `plan-render` and `visualize`), so a fresh
+Ships in the default distribution (beside `artifacts`), so a fresh
 install has it. Brand plugins (rush, prix) layer on top by calling `/design`; brand is
 optional, never required.
 

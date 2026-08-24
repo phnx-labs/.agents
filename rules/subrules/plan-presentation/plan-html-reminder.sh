@@ -2,7 +2,7 @@
 # plan-html-reminder — plan presentation check at plan-exit and Stop.
 #
 # Enforces the plan-presentation rule: a plan must be RENDERED as a self-contained
-# HTML doc (plan-render skill) before it is presented, so the user reviews it in the
+# HTML doc (artifacts skill) before it is presented, so the user reviews it in the
 # browser — skinned in the product's brand, light/dark, and inspected headlessly.
 #
 # The source of truth is Markdown under the repo's dated artifact layout:
@@ -35,7 +35,6 @@ tool=$(printf '%s' "$input" | jq -r '(.tool_name // .toolName) // empty' 2>/dev/
 event=$(printf '%s' "$input" | jq -r '(.hook_event_name // .hookEventName) // empty' 2>/dev/null) || event=""
 tp=$(printf '%s' "$input" | jq -r '(.transcript_path // .transcriptPath) // empty' 2>/dev/null) || tp=""
 last_message=$(printf '%s' "$input" | jq -r '(.last_assistant_message // .lastAssistantMessage) // empty' 2>/dev/null) || last_message=""
-perm_mode=$(printf '%s' "$input" | jq -r '(.permission_mode // .permissionMode) // empty' 2>/dev/null) || perm_mode=""
 
 is_plan=0
 case "$tool" in
@@ -45,13 +44,10 @@ esac
 if [ "$is_plan" = 0 ] && { [ "$event" = "Stop" ] || [ "$event" = "stop" ]; }; then
   stop_active=$(printf '%s' "$input" | jq -r '(.stop_hook_active // .stopHookActive) // false' 2>/dev/null) || stop_active=false
   [ "$stop_active" = "true" ] && exit 0
-  # Mode gate: Claude Code reports the live permission mode on stdin; an explicit
-  # non-plan value means this stop cannot be presenting a plan, so skip the
-  # transcript scan (which false-positives on answers that merely discuss plans).
-  # Harnesses that omit the field (Codex, Grok, ...) keep the marker backstop below.
-  if [ -n "$perm_mode" ] && [ "$perm_mode" != "plan" ]; then
-    exit 0
-  fi
+  # Mode gating lives in hooks.yaml (matches.permission_mode, agents-cli >=
+  # 1.22.47): the generated shim skips this script when stdin carries an
+  # explicit non-plan mode, and passes it through when the field is absent —
+  # so the transcript-marker backstop below still covers Codex/Grok.
   plan_signal=$(PLAN_LAST_MESSAGE="$last_message" python3 - "$tp" <<'PY' 2>/dev/null || true
 import json, os, sys
 
@@ -102,7 +98,7 @@ fi
 # ---- (A) HTML render check ----------------------------------------------------
 # A fresh plan HTML rendered in the last 90 min satisfies this. The canonical
 # location is `<repo>/.agents/artifacts/yyyy-mm-dd/` (per plan-presentation /
-# plan-render). Scan the whole `.agents/artifacts/` tree so dated day dirs and
+# artifacts). Scan the whole `.agents/artifacts/` tree so dated day dirs and
 # any transitional layout still clear the check. Scan root is overridable for
 # tests via PLAN_HTML_SCAN_ROOT.
 # -L: follow symlinks. On macOS /tmp is a symlink to /private/tmp, and BSD find
@@ -214,7 +210,7 @@ fi
   echo
   if [ "$html_ok" != 1 ]; then
     echo "* Render and inspect a FIGURE-RICH browser-ready HTML plan headlessly."
-    echo "  Load the plan-render skill. Author Markdown under the dated artifact layout:"
+    echo "  Load the artifacts skill. Author Markdown under the dated artifact layout:"
     echo "    .agents/artifacts/yyyy-mm-dd/plan-<slug>.md"
     echo "  then:"
     echo "    DATE=\$(date +%F)"

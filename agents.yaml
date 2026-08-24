@@ -128,11 +128,6 @@ hooks:
     matcher: Bash
     script: pre-tool-use/01-git-require-clean-tree.sh
     timeout: 5
-    # Skipped in plan mode: no pull/rebase happens during planning. permission_mode_not, not an enumerated
-    # permission_mode allowlist — an allowlist stops matching when a harness
-    # renames a mode, which for a guard means it silently stops guarding.
-    matches:
-      permission_mode_not: plan
   # Public feature name: promptcuts. The manifest key stays expand-promptcuts.
   # On by default (it always has been). To turn it off, put
   #   expand-promptcuts: {enabled: false, override: true}
@@ -186,11 +181,6 @@ hooks:
     matcher: Bash
     script: pre-tool-use/large-file-add-guard.sh
     timeout: 5
-    # Skipped in plan mode: no `git add` happens during planning. permission_mode_not, not an enumerated
-    # permission_mode allowlist — an allowlist stops matching when a harness
-    # renames a mode, which for a guard means it silently stops guarding.
-    matches:
-      permission_mode_not: plan
   # RUSH-3033 item 3. The GTM/monetization strategy was committed to
   # .agents/artifacts/ on the PUBLIC agents-cli repo and stayed world-readable
   # for ~2 days; the tip was cleaned but history still carries it. Two

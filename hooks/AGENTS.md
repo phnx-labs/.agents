@@ -139,9 +139,14 @@ pipes into it. "No manifest entry" ≠ dead when a registered script invokes it.
 
 ## Fail closed, never fail open
 
-A guard that cannot evaluate its input must **refuse**, not allow. Use the
-`_json_field` helper pattern (`jq` → `node` → `python`) and exit non-zero when no
-parser is available.
+A guard that cannot evaluate its input must **refuse**, not allow. Source the
+shared `_json_field` extractor from `hooks/lib/json-field.sh` (`jq` → `node` →
+`python`; returns 1 only when no parser exists), then verify the function is
+defined after the source and `exit 2` if it is not — a guard that cannot even
+load its parser must fail closed, not run unchecked. Advisory (non-blocking)
+hooks may fail open (`exit 0`) instead. Use `${0%/*}` (not `dirname`) to locate
+the lib so the source works under a stripped PATH; fall back to the absolute
+`${HOME}/.agents/.system/hooks/lib/json-field.sh`.
 
 ## Exit codes and streams
 
@@ -169,3 +174,8 @@ block no session can get past. It checks `.sh` under **`/bin/bash` (3.2 on macOS
 as the PATH bash, because 3.2 tracks quotes inside a heredoc nested in a `$(…)` and
 bash 5 does not: a quote in such a heredoc parses fine on Linux and breaks every Mac.
 Keep quote characters out of heredoc bodies inside `$(…)` — spell them `\x27` / `\x22`.
+
+The `plan-presentation` subrule's reminder is documented by the consolidated
+`skills/artifacts/SKILL.md`. Keep its PreToolUse/ExitPlanMode and Stop registrations
+unchanged when editing artifact authoring guidance; skill consolidation must not
+change when the guard fires.
