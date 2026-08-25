@@ -54,12 +54,23 @@ changing that label.
    Never reuse a slot that already belongs to another email. Do not infer identity from
    the label; the native login result is the source of truth.
 
-2. **Start the native login on the target in a PTY.** Use the managed invocation so
-   `HOME` resolves to that slot:
+2. **Start the native login on the target in a PTY.** Let `agents pty start` choose the
+   target's native shell; never hardcode `/bin/bash` fleet-wide. Use the managed
+   invocation so `HOME` resolves to that slot.
+
+   From a POSIX orchestrator:
    ```
-   SID=$(agents ssh <target> 'agents pty start --shell /bin/bash' | tail -1)
+   SID=$(agents ssh <target> 'agents pty start' | tail -1)
    agents ssh <target> "agents pty write $SID 'agents run grok@<stable-label> -- login --device-auth\r'"
    sleep 3
+   agents ssh <target> "agents pty screen $SID"
+   ```
+
+   From a PowerShell orchestrator:
+   ```powershell
+   $SID = (agents ssh <target> "agents pty start" | Select-Object -Last 1)
+   agents ssh <target> "agents pty write $SID `"agents run grok@<stable-label> -- login --device-auth\r`""
+   Start-Sleep -Seconds 3
    agents ssh <target> "agents pty screen $SID"
    ```
    Read the exact device URL and code from the PTY. Keep the PTY alive while authorizing.
@@ -70,7 +81,9 @@ changing that label.
    not authorize when the displayed account is wrong; sign out or choose the correct
    browser identity first.
 
-4. **Verify the terminal and installed identity, then clean up:**
+4. **Verify the terminal and installed identity, then clean up.** The following POSIX
+   form uses the same verbs on PowerShell; replace shell quoting and `$SID` assignment
+   with the PowerShell form above:
    ```
    agents ssh <target> "agents pty screen $SID"  # must say Signed in as <expected-email>
    agents ssh <target> 'agents view grok --json'
