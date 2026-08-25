@@ -1,5 +1,5 @@
 ---
-description: Plan with grounded design — live research, read code, figures as evidence, render an HTML plan
+description: Plan like a staff engineer — live research, system diagrams, alternatives considered, render HTML
 ---
 
 You are planning: $ARGUMENTS
@@ -14,33 +14,52 @@ Plans fail when they're based on assumptions instead of evidence. Before proposi
 4. For medium+ work, get independent plans from a vendor-varied panel and adjudicate one
    merged plan against the code (Step 7)
 
-## Quality bar — the skeleton is a floor, not the plan
+## Quality bar — write it like a staff engineer
 
 `artifacts check` requires a handful of headings and at least one figure. That is the
-minimum that compiles. It is not a finished plan.
+minimum that compiles. It is not a finished plan. Write the document a staff engineer
+would put in front of another staff engineer.
 
-A reviewer must be able to judge the plan without re-running the session. That means:
+A reviewer must be able to judge the plan without re-running the session:
 
+- **Architecture as a system, not a box of labels.** Current and proposed architecture
+  are proper system diagrams — follow the artifacts diagram recipe
+  (`skills/artifacts/references/authoring.md`): named modules, arrows for calls / data
+  / control, layers kept distinct (orchestration ≠ machine ≠ isolation; PID1 vs sidecar;
+  config table vs image vs protocol). A table of filenames is not a diagram. One
+  invented SVG next to empty headings is not done. Gold quality named the coupling
+  points with `file:line` and drew the boot path, not a decorative topology.
+- **Alternatives considered, always.** Every load-bearing choice lists the options,
+  what each implies, and why this one wins. "A registry" is slop until it is "a config
+  table in code" or "an OCI image per harness" or "a new protocol". A one-file bugfix
+  may say "no alternatives — the existing helper already does this." Everything else
+  gets the table. This is what made the Prix Cloud plan reviewable.
+- **Corner cases with `file:line`.** Risks is not "this might be hard". Name the
+  misconfig, the first-branch-wins trap, the leaked resource, the boot path that dies
+  on a third-party image.
+- **Adversarial review in the artifact.** For medium+ / architecture / product plans,
+  run the independent panel (Step 7) **and put the findings in the HTML**
+  (`## Adversarial review`: vendor, what they proposed, ADOPTED / REJECTED with
+  `file:line`). Chat-only review evaporates. The gold session's user prompt was
+  understand → review the plan → then fan out a team — the review is part of the
+  plan, not a later chat.
 - **Live evidence** of the current product or the competitors, when they exist — drive
   the real UI (`agents browser` / `agents computer`) and embed captures. A paragraph of
   remembered positioning is not a teardown.
 - **External URLs** for every outside-world claim (API, pricing, a competitor's primitive,
   a current-year docs page). Uncited claims do not belong in the plan.
-- **Drawn architecture** in every architecture section, plus a current/proposed behavior
-  figure when the surface is user-visible. Prefer a real capture for "current". One
-  invented SVG next to nine empty headings is not done.
-- **Extra `##` sections** whenever the topic needs them. Insert them between
-  Intent/Purpose and Proposed Changes. Named examples that earned their place: behavior
-  first (the flows, each with today's gap), competitive teardown / field notes (from
-  using the live product), proposed architecture (drawn, not only diffs), adversarial
-  review findings, references. Keep the required headings; do not invent a second
-  frontmatter schema.
+- **Extra `##` sections** between Intent/Purpose and Proposed Changes. Expected on a
+  real plan: behavior first (the flows, each with today's gap), competitive teardown /
+  field notes (from using the live product), proposed architecture (drawn, not only
+  diffs), options considered, adversarial review, references. Keep the required
+  headings; do not invent a second frontmatter schema. No slop nouns.
 
 "No nice-to-haves" applies to the **build** (do not grow the feature). Thoroughness of
-the **plan** — figures, citations, field notes — is the job.
+the **plan** — diagrams, alternatives, corner cases, review, citations — is the job.
 
-Scale: a one-file bugfix can skip competitive teardown and the independent panel. A
-platform, product, or architectural change cannot.
+Scale: a one-file bugfix can skip competitive teardown and the independent panel (still
+state the alternative-considered one-liner). A platform, product, or architectural
+change cannot.
 
 ## Step 1: Understand the Request
 
@@ -272,7 +291,8 @@ Collect every planner's design plus your own and synthesize **ONE** plan:
 - **Do not privilege your own plan.** Treat it as one candidate among N. If a planner found a
   simpler or more correct approach, take it.
 - **Fold in** edge cases, reuse opportunities, and failure modes any planner caught that you
-  missed.
+  missed. Put that verdict table in the HTML under `## Adversarial review` — a chat-only
+  review is not part of the plan.
 - Where designs differ on a genuine *trade-off* (not a factual error), surface it as a design
   question via `AskUserQuestion` rather than picking silently.
 - **For any API/CLI-surface or architectural change, the panel must judge two things
@@ -304,10 +324,14 @@ bar above go between Intent/Purpose and Proposed Changes.
 Inside those sections, the load-bearing content is:
 
 - **Code read** as file:line quotes, not paraphrase.
+- **System diagrams** for current and proposed architecture (diagram recipe — modules,
+  arrows, layers). Not a decorative SVG.
+- **Options considered** for every load-bearing choice (options, implication, winner).
 - **User flow + captures/mockups** for any user-visible surface (Step 6).
 - **Per-file diffs** of the load-bearing hunks — not a bare File/Function list.
-- **Independent plans** (if a panel ran): vendor, one-line approach, verdict
-  (ADOPTED / REJECTED with file:line / DESIGN QUESTION).
+- **Corner cases** in Risks with file:line, not a generic "might be hard".
+- **Adversarial review** (if a panel ran): vendor, one-line approach, verdict
+  (ADOPTED / REJECTED with file:line / DESIGN QUESTION) — in the HTML, not only chat.
 - **Design questions** only if genuinely ambiguous.
 
 ## Step 9: Render the plan as HTML and open it in the user's browser
@@ -372,8 +396,10 @@ open was skipped.
 - No time estimates
 - No scope creep on the **build** — do not grow the feature. Do not skip research,
   figures, or citations to keep the plan short
-- No abstract discussion without artifacts
+- No abstract discussion without artifacts — architecture is drawn as a system diagram
 - Every UI feature needs user flow + mockups (captures preferred for "current")
+- Every load-bearing choice lists alternatives considered
+- No slop nouns ("registry", "platform", "runtime") without saying what the concrete thing is
 - Use AskUserQuestion for ambiguous decisions
 - Live research before designing — your training is stale
 - **Reuse over invent** — extend existing primitives, don't create parallel ones

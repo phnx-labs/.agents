@@ -121,7 +121,13 @@ when the topic has a live product, a competitor, or a real architecture:
 
 - `## Behavior first` — the flows the change must deliver, each with today's gap
 - `## Competitive teardown` / field notes — from driving the live product, with captures
-- `## Proposed architecture` — drawn; not only diffs under Proposed Changes
+- `## Proposed architecture` — a staff-engineer system diagram (modules, arrows,
+  layers: orchestration ≠ machine ≠ isolation), not only diffs under Proposed Changes.
+  Follow the diagram recipe in [references/authoring.md](references/authoring.md).
+- `## Options considered` — every load-bearing choice: the options, what each
+  implies, why this one. Required except on a one-file bugfix (one-liner then).
+- `## Adversarial review` — independent-panel findings in the artifact (ADOPTED /
+  REJECTED with `file:line`), not only in chat
 - `## References` — external URLs for outside-world claims
 
 Do not invent a second frontmatter schema. Do not drop required headings to make
@@ -132,13 +138,16 @@ Floor headings, in this relative order:
 
 1. `## Focus for review` — two to five concrete decisions or tradeoffs.
 2. `## Intent` — restate the user's ask. (`## Purpose` also satisfies the checker.)
-3. `## Current architecture` — draw how affected modules communicate today;
-   add a proposed state when the architecture changes.
+3. `## Current architecture` — a system diagram of how affected modules
+   communicate today (boxes + arrows for calls / data / control; layers distinct).
+   A filename table does not replace it. Add a proposed-state diagram when the
+   architecture changes.
 4. `## Proposed Changes` — show load-bearing changes as per-file `diff` fences.
 5. `## Public Interface` — commands, flags, APIs, or visible behavior.
 6. `## Plan` — render the task checklist.
 7. `## Validation` — commands and end-to-end proof.
-8. `## Risks` — edge cases and mitigations.
+8. `## Risks` — concrete corner cases with `file:line` (misconfig, leaked
+   resource, boot path that dies), not "this might be hard".
 9. `## Tracking` — linked tickets and PRs.
 
 ### Plan figure contract
@@ -205,8 +214,11 @@ project's established chart system when one exists.
 
 - State what the artifact shows; do not write a slogan for a plan.
 - Name concrete files, functions, flags, metrics, and error strings.
-- Avoid marketing filler and vague nouns.
+- Avoid marketing filler and slop nouns. "Registry" / "platform" / "runtime"
+  must resolve to a config table, an OCI image, a protocol, or they do not ship.
 - Use at most one em dash per paragraph.
+- Write architecture the way a staff engineer would: coupling points, boot
+  sequence, control vs data plane, alternatives considered.
 
 ## Completion contract
 
