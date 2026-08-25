@@ -28,7 +28,7 @@ If intent is genuinely ambiguous from the report plus the code, ask once. Otherw
 
 Before diagnosing, find the capability's contract and its tests. "Why did it slip" is a sharper question than "what broke," and its answer is half the fix:
 
-- Locate the spec (an `openspec/specs/` tree, a `docs/specifications.md`, the owning `AGENTS.md`) and the tests covering this path. Grep, then read.
+- Locate the spec (a `docs/specifications.md`, a `spec.md`, the owning `AGENTS.md`) and the tests covering this path. Grep, then read.
 - Record both:
   1. **Was this behavior specified and tested?** Quote the requirement / test (file:line), or state plainly that none exists.
   2. **If it was — why did it slip?** (the test asserts the wrong thing; the spec is silent on this edge; the path has no coverage). **If it wasn't** — the missing spec/test *is* part of the finding, not an afterthought.

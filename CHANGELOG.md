@@ -21,6 +21,20 @@
 
 ### Changed
 
+- **`/swarm spec` drops OpenSpec for a plain-language behavioral spec (RUSH-3192).**
+  The spec skill was built around OpenSpec: it told the agent to write "the contract
+  others must not break" as `SHALL`/`SHOULD`/`MAY` requirements with RFC 2119 keywords,
+  wrap each in `#### Scenario:` Given/When/Then blocks, and drop the output into an
+  `openspec/specs/` tree. That grammar is gone. The spec is now a behavioral, not
+  technical, description written the way the owner describes a feature: **What this is &
+  why**, **How it behaves today**, **What it does — the behavior and the sharp cases** as
+  `input -> outcome` lines (edges first), **What must NOT change / out of scope**,
+  mock-ups for any UI, and file:line evidence. The swarm blind-verification stays,
+  reframed in plain language (independent agents describe the behavior without your draft;
+  divergence is the signal), as do the spec-vs-plan split and the rendered-HTML artifact.
+  Rewrites `plugins/swarm/skills/spec/SKILL.md` + `commands/spec.md`, and removes the
+  OpenSpec framing from the plan skill/command, the debug and run skills, and the swarm
+  README (`OpenSpec-grade` → `behavior-first`; the `openspec/specs/` example dropped).
 - **Four delivery-phase guards skip plan mode inside their own scripts.** Measured from
   `~/.agents/.cache/perf/perf.db` (2026-08-03 → 08-08): nine guards fire on **every**
   `Bash` tool call for a combined **292 ms**, across 285,667 fires of which 284 —
