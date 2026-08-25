@@ -1,6 +1,6 @@
 ---
 name: plan
-description: "Plan a feature with swarm verification — research hard, produce mock-ups for any UI/flow, draft an OpenSpec-grade change proposal, then have independent agents plan the same thing blind and reconcile. Use before building anything non-trivial. Triggers on: 'swarm plan', '/swarm plan', 'plan with verification', 'change proposal', 'plan and check the approach'."
+description: "Plan a feature with swarm verification — research hard, produce mock-ups for any UI/flow, draft a behavior-first change proposal, then have independent agents plan the same thing blind and reconcile. Use before building anything non-trivial. Triggers on: 'swarm plan', '/swarm plan', 'plan with verification', 'change proposal', 'plan and check the approach'."
 argument-hint: "[feature or change to plan]"
 allowed-tools: Bash(agents teams*), Bash(agents run*), Bash(rg*), Bash(fd*), Bash(ls*), Bash(git log*), Bash(git diff*), Read(*), Grep(*), Glob(*), Write(*), WebSearch(*), WebFetch(*)
 user-invocable: true
@@ -8,11 +8,11 @@ user-invocable: true
 
 # swarm:plan — plan, mock up, then have the swarm try to break the plan
 
-> Read the `swarm:orchestrate` skill first for the fan-out mechanics (team creation, briefs, blinded verification, monitoring). This skill is the **plan mode** layered on top: research deeply, **draw what the user will see**, produce an OpenSpec-grade change proposal, and validate it against independent agents who plan the same feature blind.
+> Read the `swarm:orchestrate` skill first for the fan-out mechanics (team creation, briefs, blinded verification, monitoring). This skill is the **plan mode** layered on top: research deeply, **draw what the user will see**, produce a behavior-first change proposal, and validate it against independent agents who plan the same feature blind.
 
 You are planning: **$ARGUMENTS**
 
-The deliverable is not a paragraph of intentions — it is a **change proposal at the level of [OpenSpec](https://openspec.dev/)** plus **concrete mock-ups** for any surface a human will look at: a precise statement of the delta, the tasks to get there, the visual/UX shape, and the spec it leaves behind. Then de-risk it by having the swarm independently arrive at their own plans and reconciling.
+The deliverable is not a paragraph of intentions — it is a **rigorous, behavior-first change proposal** plus **concrete mock-ups** for any surface a human will look at: a precise statement of the delta, the tasks to get there, the visual/UX shape, and the behavior it leaves behind. Then de-risk it by having the swarm independently arrive at their own plans and reconciling.
 
 **plan vs spec:** this skill is the *delta* (what we will build). `/swarm:spec` is the durable *is* (what the capability already guarantees) for other agents/humans so they do not invent wrong behavior.
 
@@ -62,9 +62,9 @@ state, error state, or multi-step user journey:
 If the change is pure library/backend with **no** user-visible surface, say so explicitly
 under Design (`no UI surface`) and skip mock-ups — do not invent a fake screen.
 
-## 5. Draft the OpenSpec-grade proposal
+## 5. Draft the change proposal
 
-Structure the plan as a change proposal, not prose. (You don't need the `openspec/` tooling installed — you're borrowing its rigor and shape.)
+Structure the plan as a change proposal, not prose: the delta to build, the tasks to get there, and the visible shape it leaves behind.
 
 - **`proposal.md`** — Why (the problem / user value), What changes (the delta in plain terms), Impact (what this touches), and **Mock-ups / flows** (section 4) when applicable.
 - **`tasks.md`** — the ordered, checkable task list to execute the change. Each task names the file(s) it edits. This is exactly what a swarm or a `/code:loop` would drain.

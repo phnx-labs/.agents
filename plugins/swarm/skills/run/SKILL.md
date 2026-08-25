@@ -14,7 +14,7 @@ You are running as a swarm: **$ARGUMENTS**
 
 This is the default when the work is genuinely multi-agent but doesn't match a specialized mode. If the task IS one of those, prefer the specialized skill — it has the right phases and output baked in:
 
-- Building something non-trivial → **`swarm:plan`** (research + **mock-ups** + OpenSpec-grade proposal + blind independent planning).
+- Building something non-trivial → **`swarm:plan`** (research + **mock-ups** + behavior-first proposal + blind independent planning).
 - Durable contract so others don't invent wrong behavior → **`swarm:spec`** (SoT requirements + scenarios + **mock-ups** + drift check).
 - Proving a non-obvious root cause → **`swarm:debug`** (trace the path, confirm blind on different providers).
 
