@@ -34,6 +34,12 @@ check "" approved-red.json \
   "APPROVED review with failing CI is rejected"
 check "" carried-from-green.json \
   "carried-from APPROVE comment is rejected"
+# PHNX-3236: this daemon lists PRs `--author @me`, so the PR author is always
+# the same shared fleet identity. An APPROVE comment posted by that same
+# identity on its own PR must not clear the guard, or the daemon would
+# auto-merge on its own self-approval.
+check "" self-authored-approve-green.json \
+  "self-authored APPROVE comment (PHNX-3236) is rejected even with green CI"
 
 # The YAML must not regress to a cwd-relative gh pr list / reviewDecision filter.
 yml="$DIR/pr-merge-on-green.yml"

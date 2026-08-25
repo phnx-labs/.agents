@@ -2,6 +2,45 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- **merge-guard closes a self-merge bypass — author-authored verdicts no longer
+  clear (PHNX-3236).** `pr-verdict.py`'s `has_verdict` cleared a merge whenever
+  ANY review/comment on the PR carried an APPROVE/APPROVED verdict, with no
+  check on who posted it. Every fleet agent shares one GitHub identity, and
+  while GitHub's API does reject a formal `APPROVED` review from the PR's own
+  author, nothing stopped that same identity from posting a `COMMENTED`
+  review or a plain issue comment on its own PR reading `"VERDICT: APPROVE"`
+  — live in both `merge-guard.sh` (the interactive hook) and
+  `monitors/pr-merge-on-green.sh` (the autonomous merge daemon, which lists
+  PRs `--author @me` — meaning the PR author there is *always* the same
+  shared identity, the more dangerous of the two call sites). `has_verdict`
+  now takes the PR author's login and excludes anything authored by that
+  login (case-insensitive) from both reviews and comments before checking
+  state or body text, handling both API shapes in play: REST's `user.login`
+  (`merge-guard.sh`'s `gh api .../reviews`, `.../comments`) and GraphQL's
+  `author.login` (`pr-merge-on-green.sh`'s `gh pr view --json`). `merge-guard.sh`
+  runs its three API calls (reviews, comments, author) concurrently rather
+  than sequentially — three sequential 3s-bounded calls against the hook's
+  5s `timeout` would routinely exceed it and get the hook killed before the
+  verdict check ever ran, a harness-level fail-open more likely under
+  realistic latency than an outright error.
+
+  **Also fixes a live, reproduced parsing bug in the stdin contract itself**
+  (hit reviewing this exact PR): the original design piped plain-text
+  `<reviews>---AGENTS-SPLIT---<comments>` and split on the first marker
+  occurrence, assuming only a *comment* body would ever quote the marker
+  (RUSH-3080). A *review* body discussing this file — reviewing PHNX-3236
+  itself — quoted the marker too, and a plain-text split cannot tell a quoted
+  marker from the real one: splitting on the embedded copy corrupted the JSON
+  on both sides, and a genuine non-author APPROVE read as `"missing"`. The
+  three stdin segments (reviews, comments, author) are now each base64-encoded
+  before being joined by the marker — the base64 alphabet has no hyphen, so
+  an encoded segment can never contain `---AGENTS-SPLIT---`, making the
+  ambiguity structurally impossible rather than merely handled by
+  split-direction bookkeeping. 97 tests across `pr-verdict_test.sh`,
+  `merge-guard_test.sh`, and `pr-merge-on-green_test.sh`.
+
 ### Changed
 
 - **Fleet auth guidance now prefers per-device native OAuth when the harness supports it (PHNX-3259).** `/fleet:mint-auth` documents the verified target-slot device-code flow: create a stable account slot, run login in a PTY on that target, authorize through a browser signed into the intended account, verify the resulting email, and repeat per device. Native OAuth files remain non-copyable; only named setup-token/API-key bundles may be distributed with `agents accounts sync`. Onboarding and the fleet catalog use the same distinction.

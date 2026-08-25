@@ -177,17 +177,68 @@ case "$norm" in
       fi
     fi
     if [ -n "$_pr_num" ] && [ -n "$_pr_repo" ]; then
-      # 3s per call: two sequential probes must fit the hook's registered
-      # timeout. On stock macOS (no timeout/gtimeout) _to runs gh unbounded —
-      # the harness then kills the hook at its registered timeout, which FAILS
-      # OPEN at the harness layer; acceptable for a review probe, never relied
-      # on for the admin block (which needs no network).
-      _reviews=$(_to 3 gh api "repos/$_pr_repo/pulls/$_pr_num/reviews" --cache 60s 2>/dev/null) || _reviews="__API_ERR__"
-      _comments=$(_to 3 gh api "repos/$_pr_repo/issues/$_pr_num/comments" --cache 60s 2>/dev/null) || _comments="__API_ERR__"
-      if [ "$_reviews" != "__API_ERR__" ] && [ "$_comments" != "__API_ERR__" ]; then
+      # 3s per call, but PHNX-3236 made this THREE probes (reviews, comments,
+      # + the PR-author fetch below) against a hook `timeout: 5` (hooks.yaml).
+      # Run them CONCURRENTLY rather than sequentially: worst case stays ~3s
+      # (bounded by the slowest single call) instead of ~9s, which would
+      # routinely exceed the 5s budget and get the whole hook killed by the
+      # harness before it ever reaches the verdict check — a silent fail-open
+      # at the harness layer that is far more likely to fire under realistic
+      # API latency than an outright error. On stock macOS (no timeout/
+      # gtimeout) _to runs gh unbounded — same harness-level fail-open
+      # applies; acceptable for a review probe, never relied on for the admin
+      # block above (which needs no network).
+      _pr_tmp=$(mktemp -d 2>/dev/null) || _pr_tmp=""
+      if [ -n "$_pr_tmp" ]; then
+        ( _to 3 gh api "repos/$_pr_repo/pulls/$_pr_num/reviews" --cache 60s \
+            >"$_pr_tmp/reviews.out" 2>/dev/null; echo $? >"$_pr_tmp/reviews.rc" ) &
+        ( _to 3 gh api "repos/$_pr_repo/issues/$_pr_num/comments" --cache 60s \
+            >"$_pr_tmp/comments.out" 2>/dev/null; echo $? >"$_pr_tmp/comments.rc" ) &
+        # PHNX-3236: the PR's own author, so pr-verdict.py can exclude any
+        # review/comment authored by them (a self-merge bypass — every fleet
+        # agent shares one GitHub identity, and nothing but this check stops
+        # that identity from posting "VERDICT: APPROVE" on its own PR). Same
+        # fail-open posture as reviews/comments: an unresolved author skips
+        # the whole verdict check rather than blocking a legit merge on a
+        # GitHub hiccup.
+        ( _to 3 gh api "repos/$_pr_repo/pulls/$_pr_num" --jq .user.login --cache 60s \
+            >"$_pr_tmp/author.out" 2>/dev/null; echo $? >"$_pr_tmp/author.rc" ) &
+        wait
+        if [ "$(cat "$_pr_tmp/reviews.rc" 2>/dev/null)" = "0" ]; then
+          _reviews=$(cat "$_pr_tmp/reviews.out")
+        else
+          _reviews="__API_ERR__"
+        fi
+        if [ "$(cat "$_pr_tmp/comments.rc" 2>/dev/null)" = "0" ]; then
+          _comments=$(cat "$_pr_tmp/comments.out")
+        else
+          _comments="__API_ERR__"
+        fi
+        if [ "$(cat "$_pr_tmp/author.rc" 2>/dev/null)" = "0" ]; then
+          _pr_author=$(cat "$_pr_tmp/author.out")
+        else
+          _pr_author="__API_ERR__"
+        fi
+        rm -rf "$_pr_tmp"
+      else
+        _reviews="__API_ERR__"; _comments="__API_ERR__"; _pr_author="__API_ERR__"
+      fi
+      if [ "$_reviews" != "__API_ERR__" ] && [ "$_comments" != "__API_ERR__" ] && [ "$_pr_author" != "__API_ERR__" ] && [ -n "$_pr_author" ]; then
         # Same verdict as pr-merge-on-green: reuse pr-verdict.py, do not re-inline.
         _GUARD_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-        _verdict=$(printf '%s\n---AGENTS-SPLIT---\n%s' "$_reviews" "$_comments" | python3 "$_GUARD_DIR/pr-verdict.py" 2>/dev/null) || _verdict="ok"
+        # base64-encode each segment: a review/comment discussing THIS file
+        # (as one did, live, reviewing PHNX-3236 itself) can quote the plain
+        # marker text verbatim in its own body, and a plain-text split has no
+        # way to tell a quoted marker from a real one — splitting on the
+        # quoted copy corrupted the JSON on both sides and a genuine approval
+        # read as "missing". Base64's alphabet has no hyphen, so an encoded
+        # segment can never contain "---AGENTS-SPLIT---" — see pr-verdict.py's
+        # module docstring.
+        _verdict=$(printf '%s\n---AGENTS-SPLIT---\n%s\n---AGENTS-SPLIT---\n%s' \
+            "$(printf '%s' "$_reviews" | base64 | tr -d '\n')" \
+            "$(printf '%s' "$_comments" | base64 | tr -d '\n')" \
+            "$(printf '%s' "$_pr_author" | base64 | tr -d '\n')" \
+          | python3 "$_GUARD_DIR/pr-verdict.py" 2>/dev/null) || _verdict="ok"
         if [ "$_verdict" = "missing" ]; then
           printf '%s\n' "Blocked: no non-author review verdict found ON this PR ($_pr_repo#$_pr_num). Post a GitHub APPROVED review, or an APPROVE/APPROVED verdict in a COMMENTED review body (gh pr review --comment) or an issue comment (gh pr comment), ON the PR being merged — a verdict 'carried from' another PR satisfies nothing (the #2736 laundering pattern). Get the automated reviewer's verdict or spawn a non-author subagent review on THIS PR, then retry." >&2
           exit 2
