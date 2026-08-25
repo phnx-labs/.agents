@@ -42,6 +42,8 @@ hooks/
     tests/                  its *_test.sh files
   pre-tool-use/           PreToolUse
     tests/                  its *_test.sh files
+  post-tool-use/          PostToolUse
+    tests/                  its *_test.sh files
   user-prompt-submit/     UserPromptSubmit
     tests/                  its *_test.sh files
   stop/                   Stop
@@ -96,6 +98,12 @@ register time). See [§Subrule hooks](#subrule-hooks-rules-not-this-tree).
 | [`01-git-require-clean-tree.sh`](./pre-tool-use/01-git-require-clean-tree.sh) | Blocks `git pull` / `rebase` / autostash while the tree is dirty; skips explicit plan-mode events |
 | [`09-mailbox-inject.py`](./pre-tool-use/09-mailbox-inject.py) | Delivers queued messages into a running session |
 | [`11-visual-readback-nudge.py`](./pre-tool-use/11-visual-readback-nudge.py) | Advises rendering and reading back a visual artifact before it leaves the session |
+
+### `post-tool-use/` — PostToolUse
+
+| Hook | What it does |
+|---|---|
+| [`01-github-ratelimit-nudge.py`](./post-tool-use/01-github-ratelimit-nudge.py) | Advisory: after a GitHub call comes back rate-limited, reminds once per session to act now (`agents browser` / `gh api`) instead of sitting idle for the reset or deferring to a background agent; exit 0, fails open |
 
 ### `user-prompt-submit/` — UserPromptSubmit
 
