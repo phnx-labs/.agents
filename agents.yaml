@@ -8,19 +8,6 @@
 # antigravity. See hooks/README.md §Multi-harness.
 
 hooks:
-  mq-read-nudge:
-    # PreToolUse on Read: when the agent is about to read a large (>=16 KiB)
-    # supported file whole, inject a one-time (per session + per file)
-    # suggestion to map it with `mq .tree` and extract only the needed section.
-    # Advisory, never blocks; skips targeted reads (offset/limit) and small
-    # files. Closes the reach-gap behind the measured pattern — mq used 0x
-    # across 835 sessions / 3 days while 62% of tool calls were context reads.
-    # Advisory additionalContext; tool names Read/read_file/ReadFile (multi-harness).
-    events:
-      - PreToolUse
-    matcher: Read
-    script: pre-tool-use/10-mq-read-nudge.py
-    timeout: 5
   visual-readback-nudge:
     # Advisory only: reminds once per artifact before a visual leaves the session.
     events: [PreToolUse]

@@ -20,6 +20,17 @@
   `git-guard`, `rm-guard`, `secrets-guard` — are deliberately **not** gated, because
   Bash still runs in plan mode and `reset --hard` / `rm -rf` stay reachable.
 
+### Fixed
+
+- **Remove the orphaned `mq-read-nudge` hook declaration.** The script
+  `hooks/pre-tool-use/10-mq-read-nudge.py` was deliberately deleted in
+  `315848e` / `fcbd5bf` (#348, "mq removal"), but its `agents.yaml`
+  registration was left behind. Every `agents sync` since has emitted
+  `Hook warning: mq-read-nudge: script not found in user or system hooks dir`
+  — once per installed version, so six warnings on a five-version box and
+  hundreds across the fleet. A declared-hook audit across both layers now
+  resolves 21 of 21 scripts (was 21 of 22).
+
 ### Removed
 
 - **Cut `footer-guard` — a standing deterrent the rule has fully internalized.**
