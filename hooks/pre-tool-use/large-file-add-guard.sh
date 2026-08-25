@@ -54,6 +54,8 @@ if ! command -v _json_field >/dev/null 2>&1; then
   exit 2
 fi
 
+_hook_skip_plan_mode "$input" && exit 0
+
 # --- shared git-command parser ---------------------------------------------
 # The git-invocation finder (sh -c unwrapping, chain splitting, quote/env
 # stripping, global-flag peeling) lives in hooks/lib/git-parse.sh (one
@@ -78,7 +80,7 @@ fi
 if ! cmd=$(_json_field "$input" tool_input.command); then
   # No parser: fail closed only when the payload clearly looks like git add —
   # we already matched *git*add* above.
-  printf 'large-file-add-guard: no JSON parser (jq/node/python) — refusing git add unchecked (fail-closed).\n' >&2
+  printf 'large-file-add-guard: no JSON parser succeeded (malformed payload or jq/node/python unavailable) — refusing git add unchecked (fail-closed).\n' >&2
   exit 2
 fi
 [ -z "$cmd" ] && cmd=$(_json_field "$input" toolInput.command) || true

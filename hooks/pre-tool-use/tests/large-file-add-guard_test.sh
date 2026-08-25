@@ -82,6 +82,18 @@ check_allow() { # name, command-string, [max-kb-override]
 
 echo "large-file-add-guard"
 
+json='{"permission_mode":"plan","tool_input":{"command":"git add oversized.bin"}}'
+OUT=$(printf '%s' "$json" | "$SH_BIN" "$HOOK" 2>"$SANDBOX/plan.err")
+RC=$?
+ERR=$(cat "$SANDBOX/plan.err")
+if [ "$RC" -eq 0 ] && [ -z "$OUT" ] && [ -z "$ERR" ]; then
+  echo "ok   - explicit plan mode skips the guard"
+  pass=$((pass+1))
+else
+  echo "FAIL - explicit plan mode should skip cleanly (rc=$RC stdout=$OUT stderr=$ERR)"
+  fail=$((fail+1))
+fi
+
 # RUSH-2295 structured denial shape
 check_deny_structured() {
   run_guard "$2"

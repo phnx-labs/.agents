@@ -48,6 +48,8 @@ done
 unset _LIB_DIR _cand
 command -v _json_field >/dev/null 2>&1 || exit 0
 
+_hook_skip_plan_mode "$input" && exit 0
+
 # No JSON parser -> FAIL OPEN (a reminder must never block a legit PR).
 cmd=$(_json_field "$input" tool_input.command toolInput.command) || exit 0
 [ -n "$cmd" ] || exit 0

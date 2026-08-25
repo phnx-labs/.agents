@@ -112,7 +112,7 @@ fi
 # tool_input.command; Grok: camelCase toolInput.command). Try both. Empty on
 # both means this event is not a shell tool — allow.
 if ! cmd=$(_json_field "$input" tool_input.command); then
-  printf 'git-guard: no JSON parser (jq/node/python) available — refusing to run a git command unchecked (fail-closed). Ensure node or jq is on PATH.\n' >&2
+  printf 'git-guard: no JSON parser succeeded (malformed payload or jq/node/python unavailable) — refusing to run a git command unchecked (fail-closed).\n' >&2
   exit 2
 fi
 [ -z "$cmd" ] && cmd=$(_json_field "$input" toolInput.command) || true

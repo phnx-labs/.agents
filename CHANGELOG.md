@@ -19,6 +19,24 @@
   content and does not count; a mid-turn `queue-operation` does). Registered in
   `agents.yaml`; test at `hooks/stop/tests/07-gather-before-reply_test.sh`.
 
+### Changed
+
+- **Four delivery-phase guards skip plan mode inside their own scripts.** Measured from
+  `~/.agents/.cache/perf/perf.db` (2026-08-03 → 08-08): nine guards fire on **every**
+  `Bash` tool call for a combined **292 ms**, across 285,667 fires of which 284 —
+  **0.099%** — changed the outcome. Four cannot fire usefully while an agent is
+  planning: `merge-guard`, `pr-description-reminder`, `large-file-add-guard`,
+  `git-require-clean-tree`. Each reads `permission_mode` from the hook event through
+  the shared `hooks/lib/json-field.sh` helper and exits before command analysis when
+  the value is `plan`. This cuts their measured 80 ms from plan-mode Bash calls
+  without waiting for an agents-cli release or adding the generated shim's Python
+  matcher subprocess. An absent or unknown mode keeps the guard active. The shared
+  parser now also reports malformed hook JSON as an error instead of returning a
+  successful empty field, so safety guards follow their documented fail-closed path
+  while advisory hooks retain their explicit fail-open policy. The data-loss guards —
+  `git-guard`, `rm-guard`, `secrets-guard` — are deliberately **not** gated, because
+  Bash still runs in plan mode and `reset --hard` / `rm -rf` stay reachable.
+
 ### Fixed
 
 - **Remove the orphaned `mq-read-nudge` hook declaration.** The script

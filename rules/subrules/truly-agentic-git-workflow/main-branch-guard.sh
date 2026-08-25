@@ -86,7 +86,7 @@ input=$(cat)
 # Fail CLOSED if no JSON parser is available — the guard can't tell which tool is
 # firing, so it must not silently allow a possible default-branch mutation.
 if ! tool=$(_json_field "$input" tool_name toolName); then
-  printf 'main-branch-guard: no JSON parser (jq/node/python) available — refusing the tool call unchecked (fail-closed). Ensure node or jq is on PATH.\n' >&2
+  printf 'main-branch-guard: no JSON parser succeeded (malformed payload or jq/node/python unavailable) — refusing the tool call unchecked (fail-closed).\n' >&2
   exit 2
 fi
 [ -z "$tool" ] && exit 0

@@ -52,6 +52,23 @@ A="--ad""min"    # -> "--admin"
 pass=0
 fail=0
 
+plan_json=$(printf '%s' "gh pr $M 40 $A" | jq -Rs '{permission_mode:"plan",tool_input:{command:.}}')
+printf '%s' "$plan_json" | "$GUARD" >/dev/null 2>&1
+if [ "$?" -eq 0 ]; then
+  pass=$((pass + 1))
+else
+  fail=$((fail + 1))
+  printf 'FAIL: explicit plan mode should skip the guard\n'
+fi
+
+printf '%s' "{malformed \"command\":\"gh pr $M 40 $A\"" | "$GUARD" >/dev/null 2>&1
+if [ "$?" -eq 2 ]; then
+  pass=$((pass + 1))
+else
+  fail=$((fail + 1))
+  printf 'FAIL: malformed admin-merge payload must fail closed\n'
+fi
+
 # check <want_exit> <description> <command>
 check() {
   want=$1

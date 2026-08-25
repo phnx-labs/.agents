@@ -32,6 +32,8 @@ if ! command -v _json_field >/dev/null 2>&1; then
   exit 2
 fi
 
+_hook_skip_plan_mode "$input" && exit 0
+
 # --- friction self-report ---------------------------------------------------
 # This hook exits 2 before any `agents` process exists, so it cannot emit
 # in-process. Fires the hidden recorder in the background, fully fail-open,
@@ -44,7 +46,7 @@ report_friction() {  # $1=failureId  $2=error-message
 
 # Claude/Codex/Kimi/Cursor/Droid: tool_input.command; Grok: toolInput.command.
 if ! cmd=$(_json_field "$input" tool_input.command); then
-  echo "git-require-clean-tree: no JSON parser (jq/node/python) available — refusing git pull/rebase unchecked (fail-closed)." >&2
+  echo "git-require-clean-tree: no JSON parser succeeded (malformed payload or jq/node/python unavailable) — refusing git pull/rebase unchecked (fail-closed)." >&2
   exit 2
 fi
 [ -z "$cmd" ] && cmd=$(_json_field "$input" toolInput.command) || true

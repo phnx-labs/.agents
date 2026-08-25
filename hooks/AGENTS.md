@@ -146,7 +146,7 @@ pipes into it. "No manifest entry" ≠ dead when a registered script invokes it.
 
 A guard that cannot evaluate its input must **refuse**, not allow. Source the
 shared `_json_field` extractor from `hooks/lib/json-field.sh` (`jq` → `node` →
-`python`; returns 1 only when no parser exists), then verify the function is
+`python`; returns 1 when no parser exists or the payload is malformed), then verify the function is
 defined after the source and `exit 2` if it is not — a guard that cannot even
 load its parser must fail closed, not run unchecked. Advisory (non-blocking)
 hooks may fail open (`exit 0`) instead. Use `${0%/*}` (not `dirname`) to locate

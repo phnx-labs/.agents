@@ -64,6 +64,8 @@ if ! command -v _json_field >/dev/null 2>&1; then
   exit 2
 fi
 
+_hook_skip_plan_mode "$input" && exit 0
+
 # Fast path: a command that never mentions "merge" can't be a bypass merge.
 case "$input" in
   *merge*) ;;
@@ -73,7 +75,7 @@ esac
 # Fail CLOSED if no JSON parser is available — a guard that cannot read the
 # command must not wave a possible admin-bypass merge through.
 if ! cmd=$(_json_field "$input" tool_input.command toolInput.command); then
-  printf 'merge-guard: no JSON parser (jq/node/python) available — cannot verify the merge command; refusing (fail-closed).\n' >&2
+  printf 'merge-guard: no JSON parser succeeded (malformed payload or jq/node/python unavailable) — cannot verify the merge command; refusing (fail-closed).\n' >&2
   exit 2
 fi
 [ -n "$cmd" ] || exit 0

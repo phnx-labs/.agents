@@ -99,7 +99,7 @@ if ! command -v _json_field >/dev/null 2>&1; then
 fi
 
 if ! cmd=$(_json_field "$input" tool_input.command); then
-  printf 'public-artifact-guard: no JSON parser (jq/node/python) — refusing the staging command unchecked (fail-closed).\n' >&2
+  printf 'public-artifact-guard: no JSON parser succeeded (malformed payload or jq/node/python unavailable) — refusing the staging command unchecked (fail-closed).\n' >&2
   exit 2
 fi
 [ -z "$cmd" ] && cmd=$(_json_field "$input" toolInput.command) || true

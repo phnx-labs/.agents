@@ -44,6 +44,15 @@ printf 'A real feature change.\n\n\n\n\n\n\n\n\n\n\nBTW this touches the refacto
 mkdir -p "$TMP/dir with space"
 printf 'Just a real change, no proof.\n'                       > "$TMP/dir with space/body.md"
 
+plan_json=$(printf '%s' 'gh pr create -t x -b "no run evidence"' | jq -Rs '{permissionMode:"plan",toolInput:{command:.}}')
+printf '%s' "$plan_json" | "$HOOK" >/dev/null 2>&1
+if [ "$?" -eq 0 ]; then
+  pass=$((pass + 1))
+else
+  fail=$((fail + 1))
+  printf 'FAIL: explicit camelCase plan mode should skip the reminder\n'
+fi
+
 # check <want_exit> <field> <description> <command>
 check() {
   want=$1; field=$2; desc=$3; cmd=$4
