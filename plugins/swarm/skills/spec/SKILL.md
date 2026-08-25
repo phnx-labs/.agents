@@ -2,7 +2,7 @@
 name: spec
 description: "Write the durable source-of-truth specification for a capability so other agents and humans do not invent wrong behavior — describe how it actually behaves in plain language: what it is for, what it does, the sharp cases, and what must not change, grounded in the real code. Includes mock-ups for any UI/flow, blind-verified by a swarm. Not a change plan. Triggers on: 'swarm spec', '/swarm spec', 'specify this capability', 'source-of-truth spec', 'how does this behave', 'what does this guarantee'."
 argument-hint: "[capability or system to specify]"
-allowed-tools: Bash(agents teams*), Bash(agents run*), Bash(agents view*), Bash(rg*), Bash(fd*), Bash(ls*), Bash(git log*), Bash(git diff*), Read(*), Grep(*), Glob(*), Write(*), WebSearch(*), WebFetch(*)
+allowed-tools: Bash(agents teams*), Bash(agents run*), Bash(agents view*), Bash(agents browser*), Bash(agents computer*), Bash(rg*), Bash(fd*), Bash(ls*), Bash(git log*), Bash(git diff*), Read(*), Grep(*), Glob(*), Write(*), WebSearch(*), WebFetch(*)
 user-invocable: true
 ---
 
@@ -140,8 +140,9 @@ If specifying this surfaced work to do, name it and point to `/swarm:plan` — t
 After the spec is written, author a Markdown source under `.agents/artifacts/yyyy-mm-dd/`,
 render it to a self-contained HTML file with `artifacts-cli`, and open it on the machine
 the user sits at — follow the **`artifacts`** skill for the LOOK (house structure,
-product-brand theming, light/dark toggle, ≥1 hand-authored inline-SVG diagram — a
-behavior map or a spec-vs-code table reads well as SVG) and the `/plan`
+product-brand theming, light/dark toggle, figures as evidence — a behavior
+map or spec-vs-code drawing, plus live captures when the capability has a UI;
+one invented SVG is the compiler floor, not the bar) and the `/plan`
 command's Step 9 for the open-on-Mac transport, using the injected **Host & Fleet**
 context to pick and reach the browser host. Don't duplicate the recipe; reuse it.
 

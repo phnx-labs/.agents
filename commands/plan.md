@@ -39,20 +39,18 @@ A reviewer must be able to judge the plan without re-running the session:
   on a third-party image.
 - **Adversarial review in the artifact.** For medium+ / architecture / product plans,
   run the independent panel (Step 7) **and put the findings in the HTML**
-  (`## Adversarial review`: vendor, what they proposed, ADOPTED / REJECTED with
-  `file:line`). Chat-only review evaporates. The gold session's user prompt was
-  understand → review the plan → then fan out a team — the review is part of the
-  plan, not a later chat.
+  (vendor, what they proposed, ADOPTED / REJECTED with `file:line`). Chat-only
+  review evaporates. The heading title is yours.
 - **Live evidence** of the current product or the competitors, when they exist — drive
   the real UI (`agents browser` / `agents computer`) and embed captures. A paragraph of
   remembered positioning is not a teardown.
 - **External URLs** for every outside-world claim (API, pricing, a competitor's primitive,
   a current-year docs page). Uncited claims do not belong in the plan.
-- **Extra `##` sections** between Intent/Purpose and Proposed Changes. Expected on a
-  real plan: behavior first (the flows, each with today's gap), competitive teardown /
-  field notes (from using the live product), proposed architecture (drawn, not only
-  diffs), options considered, adversarial review, references. Keep the required
-  headings; do not invent a second frontmatter schema. No slop nouns.
+- **Extra `##` sections** between Intent/Purpose and Proposed Changes when the
+  evidence needs a home. Named examples, not a second checklist: behavior first,
+  competitive teardown, proposed architecture, options considered, adversarial
+  review, references. Empty extra H2s are the heading-skeleton bug in a new
+  costume. Keep the required headings; do not invent a second frontmatter schema.
 
 "No nice-to-haves" applies to the **build** (do not grow the feature). Thoroughness of
 the **plan** — diagrams, alternatives, corner cases, review, citations — is the job.

@@ -74,11 +74,10 @@ add purpose-specific fields (`tickets:`, `prs:`) beside `links`.
 
 Required body sections come from the kind's template (`artifacts new <kind>
 --blank` writes it). Keep those headings so `artifacts check` passes. Extra
-`##` sections that carry evidence (behavior-first, competitive teardown, field
-notes, proposed architecture as a system diagram, options considered,
-adversarial review, references) are expected on a real plan — they are not a
-second schema. Do not invent competing frontmatter fields, and do not drop
-required headings to make room for extras.
+`##` sections that carry evidence are expected on a real plan — as content,
+not as a second closed heading list (empty extra H2s are the skeleton bug in
+a new costume). Do not invent competing frontmatter fields, and do not drop
+required headings to make room.
 
 ## Design Layout
 

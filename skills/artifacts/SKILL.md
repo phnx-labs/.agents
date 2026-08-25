@@ -113,26 +113,29 @@ links:
 ```
 
 The plan must begin with behavior the reviewer can judge, then explain the
-implementation. Keep these headings, in this relative order — they are a
-**floor**. `artifacts check` errors if Purpose, Proposed Changes, Public
-Interface, Validation, or Risks are missing. Extra `##` sections that carry
-evidence belong between Intent/Purpose and Proposed Changes; they are expected
-when the topic has a live product, a competitor, or a real architecture:
+implementation. Keep the floor headings below, in this relative order.
+`artifacts check` errors if Purpose, Proposed Changes, Public Interface,
+Validation, or Risks are missing.
 
-- `## Behavior first` — the flows the change must deliver, each with today's gap
-- `## Competitive teardown` / field notes — from driving the live product, with captures
-- `## Proposed architecture` — a staff-engineer system diagram (modules, arrows,
-  layers: orchestration ≠ machine ≠ isolation), not only diffs under Proposed Changes.
-  Follow the diagram recipe in [references/authoring.md](references/authoring.md).
-- `## Options considered` — every load-bearing choice: the options, what each
-  implies, why this one. Required except on a one-file bugfix (one-liner then).
-- `## Adversarial review` — independent-panel findings in the artifact (ADOPTED /
-  REJECTED with `file:line`), not only in chat
-- `## References` — external URLs for outside-world claims
+Extra `##` sections that carry evidence belong between Intent/Purpose and
+Proposed Changes. They are **content**, not a second closed heading list. Do
+not mint empty `## Behavior first` / `## Competitive teardown` / `## Options
+considered` shells to look complete. Put the evidence under whatever title
+reads. When the topic has a live product, a competitor, or a real architecture,
+the plan must actually contain:
 
-Do not invent a second frontmatter schema. Do not drop required headings to make
-room for extras. A heading skeleton plus one invented SVG compiles and is not a
-plan a reviewer can judge.
+- the flows the change must deliver, each with today's gap
+- field notes from driving the live product, with captures
+- a proposed-architecture system diagram (modules, arrows, layers — follow the
+  diagram recipe in [references/authoring.md](references/authoring.md))
+- load-bearing choices with options / implications / winner
+- independent-panel findings (ADOPTED / REJECTED with `file:line`) when a panel ran
+- external URLs for outside-world claims
+
+A one-file bugfix skips this (one line for alternatives is enough). Do not
+invent a second frontmatter schema. Do not drop required headings to make room.
+A heading skeleton plus one invented SVG compiles and is not a plan a reviewer
+can judge.
 
 Floor headings, in this relative order:
 

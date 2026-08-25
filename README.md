@@ -85,7 +85,7 @@ to type.
 | Decide keep/cancel/priority on the **whole board** | `/triage` | Not a builder — decision layer only |
 | Pick the **next** ticket in this session | `/next` | Stays in the current session |
 | Fan work across **parallel agents** | `/swarm` (or `/swarm plan` / `spec` / `debug`) | [`swarm`](plugins/swarm/README.md) |
-| Plan a feature with mock-ups + blind check | `/swarm plan …` or `/plan` | Swarm plan is multi-agent; `/plan` is single-agent grounded design |
+| Plan a feature with live research, diagrams, mock-ups + blind check | `/swarm plan …` or `/plan` | Swarm plan is multi-agent; `/plan` is single-agent grounded design |
 | Durable **source-of-truth spec** of a capability | `/swarm spec …` | So others do not invent wrong behavior |
 | Debug a non-obvious bug | `/debug` → `swarm:debug` | Blind multi-provider root cause |
 | Resume prior work in **this** window | `/continue` | [`sessions`](plugins/sessions/README.md) |
