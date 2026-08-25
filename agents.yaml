@@ -31,6 +31,15 @@ hooks:
       - Stop
     script: stop/00-agent-verify-work-complete.sh
     timeout: 20
+  # Advisory: at the reply event, if the agent gathered no context this turn (no
+  # tool call, no skill since the user's last message) it is answering off its
+  # existing context window. Inject a directive to go gather context. exit 0,
+  # never blocks, fails open.
+  gather-before-reply:
+    events:
+      - Stop
+    script: stop/07-gather-before-reply.py
+    timeout: 5
   verify-work-goal-boundary:
     # Persists a SHA-256 prompt fingerprint, transcript byte offset, and
     # session/launch identity in verify-work-complete's hook-owned SQLite DB.

@@ -113,6 +113,7 @@ register time). See [§Subrule hooks](#subrule-hooks-rules-not-this-tree).
 | [`visual_readback.py`](./stop/visual_readback.py) | Shared transcript evidence for authored, delivered, and image-read visual artifacts |
 | [`verify-delivery-chain.py`](./stop/verify-delivery-chain.py) | Goal-scoped delivery-chain verifier invoked by the Stop check (not registered alone) |
 | [`check-outcome-backfill.py`](./stop/check-outcome-backfill.py) | Offline: derives whether each recorded block was followed by the specific thing that block demanded; never on a hook path |
+| [`07-gather-before-reply.py`](./stop/07-gather-before-reply.py) | Advisory: if the agent made no tool call and used no skill since the user's last message, injects a directive to gather context before replying; exit 0, fails open |
 
 ### `notification/` — Notification
 
