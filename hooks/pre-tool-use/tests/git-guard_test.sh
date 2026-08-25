@@ -33,7 +33,16 @@ run_guard() {
   local cmdstr="$1" cwd="${2:-}" path_override="${3:-}"
   local json esc_cmd esc_cwd errfile
   esc_cmd=$(json_escape "$cmdstr")
-  if [ -n "$cwd" ]; then
+  # KEY_STYLE=camel emits a Grok-shaped payload (toolName/toolInput); default
+  # snake_case is byte-identical to before. cwd stays `cwd` in both harnesses.
+  if [ "${KEY_STYLE:-snake}" = camel ]; then
+    if [ -n "$cwd" ]; then
+      esc_cwd=$(json_escape "$cwd")
+      json=$(printf '{"toolName":"Bash","toolInput":{"command":"%s"},"cwd":"%s"}' "$esc_cmd" "$esc_cwd")
+    else
+      json=$(printf '{"toolName":"Bash","toolInput":{"command":"%s"}}' "$esc_cmd")
+    fi
+  elif [ -n "$cwd" ]; then
     esc_cwd=$(json_escape "$cwd")
     json=$(printf '{"tool_input":{"command":"%s"},"cwd":"%s"}' "$esc_cmd" "$esc_cwd")
   else
@@ -178,6 +187,18 @@ if [ "$RC" -eq 0 ] && [ -z "$OUT" ]; then
 else
   echo "FAIL - no-parser PATH broke the non-git fast path: rc=$RC out=[$OUT]"; fail=$((fail+1))
 fi
+
+# --- Harness portability: Grok CLI camelCase payloads (toolName/toolInput) ----
+# Grok delivers camelCase hook stdin; the guard MUST deny destructive git ops
+# exactly as for the snake_case twins above. The Bash guards carry a dual-path
+# command extraction (efc7fef) but shipped with NO camelCase fixture, so this
+# contract rested on manual verification until now. Pin both directions.
+KEY_STYLE=camel
+check_deny  "camelCase: git reset --hard still denied"   "git reset --hard HEAD"        "reset is denied"
+check_deny  "camelCase: git push --force still denied"   "git push --force origin main" "push --force is denied"
+check_allow "camelCase: git status still allowed"        "git status"
+check_allow "camelCase: git push --force-with-lease allowed" "git push --force-with-lease origin main"
+KEY_STYLE=snake
 
 echo "  $pass passed, $fail failed"
 [ "$fail" -eq 0 ]

@@ -58,7 +58,8 @@ print("STATE_GOAL_OFFSET=" + shlex.quote(str(data.get("transcript_offset") or 0)
 print("STATE_OWNED_PRS=" + shlex.quote("\n".join(str(value) for value in data.get("owned_prs", []))))
 failed = bool(data.get("state_error")) or not isinstance(data.get("delivery_evidence"), bool)
 print("STATE_EVAL_FAILED=" + shlex.quote("yes" if failed else "no"))
-' 2>/dev/null || printf '%s\n' 'STATE_DELIVERY_EVIDENCE=no' 'STATE_CONTEXT_KIND=unknown' 'STATE_GOAL_OFFSET=0' 'STATE_OWNED_PRS=' 'STATE_EVAL_FAILED=yes')"
+print("STATE_EVIDENCE_REPEAT=" + shlex.quote("yes" if data.get("evidence_repeat") is True else "no"))
+' 2>/dev/null || printf '%s\n' 'STATE_DELIVERY_EVIDENCE=no' 'STATE_CONTEXT_KIND=unknown' 'STATE_GOAL_OFFSET=0' 'STATE_OWNED_PRS=' 'STATE_EVAL_FAILED=yes' 'STATE_EVIDENCE_REPEAT=no')"
 
 # --- check outcome recording ---------------------------------------------------
 # Every check evaluation is recorded, not just the ones that block. Recording only
@@ -643,7 +644,15 @@ print('yes' if ok else 'no')
         record_check_ok open-pr passed handoff-or-watcher-declared
       fi
       if [ "$has_handoff" != "yes" ]; then
-        repeat_guidance "an open pull request (${open_prs%%$'\n'*})" "$(prior_fires 'pull request(s) that are still OPEN')"
+        _op_fires=$(prior_fires 'pull request(s) that are still OPEN')
+        # Identical-state cap: two blocks already fired and the state hash has
+        # not moved — a third identical block is pressure, not information
+        # (measured: 630/1711 consecutive stops re-fired on an unchanged
+        # hash). Record the outcome so telemetry keeps its denominator.
+        if [ "${STATE_EVIDENCE_REPEAT:-no}" = "yes" ] && [ "${_op_fires:-0}" -ge 2 ]; then
+          record_check_ok open-pr passed identical-state-capped
+        else
+        repeat_guidance "an open pull request (${open_prs%%$'\n'*})" "$_op_fires"
         cat >&2 <<PRMSG
 STOP — this session created or worked pull request(s) that are still OPEN:
 
@@ -672,6 +681,7 @@ DISPATCHMSG
         fi
         record_block open-pr owned-pr-open
         exit 2
+        fi
       fi
     fi
   fi
@@ -1479,7 +1489,12 @@ cat >&2 <<MSG
 STOP — you claimed this work is done, but you must verify before stopping.
 Re-check every ask this session (first: "$first_user_msg" — plus later
 corrections) against tangible output, finish what falls short, then post one
-update: agents feed post --title "<outcome>" "<delivered + next step>" --level important
+update: agents feed post --title "<outcome>" "<delivered + next step>"
+That plain post is record-only. Add --level important ONLY if this outcome
+genuinely needs the owner's phone — a delivery they are waiting on, or a
+decision only they can make. If you are STUCK and need them, that is
+'agents feed post "<ask>" --blocked' instead — never --blocked with --level.
+Routine work records without ringing anyone.
 MSG
 record_block self-audit completion-unverified
 exit 2

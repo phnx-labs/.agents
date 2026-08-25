@@ -237,7 +237,7 @@ def _all_ticket_ids(transcript_path, pr_data, branch_name, commits_text, first_u
     return out
 
 
-def _touched_ticket_ids(transcript_path, pr_data, branch_name, commits_text, start_offset=0):
+def _touched_ticket_ids(transcript_path, pr_data, branch_name, commits_text, responsible_prs=None, start_offset=0):
     """Ticket IDs this session actually WORKED — the only ones the gate may
     demand state changes on. A ticket that is merely referenced (the task
     prompt's context list, another session's In Review work, the owner's
@@ -251,7 +251,28 @@ def _touched_ticket_ids(transcript_path, pr_data, branch_name, commits_text, sta
     head branches. Deliberately excluded: the first user message and PR
     bodies — both quote context tickets the session never owned."""
     ids = []
-    sources = [branch_name, commits_text]
+    # commits_text can sweep BASE-branch history when a local ref is stale
+    # (measured: a release branch based ahead of the checkout's HEAD attributed
+    # two other sessions' squash commits to this session). This repo squashes
+    # every PR with a "(#N)" subject suffix, and a session's own un-merged
+    # branch commits never carry one — so ids from a commit subject ending in
+    # another PR's "(#N)" are base history, not this session's work.
+    # Own PR numbers come from the responsible_prs INPUT refs (URLs or bare
+    # numbers), not from pr_data — _fetch_pr_data does not request "number",
+    # so reading it there was dead code that excluded EVERY "(#N)" commit,
+    # including the session's own squash (review finding on this PR).
+    own_prs = set()
+    for ref in responsible_prs or []:
+        m = re.search(r"/pull/(\d+)|^(\d+)$", str(ref).strip())
+        if m:
+            own_prs.add(m.group(1) or m.group(2))
+    commit_lines = []
+    for line in commits_text.split("\n"):
+        m = re.search(r"\(#(\d+)\)\s*$", line)
+        if m and m.group(1) not in own_prs:
+            continue
+        commit_lines.append(line)
+    sources = [branch_name, "\n".join(commit_lines)]
     for pr in pr_data:
         sources.append(pr.get("title", ""))
         sources.append(pr.get("headRefName", ""))
@@ -260,8 +281,15 @@ def _touched_ticket_ids(transcript_path, pr_data, branch_name, commits_text, sta
     for cmd in _tool_commands(transcript_path, start_offset):
         # `linear update <id>` only — a `linear create` command cannot carry the
         # id of a ticket that does not exist yet (review finding on this PR).
-        for m in re.finditer(r"\blinear\s+update\b[^\n]*?(RUSH-\d+)", cmd, flags=re.IGNORECASE):
-            ids.append(m.group(1).upper())
+        # And only STATE-changing updates count: a comment-only update is
+        # bookkeeping on someone's ticket, not ownership of it.
+        for m in re.finditer(r"\blinear\s+update\b([^\n]*?)(RUSH-\d+)([^\n]*)", cmd, flags=re.IGNORECASE):
+            flags_text = m.group(1) + m.group(3)
+            # A state flag inside a QUOTED span is message content, not a
+            # flag ('--comment "will mark --done later"' is bookkeeping).
+            flags_text = re.sub(r'"[^"]*"|\'[^\']*\'', " ", flags_text)
+            if re.search(r"--(?:done|status|assign|delegate|cancel)\b", flags_text):
+                ids.append(m.group(2).upper())
     seen = set()
     out = []
     for t in ids:
@@ -618,7 +646,7 @@ def main():
 
     ticket_ids = _all_ticket_ids(transcript_path, pr_data, branch_name, commits_text, first_user_msg, goal_offset)
     related_ids = _related_ticket_ids(pr_data, commits_text)
-    touched_ids = set(_touched_ticket_ids(transcript_path, pr_data, branch_name, commits_text, goal_offset))
+    touched_ids = set(_touched_ticket_ids(transcript_path, pr_data, branch_name, commits_text, responsible_prs, goal_offset))
 
     open_tickets = []
     for t in ticket_ids:

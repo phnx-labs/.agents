@@ -59,47 +59,28 @@
 
 set -eu
 
-# --- portable JSON field extractor (jq -> node -> python) -------------------
-# jq is absent on Windows git-bash; the old `… | jq …` extraction then returned
-# empty and this guard fail-OPEN'd — the "default branch is untouchable" choke
-# point silently vanished on Windows (agent could edit/commit on main directly).
-# Prefer jq (fast, present on mac/Linux), fall back to node (always shipped with
-# agents-cli) then python. Returns 1 ONLY when NO parser exists -> fail CLOSED.
-#
-# Harness portability: Claude Code sends snake_case fields (tool_name,
-# tool_input.command); Grok CLI sends camelCase (toolName, toolInput.command).
-# So a call passes the snake_case path as $2 and its camelCase equivalent as an
-# optional $3 — the first path that resolves non-empty wins. Keeping the fallback
-# in the extractor (not the call sites) keeps all three parser branches uniform.
-_json_field() {  # $1=json  $2=dotted.path  [$3=alternate.dotted.path]
-  if command -v jq >/dev/null 2>&1; then
-    if [ -n "${3:-}" ]; then
-      printf '%s' "$1" | jq -r "((.$2) // (.$3)) // empty" 2>/dev/null
-    else
-      printf '%s' "$1" | jq -r "(.$2) // empty" 2>/dev/null
-    fi
-    return 0
+# --- shared JSON field extractor -------------------------------------------
+# _json_field lives in hooks/lib/json-field.sh (one definition; formerly copied
+# into 12 hook scripts — this file held the canonical 3-arg superset that is now
+# the lib's body). Source it relative to this script, fall back to the absolute
+# system-install path, then verify it is defined — this guard is the "primary
+# tree is untouchable" choke point, so if it cannot parse it must refuse rather
+# than allow (fail CLOSED, exit 2). Same source-then-verify contract this file
+# already uses for git-facts.sh below. ${0%/*} (POSIX, no subprocess) locates
+# the lib even when PATH carries no coreutils.
+_LIB_DIR=$(CDPATH= cd "${0%/*}" 2>/dev/null && pwd) || _LIB_DIR=""
+for _cand in "$_LIB_DIR/../../../hooks/lib/json-field.sh" "${HOME}/.agents/.system/hooks/lib/json-field.sh"; do
+  if [ -f "$_cand" ]; then
+    # shellcheck source=../../../hooks/lib/json-field.sh
+    . "$_cand"
+    if command -v _json_field >/dev/null 2>&1; then break; fi
   fi
-  if command -v node >/dev/null 2>&1; then
-    printf '%s' "$1" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const dig=(o,p)=>{for(const k of p.split("."))o=(o==null?null:o[k]);return o};try{let o=JSON.parse(s);let v=dig(o,process.argv[1]);if((v==null||v==="")&&process.argv[2])v=dig(o,process.argv[2]);process.stdout.write(v==null?"":String(v))}catch(e){}})' "$2" "${3:-}" 2>/dev/null; return 0
-  fi
-  for _py in python3 python; do
-    command -v "$_py" >/dev/null 2>&1 && "$_py" -c '' >/dev/null 2>&1 || continue
-    printf '%s' "$1" | "$_py" -c 'import json,sys
-try: o=json.load(sys.stdin)
-except Exception: o=None
-def dig(o,p):
-    for k in p.split("."):
-        o=o.get(k) if isinstance(o,dict) else None
-    return o
-v=dig(o,sys.argv[1])
-if (v is None or v=="") and len(sys.argv)>2 and sys.argv[2]:
-    v=dig(o,sys.argv[2])
-sys.stdout.write("" if v is None else str(v))' "$2" "${3:-}" 2>/dev/null
-    return 0
-  done
-  return 1
-}
+done
+unset _LIB_DIR _cand
+if ! command -v _json_field >/dev/null 2>&1; then
+  printf 'main-branch-guard: shared json-field lib not found — refusing the tool call unchecked (fail-closed). Ensure ~/.agents/.system/hooks/lib/json-field.sh is present.\n' >&2
+  exit 2
+fi
 
 input=$(cat)
 # Fail CLOSED if no JSON parser is available — the guard can't tell which tool is
@@ -228,7 +209,18 @@ _ensure_worktree() {
   _stamp=$(date +%Y-%m-%d-%H%M 2>/dev/null) || return 1
   _name="$_who-$_stamp-$_sid"
 
-  git -C "$_repo" fetch origin --quiet >/dev/null 2>&1 || return 1
+  # Bound the fetch: this runs inside a PreToolUse guard on EVERY blocked write, so
+  # it must never HANG. A bare `git fetch` can block indefinitely on a credential /
+  # host-key prompt (a real /dev/tty exists in these terminal sessions) or a
+  # blackholed route (VPN down). GIT_TERMINAL_PROMPT=0 refuses the HTTPS credential
+  # prompt; BatchMode=yes refuses the SSH host-key/password prompt; ConnectTimeout
+  # caps the TCP connect. On any of these the fetch fails fast and `|| return 1`
+  # makes the guard deny (fail CLOSED) with its normal reason — the pre-#368
+  # behavior of an instant deny, never a hang. (No dependency on a `timeout` binary,
+  # which is absent on stock macOS.)
+  GIT_TERMINAL_PROMPT=0 \
+    GIT_SSH_COMMAND="${GIT_SSH_COMMAND:-ssh} -o BatchMode=yes -o ConnectTimeout=5" \
+    git -C "$_repo" fetch origin --quiet >/dev/null 2>&1 || return 1
   _base=$(git -C "$_repo" symbolic-ref --short refs/remotes/origin/HEAD 2>/dev/null | sed 's#^origin/##')
   [ -z "$_base" ] && return 1
   _wt="$_dir/$_name"

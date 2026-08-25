@@ -139,9 +139,14 @@ pipes into it. "No manifest entry" ≠ dead when a registered script invokes it.
 
 ## Fail closed, never fail open
 
-A guard that cannot evaluate its input must **refuse**, not allow. Use the
-`_json_field` helper pattern (`jq` → `node` → `python`) and exit non-zero when no
-parser is available.
+A guard that cannot evaluate its input must **refuse**, not allow. Source the
+shared `_json_field` extractor from `hooks/lib/json-field.sh` (`jq` → `node` →
+`python`; returns 1 only when no parser exists), then verify the function is
+defined after the source and `exit 2` if it is not — a guard that cannot even
+load its parser must fail closed, not run unchecked. Advisory (non-blocking)
+hooks may fail open (`exit 0`) instead. Use `${0%/*}` (not `dirname`) to locate
+the lib so the source works under a stripped PATH; fall back to the absolute
+`${HOME}/.agents/.system/hooks/lib/json-field.sh`.
 
 ## Exit codes and streams
 

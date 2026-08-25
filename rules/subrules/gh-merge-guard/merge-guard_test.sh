@@ -184,5 +184,14 @@ FAKE_MG_GH_FAIL=1 \
 FAKE_MG_COMMENTS='[{"body":"no verdict here"}]' \
   check 2 "URL-form merge without verdict blocks" "gh pr $M https://github.com/acme/widgets/pull/42"
 
+# -R short flag resolves the repo the same as --repo (RUSH-3032: missing -R
+# support probed the CWD repo's PR and blocked a legitimate merge).
+FAKE_MG_COMMENTS='[{"body":"VERDICT: APPROVE"}]' \
+  check 0 "-R short-flag repo with APPROVE verdict passes" "gh pr $M 42 -R acme/widgets"
+FAKE_MG_COMMENTS='[{"body":"no verdict"}]' \
+  check 2 "-R short-flag repo without verdict blocks" "gh pr $M 42 -R acme/widgets"
+FAKE_MG_COMMENTS='[{"body":"VERDICT: APPROVE"}]' \
+  check 0 "-Rrepo concatenated form resolves the repo" "gh pr $M 42 -Racme/widgets"
+
 printf -- '---\nmerge-guard: %s passed, %s failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]

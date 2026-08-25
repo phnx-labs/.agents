@@ -26,8 +26,10 @@ in.
 | `AGENTS.md` | **Generated.** The composed ruleset. `CLAUDE.md` and `GEMINI.md` symlink to it |
 
 A subrule that enforces itself is a directory, not a file: it holds `rule.md`, its guard
-script, a `hooks.yaml` registering the guard, and a test. `gh-merge-guard`, `no-pr-footer`,
-`plan-presentation`, and `truly-agentic-git-workflow` work this way.
+script, a `hooks.yaml` registering the guard, and a test. `gh-merge-guard`,
+`plan-presentation`, and `truly-agentic-git-workflow` work this way. A guard-bearing
+subrule can shed its guard and stay on as prose — `no-pr-footer` did, once the rule was
+fully internalized (0 guard fires across 7,493 transcripts).
 
 ## What the system layer ships
 
