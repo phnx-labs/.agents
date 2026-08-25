@@ -2,6 +2,23 @@
 
 ## [Unreleased]
 
+### Added
+
+- **`hooks/stop/07-gather-before-reply.py` — refuse a from-context reply.** A new
+  advisory Stop hook that fires at the reply event. It reads the session file and,
+  if the agent made no tool call and used no skill since the user's last message,
+  injects a directive to gather the context the question needs before answering
+  (read the relevant code/files, use a skill that fits, check the real state, weigh
+  the tradeoffs) instead of just agreeing or disagreeing from what is already in its
+  context window. The failure it targets is measured: in session `3f42a8d1`
+  (RUSH-3033) the user pushed back on a design decision and the agent's first move
+  was "you're exactly right" with no search or reflection. Non-blocking (`exit 0`,
+  stdout injected per the `hooks/AGENTS.md` exit contract), fails open on any parse
+  error, and detects the user-message boundary from real record shapes (a typed
+  `type:user` message has string content; a tool result is `type:user` with list
+  content and does not count; a mid-turn `queue-operation` does). Registered in
+  `agents.yaml`; test at `hooks/stop/tests/07-gather-before-reply_test.sh`.
+
 ### Fixed
 
 - **Remove the orphaned `mq-read-nudge` hook declaration.** The script
