@@ -1,13 +1,13 @@
 {
-  "number": 11,
-  "url": "https://github.com/acme/widgets/pull/11",
+  "number": 12,
+  "url": "https://github.com/acme/widgets/pull/12",
   "repository": { "nameWithOwner": "acme/widgets" },
-  "author": { "login": "pr-owner" },
+  "author": { "login": "fleet-bot" },
   "statusCheckRollup": [
     { "name": "test", "conclusion": "SUCCESS", "state": "COMPLETED" }
   ],
   "reviews": [],
   "comments": [
-    { "body": "Non-author APPROVE carried from #2731." }
+    { "author": { "login": "fleet-bot" }, "body": "VERDICT: APPROVE\nself-merging." }
   ]
 }

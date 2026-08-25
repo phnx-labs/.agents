@@ -2,6 +2,7 @@
   "number": 8,
   "url": "https://github.com/acme/widgets/pull/8",
   "repository": { "nameWithOwner": "acme/widgets" },
+  "author": { "login": "pr-owner" },
   "reviewDecision": "",
   "statusCheckRollup": [
     { "name": "test", "conclusion": "SUCCESS", "state": "COMPLETED" }

@@ -16,9 +16,11 @@ GUARD="$DIR/merge-guard.sh"
 
 # gh/git stubs so the review-on-this-PR check never touches the network in
 # tests. Defaults keep every legacy case's expectation: reviews empty, comments
-# carry a fresh APPROVE verdict (so a plain merge stays allowed). Cases override
-# with FAKE_MG_REVIEWS / FAKE_MG_COMMENTS; FAKE_MG_GH_FAIL=1 simulates an API
-# error (guard must fail open).
+# carry a fresh APPROVE verdict (so a plain merge stays allowed), PR author is
+# some third identity (so legacy comment fixtures — which carry no user/author
+# field at all — are never self-filtered). Cases override with
+# FAKE_MG_REVIEWS / FAKE_MG_COMMENTS / FAKE_MG_AUTHOR; FAKE_MG_GH_FAIL=1
+# simulates an API error (guard must fail open).
 STUBTMP=$(mktemp -d)
 trap 'rm -rf "$STUBTMP"' EXIT
 mkdir -p "$STUBTMP/bin"
@@ -34,6 +36,12 @@ case "$*" in
   *"/comments"*)
     if [ -n "${FAKE_MG_COMMENTS+x}" ]; then printf '%s' "$FAKE_MG_COMMENTS"
     else printf '%s' '[{"body":"Non-author review: APPROVE - verified the diff."}]'; fi ;;
+  *"/pulls/"*)
+    # merge-guard.sh's `gh api repos/.../pulls/$num --jq .user.login` PR-author
+    # fetch (PHNX-3236). --jq is applied by the real `gh` binary, not this
+    # stub, so print the bare login string it would have printed after --jq.
+    if [ -n "${FAKE_MG_AUTHOR+x}" ]; then printf '%s' "$FAKE_MG_AUTHOR"
+    else printf '%s' "someone-else"; fi ;;
   *) echo "" ;;
 esac
 STUB
@@ -209,6 +217,18 @@ FAKE_MG_COMMENTS='[{"body":"no verdict"}]' \
   check 2 "-R short-flag repo without verdict blocks" "gh pr $M 42 -R acme/widgets"
 FAKE_MG_COMMENTS='[{"body":"VERDICT: APPROVE"}]' \
   check 0 "-Rrepo concatenated form resolves the repo" "gh pr $M 42 -Racme/widgets"
+
+# --- PHNX-3236: self-merge bypass ------------------------------------------
+# The PR's own author posting their own "APPROVE" comment must NOT satisfy
+# the review — every fleet agent shares one GitHub identity, so nothing but
+# this author comparison stops the PR's opener from clearing its own guard.
+FAKE_MG_AUTHOR='fleet-bot' \
+  FAKE_MG_COMMENTS='[{"user":{"login":"fleet-bot"},"body":"VERDICT: APPROVE"}]' \
+  check 2 "self-authored APPROVE comment does not satisfy the review" "gh pr $M 42"
+# A non-author APPROVE still clears it once the author is known and differs.
+FAKE_MG_AUTHOR='fleet-bot' \
+  FAKE_MG_COMMENTS='[{"user":{"login":"reviewer-bot"},"body":"VERDICT: APPROVE"}]' \
+  check 0 "non-author APPROVE still satisfies the review once author is resolved" "gh pr $M 42"
 
 printf -- '---\nmerge-guard: %s passed, %s failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]

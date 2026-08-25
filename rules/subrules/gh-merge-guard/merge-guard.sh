@@ -184,10 +184,18 @@ case "$norm" in
       # on for the admin block (which needs no network).
       _reviews=$(_to 3 gh api "repos/$_pr_repo/pulls/$_pr_num/reviews" --cache 60s 2>/dev/null) || _reviews="__API_ERR__"
       _comments=$(_to 3 gh api "repos/$_pr_repo/issues/$_pr_num/comments" --cache 60s 2>/dev/null) || _comments="__API_ERR__"
-      if [ "$_reviews" != "__API_ERR__" ] && [ "$_comments" != "__API_ERR__" ]; then
+      # PHNX-3236: the PR's own author, so pr-verdict.py can exclude any
+      # review/comment authored by them (a self-merge bypass — every fleet
+      # agent shares one GitHub identity, and nothing but this check stops
+      # that identity from posting "VERDICT: APPROVE" on its own PR). Same
+      # fail-open posture as reviews/comments above: an unresolved author
+      # skips the whole verdict check rather than blocking a legit merge on
+      # a GitHub hiccup.
+      _pr_author=$(_to 3 gh api "repos/$_pr_repo/pulls/$_pr_num" --jq .user.login --cache 60s 2>/dev/null) || _pr_author="__API_ERR__"
+      if [ "$_reviews" != "__API_ERR__" ] && [ "$_comments" != "__API_ERR__" ] && [ "$_pr_author" != "__API_ERR__" ] && [ -n "$_pr_author" ]; then
         # Same verdict as pr-merge-on-green: reuse pr-verdict.py, do not re-inline.
         _GUARD_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-        _verdict=$(printf '%s\n---AGENTS-SPLIT---\n%s' "$_reviews" "$_comments" | python3 "$_GUARD_DIR/pr-verdict.py" 2>/dev/null) || _verdict="ok"
+        _verdict=$(printf '%s\n---AGENTS-SPLIT---\n%s\n---AGENTS-SPLIT---\n%s' "$_reviews" "$_comments" "$_pr_author" | python3 "$_GUARD_DIR/pr-verdict.py" 2>/dev/null) || _verdict="ok"
         if [ "$_verdict" = "missing" ]; then
           printf '%s\n' "Blocked: no non-author review verdict found ON this PR ($_pr_repo#$_pr_num). Post a GitHub APPROVED review, or an APPROVE/APPROVED verdict in a COMMENTED review body (gh pr review --comment) or an issue comment (gh pr comment), ON the PR being merged — a verdict 'carried from' another PR satisfies nothing (the #2736 laundering pattern). Get the automated reviewer's verdict or spawn a non-author subagent review on THIS PR, then retry." >&2
           exit 2

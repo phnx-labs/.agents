@@ -55,7 +55,13 @@ number_of() {
 verdict_ok() {
   reviews=$(printf '%s' "$1" | jq -c '.reviews // []')
   comments=$(printf '%s' "$1" | jq -c '.comments // []')
-  result=$(printf '%s\n---AGENTS-SPLIT---\n%s' "$reviews" "$comments" | python3 "$VERDICT" 2>/dev/null) || return 1
+  # PHNX-3236: this daemon only ever lists PRs `--author @me` (see the live
+  # poll below), so the PR author is ALWAYS this same shared fleet identity —
+  # the exact shape of the self-merge bypass. Pass it through so pr-verdict.py
+  # excludes anything authored by that identity before looking for a verdict.
+  author=$(printf '%s' "$1" | jq -r '.author.login // empty')
+  [ -n "$author" ] || return 1
+  result=$(printf '%s\n---AGENTS-SPLIT---\n%s\n---AGENTS-SPLIT---\n%s' "$reviews" "$comments" "$author" | python3 "$VERDICT" 2>/dev/null) || return 1
   [ "$result" = "ok" ]
 }
 
@@ -90,7 +96,7 @@ while IFS= read -r item || [ -n "$item" ]; do
   num=$(printf '%s' "$item" | jq -r '.number // empty')
   repo=$(printf '%s' "$item" | jq -r '.repository.nameWithOwner // empty')
   [ -n "$num" ] && [ -n "$repo" ] || continue
-  view=$(gh pr view "$num" --repo "$repo" --json number,url,statusCheckRollup,reviews,comments 2>/dev/null) || continue
+  view=$(gh pr view "$num" --repo "$repo" --json number,url,statusCheckRollup,reviews,comments,author 2>/dev/null) || continue
   view=$(printf '%s' "$view" | jq -c --arg repo "$repo" '. + {repository: {nameWithOwner: $repo}}' 2>/dev/null) || continue
   sel=$(printf '%s' "$view" | sh "$DIR/pr-merge-on-green.sh" --select || true)
   [ -n "$sel" ] && out="$out$sel "
