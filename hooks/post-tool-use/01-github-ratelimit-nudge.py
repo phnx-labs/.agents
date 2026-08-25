@@ -9,14 +9,26 @@ cost; the authenticated REST API (`gh api`) is 5000/hour when the wall was the
 60/hour unauthenticated path.
 
 PostToolUse on the shell tool (matcher Bash): it sees the command and its output.
-When the output shows a GitHub rate-limit signal, it prints a short additionalContext
-note and exits 0 — advisory, fails open. Fires at most once per session.
 
-Kept deliberately tight so it does not distract:
-  - Only when the OUTPUT actually says rate-limited (not preemptively on every gh
-    call). If nothing rate-limited, this returns before parsing.
-  - Only in a GitHub context (command or output mentions gh / github).
-  - One note per session.
+Firing rule — deliberately airtight so it never distracts on ordinary repo reads
+(the trap is that this hook's own source, the CHANGELOG entry describing it, and a
+`gh pr diff` of its PR all *contain* the phrase "rate limit exceeded" as prose):
+
+  1. The COMMAND must actually be a GitHub call — the `gh` CLI, or a raw HTTP
+     client (curl/wget/...) aimed at a GitHub host. So `cat`/`grep`/`sed` of a
+     file that merely mentions rate limits never qualifies, whatever its output.
+  2. There must be an actual FAILURE signal, not prose: the rate-limit wording in
+     STDERR (where gh writes its errors and exits non-zero), or a short structured
+     GitHub error body in STDOUT (`{"message":"...rate limit..."}`, the curl case),
+     or an explicit error/exit flag on the tool response paired with the wording.
+     A *successful* `gh pr diff` puts its diff on stdout with clean stderr and exit
+     0, so it never trips — even when that diff literally contains this file.
+
+The wording itself requires an outcome (`... exceeded`, `secondary rate limit`,
+`abuse detection`, `x-ratelimit-remaining: 0`), never the bare noun "rate limit".
+
+Advisory: prints `additionalContext` and exits 0. Fails open on any error. Fires
+once per session. Handles snake_case (Claude/Codex) and camelCase (Grok) payloads.
 """
 import hashlib
 import json
@@ -25,52 +37,96 @@ import re
 import sys
 import tempfile
 
-# The tool output actually reported a rate limit. GitHub's real wording for the
-# primary limit ("API rate limit exceeded"), the secondary/abuse limit, and the
-# raw header signal are all covered.
-RATELIMIT = re.compile(
-    r"(?:API rate limit exceeded|secondary rate limit|abuse detection|"
-    r"rate limit|was submitted too quickly|Retry-After|"
-    r"x-ratelimit-remaining['\"]?\s*[:=]\s*['\"]?0\b)",
+# An actual rate-limit OUTCOME (not the bare noun "rate limit", which appears in
+# this hook's own docs and would misfire on repo reads).
+HIT = re.compile(
+    r"(?:"
+    r"rate limit exceeded"              # primary REST: "API rate limit exceeded"
+    r"|exceeded a secondary rate limit"  # secondary, GitHub's exact wording
+    r"|secondary rate limit and have been"
+    r"|abuse detection mechanism"
+    r"|you have triggered an abuse"
+    r"|was submitted too quickly"
+    r"|x-ratelimit-remaining['\"]?\s*[:=]\s*['\"]?0\b"
+    r")",
     re.I,
 )
-# A GitHub context — so a rate limit from some other API never misfires this.
-GITHUB = re.compile(r"(?:\bgh\b|github\.com|githubusercontent|api\.github)", re.I)
+# A structured GitHub API error body (curl writes the 403 body to stdout and
+# exits 0, so stderr won't carry it). A source file or diff is not JSON shaped
+# like {"message": "...rate limit..."}, so this does not match ordinary reads.
+STRUCT = re.compile(r'"message"\s*:\s*"[^"]*(?:rate limit|abuse detection)[^"]*"', re.I)
+# Cheap first gate: only pay the parse cost when the payload even mentions a
+# rate-limit-ish token. Broad on purpose; the real decision is the tight logic
+# below (this only avoids parsing the ~all calls that never mention it).
+GATE = re.compile(r"(?:rate.?limit|abuse detection|submitted too quickly)", re.I)
+
+# The command is a GitHub call: the gh CLI, or a raw HTTP client to a GitHub host.
+GH_CLI = re.compile(r"\bgh\b", re.I)
+HTTP_CLIENT = re.compile(
+    r"(?:\bcurl\b|\bwget\b|\bxh\b|\baria2c\b|\bhttpie\b|requests\.|urllib|urlopen|"
+    r"\bfetch\s*\(|\baxios\b|Invoke-WebRequest|Invoke-RestMethod)",
+    re.I,
+)
+GH_HOST = re.compile(r"(?:api\.github\.com|github\.com|githubusercontent)", re.I)
 
 
-def stringify(value):
-    if isinstance(value, str):
-        return value
-    try:
-        return json.dumps(value)
-    except Exception:
-        return str(value)
+def command_is_github(cmd):
+    if GH_CLI.search(cmd):
+        return True
+    return bool(HTTP_CLIENT.search(cmd) and GH_HOST.search(cmd))
+
+
+def get(d, *names):
+    for n in names:
+        if isinstance(d, dict) and d.get(n) is not None:
+            return d[n]
+    return None
 
 
 def main():
     raw = sys.stdin.read()
-    if not RATELIMIT.search(raw):  # cheap gate: nothing rate-limited -> nothing to say
+    if not GATE.search(raw):  # nothing rate-limit-ish in the whole payload -> done
         return
     try:
         payload = json.loads(raw)
+        if not isinstance(payload, dict):
+            return
+        inputs = payload.get("tool_input") or payload.get("toolInput") or {}
+        command = str(get(inputs, "command", "cmd") or "")
+        if not command or not command_is_github(command):
+            return
+
+        resp = payload.get("tool_response")
+        if resp is None:
+            resp = payload.get("toolResponse")
+
+        stdout = stderr = ""
+        errored = False
+        if isinstance(resp, dict):
+            stdout = str(get(resp, "stdout", "stdOut", "output", "content", "result") or "")
+            stderr = str(get(resp, "stderr", "stdErr") or "")
+            if any(resp.get(k) for k in ("is_error", "isError", "error", "interrupted")):
+                errored = True
+            for k in ("exit_code", "exitCode", "returncode", "code", "status"):
+                v = resp.get(k)
+                if isinstance(v, int) and v != 0:
+                    errored = True
+        elif isinstance(resp, str):
+            stdout = resp
+
+        combined = stdout + "\n" + stderr
+        # An actual hit: in the error stream, or a short structured error body on
+        # stdout (curl), or the wording paired with an explicit failure flag.
+        hit_in_stderr = bool(HIT.search(stderr))
+        struct_in_stdout = bool(STRUCT.search(stdout)) and len(stdout) <= 2000
+        hit_and_errored = errored and bool(HIT.search(combined))
+        if not (hit_in_stderr or struct_in_stdout or hit_and_errored):
+            return
+
+        session = str(payload.get("session_id") or payload.get("sessionId") or os.getppid())
     except Exception:
         return
 
-    inputs = payload.get("tool_input") or payload.get("toolInput") or {}
-    command = str(inputs.get("command") or inputs.get("cmd") or "")
-    response = payload.get("tool_response")
-    if response is None:
-        response = payload.get("toolResponse")
-    output = stringify(response)
-
-    # The rate-limit signal must be in the OUTPUT, not just the typed command
-    # (e.g. a `grep 'rate limit'` should not trip it).
-    if not RATELIMIT.search(output):
-        return
-    if not GITHUB.search(command + " " + output):
-        return
-
-    session = str(payload.get("session_id") or payload.get("sessionId") or os.getppid())
     key = hashlib.sha1(f"github-ratelimit:{session}".encode()).hexdigest()
     directory = os.path.join(tempfile.gettempdir(), "agents-github-ratelimit-nudge")
     marker = os.path.join(directory, key)
