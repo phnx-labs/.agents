@@ -81,6 +81,29 @@ emit_deny() {
 input=$(cat)
 case "$input" in *git*) ;; *) exit 0 ;; esac
 
+# --- shared git-command parser ---------------------------------------------
+# The machinery that finds a git invocation inside a command string (sh -c
+# unwrapping, chain splitting, quote/env stripping, global-flag peeling) lives
+# in hooks/lib/git-parse.sh (one definition; it was copy-pasted into this guard,
+# large-file-add-guard, and main-branch-guard). Source it the same way as
+# json-field.sh above, then verify the parser is defined — a guard that cannot
+# parse its input must refuse, not wave the command through, so a missing lib
+# fails CLOSED (exit 2). Only git-ish commands reach here (past the fast path),
+# so non-git calls never pay the source cost.
+_LIB_DIR=$(CDPATH= cd "${0%/*}" 2>/dev/null && pwd) || _LIB_DIR=""
+for _cand in "$_LIB_DIR/../lib/git-parse.sh" "${HOME}/.agents/.system/hooks/lib/git-parse.sh"; do
+  if [ -f "$_cand" ]; then
+    # shellcheck source=../lib/git-parse.sh
+    . "$_cand"
+    if command -v git_scan_segment >/dev/null 2>&1; then break; fi
+  fi
+done
+unset _LIB_DIR _cand
+if ! command -v git_scan_segment >/dev/null 2>&1; then
+  printf 'git-guard: shared git-parse lib not found — refusing to run a git command unchecked (fail-closed). Ensure ~/.agents/.system/hooks/lib/git-parse.sh is present.\n' >&2
+  exit 2
+fi
+
 # Extract shell command from PreToolUse JSON. Fail CLOSED if no JSON parser is
 # available — a guard that cannot read the command must not wave it through
 # (that was the Windows fail-open bug).
@@ -100,97 +123,10 @@ fi
 cwd=$(_json_field "$input" cwd) || cwd=""
 [ -z "$cwd" ] && cwd=$(_json_field "$input" workspaceRoot) || true
 
-# Detect `sh|bash -c <inner>` at the raw string level (BEFORE token split) so
-# that quoted args like `sh -c "git reset --hard"` stay intact. Naive
-# `set -- $seg` would split `"git` away from `reset --hard"` and miss the
-# git subcommand entirely. Sets _dash_c_inner on match. Returns 0 on match.
-extract_sh_c_inner() {
-  _raw=$1
-  _raw=$(printf '%s' "$_raw" | sed 's/^[[:space:]]*//')
-  # Strip leading VAR=value assignments (POSIX env-var prefix).
-  while :; do
-    _pre=$_raw
-    _raw=$(printf '%s' "$_raw" | sed 's/^[A-Za-z_][A-Za-z_0-9]*=[^[:space:]]*[[:space:]][[:space:]]*//')
-    [ "$_raw" = "$_pre" ] && break
-  done
-  # First word must be sh / bash / absolute path to one.
-  case "$_raw" in
-    sh\ *|bash\ *|/bin/sh\ *|/bin/bash\ *|/usr/bin/sh\ *|/usr/bin/bash\ *) ;;
-    *) return 1 ;;
-  esac
-  # Find first occurrence of " -c " anywhere after the shell name.
-  case "$_raw" in
-    *" -c "*) ;;
-    *) return 1 ;;
-  esac
-  _inner=${_raw#* -c }
-  _inner=$(printf '%s' "$_inner" | sed 's/^[[:space:]]*//')
-  # Strip a single layer of wrapping quotes.
-  case "$_inner" in
-    \"*\") _inner=${_inner#\"}; _inner=${_inner%\"} ;;
-    \'*\') _inner=${_inner#\'}; _inner=${_inner%\'} ;;
-  esac
-  _dash_c_inner=$_inner
-  return 0
-}
-
-# Check one already-split segment.
-check_segment() {
-  _seg=$1
-
-  # sh|bash -c wrapper detection must happen BEFORE naive token splitting,
-  # because the -c argument is typically a quoted string the naive split
-  # would shred.
-  if extract_sh_c_inner "$_seg"; then
-    if ! check_command_string "$_dash_c_inner"; then return 1; fi
-    return 0
-  fi
-
-  # Restore default IFS so `set -- $1` actually splits on space/tab/newline.
-  # The caller flipped IFS to newline-only to iterate chain segments.
-  unset IFS
-  # shellcheck disable=SC2086
-  set -- $_seg
-
-  # Skip leading VAR=value assignments.
-  while [ $# -gt 0 ]; do
-    case "$1" in
-      *=*) shift ;;
-      *) break ;;
-    esac
-  done
-  [ $# -eq 0 ] && return 0
-
-  # First token may be: git | /path/to/git | "git" | 'git'
-  # Strip enclosing single or double quotes.
-  first=$1
-  case "$first" in
-    \"*\") first=$(printf '%s' "$first" | sed 's/^"\(.*\)"$/\1/') ;;
-    \'*\') first=$(printf '%s' "$first" | sed "s/^'\(.*\)'$/\1/") ;;
-  esac
-
-  # Accept first token == git OR */git (absolute or relative path).
-  case "$first" in
-    git|*/git) ;;
-    *) return 0 ;;
-  esac
-  shift
-
-  # Peel git's global flags before the subcommand.
-  while [ $# -gt 0 ]; do
-    case "$1" in
-      -C)            shift; [ $# -gt 0 ] && shift ;;
-      --git-dir=*|--work-tree=*|--namespace=*) shift ;;
-      --git-dir|--work-tree|--namespace)      shift; [ $# -gt 0 ] && shift ;;
-      -c)            shift; [ $# -gt 0 ] && shift ;;
-      --no-pager|--paginate|--no-replace-objects|--bare|--exec-path=*|--literal-pathspecs|--no-optional-locks)
-                     shift ;;
-      -*)            shift ;;
-      *)             break ;;
-    esac
-  done
-  [ $# -eq 0 ] && return 0
-
+# WHAT-operation policy: given a git subcommand and its args (the git-parse
+# parser has already stripped the sh -c wrapper, env prefix, quotes, and git's
+# global flags), deny the destructive verbs. Invoked by git_scan_segment.
+git_on_command() {
   sub=$1
   shift
 
@@ -334,26 +270,27 @@ $(printf '%s\n' "$dirty" | head -5)" \
   return 0
 }
 
+# Check one already-split segment: unwrap an `sh|bash -c` wrapper (recurse into
+# its inner string), else hand the segment to the shared git-parse reducer,
+# which dispatches any git invocation to git_on_command above.
+check_segment() {
+  if git_extract_sh_c_inner "$1"; then
+    check_command_string "$_dash_c_inner"
+    return
+  fi
+  git_scan_segment "$1"
+}
+
 # Top-level: split a command string on chain operators AND newlines, then
 # check each segment. Also called recursively for sh -c inner strings.
 check_command_string() {
-  _input=$1
-  # Restore POSIX-default IFS before reading it — check_segment may have
-  # unset IFS, and `OLDIFS=$IFS` under `set -u` would error on unset.
+  # Restore POSIX-default IFS before reading it — git_scan_segment leaves IFS
+  # unset, and `OLDIFS=$IFS` under `set -u` would error on unset.
   IFS=$(printf ' \t\n.'); IFS=${IFS%.}
-  # Split on chain operators AND real newlines. The actual newline is inserted
-  # via shell quoting — `\n` in sed replacement is a GNU/BSD extension that's
-  # reliable enough on the macOS sed we target.
-  _chains=$(printf '%s' "$_input" | sed 's/&&/\
-/g; s/||/\
-/g; s/;/\
-/g; s/|/\
-/g')
-
   OLDIFS=$IFS
   IFS='
 '
-  for seg in $_chains; do
+  for seg in $(git_split_chains "$1"); do
     seg=$(printf '%s' "$seg" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')
     [ -z "$seg" ] && continue
     if ! check_segment "$seg"; then
