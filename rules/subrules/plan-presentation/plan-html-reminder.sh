@@ -217,7 +217,9 @@ fi
     echo "    artifacts render .agents/artifacts/\$DATE/plan-<slug>.md"
     echo "  HARD REQUIREMENTS (this check inspects the Markdown + HTML):"
     echo "    - frontmatter surface: internal|cli|web|native|api|workflow"
-    echo "    - internal: ≥1 live drawn SVG"
+    echo "    - internal: ≥1 live drawn SVG (compiler floor — live captures and"
+    echo "      extra evidence sections are still expected when the topic has a"
+    echo "      product, competitor, or real architecture; see /plan quality bar)"
     if [ "$escalated_internal" = 1 ]; then
       echo "    - NOTE: this plan declares 'surface: internal' but its own lists/tables"
       echo "      name UI component files (.tsx/.jsx/.vue/.svelte), so it is being held"

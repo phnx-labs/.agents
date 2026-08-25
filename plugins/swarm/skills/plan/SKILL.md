@@ -2,7 +2,7 @@
 name: plan
 description: "Plan a feature with swarm verification — research hard, produce mock-ups for any UI/flow, draft a behavior-first change proposal, then have independent agents plan the same thing blind and reconcile. Use before building anything non-trivial. Triggers on: 'swarm plan', '/swarm plan', 'plan with verification', 'change proposal', 'plan and check the approach'."
 argument-hint: "[feature or change to plan]"
-allowed-tools: Bash(agents teams*), Bash(agents run*), Bash(rg*), Bash(fd*), Bash(ls*), Bash(git log*), Bash(git diff*), Read(*), Grep(*), Glob(*), Write(*), WebSearch(*), WebFetch(*)
+allowed-tools: Bash(agents teams*), Bash(agents run*), Bash(agents browser*), Bash(agents computer*), Bash(rg*), Bash(fd*), Bash(ls*), Bash(git log*), Bash(git diff*), Read(*), Grep(*), Glob(*), Write(*), WebSearch(*), WebFetch(*)
 user-invocable: true
 ---
 
@@ -20,9 +20,9 @@ The deliverable is not a paragraph of intentions — it is a **rigorous, behavio
 
 Read `AGENTS.md` / `CLAUDE.md` if present. Grep for keywords related to the task, then **read** the files that own the patterns — trace the data flow end to end, identify every touch point and dependency. Explore with `Agent(subagent_type: "Explore")` for breadth; read the load-bearing files yourself.
 
-## 2. Research the state of the world (mandatory web search)
+## 2. Research the live world (search finds URLs; driving is the deliverable)
 
-Your weights are stale. Before proposing an approach that touches any external truth — a library's current API, a framework capability, a service's limits, a pricing tier, the current SOTA pattern, a model id — **WebSearch with the current year**, then `WebFetch` the authoritative doc and quote it. A plan built on remembered facts is a plan built on sand. Cite every external claim with a URL (and year). If three approaches exist in the wild, search all three before picking.
+Your weights are stale. Before proposing an approach that touches any external truth — a library's current API, a framework capability, a service's limits, a pricing tier, the current SOTA pattern, a model id — **WebSearch with the current year**, then `WebFetch` the authoritative doc and quote it. When a live product or competitor exists, open it (`agents browser` / `agents computer`) and embed captures; a remembered pitch is not a teardown. A plan built on remembered facts is a plan built on sand. Cite every external claim with a URL (and year) **in the rendered plan**, not only in chat. If three approaches exist in the wild, search — and open — all three before picking.
 
 ## 3. Find existing abstractions before proposing new code
 
@@ -99,9 +99,12 @@ External facts that shaped the plan, each with a source URL (and year). State-of
 The independent plans the swarm produced. Where they agreed (high confidence), where they diverged (the real decisions), and why you chose the final approach. Cite each finding to its teammate.
 
 ### Design & mock-ups
-Required whenever there is a user-visible surface (section 4): user flow + ASCII
-mock-ups of every state + before/after when replacing UI. Architectural diagrams when
-the shape of the system changes. If no UI: one line `no UI surface`.
+Required whenever there is a user-visible surface (section 4): user flow + real
+captures/mock-ups of every state + before/after when replacing UI. Architectural
+diagrams when the shape of the system changes. Extra evidence sections
+(behavior-first, competitive teardown, references) belong in the HTML artifact
+between Intent/Purpose and Proposed Changes — the required headings are a floor,
+not the plan. If no UI: one line `no UI surface`.
 
 ### Proposal (`proposal.md`)
 Why / What changes / Impact / mock-ups.
@@ -122,10 +125,15 @@ Scenarios to cover — happy path and the edges that matter.
 After the proposal is written, author a Markdown source under `.agents/artifacts/yyyy-mm-dd/`,
 render it to a self-contained HTML file with `artifacts-cli`, and open it on the machine
 the user sits at — follow the **`artifacts`** skill for the LOOK (house structure,
-product-brand theming, light/dark toggle, ≥1 hand-authored inline-SVG diagram) and the
+product-brand theming, light/dark toggle, figures as evidence — architecture
+drawings, current/proposed behavior, live captures when a product or competitor
+exists; one invented SVG is the compiler floor, not the bar) and the
 `/plan` command's Step 9 for the open-on-Mac transport, using the injected **Host &
 Fleet** context to pick and reach the browser host. Don't duplicate the recipe; reuse it.
 
 ## Constraints
 
-No human-time estimates (wall-clock minutes / edit counts / token cost only). No "nice to have" additions. No backwards-compat planning unless asked. Do exactly what was asked — no scope creep.
+No human-time estimates (wall-clock minutes / edit counts / token cost only). No
+scope creep on the **build**. Thoroughness of the **plan** (figures, citations,
+field notes) is not a nice-to-have. No backwards-compat planning unless asked.
+Do exactly what was asked — no feature creep.
