@@ -45,6 +45,10 @@
   test, and its `hooks.yaml`; drops footer-guard from the shared-lib sourcing test
   and the 12→11 consumer list. Part of the 14→8 hook-corpus refinement.
 
+- **`/code:release` and the `code:release` skill are removed.** Publishing is outside the
+  code plugin's scope; live documentation and loop routing now point to each repository's
+  canonical release process instead of a removed command.
+
 ### Changed
 
 - **One shared git-command parser for the four git guards (behavior-preserving).**
@@ -146,6 +150,12 @@
 ## [0.2.2] - 2026-08-23
 
 ### Added
+
+- **`/code:score` measures how well a repository is structured for coding agents.** The
+  new command and skill score multi-level `AGENTS.md` coverage and architectural-pointer
+  quality, flag missing or stale `last-updated` frontmatter, detect flat overloaded
+  directories, god files, and deep unfocused trees, rank the highest-impact actions, and
+  render a visual Markdown-to-HTML report with `artifacts-cli`.
 
 - **The artifact pipeline now has one skill.** `skills/artifacts/SKILL.md`
   teaches the shared Markdown → `artifacts check`/`artifacts render` → branded

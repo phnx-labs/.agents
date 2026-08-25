@@ -130,7 +130,7 @@ tiny). Still unattended.
 
 | Outcome | Counts as done for this loop |
 |---|---|
-| Engineering | PR **merged** on green behind a non-author review, worktree removed, branch deleted, ticket closed with PR link + merge SHA. A distributable (published CLI, extension, deployed app) is not done at merge — route it through `/code:release`. |
+| Engineering | PR **merged** on green behind a non-author review, worktree removed, branch deleted, ticket closed with PR link + merge SHA. A distributable (published CLI, extension, deployed app) is not done until its repository-specific release process is verified live. |
 | Non-coding agent-complete | Real-world action finished + proof (screenshot path, URL, send receipt) |
 | Blocked | Ticket parked with *exact* missing decision/credential; continue others |
 | Genuinely the user's call | A product/scope/taste decision, a credential only they hold, or a governance sign-off — park it with the decision stated in one line, and keep draining the rest |
@@ -185,7 +185,7 @@ not done — park it with the gap named. See `unattended-verification`.
 |---|---|
 | Single clear item now | `/work:dispatch` (or this skill with a one-item queue) |
 | Engineering patterns (worktree, claim, review, merge-on-green) | `code:loop` — including its "done means merged" completion |
-| Post-merge publish for a distributable | `/code:release` — merge is the middle for anything users install or visit |
+| Post-merge publish for a distributable | Repository-specific release process — merge is the middle for anything users install or visit |
 | Board keep/cancel decisions | `/triage` — do not invent cancels unattended |
 | Parallel fan-out mechanics | `swarm:orchestrate` / `agents teams` |
 | Schedule every night | `agents routines` YAML calling this skill unattended |
