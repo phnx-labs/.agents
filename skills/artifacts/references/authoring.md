@@ -75,9 +75,10 @@ add purpose-specific fields (`tickets:`, `prs:`) beside `links`.
 Required body sections come from the kind's template (`artifacts new <kind>
 --blank` writes it). Keep those headings so `artifacts check` passes. Extra
 `##` sections that carry evidence (behavior-first, competitive teardown, field
-notes, proposed architecture, references) are expected on a real plan — they
-are not a second schema. Do not invent competing frontmatter fields, and do
-not drop required headings to make room for extras.
+notes, proposed architecture as a system diagram, options considered,
+adversarial review, references) are expected on a real plan — they are not a
+second schema. Do not invent competing frontmatter fields, and do not drop
+required headings to make room for extras.
 
 ## Design Layout
 
@@ -170,8 +171,10 @@ Markdown source; do not open a partial file.
 element with presentation attributes instead of a shared class. Repeat the
 attributes; do not try to define `.box` once in `<defs><style>`.
 
-A readable architecture/comparison figure uses tinted fills, colored strokes,
-and two text sizes:
+A plan's architecture figure is a **system diagram**, not a decorative SVG:
+named modules, arrows for calls / data / control, layers kept distinct
+(orchestration ≠ machine ≠ isolation). Current and proposed each get their
+own drawing when the shape changes. Follow this recipe:
 
 | Role | Fill | Stroke | Use |
 | --- | --- | --- | --- |

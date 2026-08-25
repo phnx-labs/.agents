@@ -100,11 +100,14 @@ The independent plans the swarm produced. Where they agreed (high confidence), w
 
 ### Design & mock-ups
 Required whenever there is a user-visible surface (section 4): user flow + real
-captures/mock-ups of every state + before/after when replacing UI. Architectural
-diagrams when the shape of the system changes. Extra evidence sections
-(behavior-first, competitive teardown, references) belong in the HTML artifact
+captures/mock-ups of every state + before/after when replacing UI. Architecture
+is a staff-engineer **system diagram** (modules, arrows, layers — follow the
+artifacts diagram recipe), not a decorative SVG; current and proposed when the
+shape changes. Extra evidence sections (behavior-first, competitive teardown,
+options considered, adversarial review, references) belong in the HTML artifact
 between Intent/Purpose and Proposed Changes — the required headings are a floor,
-not the plan. If no UI: one line `no UI surface`.
+not the plan. Every load-bearing choice lists alternatives. If no UI: one line
+`no UI surface`.
 
 ### Proposal (`proposal.md`)
 Why / What changes / Impact / mock-ups.
@@ -116,7 +119,8 @@ Ordered, checkable, each naming its file(s). Drainable by `/code:loop` or fanned
 The contract the system holds after the change — the source of truth a future change diffs against.
 
 ### Edge cases
-Enumerated, each with how the plan handles it.
+Enumerated with `file:line`, each with how the plan handles it — misconfig,
+leaked resource, boot path that dies. Not "this might be hard".
 
 ### Testing
 Scenarios to cover — happy path and the edges that matter.
@@ -134,6 +138,7 @@ Fleet** context to pick and reach the browser host. Don't duplicate the recipe; 
 ## Constraints
 
 No human-time estimates (wall-clock minutes / edit counts / token cost only). No
-scope creep on the **build**. Thoroughness of the **plan** (figures, citations,
-field notes) is not a nice-to-have. No backwards-compat planning unless asked.
+scope creep on the **build**. Thoroughness of the **plan** (system diagrams,
+alternatives considered, corner cases, adversarial review in the HTML, citations)
+is not a nice-to-have. No slop nouns. No backwards-compat planning unless asked.
 Do exactly what was asked — no feature creep.

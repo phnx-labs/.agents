@@ -22,13 +22,14 @@ A heading skeleton plus one invented SVG is not a plan a reviewer can judge.
 1. **Focus for review** — 2–5 bullets naming exactly what the user should weigh
    in on.
 2. **Intent** — the ask restated in the user's words.
-3. **Current architecture** — the affected files and how they talk today,
-   **drawn** as an inline-SVG figure: boxes for the modules, arrows for what
-   calls what; before/after when the plan changes the shape. `artifacts check`
-   errors on an architecture section with no figure (artifacts-cli 0.3.5+;
-   older installs do not enforce it) — a table lists the parts and drops every
-   relationship between them. A table may sit alongside the figure for
-   per-file detail; it does not replace it.
+3. **Current architecture** — a staff-engineer **system diagram** of how
+   affected modules talk today: boxes for the modules, arrows for calls / data
+   / control, layers distinct (orchestration ≠ machine ≠ isolation). Follow the
+   artifacts diagram recipe. Before/after when the plan changes the shape.
+   `artifacts check` errors on an architecture section with no figure
+   (artifacts-cli 0.3.5+; older installs do not enforce it) — a table lists the
+   parts and drops every relationship between them. A table may sit alongside
+   the figure for per-file detail; it does not replace it.
 4. **Implementation as real code** — the load-bearing hunks as diffs (fenced
    ```diff blocks), naming every module that changes.
 5. **A rendered to-do checklist** (also created via `TaskCreate` — see
@@ -36,13 +37,18 @@ A heading skeleton plus one invented SVG is not a plan a reviewer can judge.
 
 Extra evidence sections go between Intent and the implementation diffs —
 behavior-first (the flows, each with today's gap), competitive teardown / field
-notes with live captures, proposed architecture (drawn), references. Required
-when the topic has a live product, a competitor, or a real architecture; skip
-on a one-file bugfix. Do not drop the floor headings to make room for them.
+notes with live captures, proposed architecture (system diagram, not a
+decorative SVG), **options considered** (every load-bearing choice: options,
+implication, winner), **adversarial review** (panel findings in the HTML),
+references. Required when the topic has a live product, a competitor, or a
+real architecture; skip competitive teardown on a one-file bugfix (still state
+the alternative-considered one-liner). Do not drop the floor headings to make
+room for them. No slop nouns.
 
 **Two checks before presenting:** an adversarial non-author review for any
 API/CLI-surface or architecture change (a subagent checks the surface is clean
-and follows existing conventions); and render + inspect the HTML.
+and follows existing conventions — **findings land in the HTML**, not only
+chat); and render + inspect the HTML.
 
 **Artifact path:** all durable outputs land in
 `.agents/artifacts/yyyy-mm-dd/<slug>.md` (plans as `plan-<slug>.md`), HTML
