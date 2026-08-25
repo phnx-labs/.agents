@@ -18,14 +18,25 @@ the guard. `has_verdict` now takes the PR author's login and excludes any
 review/comment authored by that same login from the body-approve check before
 looking for the verdict text.
 
-Stdin contract (kept as close as possible to the python that used to be
-inlined in merge-guard.sh): reviews JSON, then the line `---AGENTS-SPLIT---`,
-then comments JSON, then a second `---AGENTS-SPLIT---`, then the PR author's
-login. Prints `ok` or `missing`. Exit 0 on a successful parse so merge-guard's
-`|| _verdict=ok` fail-open still means "python crashed", not "no verdict".
+Stdin contract: three base64-encoded segments joined by the line
+`---AGENTS-SPLIT---` — reviews JSON, comments JSON, PR author login. Encoding
+each segment (rather than piping raw JSON with plain-text markers, the
+original design) is load-bearing: a review or comment discussing this very
+file — which happened live reviewing PHNX-3236 itself — can quote the marker
+string verbatim in its OWN body, and a plain-text split has no way to tell a
+quoted marker from a real one. Splitting on ANY occurrence corrupts the JSON
+on both sides of it, both `reviews` and `comments` fail to parse, and a
+genuine approval reads as "missing" (a live, reproduced false negative, not
+a hypothetical one — see PHNX-3236 PR history). The base64 alphabet (RFC 4648)
+contains no hyphen, so an encoded segment can never contain
+`---AGENTS-SPLIT---` — the ambiguity is structurally impossible rather than
+merely handled by careful split-direction bookkeeping. Prints `ok` or
+`missing`. Exit 0 on a successful parse so merge-guard's `|| _verdict=ok`
+fail-open still means "python crashed", not "no verdict".
 """
 from __future__ import annotations
 
+import base64
 import json
 import re
 import sys
@@ -42,6 +53,26 @@ CARRIED = re.compile(
     re.I,
 )
 APPROVE = re.compile(r"\bAPPROVED?\b")
+
+
+def _b64_decode_text(segment: str) -> str:
+    """Decode one base64 stdin segment to text. Empty/malformed input decodes
+    to "" rather than raising — callers treat "" the same as "not provided"."""
+    try:
+        return base64.b64decode(segment.strip()).decode("utf-8", errors="replace")
+    except Exception:
+        return ""
+
+
+def _b64_decode_json(segment: str):
+    """Decode one base64 stdin segment as JSON. Returns None on any decode or
+    parse failure — has_verdict already treats non-list reviews/comments as
+    empty, so a corrupt segment degrades to "no verdict found" rather than
+    crashing."""
+    try:
+        return json.loads(_b64_decode_text(segment))
+    except Exception:
+        return None
 
 
 def _item_login(it: dict) -> str:
@@ -124,39 +155,15 @@ def has_verdict(reviews, comments, pr_author: str) -> bool:
 
 
 def verdict_from_stdin(raw: str) -> str:
-    # Split on the FIRST marker only to separate reviews from everything else:
-    # merge-guard writes exactly one
-    # `<reviews>\n---AGENTS-SPLIT---\n<comments>\n---AGENTS-SPLIT---\n<pr_author>`,
-    # and a review or comment body can legitimately quote the marker (e.g. a
-    # reviewer pasting this file's own stdin contract). maxsplit=1 here keeps
-    # everything after the first marker — comments JSON, markers and all,
-    # plus the trailing author section — together for the next step
-    # (RUSH-3080).
-    parts = raw.split(SPLIT, 1)
-    reviews = None
-    comments = None
-    pr_author = ""
-    try:
-        reviews = json.loads(parts[0])
-    except Exception:
-        reviews = None
-    if len(parts) > 1:
-        remainder = parts[1]
-        # The author section is appended LAST and is a bare login — it can
-        # never itself contain the marker — so the real second delimiter is
-        # guaranteed to be the RIGHTMOST occurrence of SPLIT in `remainder`.
-        # rpartition from the right leaves any marker text quoted inside the
-        # comments JSON (which sits to the left of the real delimiter) intact
-        # in comments_raw, exactly like the first split does for reviews.
-        if SPLIT in remainder:
-            comments_raw, _, author_raw = remainder.rpartition(SPLIT)
-            pr_author = author_raw.strip()
-        else:
-            comments_raw = remainder
-        try:
-            comments = json.loads(comments_raw)
-        except Exception:
-            comments = None
+    # Three base64 segments joined by the plain-text marker. None of the
+    # three can themselves contain "---AGENTS-SPLIT---" post-encoding (see
+    # the module docstring), so an unbounded split on the marker always
+    # yields exactly the three segments merge-guard.sh/pr-merge-on-green.sh
+    # wrote, regardless of what any review or comment body quotes.
+    parts = raw.split(SPLIT)
+    reviews = _b64_decode_json(parts[0]) if len(parts) > 0 else None
+    comments = _b64_decode_json(parts[1]) if len(parts) > 1 else None
+    pr_author = _b64_decode_text(parts[2]).strip() if len(parts) > 2 else ""
     if has_verdict(reviews, comments, pr_author):
         return "ok"
     return "missing"

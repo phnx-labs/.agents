@@ -226,7 +226,19 @@ case "$norm" in
       if [ "$_reviews" != "__API_ERR__" ] && [ "$_comments" != "__API_ERR__" ] && [ "$_pr_author" != "__API_ERR__" ] && [ -n "$_pr_author" ]; then
         # Same verdict as pr-merge-on-green: reuse pr-verdict.py, do not re-inline.
         _GUARD_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
-        _verdict=$(printf '%s\n---AGENTS-SPLIT---\n%s\n---AGENTS-SPLIT---\n%s' "$_reviews" "$_comments" "$_pr_author" | python3 "$_GUARD_DIR/pr-verdict.py" 2>/dev/null) || _verdict="ok"
+        # base64-encode each segment: a review/comment discussing THIS file
+        # (as one did, live, reviewing PHNX-3236 itself) can quote the plain
+        # marker text verbatim in its own body, and a plain-text split has no
+        # way to tell a quoted marker from a real one — splitting on the
+        # quoted copy corrupted the JSON on both sides and a genuine approval
+        # read as "missing". Base64's alphabet has no hyphen, so an encoded
+        # segment can never contain "---AGENTS-SPLIT---" — see pr-verdict.py's
+        # module docstring.
+        _verdict=$(printf '%s\n---AGENTS-SPLIT---\n%s\n---AGENTS-SPLIT---\n%s' \
+            "$(printf '%s' "$_reviews" | base64 | tr -d '\n')" \
+            "$(printf '%s' "$_comments" | base64 | tr -d '\n')" \
+            "$(printf '%s' "$_pr_author" | base64 | tr -d '\n')" \
+          | python3 "$_GUARD_DIR/pr-verdict.py" 2>/dev/null) || _verdict="ok"
         if [ "$_verdict" = "missing" ]; then
           printf '%s\n' "Blocked: no non-author review verdict found ON this PR ($_pr_repo#$_pr_num). Post a GitHub APPROVED review, or an APPROVE/APPROVED verdict in a COMMENTED review body (gh pr review --comment) or an issue comment (gh pr comment), ON the PR being merged — a verdict 'carried from' another PR satisfies nothing (the #2736 laundering pattern). Get the automated reviewer's verdict or spawn a non-author subagent review on THIS PR, then retry." >&2
           exit 2

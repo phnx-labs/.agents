@@ -61,7 +61,14 @@ verdict_ok() {
   # excludes anything authored by that identity before looking for a verdict.
   author=$(printf '%s' "$1" | jq -r '.author.login // empty')
   [ -n "$author" ] || return 1
-  result=$(printf '%s\n---AGENTS-SPLIT---\n%s\n---AGENTS-SPLIT---\n%s' "$reviews" "$comments" "$author" | python3 "$VERDICT" 2>/dev/null) || return 1
+  # base64-encode each segment: a review/comment body quoting this file's own
+  # marker text would otherwise corrupt a plain-text split — see
+  # pr-verdict.py's module docstring.
+  result=$(printf '%s\n---AGENTS-SPLIT---\n%s\n---AGENTS-SPLIT---\n%s' \
+      "$(printf '%s' "$reviews" | base64 | tr -d '\n')" \
+      "$(printf '%s' "$comments" | base64 | tr -d '\n')" \
+      "$(printf '%s' "$author" | base64 | tr -d '\n')" \
+    | python3 "$VERDICT" 2>/dev/null) || return 1
   [ "$result" = "ok" ]
 }
 

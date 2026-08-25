@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Contract tests for pr-verdict.py — the shared merge-guard / pr-merge-on-green
-# verdict. Feeds the same stdin shape merge-guard.sh pipes (reviews JSON,
-# ---AGENTS-SPLIT---, comments JSON, ---AGENTS-SPLIT---, PR author login).
-# No network.
+# verdict. Feeds the same stdin shape the shell callers pipe: three
+# base64-encoded segments (reviews JSON, comments JSON, PR author login)
+# joined by ---AGENTS-SPLIT---. No network.
 set -u
 DIR=$(cd "$(dirname "$0")" && pwd)
 PY="$DIR/pr-verdict.py"
@@ -14,13 +14,15 @@ fail=0
 # case the fixture's login matches AUTHOR below.
 AUTHOR="pr-author-bot"
 
+b64() { printf '%s' "$1" | base64 | tr -d '\n'; }
+
 check() {
   want=$1
   desc=$2
   reviews=$3
   comments=$4
   author=${5:-$AUTHOR}
-  got=$(printf '%s\n---AGENTS-SPLIT---\n%s\n---AGENTS-SPLIT---\n%s' "$reviews" "$comments" "$author" | python3 "$PY" | tr -d '\n')
+  got=$(printf '%s\n---AGENTS-SPLIT---\n%s\n---AGENTS-SPLIT---\n%s' "$(b64 "$reviews")" "$(b64 "$comments")" "$(b64 "$author")" | python3 "$PY" | tr -d '\n')
   if [ "$got" = "$want" ]; then
     pass=$((pass + 1))
   else
@@ -106,6 +108,25 @@ check missing "self-authored comment in the author.login (GraphQL) shape does no
   '[]' '[{"author":{"login":"pr-author-bot"},"body":"VERDICT: APPROVE"}]'
 check ok "non-author comment in the author.login (GraphQL) shape still clears" \
   '[]' '[{"author":{"login":"reviewer-bot"},"body":"VERDICT: APPROVE"}]'
+
+# Live bug, reproduced reviewing PHNX-3236 itself (not hypothetical): a
+# REVIEW body — not just a comment, the only case RUSH-3080 tested — quoting
+# this file's own stdin-contract marker corrupted a plain-text split: the
+# FIRST "---AGENTS-SPLIT---" in the whole raw string landed inside the
+# reviews JSON, so both reviews and comments failed to parse and a genuine
+# non-author APPROVE read as "missing". Base64-encoding each segment (this
+# test's `b64` helper, matching the real shell callers) makes the marker
+# structurally impossible to embed, so this must clear regardless of how
+# many times the review body quotes it.
+check ok "review body quoting the split marker still clears (reviews-side corruption)" \
+  '[{"state":"COMMENTED","user":{"login":"reviewer-bot"},"body":"the stdin contract is <reviews>---AGENTS-SPLIT---<comments>---AGENTS-SPLIT---<author>. VERDICT: APPROVE"}]' \
+  '[]'
+check ok "review body quoting the marker four times still clears" \
+  '[{"state":"COMMENTED","user":{"login":"reviewer-bot"},"body":"---AGENTS-SPLIT--- ---AGENTS-SPLIT--- ---AGENTS-SPLIT--- ---AGENTS-SPLIT--- VERDICT: APPROVE"}]' \
+  '[]'
+check missing "self-authored review quoting the marker still does not clear" \
+  '[{"state":"COMMENTED","user":{"login":"pr-author-bot"},"body":"see ---AGENTS-SPLIT--- in the docstring. VERDICT: APPROVE"}]' \
+  '[]'
 
 printf -- '---\npr-verdict: %s passed, %s failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]
