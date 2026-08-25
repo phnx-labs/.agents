@@ -2,6 +2,23 @@
 
 ## [Unreleased]
 
+### Added
+
+- **`hooks/stop/07-gather-before-reply.py` — refuse a from-context reply.** A new
+  advisory Stop hook that fires at the reply event. It reads the session file and,
+  if the agent made no tool call and used no skill since the user's last message,
+  injects a directive to gather the context the question needs before answering
+  (read the relevant code/files, use a skill that fits, check the real state, weigh
+  the tradeoffs) instead of just agreeing or disagreeing from what is already in its
+  context window. The failure it targets is measured: in session `3f42a8d1`
+  (RUSH-3033) the user pushed back on a design decision and the agent's first move
+  was "you're exactly right" with no search or reflection. Non-blocking (`exit 0`,
+  stdout injected per the `hooks/AGENTS.md` exit contract), fails open on any parse
+  error, and detects the user-message boundary from real record shapes (a typed
+  `type:user` message has string content; a tool result is `type:user` with list
+  content and does not count; a mid-turn `queue-operation` does). Registered in
+  `agents.yaml`; test at `hooks/stop/tests/07-gather-before-reply_test.sh`.
+
 ### Changed
 
 - **Four delivery-phase guards skip plan mode inside their own scripts.** Measured from
@@ -47,6 +64,24 @@
   and the 12→11 consumer list. Part of the 14→8 hook-corpus refinement.
 
 ### Changed
+
+- **One shared git-command parser for the four git guards (behavior-preserving).**
+  `git-guard`, `large-file-add-guard`, and `main-branch-guard` each open-coded the
+  same ~90 lines of git-command parsing — `sh -c` unwrapping, chain splitting on
+  `&& || ; |`, env-prefix and quote stripping, `git` detection, and global-flag
+  peeling — so a parser fix had to land in three places and had already drifted
+  (large-file grew a redundant `sh|bash` arm; main-branch grew `-C` capture the
+  others lacked). That machinery now lives once in `hooks/lib/git-parse.sh`
+  (`git_extract_sh_c_inner`, `git_split_chains`, `git_unwrap_quotes`,
+  `git_scan_segment`), which finds the git invocation and dispatches it to each
+  guard's own `git_on_command` policy callback — the WHAT/WHERE/large-add policy
+  is unchanged, only the shared plumbing moved. Consumers source the lib with the
+  same fail-closed contract as `json-field.sh` (#385): a guard that cannot load
+  the parser refuses (`exit 2`) rather than run a git command unchecked, pinned by
+  the new `hooks/lib/tests/git-parse-sourcing_test.sh`. The three guards shrank by
+  175 lines total; every existing guard test still passes unchanged.
+  `01-git-require-clean-tree` keeps its cheap substring match (routing it through
+  the parser would change what it blocks).
 
 - **main-branch-guard now hands over a worktree instead of describing one.** The
   refusal fires ~131 times across ~63 sessions, and each one is an agent that wanted

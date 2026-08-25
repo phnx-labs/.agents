@@ -47,7 +47,9 @@ hooks/
   stop/                   Stop
     tests/                  its *_test.sh files
   notification/           Notification (+ multi-event hooks that start there)
-  lib/                    shared helpers sourced by hooks (not event scripts)
+  lib/                    shared helpers sourced by hooks (not event scripts):
+                            json-field.sh (JSON extractor), git-facts.sh (git-fact
+                            cache), git-parse.sh (git-command parser)
     tests/                  its *_test.sh files
   promptcuts.yaml         data for promptcuts (internal hook: expand-promptcuts)
   registration_test.sh    integrity check (top-level)
@@ -113,6 +115,7 @@ register time). See [§Subrule hooks](#subrule-hooks-rules-not-this-tree).
 | [`visual_readback.py`](./stop/visual_readback.py) | Shared transcript evidence for authored, delivered, and image-read visual artifacts |
 | [`verify-delivery-chain.py`](./stop/verify-delivery-chain.py) | Goal-scoped delivery-chain verifier invoked by the Stop check (not registered alone) |
 | [`check-outcome-backfill.py`](./stop/check-outcome-backfill.py) | Offline: derives whether each recorded block was followed by the specific thing that block demanded; never on a hook path |
+| [`07-gather-before-reply.py`](./stop/07-gather-before-reply.py) | Advisory: if the agent made no tool call and used no skill since the user's last message, injects a directive to gather context before replying; exit 0, fails open |
 
 ### `notification/` — Notification
 
