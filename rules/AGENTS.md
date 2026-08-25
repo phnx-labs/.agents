@@ -618,15 +618,14 @@ A heading skeleton plus one invented SVG is not a plan a reviewer can judge.
 5. **A rendered to-do checklist** (also created via `TaskCreate` — see
    `task-checklists`).
 
-Extra evidence sections go between Intent and the implementation diffs —
-behavior-first (the flows, each with today's gap), competitive teardown / field
-notes with live captures, proposed architecture (system diagram, not a
-decorative SVG), **options considered** (every load-bearing choice: options,
-implication, winner), **adversarial review** (panel findings in the HTML),
-references. Required when the topic has a live product, a competitor, or a
-real architecture; skip competitive teardown on a one-file bugfix (still state
-the alternative-considered one-liner). Do not drop the floor headings to make
-room for them. No slop nouns.
+When the topic has a live product, a competitor, or a real architecture, carry
+that **evidence** between Intent and the implementation diffs: the flows and
+today's gap, field notes from driving the live thing, a drawn proposed
+architecture, alternatives for load-bearing choices, panel findings, cited
+URLs. Heading names are not a second checklist — put the evidence where it
+reads; empty extra H2s are the heading-skeleton bug in a new costume. A
+one-file bugfix skips this (one line for alternatives is enough). Do not drop
+the floor headings to make room. No slop nouns.
 
 **Two checks before presenting:** an adversarial non-author review for any
 API/CLI-surface or architecture change (a subagent checks the surface is clean

@@ -103,11 +103,10 @@ Required whenever there is a user-visible surface (section 4): user flow + real
 captures/mock-ups of every state + before/after when replacing UI. Architecture
 is a staff-engineer **system diagram** (modules, arrows, layers — follow the
 artifacts diagram recipe), not a decorative SVG; current and proposed when the
-shape changes. Extra evidence sections (behavior-first, competitive teardown,
-options considered, adversarial review, references) belong in the HTML artifact
-between Intent/Purpose and Proposed Changes — the required headings are a floor,
-not the plan. Every load-bearing choice lists alternatives. If no UI: one line
-`no UI surface`.
+shape changes. Extra evidence (flows with today's gap, live field notes,
+proposed architecture, alternatives, panel findings, cited URLs) belongs in
+the HTML between Intent/Purpose and Proposed Changes — as content, not as a
+second heading checklist. If no UI: one line `no UI surface`.
 
 ### Proposal (`proposal.md`)
 Why / What changes / Impact / mock-ups.

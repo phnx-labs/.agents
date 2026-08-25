@@ -14,14 +14,14 @@
   considered** on every load-bearing choice; corner cases with `file:line`;
   **adversarial review findings in the HTML** (the gold session's user prompt
   was understand → review the plan → then fan out); live product driving +
-  cited URLs; extra sections (behavior-first, competitive teardown, proposed
-  architecture, options considered, adversarial review, references) between
-  Intent and Proposed Changes; no slop nouns; "no nice-to-haves" applies to the
-  build, not the plan. Same language in `commands/plan.md`, `skills/artifacts`
-  (+ authoring.md), the always-on `plan-presentation` rule, and `swarm:plan`
-  (which also gains `agents browser` / `agents computer` so it can capture a
-  live product). Source: `commands/plan.md`, `skills/artifacts/`,
-  `rules/subrules/plan-presentation/rule.md`, `plugins/swarm/skills/plan/SKILL.md`.
+  cited URLs; extra evidence between Intent and Proposed Changes **as content,
+  not a second heading checklist** (empty extra H2s are the skeleton bug in a
+  new costume); no slop nouns; "no nice-to-haves" applies to the build, not the
+  plan. Same language in `commands/plan.md`, `skills/artifacts` (+ authoring.md),
+  the always-on `plan-presentation` rule, `swarm:plan`, and `swarm:spec` (both
+  gain `agents browser` / `agents computer`). Source: `commands/plan.md`,
+  `skills/artifacts/`, `rules/subrules/plan-presentation/rule.md`,
+  `plugins/swarm/skills/plan/SKILL.md`, `plugins/swarm/skills/spec/SKILL.md`.
 
 ### Added
 
