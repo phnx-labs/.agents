@@ -2,6 +2,25 @@
 
 ## [Unreleased]
 
+### Changed
+
+- **`/plan` quality bar: required headings are a floor, not the plan (PHNX-3252).**
+  Measured against the Prix Cloud Agents gold plan (1.2MB, 8 SVGs, 10 figures,
+  20 external URLs, live maritime.sh captures, extra sections) vs recent `/plan`
+  output (31–82KB heading skeletons). The starving constraints were "Extract 2–3
+  key insights", "Use this section order" / "don't invent a second schema",
+  "The plan contains, in order:", "≥1 visual figure", and "No nice to have
+  additions" — agents treated the compiler floor as the document. Now: live
+  product driving + cited URLs are the research bar; extra evidence sections
+  (behavior-first, competitive teardown, proposed architecture, references) go
+  between Intent and Proposed Changes; "no nice-to-haves" applies to the build,
+  not the plan; one invented SVG compiles and is not done. Same language in
+  `commands/plan.md`, `skills/artifacts` (+ authoring.md), the always-on
+  `plan-presentation` rule, and `swarm:plan` (which also gains `agents browser` /
+  `agents computer` on its allowlist so the skill can actually capture a live
+  product). Source: `commands/plan.md`, `skills/artifacts/`,
+  `rules/subrules/plan-presentation/rule.md`, `plugins/swarm/skills/plan/SKILL.md`.
+
 ### Added
 
 - **`hooks/post-tool-use/01-github-ratelimit-nudge.py` — after a GitHub rate limit,

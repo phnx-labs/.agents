@@ -595,9 +595,12 @@ middle.
 **Research first:** search what previous agents did on this feature
 (`agents sessions "<keywords>"`) and extend prior work — silently reverting an
 earlier agent's change is the most common regression here. Locate the module's
-spec if one exists.
+spec if one exists. When a live product, competitor, or current docs page
+exists, drive it and cite it (URL + year); search snippets are not a teardown.
 
-**The plan contains, in order:**
+**The plan contains at least these, in this relative order.** They are a floor
+(`artifacts check` will not compile without the required headings and a figure).
+A heading skeleton plus one invented SVG is not a plan a reviewer can judge.
 
 1. **Focus for review** — 2–5 bullets naming exactly what the user should weigh
    in on.
@@ -613,6 +616,12 @@ spec if one exists.
    ```diff blocks), naming every module that changes.
 5. **A rendered to-do checklist** (also created via `TaskCreate` — see
    `task-checklists`).
+
+Extra evidence sections go between Intent and the implementation diffs —
+behavior-first (the flows, each with today's gap), competitive teardown / field
+notes with live captures, proposed architecture (drawn), references. Required
+when the topic has a live product, a competitor, or a real architecture; skip
+on a one-file bugfix. Do not drop the floor headings to make room for them.
 
 **Two checks before presenting:** an adversarial non-author review for any
 API/CLI-surface or architecture change (a subagent checks the surface is clean

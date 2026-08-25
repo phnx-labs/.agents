@@ -73,7 +73,11 @@ without relying on the chip row. Keep optional short ids in `tracking`; do not
 add purpose-specific fields (`tickets:`, `prs:`) beside `links`.
 
 Required body sections come from the kind's template (`artifacts new <kind>
---blank` writes it). Keep them instead of inventing a second schema.
+--blank` writes it). Keep those headings so `artifacts check` passes. Extra
+`##` sections that carry evidence (behavior-first, competitive teardown, field
+notes, proposed architecture, references) are expected on a real plan — they
+are not a second schema. Do not invent competing frontmatter fields, and do
+not drop required headings to make room for extras.
 
 ## Design Layout
 

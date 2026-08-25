@@ -1,5 +1,5 @@
 ---
-description: Plan with grounded design — research, read code, create artifacts, optionally get early review
+description: Plan with grounded design — live research, read code, figures as evidence, render an HTML plan
 ---
 
 You are planning: $ARGUMENTS
@@ -8,11 +8,39 @@ You are planning: $ARGUMENTS
 
 Plans fail when they're based on assumptions instead of evidence. Before proposing anything:
 0. **Search what previous agents did on this feature** — `agents sessions "<feature keywords>"`, then read the latest plan/PR on that surface. Extend it; do not silently revert it (the most common regression).
-1. Research current best practices and APIs
+1. Research the live product and the current docs — not just search snippets
 2. Read the actual code that will change
-3. Create concrete artifacts (mockups, diagrams, and a per-file diff of the change)
+3. Create concrete artifacts (captures, mockups, diagrams, and a per-file diff of the change)
 4. For medium+ work, get independent plans from a vendor-varied panel and adjudicate one
    merged plan against the code (Step 7)
+
+## Quality bar — the skeleton is a floor, not the plan
+
+`artifacts check` requires a handful of headings and at least one figure. That is the
+minimum that compiles. It is not a finished plan.
+
+A reviewer must be able to judge the plan without re-running the session. That means:
+
+- **Live evidence** of the current product or the competitors, when they exist — drive
+  the real UI (`agents browser` / `agents computer`) and embed captures. A paragraph of
+  remembered positioning is not a teardown.
+- **External URLs** for every outside-world claim (API, pricing, a competitor's primitive,
+  a current-year docs page). Uncited claims do not belong in the plan.
+- **Drawn architecture** in every architecture section, plus a current/proposed behavior
+  figure when the surface is user-visible. Prefer a real capture for "current". One
+  invented SVG next to nine empty headings is not done.
+- **Extra `##` sections** whenever the topic needs them. Insert them between
+  Intent/Purpose and Proposed Changes. Named examples that earned their place: behavior
+  first (the flows, each with today's gap), competitive teardown / field notes (from
+  using the live product), proposed architecture (drawn, not only diffs), adversarial
+  review findings, references. Keep the required headings; do not invent a second
+  frontmatter schema.
+
+"No nice-to-haves" applies to the **build** (do not grow the feature). Thoroughness of
+the **plan** — figures, citations, field notes — is the job.
+
+Scale: a one-file bugfix can skip competitive teardown and the independent panel. A
+platform, product, or architectural change cannot.
 
 ## Step 1: Understand the Request
 
@@ -23,21 +51,23 @@ Before reading any code, clarify:
 3. **What is the scope?** — New feature, refactor, bug fix, or integration?
 4. **What are the constraints?** — Time, dependencies, backwards compatibility?
 
-## Step 2: Research Current State-of-the-Art
+## Step 2: Research the live world
 
-**Do NOT skip this.** Your training data is stale. Before designing, web search for:
+**Do NOT skip this.** Your training data is stale. Web search finds the URLs; it is
+not the research deliverable.
 
-- Current best practices for this type of feature (anchor with current year)
-- API documentation for any libraries or services involved
-- Common pitfalls or anti-patterns others have hit
-- Recent changes to frameworks or APIs the code uses
+1. **Search with the current year** for current docs, APIs, pricing, and the products
+   that already solve this. Then `WebFetch` the authoritative page and quote it.
+2. **Drive the live thing.** When a current product, a competitor, or a docs site
+   exists, open it with `agents browser` (or `agents computer` for native UI) and
+   capture what you actually saw — the front-door primitive, the deploy/create flow,
+   the missing lever. Field notes from using it beat a remembered pitch.
+3. **Cite every outside-world claim** with a URL and year. Put the evidence in the
+   rendered plan (a `## Competitive teardown`, `## References`, or `## Behavior first`
+   section) — not only in chat.
 
-Examples:
-- "Next.js 15 app router authentication patterns 2026"
-- "Stripe subscription API best practices 2026"
-- "React Server Components data fetching 2026"
-
-Extract 2-3 key insights that should inform the design. If an API has changed or a better approach exists, the plan should reflect that.
+If an API has changed or a better approach exists, the plan reflects the live docs,
+not training memory.
 
 ## Step 3: Audit the Codebase
 
@@ -263,42 +293,22 @@ Only AFTER creating artifacts, list genuine uncertainties. Each must:
 
 ## Output Format
 
-### Research
-What you learned from web search. Key insights that inform the design.
+The **HTML artifact is the plan.** Chat is a 2–3 line spoken summary plus the path.
+Do not maintain a second outline in the terminal that the rendered file then drops.
 
-### Codebase Audit
-Files read with line numbers. How they connect.
+Render with the `artifacts` `kind: plan` headings as a **floor** (see that skill).
+`artifacts check` currently requires Purpose, Proposed Changes, Public Interface,
+Validation, and Risks to exist; keep them. Extra evidence sections from the quality
+bar above go between Intent/Purpose and Proposed Changes.
 
-### Existing Primitives
-Components, hooks, utilities, patterns to reuse. What each provides.
+Inside those sections, the load-bearing content is:
 
-### Feature: [Name]
-
-**Code Read:** file:line quotes of relevant code
-
-**User Flow:** (for UI features)
-[Flow diagram showing screens and transitions]
-
-**Artifacts:**
-[Mockups, API specs, state diagrams — MANDATORY]
-
-**Implementation:** For each file that changes, show a per-file **diff** of the relevant
-hunk (added lines green, removed red) via the `code-diff` component — not a bare
-File/Function list. Name every module touched.
-
-**Design Questions:** (only if genuinely ambiguous)
-
-### Independent Plans (if a panel was spawned)
-For each independent planner: vendor, the approach it proposed in one line, and the verdict —
-ADOPTED (what was taken), REJECTED (what was discarded *and why* — flag anything contradicted
-by the code with file:line), or DESIGN QUESTION (a genuine trade-off surfaced to the user).
-Note what the panel caught that your own plan missed.
-
-### Summary
-
-| Feature | Files Modified | New Functions | Complexity |
-|---------|----------------|---------------|------------|
-| ... | ... | ... | Low/Med/Hi |
+- **Code read** as file:line quotes, not paraphrase.
+- **User flow + captures/mockups** for any user-visible surface (Step 6).
+- **Per-file diffs** of the load-bearing hunks — not a bare File/Function list.
+- **Independent plans** (if a panel ran): vendor, one-line approach, verdict
+  (ADOPTED / REJECTED with file:line / DESIGN QUESTION).
+- **Design questions** only if genuinely ambiguous.
 
 ## Step 9: Render the plan as HTML and open it in the user's browser
 
@@ -316,9 +326,10 @@ reference this step.
    artifacts render .agents/artifacts/yyyy-mm-dd/plan-<slug>.md
    ```
    This writes the HTML next to the Markdown source. Include the goal, the
-   implementation table, existing-primitives-to-reuse, the design questions, and
-   **≥1 visual figure** (hand-authored inline SVG for
-   timeline / architecture / before-after diagrams — not mermaid). Skin it in the
+   implementation diffs, existing-primitives-to-reuse, the design questions, and
+   **figures as evidence** — architecture drawings, current/proposed behavior, and
+   live captures when a product or competitor exists. One invented SVG satisfies
+   the compiler and fails the quality bar. Skin it in the
    **target product's brand** via `DESIGN.md`; fall back to the dark **+ light** editorial
    house palette (with the in-page toggle) only when the product declares no brand.
    The output must open offline by double-click.
@@ -359,10 +370,11 @@ open was skipped.
 ## Constraints
 
 - No time estimates
-- No "nice to have" additions
+- No scope creep on the **build** — do not grow the feature. Do not skip research,
+  figures, or citations to keep the plan short
 - No abstract discussion without artifacts
-- Every UI feature needs user flow + mockups
+- Every UI feature needs user flow + mockups (captures preferred for "current")
 - Use AskUserQuestion for ambiguous decisions
-- Web search before designing — your training is stale
+- Live research before designing — your training is stale
 - **Reuse over invent** — extend existing primitives, don't create parallel ones
 - **Ask before creating new primitives** — new components/hooks/utils need user approval

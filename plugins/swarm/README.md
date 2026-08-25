@@ -17,7 +17,7 @@ the internal **`swarm:orchestrate`** skill (no command of its own).
 
 | Command | Use when |
 | --- | --- |
-| `/swarm:plan` | Before building anything non-trivial. Research, **mock-ups**, behavior-first change proposal, blind independent planners, reconcile. |
+| `/swarm:plan` | Before building anything non-trivial. Live research + captures, **mock-ups**, behavior-first change proposal, blind independent planners, reconcile. |
 | `/swarm:spec` | Durable **source-of-truth** description of how a capability behaves, in plain language (intent, behavior, sharp cases, what must not change) so other agents and humans do not invent wrong behavior — reverse-engineered from real code, with **mock-ups** for any UI/flow surface. |
 | `/swarm:debug` | Non-obvious bug; wrong diagnosis is expensive. Trace the data path, attribute regressions to the responsible agent/session and explain how they slipped, then blind multi-provider root-cause confirm. |
 

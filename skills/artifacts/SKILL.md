@@ -113,10 +113,25 @@ links:
 ```
 
 The plan must begin with behavior the reviewer can judge, then explain the
-implementation. Use this section order:
+implementation. Keep these headings, in this relative order — they are a
+**floor**. `artifacts check` errors if Purpose, Proposed Changes, Public
+Interface, Validation, or Risks are missing. Extra `##` sections that carry
+evidence belong between Intent/Purpose and Proposed Changes; they are expected
+when the topic has a live product, a competitor, or a real architecture:
+
+- `## Behavior first` — the flows the change must deliver, each with today's gap
+- `## Competitive teardown` / field notes — from driving the live product, with captures
+- `## Proposed architecture` — drawn; not only diffs under Proposed Changes
+- `## References` — external URLs for outside-world claims
+
+Do not invent a second frontmatter schema. Do not drop required headings to make
+room for extras. A heading skeleton plus one invented SVG compiles and is not a
+plan a reviewer can judge.
+
+Floor headings, in this relative order:
 
 1. `## Focus for review` — two to five concrete decisions or tradeoffs.
-2. `## Intent` — restate the user's ask.
+2. `## Intent` — restate the user's ask. (`## Purpose` also satisfies the checker.)
 3. `## Current architecture` — draw how affected modules communicate today;
    add a proposed state when the architecture changes.
 4. `## Proposed Changes` — show load-bearing changes as per-file `diff` fences.
@@ -147,10 +162,16 @@ current-versus-proposed figure with this exact semantic contract:
 ```
 
 Each state must use `data-evidence="capture"` or `data-evidence="mockup"`.
-Prefer a real capture; otherwise build a faithful mockup matching the actual
-layout, typography, components, and output. An architecture SVG does not replace
-this behavior figure. A plan that lists `.tsx`, `.jsx`, `.vue`, or `.svelte`
-components is treated as user-visible even if it declares `surface: internal`.
+Prefer a real capture of the live current product; otherwise build a faithful
+mockup matching the actual layout, typography, components, and output. An
+architecture SVG does not replace this behavior figure. A plan that lists
+`.tsx`, `.jsx`, `.vue`, or `.svelte` components is treated as user-visible even
+if it declares `surface: internal`.
+
+The compiler's figure requirement is a floor (one drawn SVG, or one
+current/proposed behavior figure). Live captures of the current product or
+competitors, and a drawing inside every architecture section, are how the
+plan becomes reviewable.
 
 Also include at least one Markdown table, one fenced code block, and one
 `artifact-callout`. Treat warnings about these as work to fix before presenting.
