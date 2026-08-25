@@ -4,6 +4,8 @@
 
 ### Changed
 
+- **Fleet auth guidance now prefers per-device native OAuth when the harness supports it (PHNX-3259).** `/fleet:mint-auth` documents the verified target-slot device-code flow: create a stable account slot, run login in a PTY on that target, authorize through a browser signed into the intended account, verify the resulting email, and repeat per device. Native OAuth files remain non-copyable; only named setup-token/API-key bundles may be distributed with `agents accounts sync`. Onboarding and the fleet catalog use the same distinction.
+
 - **`/plan` quality bar: required headings are a floor, not the plan (PHNX-3252).**
   Measured against the Prix Cloud Agents gold plan vs recent `/plan` heading
   skeletons. The starving constraints were "Extract 2–3 key insights", "Use this

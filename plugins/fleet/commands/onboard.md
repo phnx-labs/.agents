@@ -34,18 +34,20 @@ Onboarding touches agent auth and the fleet SSH key. **Never `scp`/copy a creden
 file (`~/.claude/.credentials.json`, keychain exports, tokens) host-to-host.** Provision
 only through the sanctioned paths, and only with the user's explicit OK:
 
-- **Agent auth** → **mint it yourself first** with [`/fleet:mint-auth`](mint-auth.md): drive
-  the harness's device/OAuth flow (a pty + a logged-in browser via `agents computer` /
-  `agents browser`) to produce a long-lived `setup-token` / API key. Store it as a
-  named provider account with `agents accounts add <name> --provider <provider>
-  --auth <type>` — account bundles use `policy: never`, so reads are headless and
-  Touch-ID-free on any OS. This is the preferred path — "the account isn't logged in"
-  is a false blocker, not a reason to hand off. Other sanctioned paths: `agents
+- **Agent auth** → **mint it yourself first** with [`/fleet:mint-auth`](mint-auth.md).
+  Prefer the harness's native device/OAuth flow inside a distinct account slot on the
+  target, driven through `agents pty` plus a browser signed into the intended account.
+  Verify the resulting email on the target and repeat independently per device. For a
+  deliberately shared headless credential, mint a long-lived `setup-token` / API key
+  and store it as a named provider account with `agents accounts add <name> --provider
+  <provider> --auth <type>` — account bundles use `policy: never`, so reads are
+  headless and Touch-ID-free on any OS. "The account isn't logged in" is a false
+  blocker, not a reason to hand off. Other sanctioned paths: `agents
   accounts add` (provider accounts), `agents profiles login <provider>` (API-key
   providers), the agent's own native login flow, or `agents setup`. Two auth models
-  exist on this fleet — a long-lived setup-token/API-key bundle stored via `agents
-  accounts add` (preferred; safe to hold and sync with `agents accounts sync`) *or*
-  interactive OAuth (per-machine, never copied). (Confirm the current verb via
+  exist on this fleet — native OAuth (preferred when available; per-machine and never
+  copied) *or* a long-lived setup-token/API-key bundle stored via `agents accounts add`
+  (safe to hold and sync with `agents accounts sync`). (Confirm the current verb via
   `--help` — there is no bare `agents login`.)
 - **Fleet SSH key** (the one shared Ed25519 that unlocks git + node-to-node mesh) →
   installed from its `agents secrets` bundle, **with explicit authorization** each time.
@@ -93,12 +95,12 @@ so and stop.
    the working nodes carry. (No sudo; only affects new shells.)
 7. **Register the device + sync the registry** — `agents devices add`/`sync` so the
    target appears in the fleet, and re-sync on the orchestrator so it sees the target.
-8. **Agent auth** — provision a named provider account via `/fleet:mint-auth` (preferred)
-   or another sanctioned path from step 1's hard line, matching the reference node's
-   auth model. Store the credential with `agents accounts add <name> --provider
-   <provider> --auth <type>`, then sync it to the target with `agents accounts sync
-   <name> --device <target>`. Verify the agent can actually run (not just that a
-   file exists): `agents run claude "Reply: OK" --account <name> --mode plan --timeout 2m`.
+8. **Agent auth** — use `/fleet:mint-auth`. For native OAuth, create/select the target's
+   stable account slot, run the device flow on that target, and verify the resulting
+   email plus a real invocation. For a setup-token/API-key account, store it with
+   `agents accounts add`, sync it with `agents accounts sync <name> <target>`, and verify
+   `agents run ... --account <name>` succeeds. Never translate one model into the other
+   by copying a native credential file.
 
 ### 4. Verify — end to end
 

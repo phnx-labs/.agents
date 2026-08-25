@@ -1,5 +1,5 @@
 ---
-description: Mint a harness auth credential YOURSELF by driving the login/OAuth flow (no user hand-off). Default: a long-lived Claude `setup-token` via the device flow, driven with a pty + a logged-in browser (computer-use or CDP), then stored as a named provider account so reads are headless and Touch-ID-free. Use when an account shows "not logged in" on a device.
+description: Mint harness auth YOURSELF through the provider's supported flow. Prefer a fresh native device/OAuth login inside each target account slot; use a syncable named account only for long-lived setup tokens or API keys. Never copy native OAuth files host-to-host.
 ---
 
 Provision a harness credential for a device **without handing the login off to the
@@ -17,13 +17,20 @@ and the fleet already has one (the online macOS box). Proven end-to-end 2026-08-
 Do NOT stop and ask the user to log in until you have actually attempted this and it
 failed for a concrete, quoted reason (see F2 (unblock yourself before you stop)).
 
-## HARD LINE — mint, never copy
+## HARD LINE — authorize natively, never copy native OAuth
 
-This mints a **fresh, per-account** credential on demand. It does **not** copy an
-interactive login file host-to-host (that rotates→revokes and logs the fleet out — the
-whole reason onboard forbids credential-file copies). The one credential class that is
-safe to hold and sync is the long-lived, non-rotating setup-token / API key this
-command produces.
+There are two supported credential classes. Do not blur them:
+
+- **Native OAuth/device login:** mint it independently inside every target device's
+  version-home/account slot. Never copy its credential file or keychain entry. Refresh
+  tokens may rotate, so two machines sharing one copied login can invalidate each other.
+- **Setup token/API key:** store it as a named provider account. This long-lived,
+  non-rotating credential class may be distributed with `agents accounts sync`.
+
+Prefer native device OAuth when the harness exposes it and the user wants the harness's
+full native account identity, subscription, and usage behavior. Use setup tokens/API
+keys when native OAuth is unavailable or a deliberately shared headless account is the
+product requirement. Copying native OAuth material is not a fallback.
 
 ## DISCOVER first — the CLI surface moves
 
@@ -31,7 +38,52 @@ Confirm the current verbs before running: `claude setup-token --help`, `agents p
 --help`, `agents computer --help` / `agents browser --help`, `agents accounts --help`.
 Treat the keystrokes below as the map, not gospel.
 
-## Recipe — Claude setup-token (the common case)
+## Recipe — native device OAuth in a target account slot
+
+This is the preferred fleet recipe for Grok, Kimi, Droid, and any harness that exposes
+a device-code flow. Run it once per account per device. A version label is the stable
+account-slot identity; the vendor binary may self-update to a different release without
+changing that label.
+
+1. **Create or select a distinct slot on the target.** Discover the current `agents add`
+   and `agents view` syntax first. For Grok, a concrete label keeps credentials separate:
+   ```
+   agents ssh <target> 'agents add grok@<stable-label> -y'
+   agents ssh <target> 'agents view grok'
+   ```
+   Never reuse a slot that already belongs to another email. Do not infer identity from
+   the label; the native login result is the source of truth.
+
+2. **Start the native login on the target in a PTY.** Use the managed invocation so
+   `HOME` resolves to that slot:
+   ```
+   SID=$(agents ssh <target> 'agents pty start --shell /bin/bash' | tail -1)
+   agents ssh <target> "agents pty write $SID 'agents run grok@<stable-label> -- login --device-auth\r'"
+   sleep 3
+   agents ssh <target> "agents pty screen $SID"
+   ```
+   Read the exact device URL and code from the PTY. Keep the PTY alive while authorizing.
+
+3. **Authorize with a browser already signed into the intended provider account.** Use
+   `agents browser` for trusted clicks, or `agents computer` element mode when driving a
+   native browser. Confirm the page names the expected email before Allow/Continue. Do
+   not authorize when the displayed account is wrong; sign out or choose the correct
+   browser identity first.
+
+4. **Verify the terminal and installed identity, then clean up:**
+   ```
+   agents ssh <target> "agents pty screen $SID"  # must say Signed in as <expected-email>
+   agents ssh <target> 'agents view grok --json'
+   agents ssh <target> "agents pty stop $SID"
+   ```
+   Success means the expected slot reports `signedIn: true` with the expected email.
+   A browser success page alone is not proof.
+
+5. **Repeat for every target device and account.** Device OAuth is deliberately
+   per-machine. Minting on one worker does not authorize the rest, and copying the
+   resulting native credential is forbidden.
+
+## Recipe — Claude setup-token (syncable alternative)
 
 1. **Start the flow in a pty** (run it anywhere — the token is account-scoped, not
    machine-bound):
@@ -98,7 +150,7 @@ Treat the keystrokes below as the map, not gospel.
    agents accounts list
    ```
 
-6. **Copy to a worker device** (when provisioning for a remote box):
+6. **Sync to a worker device** (when provisioning for a remote box):
    ```
    agents accounts sync "$ACCOUNT_NAME" <target-device>
    ```
@@ -112,13 +164,14 @@ Treat the keystrokes below as the map, not gospel.
   provision the key with the provider name the account registry owns:
   `agents accounts add codex-work --provider openai --auth api-key` or
   `agents accounts add grok-work --provider xai --auth api-key`.
-- **Device-code harnesses** (Droid, Kimi): drive their device-code flow the same way
-  (`agents pty` to start it, read the URL+code, authorize in the logged-in browser).
-  These are login-only per-machine — mint/log in on the target, do not copy the file.
+- **Device-code harnesses** (Grok, Droid, Kimi): use the native target-slot recipe above.
+  Mint/log in independently on every target and verify the resulting email; do not copy
+  the native credential file.
 
 ## Report
 
-Which account you minted, the account name and provider, the headless
-`agents run --account` verification output, and (if synced) which devices received the
-bundle. **Never** paste the token itself into a message, PR, or commit — it is a live
-credential; the account bundle holds it.
+For native OAuth: report the device, stable slot label, verified email, and a redacted
+`agents view --json` result. For named setup-token/API-key accounts: report the account
+name, provider, headless `agents run --account` verification, and devices that received
+the bundle. **Never** paste a token, device credential, or credential file into a
+message, PR, or commit.
