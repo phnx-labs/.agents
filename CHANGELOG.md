@@ -4,6 +4,22 @@
 
 ### Added
 
+- **`hooks/post-tool-use/01-github-ratelimit-nudge.py` — after a GitHub rate limit,
+  act instead of idling (PHNX-3234).** The first `PostToolUse` hook in the repo (new
+  `post-tool-use/` event dir). It fires after a Bash call whose output shows a GitHub
+  rate-limit signal — the primary "API rate limit exceeded", the secondary/abuse limit,
+  or an `x-ratelimit-remaining: 0` header — and injects a short reminder to do the work
+  now through a path that is not limited: the logged-in browser on the device
+  (`agents browser`) or the authenticated REST API (`gh api`, 5000/hr), rather than
+  sitting idle for the reset or handing it to a background agent to retry later. The
+  failure it targets is measured: an agent ("CC - Evals") hit a GitHub rate limit and
+  its plan was to spawn a background re-review "once the rate limit resets". Deliberately
+  narrow so it never distracts: only when the **output** (not the typed command) is
+  rate-limited, only in a GitHub context, once per session. Advisory (`exit 0`,
+  `additionalContext` per the `hooks/AGENTS.md` exit contract), fails open, handles both
+  snake_case and Grok camelCase payloads. Registered in `agents.yaml` as
+  `github-ratelimit-nudge`; test at
+  `hooks/post-tool-use/tests/01-github-ratelimit-nudge_test.sh`.
 - **`hooks/stop/07-gather-before-reply.py` — refuse a from-context reply.** A new
   advisory Stop hook that fires at the reply event. It reads the session file and,
   if the agent made no tool call and used no skill since the user's last message,

@@ -16,6 +16,7 @@ hooks/<event-name>/<hook-file>.{sh,py}
 |---|---|
 | `session-start/` | SessionStart |
 | `pre-tool-use/` | PreToolUse |
+| `post-tool-use/` | PostToolUse |
 | `user-prompt-submit/` | UserPromptSubmit |
 | `stop/` | Stop |
 | `notification/` | Notification (and multi-event hooks whose primary event is Notification) |

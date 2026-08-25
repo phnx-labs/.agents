@@ -14,6 +14,14 @@ hooks:
     matcher: Bash
     script: pre-tool-use/11-visual-readback-nudge.py
     timeout: 5
+  github-ratelimit-nudge:
+    # Advisory only: fires AFTER a GitHub call that came back rate-limited, and
+    # reminds once per session to act now (agents browser / gh api) instead of
+    # sitting idle for the reset or deferring to a background agent.
+    events: [PostToolUse]
+    matcher: Bash
+    script: post-tool-use/01-github-ratelimit-nudge.py
+    timeout: 5
   session-start-autosync:
     events:
       - SessionStart
