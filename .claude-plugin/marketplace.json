@@ -86,6 +86,16 @@
         "name": "Muqsit Nawaz",
         "email": "contact@trp.so"
       }
+    },
+    {
+      "name": "yc",
+      "source": "./plugins/yc",
+      "description": "yc — local recreations of YC startup products whose core functionality can be delivered by a general-purpose agent plus focused skills and deterministic scripts. First recipe: `/yc:workweave`, a private browser-ready engineering-intelligence report from the local agents-cli index.",
+      "version": "0.1.0",
+      "author": {
+        "name": "Muqsit Nawaz",
+        "email": "contact@trp.so"
+      }
     }
   ]
 }
