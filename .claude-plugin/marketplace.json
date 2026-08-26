@@ -20,8 +20,8 @@
     {
       "name": "work",
       "source": "./plugins/work",
-      "description": "work — general-purpose work across the fleet, not just code. `/work:loop` (alias `/drain`) is the unattended multi-project drain: spreads load with agents teams + balanced accounts, uses browser/computer/secrets for non-coding, drives each item to landed, merging engineering PRs on green behind a non-author review. `/work:dispatch` is ONE unit of work (coding or not) routed to the right executor. Kind-agnostic layer above `code:loop`.",
-      "version": "0.2.0",
+      "description": "work — general-purpose work across the fleet, not just code. `/work:loop` is the unattended multi-project drain: spreads load with agents teams + balanced accounts, uses browser/computer/secrets for non-coding, drives each item to landed, merging engineering PRs on green behind a non-author review. `/work:dispatch` is ONE unit of work (coding or not) routed to the right executor. `/work:triage` is the board-wide keep/cancel decision sweep (was top-level `/triage`). Kind-agnostic layer above `code:loop`.",
+      "version": "0.3.0",
       "author": {
         "name": "Muqsit Nawaz",
         "email": "contact@trp.so"
@@ -70,8 +70,8 @@
     {
       "name": "self",
       "source": "./plugins/self",
-      "description": "self — operations an agent performs on its OWN session. `/self:close` cleanly self-terminates the current session by SIGTERM-ing the harness (the Bash tool shell's own parent, $PPID), after a read-only `ps` guard that refuses infra parents (shell/tmux/sshd) so it never tears down the wrong process. It is the low-level exit primitive: for a recap first use `/recap`, and to drive the current task to delivered use `/next`. The exact `kill -TERM $PPID` form is allowlisted by the `self` permission group so it runs headlessly without an auto-mode prompt.",
-      "version": "0.1.0",
+      "description": "self — operations an agent performs on its OWN session. `/self:close` cleanly self-terminates the current session by SIGTERM-ing the harness (the Bash tool shell's own parent, $PPID), after a read-only `ps` guard that refuses infra parents (shell/tmux/sshd) so it never tears down the wrong process. It is the low-level exit primitive: for a recap first use `/recap`, and to drive the current task to delivered use `/finish`. The exact `kill -TERM $PPID` form is allowlisted by the `self` permission group so it runs headlessly without an auto-mode prompt.",
+      "version": "0.1.1",
       "author": {
         "name": "Muqsit Nawaz",
         "email": "contact@trp.so"
@@ -80,8 +80,8 @@
     {
       "name": "sessions",
       "source": "./plugins/sessions",
-      "description": "sessions — lifecycle and analytics for agent conversation transcripts. `/sessions:continue` (and top-level `/continue` / `/recover`) loads prior work and finishes it in this session — reattach only when genuinely live; group- and crash-recover capable. `/sessions:insights` (and `/insights`) is the conductor over `agents insights`, `agents trends`, `agents perf`, and `agents sessions stats` — one evidence-backed action list, no separate trends/perf plugin commands. `/sessions:restore` re-opens crashed sessions as terminal windows. Instructions live in skills; commands only invoke those skills (harness-friendly: many agents prefer skills over slash commands).",
-      "version": "0.1.0",
+      "description": "sessions — lifecycle and analytics for agent conversation transcripts. `/sessions:continue` (and top-level `/continue` / `/recover`) loads prior work and finishes it in this session — reattach only when genuinely live; group- and crash-recover capable. `/sessions:insights` (and `/insights`) is the conductor over `agents insights`, `agents trends`, `agents perf`, and `agents sessions stats` — one evidence-backed action list, no separate trends/perf plugin commands. `/sessions:restore` re-opens crashed sessions as terminal windows. `/sessions:finish` (and top-level `/finish`) drives the current task to fully delivered — verify E2E, docs, commit, PR, release, close the ticket; never stops at a recap or partial handoff. Instructions live in skills; commands only invoke those skills (harness-friendly: many agents prefer skills over slash commands).",
+      "version": "0.2.0",
       "author": {
         "name": "Muqsit Nawaz",
         "email": "contact@trp.so"

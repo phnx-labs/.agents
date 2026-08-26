@@ -50,8 +50,8 @@ Credentials go through `agents secrets`, never into a file here.
 
 ## Known drift — `user-invocable`
 
-15 of the 18 `SKILL.md` files carry `user-invocable: true`; `agents-cli`, `mq`, and
+11 of the 14 `SKILL.md` files carry `user-invocable: true`; `artifacts`, `mq`, and
 `tickets` omit it. **agents-cli does not read this field** — `grep -rn "user-invocable"` over
 `apps/cli/src` returns nothing, so it is inert here and consumed only by the harness that
-reads the skill. Do not build behavior on it. Either set it consistently across all 18 or
+reads the skill. Do not build behavior on it. Either set it consistently across all 14 or
 drop it; leaving it unevenly applied invites a false assumption.

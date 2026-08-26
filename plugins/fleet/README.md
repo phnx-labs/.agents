@@ -7,8 +7,9 @@ one has to re-derive them live.
 
 This plugin manages the *fleet as a whole* (keeping many machines in parity). For
 single-machine repo/agent management use the built-in `agents repos` / `agents repo`
-commands; for wiring up SSH/Tailscale access use the [`devices`](../../skills/devices/)
-skill.
+commands; for wiring up SSH/Tailscale access use `agents devices --help`
+(`sync` / `register` / `config`) — the fleet device registry is also injected into every
+session by the device-topology session-start hook.
 
 ## Requirements
 

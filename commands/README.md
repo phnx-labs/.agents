@@ -32,10 +32,11 @@ debt moved into the code plugin, and became architectural restructuring there:
 
 ## Ship and review
 
-Driving the current task all the way to delivered is **Part A of [`/next`](./next.md)** (it
-absorbed the old `/finish`); reviewing and merging PRs is
-[`/code:review`](../plugins/code/README.md). There are no top-level ship/exit commands — to
-recap-and-leave, run `/recap` then [`/self:close`](../plugins/self/README.md).
+Driving the current task all the way to delivered is [`/finish`](./finish.md) — alias of
+`/sessions:finish`: verify end-to-end, docs, commit, PR, release checklist, close the
+ticket; it never stops at a recap, blocker, or partial handoff. Reviewing and merging PRs is
+[`/code:review`](../plugins/code/README.md). To recap-and-leave, run `/recap` then
+[`/self:close`](../plugins/self/README.md).
 
 ## Recap and resume
 
@@ -44,6 +45,7 @@ recap-and-leave, run `/recap` then [`/self:close`](../plugins/self/README.md).
 | [`/recap`](./recap.md) | Recap the current session, or transfer concise context from a prior session selected by ID, prefix, or keywords |
 | [`/continue`](./continue.md) | Alias of `/sessions:continue` — resume prior work **in this session** (reattach only if genuinely live); group-capable. Also finishes crashed sessions headlessly (`/continue recover`). |
 | [`/insights`](./insights.md) | Alias of `/sessions:insights` — orchestrate `agents insights` + trends + perf + sessions stats into evidence-backed actions |
+| [`/learn`](./learn.md) | Post-session reflection that writes durable improvements forward — distill the lessons that generalize and route them to the right skill/rule/memory; `/learn <target>` audits one skill or command across all past sessions |
 
 The procedures for `/continue` and `/insights` live in the
 [`sessions` plugin](../plugins/sessions/README.md) skills. Top-level files only invoke
@@ -57,21 +59,23 @@ alias); `/fork` is [`/sessions:fork`](../plugins/sessions/README.md).
 
 | Command | What it does |
 |---|---|
-| [`/triage`](./triage.md) | Sweep the whole board — ground in real product goals, then force every item to keep-and-schedule-this-cycle or cancel. Never Backlog |
 | [`/dispatch`](./dispatch.md) | Take one task from idea to a working agent — understand the repo, spec fast, debug-skill for bugs, quick plan, file the ticket, dispatch |
-| [`/loop`](./loop.md) | Alias of `/work:loop` — unattended multi-project work drain (any kind; spread load; merges on green behind a non-author review; browser/computer ok) |
-| [`/next`](./next.md) | Drive the current task to delivered (verify E2E, docs, commit, PR, release requirement, close the ticket — the old `/finish`), then surface (and if clear, claim) the next related task; checks in-flight PRs/sessions first so it never duplicates work |
 | [`/teams`](./teams.md) | Spawn parallel agents to work on a task together |
 
-The `tickets` skill is the general-purpose primitive (list, claim, comment, close). `/triage` is a
-board-wide sweep that forces every open item to a real decision. `/dispatch` is the
-single-task path from idea to a running agent. `/loop` / `/work:loop` is the unattended
-**queue** drain across projects and kinds (not engineering-only). `/next` is the boundary
-command — run it right after finishing something to move to the next thing without
-re-deriving the tracker or duplicating a sibling agent's in-flight work. Easy to confuse:
-`/triage` never touches code; `/dispatch` always ends with an agent building something;
-`/loop` keeps going unattended until the clear queue is empty; `/next` picks among
-*existing* tickets rather than creating one.
+The `tickets` skill is the general-purpose primitive (list, claim, comment, close).
+[`/work:triage`](../plugins/work/README.md) is a board-wide sweep that forces every open
+item to a real decision — keep-and-schedule-this-cycle or cancel, never Backlog.
+`/dispatch` is the single-task path from idea to a running agent.
+[`/work:loop`](../plugins/work/README.md) is the unattended **queue** drain across projects
+and kinds (not engineering-only). Easy to confuse: `/work:triage` never touches code;
+`/dispatch` always ends with an agent building something; `/work:loop` keeps going
+unattended until the clear queue is empty.
+
+## Present
+
+| Command | What it does |
+|---|---|
+| [`/visualize`](./visualize.md) | Turn any concept, dataset, or finding into one self-contained branded HTML visual — infographic, explainer, status dashboard, data story, comparison. Routes to the `artifacts` skill's `kind: visual` |
 
 ## Observe
 

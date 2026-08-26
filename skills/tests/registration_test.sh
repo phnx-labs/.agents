@@ -7,11 +7,14 @@
 # It also catches the two ways a skill goes invisible: missing frontmatter, and a skill
 # on disk that no README row lists.
 #
-# Run: bash skills/registration_test.sh   (from the repo root or anywhere)
+# Run: bash skills/tests/registration_test.sh   (from the repo root or anywhere)
+#
+# Lives under skills/tests/, not skills/ itself: a loose script directly in skills/
+# shows up as a bogus entry in `agents inspect --skills`.
 
 set -uo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
-REPO="$(cd "$HERE/.." && pwd)"
+REPO="$(cd "$HERE/../.." && pwd)"
 FAIL=0
 
 # Bare names that are legitimately declared twice. Each needs a reason, because every

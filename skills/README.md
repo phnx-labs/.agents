@@ -14,8 +14,6 @@ skill stays loaded and brings tooling with it.
 
 | Skill | What it does |
 |---|---|
-| [`agents-cli`](./agents-cli/SKILL.md) | Manage agent CLIs — add and pin versions, sync config, manage MCP servers |
-| [`devices`](./devices/SKILL.md) | Register and connect to your machines over Tailscale SSH |
 | [`run`](./run/SKILL.md) | Execute one agent headlessly or interactively — modes, secrets injection, version pinning, fallback chains |
 | [`teams`](./teams/SKILL.md) | Organize agents into teams that work a shared task in parallel, each in its own worktree |
 | [`sessions`](./sessions/SKILL.md) | Search, browse, read, and move agent transcripts across Claude, Codex, Gemini, and OpenCode |

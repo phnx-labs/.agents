@@ -1,6 +1,6 @@
 ---
 name: loop
-description: "General-purpose unattended work drain across every project and kind — code, browser, outreach, design, portal tasks. Spreads load with agents teams + balanced account rotation so one logout or rate-limit does not kill the night. Drives each item to landed — engineering merges on green behind a non-author review, never waiting on the user to click merge. Triggers on: 'work loop', '/work:loop', '/loop', 'overnight drain', 'drain the board', 'finish everything unattended', 'keep moving on all projects'."
+description: "General-purpose unattended work drain across every project and kind — code, browser, outreach, design, portal tasks. Spreads load with agents teams + balanced account rotation so one logout or rate-limit does not kill the night. Drives each item to landed — engineering merges on green behind a non-author review, never waiting on the user to click merge. Triggers on: 'work loop', '/work:loop', 'overnight drain', 'drain the board', 'finish everything unattended', 'keep moving on all projects'."
 argument-hint: "[empty = all open clear work | project/filter | overnight]"
 allowed-tools: Bash(agents *), Bash(gh *), Bash(git *), Bash(linear *), Bash(rg *), Bash(fd *), Bash(ls *), Bash(cat *), Bash(jq *), Bash(curl *), Read(*), Write(*), Edit(*), Task(*), WebSearch(*), WebFetch(*)
 user-invocable: true
@@ -60,7 +60,7 @@ can recover yourself.
 
 `$ARGUMENTS` empty or `overnight` / `all` → pull **clear, unblocked, keep-worthy** items
 across projects (Linear Todo/In Progress delegated or labeled for drain; open GitHub issues
-with pilot labels if any; skip items that need cancel/priority taste — those are `/triage`).
+with pilot labels if any; skip items that need cancel/priority taste — those are `/work:triage`).
 
 A project name, label, or query scopes the queue. Human-only holds (`hold`, explicit "wait
 for me") stay parked.
@@ -186,6 +186,6 @@ not done — park it with the gap named. See `unattended-verification`.
 | Single clear item now | `/work:dispatch` (or this skill with a one-item queue) |
 | Engineering patterns (worktree, claim, review, merge-on-green) | `code:loop` — including its "done means merged" completion |
 | Post-merge publish for a distributable | Repository-specific release process — merge is the middle for anything users install or visit |
-| Board keep/cancel decisions | `/triage` — do not invent cancels unattended |
+| Board keep/cancel decisions | `/work:triage` — do not invent cancels unattended |
 | Parallel fan-out mechanics | `swarm:orchestrate` / `agents teams` |
 | Schedule every night | `agents routines` YAML calling this skill unattended |

@@ -1,7 +1,7 @@
 {
   "name": "self",
-  "version": "0.1.0",
-  "description": "self \u2014 operations an agent performs on its OWN session. `/self:close` cleanly self-terminates the current session by SIGTERM-ing the harness (the Bash tool shell's own parent, $PPID), after a read-only `ps` guard that refuses infra parents (shell/tmux/sshd) so it never tears down the wrong process. It is the low-level exit primitive: for a recap first use `/recap`, and to drive the current task to delivered use `/next`. The exact `kill -TERM $PPID` form is allowlisted by the `self` permission group so it runs headlessly without an auto-mode prompt.",
+  "version": "0.1.1",
+  "description": "self — operations an agent performs on its OWN session. `/self:close` cleanly self-terminates the current session by SIGTERM-ing the harness (the Bash tool shell's own parent, $PPID), after a read-only `ps` guard that refuses infra parents (shell/tmux/sshd) so it never tears down the wrong process. It is the low-level exit primitive: for a recap first use `/recap`, and to drive the current task to delivered use `/finish`. The exact `kill -TERM $PPID` form is allowlisted by the `self` permission group so it runs headlessly without an auto-mode prompt.",
   "author": {
     "name": "Muqsit Nawaz",
     "email": "contact@trp.so"

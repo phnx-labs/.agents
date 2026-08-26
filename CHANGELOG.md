@@ -2,6 +2,51 @@
 
 ## [Unreleased]
 
+### Added
+
+- **`plugins/sessions/skills/finish/`** — the `sessions:finish` skill, its
+  `/sessions:finish` command, and a top-level **`commands/finish.md`** alias. Restores the
+  drive-to-delivered ship gate that `1c9b9ae` folded into `/next`: recover the contract,
+  act on what remains, verify end-to-end, then docs / commit / PR / release / tracker —
+  never stopping at a recap, blocker, or partial handoff. Skill-first, both commands thin.
+- **`commands/visualize.md`** — restores `/visualize`: routes to the `artifacts` skill's
+  `kind: visual` (infographic / explainer / dashboard / data story → self-contained
+  branded HTML). The engine survived the three-skills consolidation (`08aa9ff`); this
+  restores the command door to it.
+- **`commands/learn.md`** — `/learn` command routing to the top-level `learn` skill, so
+  post-session reflection is one typed word.
+- **`plugins/work/skills/triage/`** + **`plugins/work/commands/triage.md`** — `/work:triage`:
+  the board-wide keep-and-schedule-or-cancel sweep moved under the `work` plugin as a
+  skill plus a thin command.
+
+### Changed
+
+- **`skills/secrets/SKILL.md`** — slimmed from 181 to ~100 lines. The command table and
+  basic add/view examples are dropped in favor of `agents secrets --help`; what stays is
+  the behavior `--help` can't teach: `bundle@host`, ephemeral remote injection,
+  keychain-vs-file unlock caveats over SSH, Windows export, the multi-account naming
+  convention, and never-print-values (RUSH-2774).
+- **`skills/registration_test.sh`** → **`skills/tests/registration_test.sh`** — a loose
+  script directly under `skills/` showed up as a bogus skill entry in
+  `agents inspect --skills`.
+- Plugin manifests: `sessions` 0.1.0 → 0.2.0, `work` 0.2.0 → 0.3.0, `self` 0.1.0 → 0.1.1
+  (descriptions follow the command moves).
+
+### Removed
+
+- **`commands/next.md`** — `/next` deleted. Its drive-to-delivered half is `/finish`
+  again; the pick-up-the-next-ticket half was redundant with the board context hooks
+  already inject at session start.
+- **`commands/loop.md`** — the top-level `/loop` alias; use `/work:loop`.
+- **`commands/triage.md`** — moved to `/work:triage`.
+- **`skills/devices/`** — zero recorded loads in its ~8-week lifetime across 18,426
+  indexed sessions (sessions.db `tool_calls` + transcript FTS, 2026-07-01 → 2026-08-26).
+  The read side is injected into every session by the device-topology session-start hook;
+  the admin side (`sync` / `register` / `config`) is discoverable via
+  `agents devices --help`.
+- **`skills/agents-cli/`** — 2 recorded loads in ~8 months across the same index, both in
+  sessions maintaining this very repo; the CLI surface is discoverable via `agents --help`.
+
 ### Fixed
 
 - **merge-guard closes a self-merge bypass — author-authored verdicts no longer

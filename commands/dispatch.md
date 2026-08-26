@@ -5,9 +5,9 @@ description: Take a task in this project from idea to a working agent — unders
 You're being asked to dispatch work in this project: $ARGUMENTS
 
 (If `$ARGUMENTS` is empty, ask what task/issue/directory this run is about — this command
-needs a concrete target, unlike `/triage` which defaults to the whole board.)
+needs a concrete target, unlike `/work:triage` which defaults to the whole board.)
 
-This is the single-task counterpart to `/triage` (which sweeps the whole board). Use this
+This is the single-task counterpart to `/work:triage` (which sweeps the whole board). Use this
 when the target is one task, bug, or directory you're about to hand to an agent.
 
 ## Step 1: Understand the repo — once per sitting
@@ -88,7 +88,7 @@ alone. Three concrete obligations:
 - **Guessing a bug's root cause instead of routing through `/debug`.** A spec built on an
   unconfirmed hypothesis wastes the dispatched agent's run on the wrong fix.
 - **Skipping Step 4 and dispatching untracked work.** Even solo, file it — that's what
-  makes `/triage` later able to see it.
+  makes `/work:triage` later able to see it.
 - **Treating "ticket filed + agent dispatched" as done.** It's in flight, not shipped.
 - **Claiming a watch you never verified.** "I'll be notified when it settles" after
   backgrounding a loop that already died is worse than saying nothing — the user stops

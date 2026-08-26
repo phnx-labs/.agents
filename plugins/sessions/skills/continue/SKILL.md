@@ -127,8 +127,9 @@ start.
 Pick up exactly where things left off. Do not redo completed work. ACT → VERIFY → SHOW →
 CONTINUE.
 
-If the resumed work is already done, do not idle — run `/next` for the next related task
-without re-deriving project context.
+If the resumed work is already done, do not idle — pick up the next related task from the
+board context injected at session start (or via the `tickets` skill) without re-deriving
+project context.
 
 ---
 
