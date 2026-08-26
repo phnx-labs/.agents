@@ -126,6 +126,12 @@ hooks:
     matcher: Bash
     script: pre-tool-use/secrets-guard.sh
     timeout: 5
+  direct-file-credential-guard:
+    events:
+      - PreToolUse
+    matcher: ^(Read|read_file|Edit|edit_file|search_replace|MultiEdit|Write|write_file)$
+    script: pre-tool-use/12-direct-file-credential-guard.sh
+    timeout: 5
   git-require-clean-tree:
     events:
       - PreToolUse
