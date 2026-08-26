@@ -2,7 +2,7 @@ import { afterAll, describe, expect, test } from "bun:test";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { filterPreviousSessions, filterSessions, safeString, sessionComparison, type SessionRow } from "./collect";
+import { filterPreviousSessions, filterSessions, safeString, selectProjectBehavior, sessionComparison, type SessionRow } from "./collect";
 
 const scratch = await mkdtemp(join(tmpdir(), "yc-workweave-"));
 afterAll(() => rm(scratch, { recursive: true, force: true }));
@@ -13,6 +13,21 @@ describe("workweave collector", () => {
     expect(safeString("/Users/Alice/project/report.json")).toBe("~/project/report.json");
     expect(safeString("C:\\Users\\Alice\\project\\report.json")).toBe("~\\project\\report.json");
     expect(safeString("D:/Users/Alice/project/report.json")).toBe("~/project/report.json");
+    expect(safeString("/root/private/report.json")).toBe("~/private/report.json");
+    expect(safeString("/var/home/alice/project/report.json")).toBe("~/project/report.json");
+    expect(safeString("token=ghp_abcdefghijklmnopqrstuvwxyz123456")).toBe("token=[redacted secret]");
+  });
+
+  test("keeps only the exact requested project behavior group", () => {
+    const behavior = {
+      groups: [
+        { key: "agents-cli", sessions: 4, costUsd: 2 },
+        { key: "private-project", sessions: 9, costUsd: 99 },
+      ],
+      actions: [{ project: "private-project", text: "unrelated action" }],
+    };
+    expect(selectProjectBehavior(behavior, "agents-cli")).toEqual({ key: "agents-cli", sessions: 4, costUsd: 2 });
+    expect(JSON.stringify(selectProjectBehavior(behavior, "agents-cli"))).not.toContain("private-project");
   });
 
   test("excludes out-of-window rows from report metrics while retaining the census", () => {
@@ -58,6 +73,8 @@ describe("workweave collector", () => {
     expect(report.gaps.harnessMix).toBeUndefined();
     expect(report.gaps.modelMix).toBeUndefined();
     expect(report.gaps.sessions).toBeUndefined();
+    expect(report.sources.behavior.key).toBe("agents-cli");
+    expect(report.sources.behavior.groups).toBeUndefined();
     const serialized = JSON.stringify(report.sources.sessions);
     for (const forbidden of ["filePath", "cwd", "account", "machine", "topic", "shortId", "recovery"]) {
       expect(serialized).not.toContain(`\"${forbidden}\"`);

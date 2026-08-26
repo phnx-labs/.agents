@@ -5,6 +5,12 @@ import { basename, resolve } from "node:path";
 type Json = null | boolean | number | string | Json[] | { [key: string]: Json };
 export type SessionRow = Record<string, Json>;
 
+class EngineFailure extends Error {
+  constructor(readonly code: "command_failed" | "invalid_json" | "invalid_shape" | "project_group_missing") {
+    super(code);
+  }
+}
+
 function option(name: string): string | undefined {
   const index = Bun.argv.indexOf(name);
   return index === -1 ? undefined : Bun.argv[index + 1];
@@ -18,12 +24,12 @@ async function run(command: string[]): Promise<Json> {
     process.exited,
   ]);
   if (exitCode !== 0) {
-    throw new Error(`${command.join(" ")} exited ${exitCode}: ${stderr.trim()}`);
+    throw new EngineFailure("command_failed");
   }
   try {
     return JSON.parse(stdout) as Json;
   } catch {
-    throw new Error(`${command.join(" ")} returned non-JSON output: ${stdout.slice(0, 240)}`);
+    throw new EngineFailure("invalid_json");
   }
 }
 
@@ -75,9 +81,15 @@ const privateKeys = new Set([
 export function safeString(value: string): string {
   if (/\b[^\s@]+@[^\s@]+\.[^\s@]+\b/.test(value)) return "[redacted email]";
   return value
+    .replace(/\b(token|secret|api[_-]?key|password)\s*[:=]\s*\S+/gi, "$1=[redacted secret]")
+    .replace(/\bgh[pousr]_[A-Za-z0-9_]{20,}\b/g, "[redacted secret]")
+    .replace(/\bsk-[A-Za-z0-9_-]{20,}\b/g, "[redacted secret]")
+    .replace(/\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b/g, "[redacted secret]")
     .replace(/[A-Za-z]:[\\/]Users[\\/][^\\/\s]+/gi, "~")
+    .replace(/\/var\/home\/[^/\s]+/g, "~")
     .replace(/\/home\/[^/\s]+/g, "~")
-    .replace(/\/Users\/[^/\s]+/g, "~");
+    .replace(/\/Users\/[^/\s]+/g, "~")
+    .replace(/\/root(?=\/|\s|$)/g, "~");
 }
 
 function safeEvidence(value: Json): Json {
@@ -87,6 +99,19 @@ function safeEvidence(value: Json): Json {
   return Object.fromEntries(Object.entries(value)
     .filter(([key]) => !privateKeys.has(key))
     .map(([key, entry]) => [key, safeEvidence(entry)]));
+}
+
+export function selectProjectBehavior(value: Json, project: string): Json {
+  if (!value || typeof value !== "object" || Array.isArray(value) || !Array.isArray(value.groups)) {
+    throw new EngineFailure("invalid_shape");
+  }
+  const group = value.groups.find((entry) => entry && typeof entry === "object" && !Array.isArray(entry) && entry.key === project);
+  if (!group) throw new EngineFailure("project_group_missing");
+  return group;
+}
+
+function gapCode(error: unknown): string {
+  return error instanceof EngineFailure ? error.code : "collector_error";
 }
 
 async function allSessions(project: string): Promise<SessionRow[]> {
@@ -215,9 +240,10 @@ async function main(): Promise<void> {
 
   const entries = await Promise.all(Object.entries(commands).map(async ([name, command]) => {
   try {
-    return [name, await run(command), null] as const;
+    const value = await run(command);
+    return [name, name === "behavior" ? selectProjectBehavior(value, project) : value, null] as const;
   } catch (error) {
-    return [name, null, error instanceof Error ? error.message : String(error)] as const;
+    return [name, null, gapCode(error)] as const;
   }
   }));
 
@@ -228,7 +254,7 @@ async function main(): Promise<void> {
   };
   const gaps: Record<string, string> = {};
   for (const [name, value, error] of entries) {
-    if (error) gaps[name] = safeString(error);
+    if (error) gaps[name] = error;
     else sources[name] = safeEvidence(value);
   }
 
