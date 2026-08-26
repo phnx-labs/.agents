@@ -23,6 +23,7 @@ Target harnesses: **claude, codex, kimi, grok, cursor, droid, antigravity**.
 | `agents:` in `agents.yaml` | **Ignored** by agents-cli (`ManifestHook.agents` is deprecated). Every registered hook is written into every hooks-capable version home on sync. |
 | Gemini CLI | Hard-deprecated (Google → Antigravity). Do not list as a target; use `antigravity`. |
 | Stdin field names | Claude / Codex / Kimi / Cursor / Droid: snake_case (`tool_name`, `tool_input.command`, `session_id`). Grok: camelCase (`toolName`, `toolInput.command`, `sessionId`). Guards and inject scripts accept **both**. |
+| Direct-file guard | Its anchored matcher covers `Read`/`read_file`, `Edit`/`edit_file`/`search_replace`/`MultiEdit`, and `Write`/`write_file`; Bash remains outside the registered boundary. It accepts `file_path`, `filePath`, and `path` under either `tool_input` or `toolInput`, rejects invalid or unknown matched identities, and derives protected paths from `permissions/groups/99-deny.yaml`. Lexical matching is followed by metadata-only physical projection through the nearest existing ancestor, so safe symlinks remain allowed while symlinks into protected paths are denied. |
 | Shell tool matcher | Manifest keeps `matcher: Bash`. Grok auto-aliases `Bash` → `run_terminal_command` (and keeps the original name). |
 | SessionStart stdout | Claude / Codex / Kimi / Cursor inject stdout into context. **Grok ignores SessionStart stdout** (passive only) — Linear / topology / inflight text injects do not reach the Grok model. Side-effect SessionStart hooks (autosync, git-pull-forward, session-identity file writes) still run. |
 | Antigravity events | agents-cli maps only `PreToolUse` → `before_tool_call`, `PostToolUse` → `after_model_call`, `Stop` → `on_loop_stop`. No SessionStart / UserPromptSubmit / Notification on agy today. |
@@ -93,6 +94,7 @@ register time). See [§Subrule hooks](#subrule-hooks-rules-not-this-tree).
 | [`git-guard.sh`](./pre-tool-use/git-guard.sh) | Blocks destructive git: `reset --hard`, force-push, `checkout -- .`, `stash`, `clean`, history rewrites |
 | [`rm-guard.sh`](./pre-tool-use/rm-guard.sh) | Blocks destructive `rm` patterns |
 | [`secrets-guard.sh`](./pre-tool-use/secrets-guard.sh) | Blocks the secret-materializing one-liners (plaintext export, bundle-key `get`, non-TTY reveal) — backstop for boxes on older agents-cli builds (RUSH-2774) |
+| [`12-direct-file-credential-guard.sh`](./pre-tool-use/12-direct-file-credential-guard.sh) | Blocks direct read/edit/write aliases whose lexical or physical path matches canonical `permissions/groups/99-deny.yaml`; allows Bash, safe symlinks, and unrelated repository-local paths |
 | [`large-file-add-guard.sh`](./pre-tool-use/large-file-add-guard.sh) | Blocks `git add` of a file over 5 MiB; skips explicit plan-mode events |
 | [`public-artifact-guard.sh`](./pre-tool-use/public-artifact-guard.sh) | Blocks staging confidential business strategy into the committed `.agents/artifacts/` dir (RUSH-3033) |
 | [`01-git-require-clean-tree.sh`](./pre-tool-use/01-git-require-clean-tree.sh) | Blocks `git pull` / `rebase` / autostash while the tree is dirty; skips explicit plan-mode events |
