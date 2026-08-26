@@ -76,7 +76,7 @@ or the resource exists on disk and is invisible or dead:
 | command | `commands/<name>.md` with `description:` frontmatter | the table in `commands/README.md` |
 | skill | `skills/<name>/SKILL.md` with `name:` + `description:` | the table in `skills/README.md` |
 | hook | `hooks/<NN>-<name>.{sh,py}` **and** the `hooks:` entry in `agents.yaml` | the table in `hooks/README.md`; ship a `_test.sh` in that event dir's `tests/` subdir (`hooks/<event>/tests/<name>_test.sh`) |
-| permission | a fragment in `permissions/groups/` | run `permissions/build.sh` to regenerate `default.yaml` |
+| permission | edit or add a fragment in `permissions/groups/` | after every group edit, run `permissions/build.sh` to regenerate only `permissions/default.yaml` and run `permissions/permissions_test.sh`; for a new group, first add it to both `permissions/presets/default.yaml` and `permissions/presets/sandbox.yaml` unless intentionally preset-specific, and document it in `permissions/README.md` |
 | plugin | `plugins/<name>/` with its own `README.md` | the table in `plugins/README.md` |
 | subagent | `subagents/<name>/AGENT.md` with `name:` + `description:` frontmatter | the table in `subagents/README.md`, **and** the skill that spawns it — a subagent nothing spawns is dead weight in every install. Do **not** put it in a plugin's `agents/` dir: that reaches only plugin-format harnesses, while `subagents/` reaches every subagents-capable one |
 | rule | `rules/subrules/<name>.md` | the `default` preset in `rules/rules.yaml`, then regenerate `rules/AGENTS.md` |
