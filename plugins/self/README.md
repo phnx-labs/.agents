@@ -28,8 +28,8 @@ Build on it, don't reach past it:
 
 - **`/recap`** = summarize the session's state for handoff — does not exit. Run it before
   `/self:close` when you want a recap on the way out.
-- **`/next`** = drive the work to delivered (verify E2E, docs, commit, PR, close tickets) and
-  then pick up the next task — does **not** exit.
+- **`/finish`** = drive the work to delivered (verify E2E, docs, commit, PR, close tickets) —
+  does **not** exit.
 - **`/self:close`** = just leave. Use it only when the work is genuinely wrapped or you were
   asked to end the session — never to dodge unfinished work.
 

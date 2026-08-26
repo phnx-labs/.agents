@@ -50,6 +50,6 @@ A short verdict:
 
 ## Don'ts
 
-- **Don't fix anything.** `/blame` is read-only forensics — no edits, no reverts, no re-enabling tests, no pushes, no deploys, no state-mutating test runs. Hand the verdict to `/debug` or `/next` for the actual repair.
+- **Don't fix anything.** `/blame` is read-only forensics — no edits, no reverts, no re-enabling tests, no pushes, no deploys, no state-mutating test runs. Hand the verdict to `/debug` or `/finish` for the actual repair.
 - **Don't guess a culprit without the diff.** Every claim quotes a commit + `file:line` (`research-discipline`). "This file changed" is not blame — tie the change to the observed break **and** to the missing test.
 - **Don't stop at the first suspicious commit.** Confirm it actually produces the observed behavior; a plausible-looking diff that doesn't is a false accusation.

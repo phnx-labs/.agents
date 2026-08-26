@@ -79,11 +79,11 @@ to type.
 
 | I want to… | Run | Plugin / notes |
 |---|---|---|
-| **Drain everything overnight** (any project, code *or* browser/outreach) without waiting on me | `/loop` or `/work:loop` | [`work`](plugins/work/README.md) — spreads load across accounts/hosts; **merges on green** behind a non-author review instead of leaving PRs for you |
+| **Drain everything overnight** (any project, code *or* browser/outreach) without waiting on me | `/work:loop` | [`work`](plugins/work/README.md) — spreads load across accounts/hosts; **merges on green** behind a non-author review instead of leaving PRs for you |
 | Finish a **queue of engineering tickets** (merge-oriented) | `/code:loop` | [`code`](plugins/code/README.md) — worktrees, CI, review/merge |
 | **One** clear task (any kind) to an agent | `/work:dispatch` or `/dispatch` | `work` for kind-agnostic; top-level `/dispatch` leans engineering |
-| Decide keep/cancel/priority on the **whole board** | `/triage` | Not a builder — decision layer only |
-| Pick the **next** ticket in this session | `/next` | Stays in the current session |
+| Decide keep/cancel/priority on the **whole board** | `/work:triage` | Not a builder — decision layer only |
+| Drive the **current task** to fully delivered | `/finish` | [`sessions`](plugins/sessions/README.md) — never stops at a recap or partial handoff |
 | Fan work across **parallel agents** | `/swarm` (or `/swarm plan` / `spec` / `debug`) | [`swarm`](plugins/swarm/README.md) |
 | Plan a feature with live research, diagrams, mock-ups + blind check | `/swarm plan …` or `/plan` | Swarm plan is multi-agent; `/plan` is single-agent grounded design |
 | Durable **source-of-truth spec** of a capability | `/swarm spec …` | So others do not invent wrong behavior |
@@ -106,11 +106,11 @@ to type.
 
 | Situation | Do this |
 |---|---|
-| "Keep moving — finish the queue while I sleep" | `/loop` on a **worker** host (not your interactive laptop). Prefer `agents run claude "/loop" --mode auto --device yosemite-s0` (or your worker). |
+| "Keep moving — finish the queue while I sleep" | `/work:loop` on a **worker** host (not your interactive laptop). Prefer `agents run claude "/work:loop" --mode auto --device yosemite-s0` (or your worker). |
 | "Only ship code PRs to merge" | `/code:loop` with a ticket filter — merge-oriented engineering loop. |
 | "One ticket, not sure if code or web" | `/work:dispatch RUSH-1234` — classifies and routes. |
-| "Board is a mess of maybe-later items" | `/triage` first, then `/loop` or `/code:loop` on what remains. |
-| "Agents keep hitting rate limits / logouts" | Use `/loop` / `/work:loop` (forced load-spread) or `/swarm` with mixed harnesses and `--strategy balanced` — never one long single-account session. |
+| "Board is a mess of maybe-later items" | `/work:triage` first, then `/work:loop` or `/code:loop` on what remains. |
+| "Agents keep hitting rate limits / logouts" | Use `/work:loop` (forced load-spread) or `/swarm` with mixed harnesses and `--strategy balanced` — never one long single-account session. |
 | "Machine crashed; windows are gone" | `/sessions:restore` for Ghostty/terminal relaunch; `/continue recover` to finish work headlessly. |
 | "Pick up where that session left off" | `/continue <id-or-topic>`. |
 | "Is this bug real / where is the root cause?" | `/debug`. |
@@ -140,14 +140,14 @@ browser/portal/outreach finished when the agent can complete them alone.
 
 ```bash
 # One-shot now on a worker (example)
-agents run claude "/loop overnight" \
+agents run claude "/work:loop overnight" \
   --mode auto \
   --strategy balanced \
   --device yosemite-s0 \
   --timeout 4h
 ```
 
-Or type **`/loop`** / **`/work:loop`** inside an agent session on a worker host.
+Or type **`/work:loop`** inside an agent session on a worker host.
 
 That skill **spreads load** (teams + balanced accounts + re-home on logout/rate-limit). Do
 not point the whole night at a single Claude account on one machine.
@@ -199,7 +199,7 @@ Each directory has a `README.md` for humans (a catalog of everything in it) and 
 
 | Directory | What it holds |
 |---|---|
-| [`commands/`](commands/README.md) | Slash commands — `/loop`, `/code:loop`, `/code:score`, `/swarm`, `/continue`, … (see guide above) |
+| [`commands/`](commands/README.md) | Slash commands — `/finish`, `/visualize`, `/code:loop`, `/code:score`, `/swarm`, `/continue`, … (see guide above) |
 | [`skills/`](skills/README.md) | Skills — multi-file capabilities like `browser`, `teams`, `sessions`, `mq` |
 | [`plugins/`](plugins/README.md) | Plugins — `work` (drain any kind), `code`, `swarm`, `sessions`, `fleet`, `share`, `design`, … |
 | [`hooks/`](hooks/README.md) | Lifecycle scripts — session-start context injection, prompt expansion, Stop checks, guards |

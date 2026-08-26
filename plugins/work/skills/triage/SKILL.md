@@ -1,6 +1,12 @@
 ---
-description: Triage the issue tracker end-to-end — ground in real product goals, then force every open item to a real decision (schedule into the current cycle and drive it, or cancel it). Never park in Backlog.
+name: triage
+description: "Triage the issue tracker end-to-end — ground in real product goals, then force every open item to a real decision (schedule into the current cycle and drive it, or cancel it). Never park in Backlog. Triggers on: /work:triage, 'triage the board', 'clean up the backlog', 'decide keep/cancel on every ticket'."
+argument-hint: "[empty = whole board for this repo's project | project | label]"
+allowed-tools: Bash(agents *), Bash(gh *), Bash(git *), Bash(linear *), Bash(jira *), Bash(glab *), Bash(rg *), Bash(fd *), Bash(ls *), Bash(cat *), Bash(jq *), Read(*), Write(*), Edit(*), Task(*), AskUserQuestion(*)
+user-invocable: true
 ---
+
+# work:triage — force every open item to a real decision
 
 You're being asked to triage the issue tracker: $ARGUMENTS
 

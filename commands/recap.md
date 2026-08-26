@@ -117,8 +117,8 @@ can't make. If nothing does, say so plainly in one line. This section is governe
 the filters below.
 
 **One obvious next task on the tracker, no ambiguity?** That's not a bullet to
-list — invoke `/next` (it checks for in-flight duplicates before claiming, so it's
-safer than grabbing the top ticket yourself) and keep going instead of ending the
+list — claim it via the `tickets` skill (check open PRs and `agents sessions --active`
+for in-flight duplicates first, so it's safer than grabbing the top ticket blind) and keep going instead of ending the
 turn on a recommendation the user has to act on.
 
 **HARD RULE 1 — Check before you list.** Do not list anything you could verify or execute yourself right now. Before writing a bullet, ask:
