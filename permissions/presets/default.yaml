@@ -1,5 +1,5 @@
 name: default
-description: Laptop-strict development permissions. Full deny list including find, sudo, wget, and destructive local git operations.
+description: Allows Bash and file tools without ordinary harness approval prompts; credential paths are denied only to file tools.
 includes:
   - 00-header
   - 00-local
@@ -15,8 +15,8 @@ includes:
   - 09-git
   - 10-security
   - 11-ci
+  - 12-self
   - 15-misc-bash
-  - 16-mcp
   - 20-webfetch-dev
   - 21-webfetch-cloud
   - 22-webfetch-social

@@ -1,5 +1,5 @@
-  # Docker / container runtime — read-only and build/run.
-  # Privileged operations (e.g. `docker system prune -af`) fall through to prompt.
+  # Docker prefixes retained for readable translated policies. The blanket Bash
+  # rule in 30-paths also allows privileged Docker commands at the permission layer.
   - "Bash(docker:*)"
   - "Bash(docker-compose:*)"
   - "Bash(podman:*)"

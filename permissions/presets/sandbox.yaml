@@ -1,5 +1,5 @@
 name: sandbox
-description: Permissive permissions for ephemeral cloud pods. Only denies operations whose blast radius escapes the pod (remote git push, credential paths). Local destructive ops (find, sudo, local git reset/clean/checkout) are allowed because the pod is ephemeral.
+description: Allows Bash and file tools without ordinary harness approval prompts in ephemeral cloud pods; credential paths are denied only to file tools.
 includes:
   - 00-header
   - 01-core
@@ -14,11 +14,11 @@ includes:
   - 09-git
   - 10-security
   - 11-ci
+  - 12-self
   - 15-misc-bash
-  - 16-mcp
   - 20-webfetch-dev
   - 21-webfetch-cloud
   - 22-webfetch-social
   - 25-webfetch-misc
   - 30-paths
-  - 99-deny-sandbox
+  - 99-deny

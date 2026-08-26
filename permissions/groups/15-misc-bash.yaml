@@ -1,6 +1,5 @@
-  # Networking, archives, profiling — generally safe day-to-day commands.
-  # rm, mv, cp, chmod, chown, ln, mkdir, touch are deliberately not auto-approved
-  # so they fall through to a user prompt.
+  # Networking, archive, and profiling prefixes retained for readable translated
+  # policies. The blanket Bash rule in 30-paths also allows unlisted commands.
   - "Bash(curl:*)"
   - "Bash(wget:*)"
   - "Bash(http:*)"

@@ -1,21 +1,7 @@
-  # Read is allow-listed broadly so agents can inspect any file in the project,
-  # including dotfiles and config. Credential paths (~/.ssh, ~/.aws/credentials,
-  # ~/.config/gcloud, ~/.netrc, ~/.pgpass, ~/.docker/config.json, ~/.npmrc) are
-  # explicitly denied in 99-deny.yaml.
+  # Blanket shell and file-tool authorization for any directory.
+  # Command-substitution and cd-before-git prechecks may still prompt before these rules.
+  # Credential deny groups constrain file tools only; allowed Bash can reach those paths.
+  - "Bash"
   - "Read"
-
-  # Write/Edit is scoped: scratch space + the agents-cli config dirs.
-  # Project-level edits (cwd) require explicit user approval.
-  - "Write(/tmp/*)"
-  - "Write(/tmp/**)"
-  - "Edit(/tmp/*)"
-  - "Edit(/tmp/**)"
-  - "Edit(~/.claude.json)"
-  - "Write(~/.claude/*)"
-  - "Write(~/.claude/**)"
-  - "Edit(~/.claude/*)"
-  - "Edit(~/.claude/**)"
-  - "Write(~/.agents/*)"
-  - "Write(~/.agents/**)"
-  - "Edit(~/.agents/*)"
-  - "Edit(~/.agents/**)"
+  - "Write"
+  - "Edit"

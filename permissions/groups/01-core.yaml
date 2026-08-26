@@ -1,6 +1,5 @@
-  # Core shell — read-only filesystem inspection and text utilities.
-  # Anything that modifies the filesystem (rm, mv, cp, mkdir, chmod, ln, touch)
-  # falls through to a user prompt by design.
+  # Core shell prefixes retained for readable translated policies. The blanket
+  # Bash rule in 30-paths also allows commands not listed here.
   - "Bash(ls:*)"
   - "Bash(cat:*)"
   - "Bash(head:*)"
