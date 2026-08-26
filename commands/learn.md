@@ -3,4 +3,7 @@ description: Post-session reflection that writes durable improvements forward â€
 argument-hint: "[empty = current session | session-id | topic | <skill|plugin|command|workflow> to audit]"
 ---
 
-Invoke the `learn` skill. Arguments: $ARGUMENTS
+Invoke the top-level **`learn`** skill (`skills/learn` â€” post-session reflection that
+writes durable lessons forward). This is **not** `code:learn` (that one learns a codebase
+into project `AGENTS.md`); the bare name is contested, so pick `skills/learn` here.
+Arguments: $ARGUMENTS

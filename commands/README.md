@@ -32,11 +32,12 @@ debt moved into the code plugin, and became architectural restructuring there:
 
 ## Ship and review
 
-Driving the current task all the way to delivered is [`/finish`](./finish.md) — alias of
-`/sessions:finish`: verify end-to-end, docs, commit, PR, release checklist, close the
-ticket; it never stops at a recap, blocker, or partial handoff. Reviewing and merging PRs is
-[`/code:review`](../plugins/code/README.md). To recap-and-leave, run `/recap` then
-[`/self:close`](../plugins/self/README.md).
+| Command | What it does |
+|---|---|
+| [`/finish`](./finish.md) | Alias of `/sessions:finish` — drive the current task all the way to delivered: verify end-to-end, docs, commit, PR, release checklist, close the ticket. Never stops at a recap, blocker, or partial handoff |
+
+Reviewing and merging PRs is [`/code:review`](../plugins/code/README.md). To
+recap-and-leave, run `/recap` then [`/self:close`](../plugins/self/README.md).
 
 ## Recap and resume
 
