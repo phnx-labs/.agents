@@ -51,11 +51,25 @@
 
 - Added a fail-closed PreToolUse guard for direct file-tool access to credential paths. The
   guard derives its exact twelve-path matrix from `permissions/groups/99-deny.yaml`, accepts
-  snake_case and camelCase payloads through an anchored direct-tool alias matcher, and leaves
-  Bash outside this accidental-access boundary. It checks both lexical paths and metadata-only
-  physical projections through the nearest existing ancestor: safe symlinks remain allowed,
-  symlinks into protected paths are denied, and broken or unresolvable projections fail closed.
-  Denials emit a concise path-free stderr reason plus Grok's structured stdout response.
+  snake_case and camelCase payloads through an anchored direct-tool alias matcher, rejecting
+  unequal envelope or path aliases rather than preferring one, with JSON-semantic equality kept
+  equivalent across jq, Node, and dependency-free Python fallbacks. Raw stdin is captured in a private
+  runtime file with trapped cleanup, and NUL bytes are rejected before validated text enters a shell
+  variable. A shared raw-JSON preflight rejects duplicate decoded member names at every nesting depth
+  before any backend can overwrite them. Every
+  number in a matched payload must be a finite integer in the inclusive interoperable range `-9007199254740991` through
+  `9007199254740991`; fractions, larger integers, NaN, and infinities fail closed, while negative zero
+  equals zero. Booleans differ from numbers, and recursive arrays and objects compare structurally. The matcher maps OpenCode native
+  lowercase `read`, `edit`, and `write` calls to canonical `Read`, `Edit`, and `Write`, and includes
+  `ReadFile` plus Codex `apply_patch`; raw patch commands are parsed for every Add, Update, Delete,
+  source, and move target, while malformed or pathless patches fail closed. Recognized Windows drive
+  and MSYS home forms still normalize and deny, while literal backslashes in POSIX absolute and
+  relative paths remain filename characters. It checks both lexically collapsed paths and metadata-only
+  physical projections through the nearest existing ancestor; physical resolution receives the original
+  uncollapsed absolute path so symlink-plus-`..` traversal follows kernel semantics. Safe symlinks remain
+  allowed, symlinks into protected paths are denied, and broken or unresolvable projections fail closed. Bash remains
+  explicitly outside this cooperative accidental-access boundary. Denials emit a concise path-free
+  stderr reason plus Grok's structured stdout response.
 
 - **merge-guard closes a self-merge bypass — author-authored verdicts no longer
   clear (PHNX-3236).** `pr-verdict.py`'s `has_verdict` cleared a merge whenever
