@@ -129,7 +129,7 @@ hooks:
   direct-file-credential-guard:
     events:
       - PreToolUse
-    matcher: ^(Read|read_file|Edit|edit_file|search_replace|MultiEdit|Write|write_file)$
+    matcher: ^(Read|read|ReadFile|read_file|Edit|edit|edit_file|search_replace|MultiEdit|Write|write|write_file|apply_patch)$
     script: pre-tool-use/12-direct-file-credential-guard.sh
     timeout: 5
   git-require-clean-tree:

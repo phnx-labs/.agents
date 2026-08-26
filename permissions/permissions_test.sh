@@ -276,7 +276,7 @@ guard_path="$ROOT_DIR/hooks/pre-tool-use/12-direct-file-credential-guard.sh"
 [ -x "$guard_path" ] || fail "direct-file credential guard is missing or not executable"
 grep -qF 'permissions/groups/99-deny.yaml' "$guard_path" || fail "direct-file credential guard does not derive from 99-deny.yaml"
 grep -qF 'script: pre-tool-use/12-direct-file-credential-guard.sh' "$ROOT_DIR/agents.yaml" || fail "direct-file credential guard is not registered"
-grep -qF 'matcher: ^(Read|read_file|Edit|edit_file|search_replace|MultiEdit|Write|write_file)$' "$ROOT_DIR/agents.yaml" || fail "direct-file credential guard matcher is incomplete or unanchored"
+grep -qF 'matcher: ^(Read|read|ReadFile|read_file|Edit|edit|edit_file|search_replace|MultiEdit|Write|write|write_file|apply_patch)$' "$ROOT_DIR/agents.yaml" || fail "direct-file credential guard matcher is incomplete or unanchored"
 printf 'PASS canonical credential matrix is enforced by the registered direct-file guard\n'
 
 protected_changes="$(GIT_MASTER=1 git -C "$ROOT_DIR" status --porcelain -- \
