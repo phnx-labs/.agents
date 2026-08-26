@@ -84,10 +84,13 @@ if [[ ${#CONFLICTED[@]} -gt 0 ]]; then
     exit 1
 fi
 
-ensure_yq
-
 # Extension validation applies only to staged files that still exist.
 STAGED=$(git diff --cached --name-only --diff-filter=ACM)
+
+# Only install yq when a file that actually uses it is staged.
+if echo "$STAGED" | grep -qE '(\.yaml|\.yml|/SKILL\.md)$'; then
+    ensure_yq
+fi
 
 # Print only the first YAML frontmatter block (between the first two `---`
 # lines). Body markdown horizontal rules (`---`) are ignored — extraction stops

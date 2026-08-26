@@ -4,6 +4,10 @@
 
 ### Changed
 
+- **`.githooks/pre-commit`: only install `yq` when a YAML or `SKILL.md` file is actually staged.** Previously `ensure_yq` ran unconditionally, requiring `sudo` even on `.sh`/`.md`-only commits where `yq` was never used.
+
+- **`hooks/stop/00-agent-verify-work-complete.sh`: drop the "Argued past 3 stop blocks" phone notification.** The hook still blocks the first two argue-past fires (exit 2); after that it silently allows the stop. The `--blocked` feed post that previously fired on the third attempt has been removed — it produced unwanted phone noise without adding actionable signal.
+
 - **Fleet auth guidance now prefers per-device native OAuth when the harness supports it (PHNX-3259).** `/fleet:mint-auth` documents the verified target-slot device-code flow: create a stable account slot, run login in a PTY on that target, authorize through a browser signed into the intended account, verify the resulting email, and repeat per device. Native OAuth files remain non-copyable; only named setup-token/API-key bundles may be distributed with `agents accounts sync`. Onboarding and the fleet catalog use the same distinction.
 
 - **`/plan` quality bar: required headings are a floor, not the plan (PHNX-3252).**

@@ -220,10 +220,6 @@ probe quoted (`pgrep`/lease/the PR updated minutes ago) — a claim alone blocks
 MSG
       exit 2
     fi
-    if [ "${n:-0}" -eq 2 ]; then
-      sid=$(echo "$INPUT_JSON" | python3 -c "import json,sys; print(json.load(sys.stdin).get('session_id',''))" 2>/dev/null)
-      _to 5 agents feed post --session "${sid:-unknown}" --title "Argued past 3 stop blocks" "Session restated a stand-down phrase after repeated delivery blocks and was allowed to stop. Transcript: $TRANSCRIPT_PATH" --blocked >/dev/null 2>&1 || true
-    fi
   fi
   exit 0
 fi
