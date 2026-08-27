@@ -20,6 +20,7 @@ write_on_destination() {
   case "$kind:$path" in
     scp:*:*|rsync:*:*) host=${path%%:*}; path=${path#*:} ;;
   esac
+  case "$path" in /*|'~/'*) ;; *) path=${WRITE_DEST_CWD:-.}/$path ;; esac
   case "$path" in
     */.agents/worktrees/*|.agents/worktrees/*|/tmp|/tmp/*|~/.agents|~/.agents/*)
       return 0 ;;
@@ -56,7 +57,7 @@ scan_command() {
 
 expect() { # expected rc, name, command
   IFS=$' \t\n'
-  want=$1 name=$2 command=$3 FOUND=''
+  want=$1 name=$2 command=$3 FOUND='' WRITE_DEST_CWD='.' WRITE_REMOTE_HOST=''
   scan_command "$command"; got=$?
   if [ "$got" -eq "$want" ]; then ok "$name"; else bad "$name: expected $want, got $got ($FOUND)"; fi
 }
@@ -68,6 +69,8 @@ expect 1 "cross-machine scp into checkout" \
   "scp -q /tmp/refocus-brief.md zion:/Users/muqsit/src/github.com/muqsitnawaz/agents/.agents/artifacts/2026-08-14/refocus-brief.md && agents ssh zion 'cd ~/src/github.com/muqsitnawaz/agents/.agents/artifacts/2026-08-14 && artifacts render refocus-brief.md'"
 expect 1 "shell redirect into checkout" \
   "cat > /Users/muqsit/src/github.com/muqsitnawaz/agents/growth/notes.md"
+expect 1 "cd then relative redirect follows shell destination cwd" \
+  "cd /Users/muqsit/src/github.com/muqsitnawaz/agents && cat > notes-relative.md"
 
 # The three required allow classes.
 expect 0 "documented scp /tmp readback" \

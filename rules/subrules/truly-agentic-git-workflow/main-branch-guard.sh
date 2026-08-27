@@ -416,7 +416,7 @@ remote_primary_tree() {
   _rp_path=$2
   command -v agents >/dev/null 2>&1 || return 2
   _rp_q=$(_mbg_shell_quote "$_rp_path")
-  _rp_script="p=$_rp_q; d=\$(dirname \"\$p\"); while [ ! -d \"\$d\" ]; do n=\$(dirname \"\$d\"); [ \"\$n\" = \"\$d\" ] && break; d=\$n; done; top=\$(git -C \"\$d\" rev-parse --show-toplevel 2>/dev/null) || { printf 'NONE\\n'; exit 0; }; if [ -f \"\$top/.git\" ] && grep -q '/worktrees/' \"\$top/.git\" 2>/dev/null; then printf 'LINKED\\n'; elif [ -d \"\$top/.git\" ] || [ -f \"\$top/.git\" ]; then cur=\$(git -C \"\$top\" symbolic-ref --short -q HEAD 2>/dev/null || true); printf 'PRIMARY|%s|%s\\n' \"\$top\" \"\$cur\"; else printf 'NONE\\n'; fi"
+  _rp_script="p=$_rp_q; case \"\$p\" in '~/'*) p=\"\$HOME/\${p#'~/'}\" ;; esac; d=\$(dirname \"\$p\"); while [ ! -d \"\$d\" ]; do n=\$(dirname \"\$d\"); [ \"\$n\" = \"\$d\" ] && break; d=\$n; done; top=\$(git -C \"\$d\" rev-parse --show-toplevel 2>/dev/null) || { printf 'NONE\\n'; exit 0; }; if [ -f \"\$top/.git\" ] && grep -q '/worktrees/' \"\$top/.git\" 2>/dev/null; then printf 'LINKED\\n'; elif [ -d \"\$top/.git\" ] || [ -f \"\$top/.git\" ]; then cur=\$(git -C \"\$top\" symbolic-ref --short -q HEAD 2>/dev/null || true); printf 'PRIMARY|%s|%s\\n' \"\$top\" \"\$cur\"; else printf 'NONE\\n'; fi"
   _rp_out=$(agents ssh "$_rp_host" "$_rp_script" 2>/dev/null) || return 2
   case "$_rp_out" in
     PRIMARY\|*)
@@ -451,6 +451,13 @@ write_on_destination() {
   case "$_wd_path" in
     */.agents/worktrees/*|.agents/worktrees/*) return 0 ;;
   esac
+  case "$_wd_path" in
+    /*|[A-Za-z]:/*|'~/'*) ;;
+    *) _wd_path=${WRITE_DEST_CWD:-${cwd:-.}}/$_wd_path ;;
+  esac
+  # A relative destination may become a worktree path only after applying the
+  # shell's current directory; preserve the same worktree-first precedence.
+  case "$_wd_path" in */.agents/worktrees/*) return 0 ;; esac
   # Explicit always-safe destinations; avoid a remote round-trip for the
   # documented artifact readback pattern and agent-owned state.
   case "$_wd_path" in
@@ -458,7 +465,7 @@ write_on_destination() {
   esac
 
   if [ -n "$_wd_host" ]; then
-    case "$_wd_path" in /*|~/*) ;; *) return 0 ;; esac
+    case "$_wd_path" in /*|'~/'*) ;; *) return 0 ;; esac
     if remote_primary_tree "$_wd_host" "$_wd_path"; then
       deny_reason="Blocked: $_wd_kind destination '$_wd_host:$_wd_path' is in the PRIMARY working tree of $_top${_cur:+ (branch '$_cur')}.
 
@@ -834,10 +841,13 @@ check_segment() {
   fi
   if git_extract_remote_inner "$1"; then
     _saved_remote=${WRITE_REMOTE_HOST:-}
+    _saved_dest_cwd=${WRITE_DEST_CWD:-}
     WRITE_REMOTE_HOST=$_remote_host
+    WRITE_DEST_CWD='~'
     check_command_string "$_remote_inner"
     _remote_rc=$?
     WRITE_REMOTE_HOST=$_saved_remote
+    WRITE_DEST_CWD=$_saved_dest_cwd
     return "$_remote_rc"
   fi
   write_scan_segment "$1" || return $?
@@ -873,6 +883,7 @@ check_command_string() {
   return 0
 }
 
+WRITE_DEST_CWD=${cwd:-.}
 if ! check_command_string "$cmd"; then
   printf '%s\n' "$deny_reason" >&2
   exit 2

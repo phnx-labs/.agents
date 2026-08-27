@@ -268,6 +268,17 @@ write_scan_segment() {
   _ws_cmd=$(git_unwrap_quotes "$1")
   shift
   case "$_ws_cmd" in
+    cd)
+      while [ $# -gt 0 ]; do
+        case "$1" in --) shift; break ;; -*) shift ;; *) break ;; esac
+      done
+      [ $# -gt 0 ] || return 0
+      _ws_dest=$(git_unwrap_quotes "$1")
+      case "$_ws_dest" in
+        /*|[A-Za-z]:/*|'~/'*) WRITE_DEST_CWD=$_ws_dest ;;
+        *) WRITE_DEST_CWD=${WRITE_DEST_CWD:-.}/$_ws_dest ;;
+      esac
+      return 0 ;;
     scp|*/scp|rsync|*/rsync|cp|*/cp|mv|*/mv|install|*/install|tee|*/tee)
       _ws_dest=''
       for _ws_arg in "$@"; do
