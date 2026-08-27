@@ -2,6 +2,17 @@
 
 ## [Unreleased]
 
+### Changed
+
+- **`plugins/yc/skills/workweave/`** — the report now requires a **model
+  cost-to-performance** figure (generated tokens per recorded dollar, ranked per model) in
+  the composition section — the local analog of WorkWeave's model-comparison lens, and the
+  single most decision-useful chart (a cached Sonnet route can return 10–20× the
+  output-per-dollar of a premium or uncached route). Benchmarked against the real WorkWeave
+  Organization ▸ Overview dashboard. The shipped-output engineering-outcomes section (merged
+  PRs, cost-per-PR, output/$) is now reliably populated rather than a gap card, since the
+  `agents insights output --json` flag-dropping bug it depended on is fixed (agents-cli PR #3176).
+
 ### Added
 
 - **`plugins/sessions/skills/finish/`** — the `sessions:finish` skill and a top-level

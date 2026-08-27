@@ -100,8 +100,12 @@ Use this reading order:
 3. **Activity over time** — a wide linear-scale chart of daily sessions, generated tokens, and
    cost. Use aligned small multiples rather than a dual axis. Mark the prior-window baseline.
 4. **Harness + model composition** — two compact charts with exact session, generated-token,
-   and cost shares. Prefer ranked horizontal bars over decorative pies.
-5. **Efficiency** — actual versus no-cache cost, generated tokens per dollar, duration, and
+   and cost shares. Prefer ranked horizontal bars over decorative pies. Then a **model
+   cost-to-performance** figure: generated tokens per recorded dollar, ranked per model. This is
+   the single most decision-useful comparison — a cached Sonnet route can return 10–20× the
+   output-per-dollar of a premium or an uncached route — and is the local analog of WorkWeave's
+   model-comparison lens. State that correlation is not causation (task mix differs per model).
+5. **Efficiency** — actual versus no-cache cost, generated tokens per dollar overall, duration, and
    shipped units when available. State that correlation is not causation.
 6. **Process** — project-scoped hook p50/p95/p99, total observed hook time, block rate, slow CLI
    commands, and repeated retries. Rank by avoidable time, not invocation count.
@@ -113,7 +117,8 @@ Use this reading order:
 ### Visual contract
 
 - Build **at least eight semantic figures**: one dashboard metric strip, one activity trend,
-  two composition charts, one cost comparison, two process charts, and one ranked opportunity
+  two composition charts (one of which is the model cost-to-performance ranking, generated
+  tokens per dollar), one cost comparison, two process charts, and one ranked opportunity
   figure. A figure may contain aligned small multiples when they share a scale or question.
 - Make charts carry the explanation: concise title, one-sentence metric definition, exact
   headline value, plot, source/scope label. Do not introduce a chart with a paragraph wall.
