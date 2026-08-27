@@ -9,8 +9,8 @@ user-invocable: true
 # share
 
 Turn any HTML an agent made — a rendered plan, a data viz, a report — into a link a
-human can open, backed by the user's **own** Cloudflare R2 (zero egress, effectively
-$0). The page is stored in R2, so the link outlives the agent that made it.
+human can open through the managed Phoenix share endpoint, or the user's own
+Cloudflare R2 when BYO is configured. The page outlives the agent that made it.
 
 `/share` is the one command. Public is the default; `--private` is a modifier.
 
@@ -34,8 +34,9 @@ $0). The page is stored in R2, so the link outlives the agent that made it.
    use an existing endpoint — then stop. Do not try to provision silently.
 3. **Publish.**
    - **Public** (default): `agents artifacts share <file>`
-     HTML pages get an auto-generated Open Graph cover (a 1200×630 screenshot of
-     the page's hero). As an optional override, pass `--slug <project>-<feature>`
+     HTML pages get an auto-generated Open Graph cover. The managed Worker lazily
+     renders and caches a deterministic 1200×630 branded card; BYO endpoints keep
+     the local hero-screenshot fallback. As an optional override, pass `--slug <project>-<feature>`
      to pin a stable name;
      otherwise the default `<project>-<feature>-<hash>` is used.
    - **Private** (`/share --private <file>`): `agents artifacts share <file> --no-cover --expire 7d`
@@ -74,10 +75,11 @@ agents artifacts share report.html --expire 7d   # auto-expire (30d / 12h / 2026
 
 - **Default slug** is `<project>-<feature>-<hash>` (e.g. `agents-cli-fleet-cockpit-3a6687`):
   the repo name scopes the link, a random tail keeps it unguessable and collision-free.
-- **OG cover**: HTML pages are screenshotted (their hero, 1200×630) and the shot is
-  attached as `og:image` + `twitter:card`, so the link unfurls into a card. Capture is
-  client-side (headless Chromium); if none is available the link still publishes, just
-  without a card.
+- **OG cover**: managed HTML shares attach `og:image` + `twitter:card` to a lazy
+  `<slug>.png` route. The Worker renders the title, description, handle, and
+  visibility with bundled fonts, applies the page's visibility gate, then caches
+  the PNG. No local browser is required. BYO endpoints retain client-side
+  headless-Chromium capture because their Worker may predate the renderer.
 - **Expiry**: the CLI default is `30d` (`--expire <spec>`). Pass `--expire never` for a
   permanent link. Private mode always passes `--expire 7d`.
 
