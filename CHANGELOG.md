@@ -21,6 +21,21 @@
 
 ### Changed
 
+- **`permissions/groups/99-deny.yaml`** — **security (deny reduction, PHNX-3294).**
+  Two over-broad denies narrowed. Now **permitted**: `timeout` coreutils wrappers
+  (`timeout 30 <cmd>` — the wrapped command keeps its own rules), and read-only /
+  local git config (`git config --get ...`, `git config user.name`). Still explicitly
+  **denied**: the dangerous git config WRITE forms (`git config --global:*`,
+  `git config core.hooksPath:*`, `git config alias:*` — hook hijack, alias injection,
+  global-scope writes), and every other deny in the file is untouched — `sudo:*`, the
+  git history-rewriters (`git reset`, `git push --force`/`-f`, `git clean`,
+  `git checkout`/`switch`/`branch`, `git revert`, `git cherry-pick`, `git filter-branch`,
+  `git branch -D`, …), and all credential paths (`~/.ssh`, `~/.aws/{credentials,config}`,
+  `~/.netrc`, `~/.pgpass`, `~/.config/{gcloud,op}`, `~/.docker/config.json`, `~/.npmrc`,
+  `~/.kube/config`). Destructive shell commands (`dd`, `mkfs`, `shutdown`, `reboot`, `rm`)
+  are never allow-listed, so they still stop for approval (and `rm` has its own guard
+  hook) — this change does not reach them. `git -C <path> config` can still evade a token-prefix deny; the git-guard
+  hook is the backstop. Regenerated `permissions/default.yaml` via `permissions/build.sh`.
 - **`skills/secrets/SKILL.md`** — slimmed from 181 to ~100 lines. The command table and
   basic add/view examples are dropped in favor of `agents secrets --help`; what stays is
   the behavior `--help` can't teach: `bundle@host`, ephemeral remote injection,

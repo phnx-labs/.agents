@@ -1,6 +1,5 @@
 deny:
   - "Bash(sudo:*)"
-  - "Bash(timeout:*)"
 
   # Credential files — never allow agents to read or write these.
   - "Read(~/.ssh/**)"
@@ -49,4 +48,10 @@ deny:
   - "Bash(git fsck:*)"
   - "Bash(git stash:*)"
   - "Bash(git branch -D:*)"
-  - "Bash(git config:*)"
+  # git config — deny only the dangerous WRITE forms (hook hijack / alias
+  # injection / global-scope writes). Read-only `git config --get` and local
+  # `git config user.name` stay allowed. `git -C <path> config` can still evade
+  # a token-prefix deny; the git-guard hook is the real backstop.
+  - "Bash(git config --global:*)"
+  - "Bash(git config core.hooksPath:*)"
+  - "Bash(git config alias:*)"
