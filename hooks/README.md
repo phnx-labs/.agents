@@ -69,9 +69,10 @@ beside the script. This keeps `ls hooks/<event-name>/` limited to the scripts
 that actually run on the harness event. See [`AGENTS.md`](./AGENTS.md) for the
 path-reference rule a moved test must follow.
 
-Rule-bundled guards do **not** live here — they ship with the subrule under
-`rules/subrules/<rule>/` via that dir's `hooks.yaml` (absolute script paths at
-register time). See [§Subrule hooks](#subrule-hooks-rules-not-this-tree).
+Rule-bundled guard implementations live with their subrule under
+`rules/subrules/<rule>/`. A system-level registration may use a logic-free
+entrypoint here when installed hook discovery must route to that canonical
+implementation. See [§Subrule hooks](#subrule-hooks-rules-not-this-tree).
 
 ## What runs, and when
 
@@ -91,6 +92,7 @@ register time). See [§Subrule hooks](#subrule-hooks-rules-not-this-tree).
 | Hook | What it does |
 |---|---|
 | [`git-guard.sh`](./pre-tool-use/git-guard.sh) | Blocks destructive git: `reset --hard`, force-push, `checkout -- .`, `stash`, `clean`, history rewrites |
+| [`main-branch-guard.sh`](./pre-tool-use/main-branch-guard.sh) | Registered entrypoint for the canonical rule guard that blocks file and shell destinations in primary checkouts, including remote scp/ssh writes |
 | [`rm-guard.sh`](./pre-tool-use/rm-guard.sh) | Blocks destructive `rm` patterns |
 | [`secrets-guard.sh`](./pre-tool-use/secrets-guard.sh) | Blocks the secret-materializing one-liners (plaintext export, bundle-key `get`, non-TTY reveal) — backstop for boxes on older agents-cli builds (RUSH-2774) |
 | [`large-file-add-guard.sh`](./pre-tool-use/large-file-add-guard.sh) | Blocks `git add` of a file over 5 MiB; skips explicit plan-mode events |

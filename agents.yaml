@@ -120,7 +120,7 @@ hooks:
     events:
       - PreToolUse
     matcher: "Bash|Write|Edit|MultiEdit|NotebookEdit"
-    script: rules/subrules/truly-agentic-git-workflow/main-branch-guard.sh
+    script: pre-tool-use/main-branch-guard.sh
     timeout: 5
   rm-guard:
     events:

@@ -56,6 +56,8 @@
   inside `ssh` / `agents ssh`. Each local or remote destination resolves its own
   repo, while linked worktrees, `~/.agents/**`, and `/tmp/**` remain allowed
   (PHNX-3312).
+  The system manifest uses a `hooks/pre-tool-use/` entrypoint so installed
+  version homes can resolve and register the rule-bundled implementation.
 
 - **merge-guard closes a self-merge bypass — author-authored verdicts no longer
   clear (PHNX-3236).** `pr-verdict.py`'s `has_verdict` cleared a merge whenever
