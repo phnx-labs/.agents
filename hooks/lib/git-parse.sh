@@ -214,9 +214,16 @@ _write_extract_redirects() {
   # Character scan keeps `>` inside quoted prose/data from becoming a phantom
   # destination. It also returns every real redirection in the segment rather
   # than only the final one. One-layer shell quotes around a target are removed.
+  # Quote and escape state PERSIST ACROSS LINES. Resetting them per record was a
+  # false-positive factory: the second line of any multi-line quoted argument — a
+  # commit message, a PR body, a ticket description — reopened as "unquoted", so
+  # an arrow in ordinary prose read as a redirection and the guard blocked a
+  # write that never existed. A guard that blocks a non-existent write gets
+  # switched off, which is strictly worse than no guard.
   awk '
+    BEGIN { sq = 0; dq = 0; esc = 0 }
     {
-      s = $0; sq = 0; dq = 0; esc = 0
+      s = $0
       for (i = 1; i <= length(s); i++) {
         c = substr(s, i, 1)
         if (esc) { esc = 0; continue }
@@ -224,6 +231,9 @@ _write_extract_redirects() {
         if (c == sprintf("%c", 39) && !dq) { sq = !sq; continue }
         if (c == "\"" && !sq) { dq = !dq; continue }
         if (c != ">" || sq || dq) continue
+        # `<<` is a heredoc (stripped upstream) and a lone `<` is a READ; neither
+        # yields a write destination.
+        if (i > 1 && substr(s, i - 1, 1) == "<") continue
         if (substr(s, i + 1, 1) == ">") i++
         else if (substr(s, i + 1, 1) == "|") i++
         j = i + 1
