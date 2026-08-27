@@ -13,17 +13,10 @@ better documented than you found it.
 | `code:learn` | A coding session just finished, or you need to learn a codebase cold. Learns the structure, entry points, architecture, and non-obvious invariants, then writes what a future agent would otherwise re-derive into the project's own `AGENTS.md` — the primary durable output. Secondarily routes a genuinely durable coding-*workflow* lesson (about the loop itself, not the project) to the right `code:*` skill. |
 | `code:refactor` | The codebase has outgrown its own structure — two concepts that should be one, a horizontal layer four modules each reimplemented, a boundary never drawn, a cohesive core that should be its own package, a tree that no longer says where anything goes, a surface nobody can search. Builds a module dependency graph (god modules, cycles, extraction candidates, upward imports), measures which files agents actually read and edit (fleet session index, not just churn), censuses the public surface, and verifies the repo's own architecture claims against the code. Ranks seven architectural moves by `harm x exposure` (including whether a concept has the contract its job calls for — a family dispatched on by name across twenty files usually wants the provider pattern the repo already uses somewhere else), sequences them (cycles first, tree moves last), renders before/after figures with `artifacts` where every box and arrow is sourced from the graph JSON, and lands behavior-preserving PRs. Hygiene is the byproduct tier, not the job. Calls `code:review` Mode C for file-level passes instead of duplicating them. |
 | `code:commit` | Split changes into the maximum number of small logical commits (one concept per commit) and push in the background. |
-| `code:score` | Score how well a repository is structured for coding agents: multi-level `AGENTS.md` coverage and pointer quality, stale frontmatter, flat overloaded directories, god files, and deep unfocused trees. Produces ranked actions plus a visual Markdown-to-HTML report under the analyzed repo's dated artifact directory. |
 
-## Self-contained commands
-
-A full command prompt, not a skill invoker (same shape as `/code:commit`) — git
-plumbing that belongs next to the coding loop, not in a separate plugin. (`/code:clean`
-used to live here; it is now the `code:refactor` skill — see the table above.)
-
-| Command | What it does |
-| --- | --- |
-| `/code:prune` | Deletes merged branches and worktrees locally and on `origin`, behind hard data-loss guards: never removes a worktree with uncommitted changes, a stash, unmerged commits, a lock, or a detached HEAD. Uses `git rev-list --count origin/$MAIN..HEAD == 0` as the load-bearing "nothing to lose" check (strictly stricter than `git branch --merged`), shows the plan, and asks before acting. |
+`/code:commit` is a full command prompt rather than a skill invoker — git plumbing that
+belongs next to the coding loop. (`/code:clean` and `/code:prune` used to live here too;
+`clean` is now the `code:refactor` skill — see the table above — and `prune` was retired.)
 
 ## The reviewer it spawns
 
@@ -48,10 +41,12 @@ skills. They're gone, not renamed:
   quoted output — it never needed a dedicated skill call.
 - **`code:ship`** — retired. Publishing and release orchestration are outside the code
   plugin's scope.
-- **`code:quality`** — became `code:review`'s third mode (`repo` / a path / `--since`).
-  The rubric was always the same one a PR review applies to a diff — reuse, cross-cutting
-  at the source, no duplicate surfaces, doc-asserted invariants — just run over a whole
-  scope instead of one PR's changes. The HTML report and its helper scripts moved to
+- **`code:quality`** — split by what it actually did. The **acting** small-change pass
+  (fix a duplicate, a bad abstraction, or a pattern that should exist but doesn't, always
+  tied to a concrete change) is now `code:refactor`'s `quality` mode, mirroring the global
+  `simplify` skill. The **read-only** whole-repo rubric scan — reuse, cross-cutting at the
+  source, no duplicate surfaces, doc-asserted invariants — became `code:review`'s third
+  mode (`repo` / a path / `--since`); its HTML report and helper scripts live in
   `code:review`'s skill directory.
 
 ## Primitives the loop uses directly

@@ -1,7 +1,7 @@
 ---
 name: loop
-description: "General-purpose unattended work drain across every project and kind — code, browser, outreach, design, portal tasks. Spreads load with agents teams + balanced account rotation so one logout or rate-limit does not kill the night. Drives each item to landed — engineering merges on green behind a non-author review, never waiting on the user to click merge. Triggers on: 'work loop', '/work:loop', 'overnight drain', 'drain the board', 'finish everything unattended', 'keep moving on all projects'."
-argument-hint: "[empty = all open clear work | project/filter | overnight]"
+description: "General-purpose unattended work drain across every project and kind — code, browser, outreach, design, portal tasks. Spreads load with agents teams + balanced account rotation so one logout or rate-limit does not kill the night. Drives each item to landed — engineering merges on green behind a non-author review, never waiting on the user to click merge. Its `triage` mode forces every open item to keep-and-schedule-this-cycle or cancel instead of draining. Triggers on: 'work loop', '/work:loop', 'overnight drain', 'drain the board', 'finish everything unattended', 'keep moving on all projects', 'triage the board', 'clean up the backlog', 'decide keep/cancel on every ticket'."
+argument-hint: "[empty = all open clear work | project/filter | overnight | triage]"
 allowed-tools: Bash(agents *), Bash(gh *), Bash(git *), Bash(linear *), Bash(rg *), Bash(fd *), Bash(ls *), Bash(cat *), Bash(jq *), Bash(curl *), Read(*), Write(*), Edit(*), Task(*), WebSearch(*), WebFetch(*)
 user-invocable: true
 ---
@@ -60,13 +60,63 @@ can recover yourself.
 
 `$ARGUMENTS` empty or `overnight` / `all` → pull **clear, unblocked, keep-worthy** items
 across projects (Linear Todo/In Progress delegated or labeled for drain; open GitHub issues
-with pilot labels if any; skip items that need cancel/priority taste — those are `/work:triage`).
+with pilot labels if any; skip items that need cancel/priority taste — those are for `triage` mode below).
 
 A project name, label, or query scopes the queue. Human-only holds (`hold`, explicit "wait
 for me") stay parked.
 
 Normalize each item: id · title · kind (engineering | browser/web | design/content |
 research | other) · project/repo · acceptance · host preference if any.
+
+## Triage mode — force every open item to a decision
+
+`triage` (`/work:loop triage`, or `triage <project|label>`) flips the loop from *draining
+the clear items* to *deciding the whole board*. The regular drain deliberately **skips**
+items that need a cancel/priority/taste call; triage mode is where those get made. **The
+point is fewer open items, not reshuffled ones** — success is the total open count and the
+per-cycle count trending **down** across runs. A pass that ends with the same count it
+started with triaged nothing.
+
+**Step 0 — ground in the real product goals first.** You cannot tell "genuinely urgent"
+from "just labeled urgent" without knowing what the product is trying to do right now.
+Before judging a single ticket:
+
+- **Linear** — read the goal spine: Initiative → Project (one-liner/metric/goal-now) →
+  Milestones (target date + done-condition). `linear milestones` / `linear projects` for
+  live state. The **current goal is the incomplete milestone with the soonest target
+  date** — a query, not a guess. Check for a milestone/goal-spine memory first.
+- **GitHub** — `ROADMAP.md`, pinned issues, the repo's milestone list
+  (`gh api repos/{owner}/{repo}/milestones`), any product doc (`PRODUCT.md`,
+  `MASTER_PLAN.md`) for a stated near-term goal.
+- **Neither exists?** Ask once, briefly, then proceed — don't triage against an invented goal.
+
+**Force exactly one of two outcomes per item — no third hedge state:**
+
+- **KEEP & SCHEDULE** — real work worth doing → into the **current cycle** (active cycle /
+  this week's milestone), status Todo or further, never `--cycle none` and never Backlog.
+  If it's small and fully scoped, don't just schedule it — build it now in the same pass.
+- **CANCEL** — not worth doing (dead code path, speculative nit, superseded, someday-idea)
+  → cancel outright with a one-line reason. Do **not** downgrade to Low or Backlog instead
+  of canceling — that's a slower cancel that clutters the count exactly the same.
+
+**Banned as a landing state for anything you touch this pass:** `Backlog` status,
+`--cycle none`, and "Low priority, revisit someday." (On a tracker with no cycle concept,
+e.g. bare GitHub Issues, the rule maps to open+milestoned-now vs closed.) **One narrow
+exception:** an item genuinely blocked on a human decision or external dependency stays in
+its current state, but must carry a comment naming exactly what it's waiting on and who.
+
+**Decide, don't ask.** Re-leveling a priority, canceling a stale ticket, moving something
+into the active cycle are yours to decide and state in one line, not `AskUserQuestion`
+material (F1) — consistent with this skill's unattended contract. Only ask for a genuine
+strategy/scope call the user hasn't already made (e.g. "is this initiative still
+company-priority"), not "should I re-level this." Never let indecision default to
+Backlog/Low. **Always link, never bare IDs** — every ticket you name carries its full URL
+(`linear tasks <id> | grep URL:`, or the tracker's issue link).
+
+**Report the delta, compactly:** counts before → after (total open, per-cycle/current,
+Backlog trending to 0, canceled this pass); each keep/cancel decision with its link and
+one-line reason; anything left for the user (the narrow exception only), with what it's
+waiting on.
 
 ## Dedup and claim (same spine as code:loop)
 
@@ -186,6 +236,6 @@ not done — park it with the gap named. See `unattended-verification`.
 | Single clear item now | `/work:dispatch` (or this skill with a one-item queue) |
 | Engineering patterns (worktree, claim, review, merge-on-green) | `code:loop` — including its "done means merged" completion |
 | Post-merge publish for a distributable | Repository-specific release process — merge is the middle for anything users install or visit |
-| Board keep/cancel decisions | `/work:triage` — do not invent cancels unattended |
+| Board keep/cancel decisions | `triage` mode (`/work:loop triage`) — do not invent cancels during a plain drain |
 | Parallel fan-out mechanics | `swarm:orchestrate` / `agents teams` |
 | Schedule every night | `agents routines` YAML calling this skill unattended |

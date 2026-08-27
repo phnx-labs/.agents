@@ -82,7 +82,7 @@ to type.
 | **Drain everything overnight** (any project, code *or* browser/outreach) without waiting on me | `/work:loop` | [`work`](plugins/work/README.md) — spreads load across accounts/hosts; **merges on green** behind a non-author review instead of leaving PRs for you |
 | Finish a **queue of engineering tickets** (merge-oriented) | `/code:loop` | [`code`](plugins/code/README.md) — worktrees, CI, review/merge |
 | **One** clear task (any kind) to an agent | `/work:dispatch` or `/dispatch` | `work` for kind-agnostic; top-level `/dispatch` leans engineering |
-| Decide keep/cancel/priority on the **whole board** | `/work:triage` | Not a builder — decision layer only |
+| Decide keep/cancel/priority on the **whole board** | `/work:loop triage` | Triage mode — forces keep-and-schedule or cancel, never a hedge state |
 | Drive the **current task** to fully delivered | `/finish` | [`sessions`](plugins/sessions/README.md) — never stops at a recap or partial handoff |
 | Fan work across **parallel agents** | `/swarm` (or `/swarm plan` / `spec` / `debug`) | [`swarm`](plugins/swarm/README.md) |
 | Plan a feature with live research, diagrams, mock-ups + blind check | `/swarm plan …` or `/plan` | Swarm plan is multi-agent; `/plan` is single-agent grounded design |
@@ -93,7 +93,6 @@ to type.
 | Finish many interrupted sessions **headlessly** | `/continue recover` | Mode of sessions continue |
 | How we have been working (analytics) | `/insights` | insights + trends + perf + stats |
 | Current repository's agent output, cost, mix, and workflow tax as charts | `/yc:workweave` | [`yc`](plugins/yc/README.md) — local session index to private HTML |
-| Score a repository's structure for coding agents | `/code:score` | `AGENTS.md` coverage, directory organization, ranked visual report |
 | Review PRs this session (or a whole repo scan) | `/code:review` | `code:review` — three modes |
 | Learn a codebase into project `AGENTS.md` | `/code:learn` | Durable nav notes for future agents |
 | Design / mockup offline | `/design` | [`design`](plugins/design/README.md) |
@@ -110,7 +109,7 @@ to type.
 | "Keep moving — finish the queue while I sleep" | `/work:loop` on a **worker** host (not your interactive laptop). Prefer `agents run claude "/work:loop" --mode auto --device yosemite-s0` (or your worker). |
 | "Only ship code PRs to merge" | `/code:loop` with a ticket filter — merge-oriented engineering loop. |
 | "One ticket, not sure if code or web" | `/work:dispatch RUSH-1234` — classifies and routes. |
-| "Board is a mess of maybe-later items" | `/work:triage` first, then `/work:loop` or `/code:loop` on what remains. |
+| "Board is a mess of maybe-later items" | `/work:loop triage` first, then `/work:loop` or `/code:loop` on what remains. |
 | "Agents keep hitting rate limits / logouts" | Use `/work:loop` (forced load-spread) or `/swarm` with mixed harnesses and `--strategy balanced` — never one long single-account session. |
 | "Machine crashed; windows are gone" | `/sessions:restore` for Ghostty/terminal relaunch; `/continue recover` to finish work headlessly. |
 | "Pick up where that session left off" | `/continue <id-or-topic>`. |
@@ -200,7 +199,7 @@ Each directory has a `README.md` for humans (a catalog of everything in it) and 
 
 | Directory | What it holds |
 |---|---|
-| [`commands/`](commands/README.md) | Slash commands — `/finish`, `/visualize`, `/code:loop`, `/code:score`, `/swarm`, `/continue`, … (see guide above) |
+| [`commands/`](commands/README.md) | Slash commands — `/finish`, `/visualize`, `/code:loop`, `/code:review`, `/swarm`, `/continue`, … (see guide above) |
 | [`skills/`](skills/README.md) | Skills — multi-file capabilities like `browser`, `teams`, `sessions`, `mq` |
 | [`plugins/`](plugins/README.md) | Plugins — `work` (drain any kind), `code`, `swarm`, `sessions`, `fleet`, `share`, `design`, … |
 | [`hooks/`](hooks/README.md) | Lifecycle scripts — session-start context injection, prompt expansion, Stop checks, guards |
