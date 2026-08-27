@@ -2,7 +2,7 @@
 name: loop
 description: "General-purpose unattended work drain across every project and kind — code, browser, outreach, design, portal tasks. Spreads load with agents teams + balanced account rotation so one logout or rate-limit does not kill the night. Drives each item to landed — engineering merges on green behind a non-author review, never waiting on the user to click merge. Its `triage` mode forces every open item to keep-and-schedule-this-cycle or cancel instead of draining. Triggers on: 'work loop', '/work:loop', 'overnight drain', 'drain the board', 'finish everything unattended', 'keep moving on all projects', 'triage the board', 'clean up the backlog', 'decide keep/cancel on every ticket'."
 argument-hint: "[empty = all open clear work | project/filter | overnight | triage]"
-allowed-tools: Bash(agents *), Bash(gh *), Bash(git *), Bash(linear *), Bash(rg *), Bash(fd *), Bash(ls *), Bash(cat *), Bash(jq *), Bash(curl *), Read(*), Write(*), Edit(*), Task(*), WebSearch(*), WebFetch(*)
+allowed-tools: Bash(agents *), Bash(gh *), Bash(git *), Bash(linear *), Bash(rg *), Bash(fd *), Bash(ls *), Bash(cat *), Bash(jq *), Bash(curl *), Read(*), Write(*), Edit(*), Task(*), WebSearch(*), WebFetch(*), AskUserQuestion(*)
 user-invocable: true
 ---
 
@@ -22,8 +22,11 @@ skill owns the overnight / multi-project / multi-kind contract, and it inherits
 
 ## Mindset (load-bearing)
 
-1. **Done without the user.** Never call `AskUserQuestion`. Never wait for approval. If a
-   decision is genuinely product/taste-only, park the item with a comment and continue.
+1. **Done without the user.** While draining, never call `AskUserQuestion` and never wait
+   for approval. If a decision is genuinely product/taste-only, park the item with a comment
+   and continue. The sole exception is **Triage mode's no-goal-signal case** below, where you
+   may ask **once, briefly** for the missing goal — that one carve-out is why this skill holds
+   the `AskUserQuestion` grant; do not use it anywhere else in the drain.
 2. **Maximize finished work.** Prefer landing a solid PR, sending the outreach, filling
    the form, publishing the asset — over perfecting a plan or waiting for review.
 3. **Unattended means you own the merge, not that you skip it.** The user is asleep or
