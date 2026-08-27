@@ -29,8 +29,6 @@ DB_PATH = os.path.expanduser("~/.agents/.history/sessions/sessions.db")
 SINCE_RE = re.compile(r"^(\d+)([smhdw])$")
 SINCE_UNITS = {"s": "seconds", "m": "minutes", "h": "hours", "d": "days", "w": "weeks"}
 
-ROLE_LABELS = {"user": "user", "assistant": "assistant", "tool": "tool"}
-
 
 def parse_args(argv):
     p = argparse.ArgumentParser(
@@ -150,32 +148,24 @@ def find_candidates(conn, terms, project, since, limit):
 
 def resolve_transcript_path(file_path):
     real_home = os.path.expanduser("~")
-    return file_path.replace("[HOME]", real_home)
+    path = file_path.replace("[HOME]", real_home)
+    if os.path.basename(path) == "summary.json":
+        # Grok: sessions.file_path points at session metadata, not the
+        # transcript — the real turn-by-turn history is a sibling file.
+        sibling = os.path.join(os.path.dirname(path), "chat_history.jsonl")
+        if os.path.exists(sibling):
+            return sibling
+    return path
 
 
-def iter_text_events(obj):
-    """Yield (role, text) for one transcript JSONL record. Best-effort across
-    harnesses: tries the Claude Code envelope first, then a generic
-    role+content-block walk that also covers Responses-API-shaped formats."""
-    rtype = obj.get("type")
-
-    if rtype == "queue-operation":
-        content = obj.get("content")
-        if isinstance(content, str) and content.strip():
-            yield ("user", content)
+def _blocks_to_events(role, content):
+    """Shared block-list walker: content is a string or a list of typed
+    blocks (text/tool_use/tool_result), the shape Claude Code, Droid, and
+    Codex all converge on once role+content are pulled out of their own
+    envelope."""
+    if role not in ("user", "assistant"):
         return
-
-    msg = obj.get("message")
-    role = None
-    content = None
-    if isinstance(msg, dict):
-        role = msg.get("role")
-        content = msg.get("content")
-    elif "role" in obj:
-        role = obj.get("role")
-        content = obj.get("content")
-
-    if role not in ("user", "assistant") or content is None:
+    if content is None:
         return
 
     if isinstance(content, str):
@@ -216,6 +206,69 @@ def iter_text_events(obj):
                 )
             if out:
                 yield ("tool", str(out)[:4000])
+
+
+def _codex_events(payload):
+    """Codex stores each turn as {type: response_item, payload: {...}} —
+    role/content live under payload, not message, and tool calls are their
+    own payload.type instead of content blocks."""
+    if not isinstance(payload, dict):
+        return
+    ptype = payload.get("type")
+    if ptype == "message":
+        yield from _blocks_to_events(payload.get("role"), payload.get("content"))
+    elif ptype in ("custom_tool_call", "function_call"):
+        name = payload.get("name", "")
+        raw = payload.get("input", payload.get("arguments", ""))
+        try:
+            inp = raw if isinstance(raw, str) else json.dumps(raw)
+        except TypeError:
+            inp = str(raw)
+        yield ("tool", f"[tool_use {name}] {inp[:2000]}")
+    elif ptype in ("custom_tool_call_output", "function_call_output"):
+        out = payload.get("output")
+        if isinstance(out, list):
+            out = "\n".join(
+                x.get("text", "") for x in out if isinstance(x, dict) and x.get("type") == "input_text"
+            )
+        if out:
+            yield ("tool", str(out)[:4000])
+
+
+def iter_text_events(obj):
+    """Yield (role, text) for one transcript record. Best-effort across
+    harnesses, each with its own envelope around the same user/assistant/tool
+    shape:
+      - Claude Code / Droid: {type, message: {role, content}}
+      - Codex: {type: "response_item", payload: {type, role/content, ...}}
+      - Grok: {type: role, content} directly, no wrapper
+      - a bare {content} "queue-operation" record (initial task text)
+    """
+    rtype = obj.get("type")
+
+    if rtype == "queue-operation":
+        content = obj.get("content")
+        if isinstance(content, str) and content.strip():
+            yield ("user", content)
+        return
+
+    if rtype == "response_item":
+        yield from _codex_events(obj.get("payload"))
+        return
+
+    msg = obj.get("message")
+    if isinstance(msg, dict):
+        yield from _blocks_to_events(msg.get("role"), msg.get("content"))
+        return
+
+    if "role" in obj:
+        yield from _blocks_to_events(obj.get("role"), obj.get("content"))
+        return
+
+    if rtype in ("user", "assistant") and "content" in obj:
+        # Grok: the role IS the record's top-level "type", content sits
+        # directly on the record — no message/payload wrapper at all.
+        yield from _blocks_to_events(rtype, obj.get("content"))
 
 
 def flatten_transcript(path):
@@ -270,29 +323,42 @@ def grep_snippets(lines, terms, context, max_snippets):
 
 
 def build_digest(candidates, terms, context, max_snippets):
+    """Every candidate the FIND phase surfaced gets a digest entry — a
+    session already matched via the index must never silently disappear
+    just because RECOVER could not open or parse its transcript (a harness
+    format not yet handled, a moved/missing file). Those become an
+    index-only stub with a `note` instead of vanishing, so a real "0 hits"
+    is never confused with "found it, but couldn't grep it"."""
     digest = []
     for c in candidates:
         path = resolve_transcript_path(c["filePath"])
-        if not os.path.exists(path):
-            continue
-        lines = flatten_transcript(path)
-        if not lines:
-            continue
-        snippets = grep_snippets(lines, terms, context, max_snippets)
-        if not snippets:
-            continue
-        why = sorted({role for s in snippets for role in s["roles"]} | set(c["via"]))
-        digest.append({
+        entry = {
             "shortId": c["shortId"],
             "id": c["id"],
             "agent": c["agent"],
             "project": c["project"],
             "date": (c["timestamp"] or "")[:10],
             "topic": (c["topic"] or "")[:120],
-            "why": why,
-            "snippets": snippets,
             "resume": f"agents sessions resume {c['shortId']}",
-        })
+        }
+
+        if not os.path.exists(path):
+            entry.update(why=sorted(c["via"]), snippets=[], note=f"transcript not found at {path}")
+            digest.append(entry)
+            continue
+
+        lines = flatten_transcript(path)
+        snippets = grep_snippets(lines, terms, context, max_snippets) if lines else []
+        if snippets:
+            why = sorted({role for s in snippets for role in s["roles"]} | set(c["via"]))
+            entry.update(why=why, snippets=snippets)
+        else:
+            note = (
+                "transcript format not recognized (no text extracted)" if not lines
+                else "matched via index only — terms not found as literal text in the transcript"
+            )
+            entry.update(why=sorted(c["via"]), snippets=[], note=note)
+        digest.append(entry)
     return digest
 
 
@@ -305,6 +371,8 @@ def render_text(digest, terms):
         print(f"[{d['shortId']}] {d['date']}  {d['project']}  (via: {', '.join(d['why'])})")
         if d["topic"]:
             print(f"  {d['topic']}")
+        if d.get("note"):
+            print(f"  note: {d['note']}")
         for s in d["snippets"]:
             for line in s["text"].splitlines():
                 print(f"    {line}")
