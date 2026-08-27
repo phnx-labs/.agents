@@ -119,15 +119,16 @@ git_unwrap_quotes() {
 # their raw-level extractor sees the complete string before recursion.
 git_split_chains() {
   printf '%s\n' "$1" | awk '
-    {
-      s = $0; out = ""; sq = 0; dq = 0; esc = 0
+    { s = s (NR > 1 ? "\n" : "") $0 }
+    END {
+      out = ""; sq = 0; dq = 0; esc = 0
       for (i = 1; i <= length(s); i++) {
         c = substr(s, i, 1); n = substr(s, i + 1, 1)
         if (esc) { out = out c; esc = 0; continue }
         if (c == "\\" && !sq) { out = out c; esc = 1; continue }
         if (c == sprintf("%c", 39) && !dq) { sq = !sq; out = out c; continue }
         if (c == "\"" && !sq) { dq = !dq; out = out c; continue }
-        if (!sq && !dq && (c == ";" || c == "|" || (c == "&" && n == "&"))) {
+        if (!sq && !dq && (c == "\n" || c == ";" || c == "|" || (c == "&" && n == "&"))) {
           print out; out = ""
           if ((c == "|" && n == "|") || (c == "&" && n == "&")) i++
           continue
@@ -243,6 +244,32 @@ _write_extract_redirects() {
   '
 }
 
+# _write_tokenize <segment> — emit one shell-like argv token per line, retaining
+# spaces inside quotes and removing one syntactic quote/backslash layer. This is
+# intentionally expansion-free: command substitutions and variables remain
+# literal and cannot execute inside a guard.
+_write_tokenize() {
+  printf '%s\n' "$1" | awk '
+    { s = s (NR > 1 ? "\n" : "") $0 }
+    END {
+      tok = ""; sq = 0; dq = 0; esc = 0; have = 0
+      for (i = 1; i <= length(s); i++) {
+        c = substr(s, i, 1)
+        if (esc) { tok = tok c; esc = 0; have = 1; continue }
+        if (c == "\\" && !sq) { esc = 1; have = 1; continue }
+        if (c == sprintf("%c", 39) && !dq) { sq = !sq; have = 1; continue }
+        if (c == "\"" && !sq) { dq = !dq; have = 1; continue }
+        if (!sq && !dq && c ~ /[ \t\n]/) {
+          if (have) { print tok; tok = ""; have = 0 }
+          continue
+        }
+        tok = tok c; have = 1
+      }
+      if (have) print tok
+    }
+  '
+}
+
 write_scan_segment() {
   _ws_raw=$1
   _ws_remote=${WRITE_REMOTE_HOST:-}
@@ -260,9 +287,12 @@ write_scan_segment() {
   done
   IFS=$_ws_oldifs
 
-  unset IFS
-  # shellcheck disable=SC2086
-  set -- $_ws_raw
+  _ws_oldifs=${IFS-}
+  IFS='
+'
+  # shellcheck disable=SC2046
+  set -- $(_write_tokenize "$_ws_raw")
+  IFS=$_ws_oldifs
   while [ $# -gt 0 ]; do case "$1" in *=*) shift ;; *) break ;; esac; done
   [ $# -gt 0 ] || return 0
   _ws_cmd=$(git_unwrap_quotes "$1")
@@ -279,10 +309,27 @@ write_scan_segment() {
         *) WRITE_DEST_CWD=${WRITE_DEST_CWD:-.}/$_ws_dest ;;
       esac
       return 0 ;;
-    scp|*/scp|rsync|*/rsync|cp|*/cp|mv|*/mv|install|*/install|tee|*/tee)
-      _ws_dest=''
+    tee|*/tee)
       for _ws_arg in "$@"; do
-        case "$_ws_arg" in -*) ;; *) _ws_dest=$_ws_arg ;; esac
+        case "$_ws_arg" in -*) ;; *)
+          write_on_destination tee "$_ws_arg" "$_ws_remote" || return $? ;;
+        esac
+      done
+      ;;
+    scp|*/scp|rsync|*/rsync|cp|*/cp|mv|*/mv|install|*/install)
+      _ws_dest=''
+      _ws_need_target=0
+      _ws_target_mode=0
+      for _ws_arg in "$@"; do
+        if [ "$_ws_need_target" -eq 1 ]; then
+          _ws_dest=$_ws_arg; _ws_need_target=0; _ws_target_mode=1; continue
+        fi
+        case "$_ws_arg" in
+          -t|--target-directory) _ws_need_target=1 ;;
+          --target-directory=*) _ws_dest=${_ws_arg#*=}; _ws_target_mode=1 ;;
+          -*) ;;
+          *) [ "$_ws_target_mode" -eq 1 ] || _ws_dest=$_ws_arg ;;
+        esac
       done
       [ -n "$_ws_dest" ] || return 0
       _ws_dest=$(git_unwrap_quotes "$_ws_dest")

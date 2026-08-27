@@ -219,6 +219,14 @@ run_guard 2 "shell redirect destination in primary tree" \
   "$(bj "cat > '$MAIN_REPO/notes.md'" "$NOGIT")"
 run_guard 2 "cd then relative redirect follows destination cwd" \
   "$(bj "cd '$MAIN_REPO' && cat > notes-relative.md" "$NOGIT")"
+run_guard 2 "quoted destination with spaces remains one argv token" \
+  "$(bj "cp /tmp/source '$MAIN_REPO/dir with space/file.txt'" "$NOGIT")"
+run_guard 2 "tee checks every output destination" \
+  "$(bj "tee '$MAIN_REPO/tee-first.txt' /tmp/tee-safe.txt" "$NOGIT")"
+run_guard 2 "cp target-directory option is the destination" \
+  "$(bj "cp --target-directory '$MAIN_REPO' /tmp/source" "$NOGIT")"
+run_guard 2 "worktree-shaped path cannot traverse into primary" \
+  "$(bj "cat > '$MAIN_REPO/.agents/worktrees/fake/../../../traversal.txt'" "$NOGIT")"
 run_guard 0 "documented plan readback destination /tmp" \
   "$(bj "scp '$MAIN_REPO/plan.html' /tmp/ && open /tmp/plan.html" "$MAIN_REPO")"
 run_guard 0 "write destination under repo-nested worktree path wins first" \
