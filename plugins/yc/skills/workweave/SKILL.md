@@ -99,12 +99,13 @@ Use this reading order:
    naming the missing engine. Never put token volume in a card labeled “engineering output”.
 3. **Activity over time** — a wide linear-scale chart of daily sessions, generated tokens, and
    cost. Use aligned small multiples rather than a dual axis. Mark the prior-window baseline.
-4. **Harness + model composition** — two compact charts with exact session, generated-token,
-   and cost shares. Prefer ranked horizontal bars over decorative pies. Then a **model
-   cost-to-performance** figure: generated tokens per recorded dollar, ranked per model. This is
-   the single most decision-useful comparison — a cached Sonnet route can return 10–20× the
-   output-per-dollar of a premium or an uncached route — and is the local analog of WorkWeave's
-   model-comparison lens. State that correlation is not causation (task mix differs per model).
+4. **Harness + model composition** — two composition figures. First, harness and model shares
+   (exact session, generated-token, and cost shares) as aligned small multiples in one figure;
+   prefer ranked horizontal bars over decorative pies. Second, a **model cost-to-performance**
+   ranking: generated tokens per recorded dollar, ranked per model. This is the single most
+   decision-useful comparison — a cached Sonnet route can return 10–20× the output-per-dollar of
+   a premium or an uncached route — and is the local analog of WorkWeave's model-comparison lens.
+   State that correlation is not causation (task mix differs per model).
 5. **Efficiency** — actual versus no-cache cost, generated tokens per dollar overall, duration, and
    shipped units when available. State that correlation is not causation.
 6. **Process** — project-scoped hook p50/p95/p99, total observed hook time, block rate, slow CLI
