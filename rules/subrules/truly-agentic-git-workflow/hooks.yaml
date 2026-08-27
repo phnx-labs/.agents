@@ -1,6 +1,7 @@
-# Hook bundled with the truly-agentic-git-workflow subrule. agents-cli folds this
-# into the hook manifest (collectSubruleHooks) and registers it as a PreToolUse
-# guard. The script resolves relative to this directory.
+# Hook bundled with the truly-agentic-git-workflow subrule. agents-cli may fold
+# this into a composed project manifest; the system layer also registers the
+# same guard explicitly in agents.yaml so installed version homes cannot miss
+# it. The script resolves relative to this directory.
 #
 # One entry, one script, one combined matcher: the guard fires on Bash (to block
 # `git commit|add`) and on the file tools (to block create/update/delete), and

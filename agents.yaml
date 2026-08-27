@@ -114,6 +114,14 @@ hooks:
     matcher: Bash
     script: pre-tool-use/git-guard.sh
     timeout: 5
+  main-branch-guard:
+    # Destination-based enforcement for file tools and shell writes, including
+    # scp/ssh writes into a primary checkout on another fleet machine.
+    events:
+      - PreToolUse
+    matcher: "Bash|Write|Edit|MultiEdit|NotebookEdit"
+    script: rules/subrules/truly-agentic-git-workflow/main-branch-guard.sh
+    timeout: 5
   rm-guard:
     events:
       - PreToolUse

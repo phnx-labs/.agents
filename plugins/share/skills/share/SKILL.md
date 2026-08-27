@@ -35,7 +35,8 @@ $0). The page is stored in R2, so the link outlives the agent that made it.
 3. **Publish.**
    - **Public** (default): `agents artifacts share <file>`
      HTML pages get an auto-generated Open Graph cover (a 1200×630 screenshot of
-     the page's hero). To pin a stable name pass `--slug <project>-<feature>`;
+     the page's hero). As an optional override, pass `--slug <project>-<feature>`
+     to pin a stable name;
      otherwise the default `<project>-<feature>-<hash>` is used.
    - **Private** (`/share --private <file>`): `agents artifacts share <file> --no-cover --expire 7d`
      - `--no-cover` — no OG image, so the link does **not** unfurl into a preview
@@ -66,7 +67,7 @@ $0). The page is stored in R2, so the link outlives the agent that made it.
 
 ```bash
 agents artifacts share plan.html                 # public link + auto OG cover
-agents artifacts share plan.html --slug my-name  # stable, exact slug instead of the default
+agents artifacts share plan.html --slug my-name  # optional stable-name override
 agents artifacts share plan.html --no-cover      # skip the preview image
 agents artifacts share report.html --expire 7d   # auto-expire (30d / 12h / 2026-08-01 / never also work)
 ```

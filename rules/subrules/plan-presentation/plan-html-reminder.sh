@@ -236,7 +236,9 @@ fi
     echo "    agents browser start --url file://\$PWD/.agents/artifacts/\$DATE/plan-<slug>.html"
     echo "    agents browser screenshot -o /tmp/plan-<slug>.png"
     echo "    view_image /tmp/plan-<slug>.png"
-    echo "  Copy/open it on the interactive host only when the user explicitly requested it."
+    echo "  If the user explicitly requested it on the interactive host, keep the destination outside every checkout:"
+    echo "    scp .agents/artifacts/\$DATE/plan-<slug>.html <host>:/tmp/"
+    echo "    agents ssh <host> 'open /tmp/plan-<slug>.html'"
     echo "  Same layout for any related artifact (visuals, reports): .agents/artifacts/yyyy-mm-dd/<title>.md"
   fi
   if [ "$checklist_ok" != 1 ]; then

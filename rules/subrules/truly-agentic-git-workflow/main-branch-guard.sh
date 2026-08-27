@@ -33,11 +33,13 @@
 # tool calls: the user's own editor, `!`-prefixed session commands, and git's
 # internal hooks are unaffected.
 #
-# Scope (deliberate — the "files + commit check" design): raw-shell working-tree
-# mutation in the primary tree (`>`/`>>` redirection, `tee`, `sed -i`, `cp`,
-# `git rm`/`git mv`) is NOT blocked at write time. The `git add`/`git commit`
-# check is the choke point — such changes can never be committed from the primary
-# working tree, so nothing lands outside a linked worktree + PR.
+# Bash destinations are checked too: redirection, `tee`, `cp`, `mv`, `install`,
+# `scp`, and `rsync`, including commands nested under `sh -c`, plain `ssh`, and
+# `agents ssh`. Each destination is judged against its own local or remote repo;
+# the session cwd is never used as a proxy for a destination in another tree.
+# `agents run --device` and remote `agents teams` carry prompts to separately
+# guarded agents rather than executing a shell destination directly. Crabbox
+# writes only into its leased ephemeral checkout, not a user's primary checkout.
 #
 # Limitations (intentionally out of scope — runtime obfuscation only a sandbox
 # can stop): `eval`/`xargs`/`$(...)` subshells feeding a git command string,
@@ -341,9 +343,7 @@ case "$tool" in
   *) exit 0 ;;
 esac
 
-# --- Bash branch: block `git commit|add|stage` in the primary working tree -----
-# Fast path: no "git" anywhere -> nothing to police.
-case "$input" in *git*) ;; *) exit 0 ;; esac
+# --- Bash branch: block writes and git mutations in primary working trees ------
 # Parser presence already confirmed by the tool_name extraction above.
 cmd=$(_json_field "$input" tool_input.command toolInput.command) || cmd=""
 [ -z "$cmd" ] && exit 0
@@ -367,7 +367,9 @@ for _cand in "$_LIB_DIR/../../../hooks/lib/git-parse.sh" "${HOME}/.agents/.syste
   fi
 done
 unset _LIB_DIR _cand
-if ! command -v git_scan_segment >/dev/null 2>&1; then
+if ! command -v git_scan_segment >/dev/null 2>&1 \
+  || ! command -v write_scan_segment >/dev/null 2>&1 \
+  || ! command -v git_extract_remote_inner >/dev/null 2>&1; then
   printf 'main-branch-guard: shared git-parse lib not found — refusing the tool call unchecked (fail-closed). Ensure ~/.agents/.system/hooks/lib/git-parse.sh is present.\n' >&2
   exit 2
 fi
@@ -396,6 +398,104 @@ _MBG_UNRESOLVED="<mbg:unresolved>"
 _mbg_var_record() { # $1=name  $2=value (may be the tombstone sentinel)
   _MBG_VARS="${_MBG_VARS}
 $1=$2"
+}
+
+# _mbg_shell_quote <value> — quote one value for the remote POSIX shell without
+# allowing a path surfaced from the command string to become shell syntax.
+_mbg_shell_quote() {
+  printf "'%s'" "$(printf '%s' "$1" | sed "s/'/'\\\\''/g")"
+}
+
+# remote_primary_tree <host> <path> — ask the destination host to resolve the
+# path's nearest existing ancestor and classify its own checkout. Worktrees are
+# checked first and win. On a protected result, sets _top/_cur for the denial.
+# Returns 0 for primary, 1 for linked/non-repo, and 2 when the destination host
+# cannot be inspected. Safe /tmp and agent-home destinations never call this.
+remote_primary_tree() {
+  _rp_host=$1
+  _rp_path=$2
+  command -v agents >/dev/null 2>&1 || return 2
+  _rp_q=$(_mbg_shell_quote "$_rp_path")
+  _rp_script="p=$_rp_q; d=\$(dirname \"\$p\"); while [ ! -d \"\$d\" ]; do n=\$(dirname \"\$d\"); [ \"\$n\" = \"\$d\" ] && break; d=\$n; done; top=\$(git -C \"\$d\" rev-parse --show-toplevel 2>/dev/null) || { printf 'NONE\\n'; exit 0; }; if [ -f \"\$top/.git\" ] && grep -q '/worktrees/' \"\$top/.git\" 2>/dev/null; then printf 'LINKED\\n'; elif [ -d \"\$top/.git\" ] || [ -f \"\$top/.git\" ]; then cur=\$(git -C \"\$top\" symbolic-ref --short -q HEAD 2>/dev/null || true); printf 'PRIMARY|%s|%s\\n' \"\$top\" \"\$cur\"; else printf 'NONE\\n'; fi"
+  _rp_out=$(agents ssh "$_rp_host" "$_rp_script" 2>/dev/null) || return 2
+  case "$_rp_out" in
+    PRIMARY\|*)
+      _rp_rest=${_rp_out#PRIMARY|}
+      _top=${_rp_rest%%|*}
+      _cur=${_rp_rest#*|}
+      return 0 ;;
+    LINKED|NONE) return 1 ;;
+    *) return 2 ;;
+  esac
+}
+
+# write_on_destination <kind> <destination> <remote-host> — WHERE policy for
+# write_scan_segment. The scanner stays policy-free; this callback resolves the
+# destination's own repo and blocks only primary checkouts.
+write_on_destination() {
+  _wd_kind=$1
+  _wd_path=$2
+  _wd_host=${3:-}
+
+  # scp/rsync encode the remote host in the destination token.
+  case "$_wd_kind:$_wd_path" in
+    scp:*:*|rsync:*:*)
+      _wd_host=${_wd_path%%:*}
+      _wd_path=${_wd_path#*:} ;;
+  esac
+  case "$_wd_path" in *\\*) _wd_path=$(printf '%s' "$_wd_path" | tr '\\' '/') ;; esac
+
+  # This syntactic exception MUST precede repo discovery: linked worktrees live
+  # below the protected repo root, so prefix/root checks would otherwise deny
+  # every legitimate agent write.
+  case "$_wd_path" in
+    */.agents/worktrees/*|.agents/worktrees/*) return 0 ;;
+  esac
+  # Explicit always-safe destinations; avoid a remote round-trip for the
+  # documented artifact readback pattern and agent-owned state.
+  case "$_wd_path" in
+    /tmp|/tmp/*|'~/.agents'|'~/.agents/'*|'$HOME/.agents'|'$HOME/.agents/'*) return 0 ;;
+  esac
+
+  if [ -n "$_wd_host" ]; then
+    case "$_wd_path" in /*|~/*) ;; *) return 0 ;; esac
+    if remote_primary_tree "$_wd_host" "$_wd_path"; then
+      deny_reason="Blocked: $_wd_kind destination '$_wd_host:$_wd_path' is in the PRIMARY working tree of $_top${_cur:+ (branch '$_cur')}.
+
+No agent may write into a user's primary checkout, locally or across machines.
+Write to a linked worktree under <repo>/.agents/worktrees/<slug>/ instead."
+      return 1
+    else
+      _wd_remote_rc=$?
+    fi
+    if [ "$_wd_remote_rc" -eq 2 ]; then
+      deny_reason="Blocked: could not verify remote $_wd_kind destination '$_wd_host:$_wd_path'.
+
+The primary-checkout guard fails closed when a remote destination cannot be
+classified. Use /tmp, ~/.agents, or a linked .agents/worktrees path, or restore
+fleet reachability and retry."
+      return 1
+    fi
+    return 0
+  fi
+
+  case "$_wd_path" in
+    '~/'*) _wd_path=${HOME}/${_wd_path#'~/'} ;;
+    /*|[A-Za-z]:/*) ;;
+    *) _wd_path=${cwd:-.}/$_wd_path ;;
+  esac
+  _wd_dir=$(dirname "$_wd_path")
+  while [ ! -d "$_wd_dir" ]; do
+    _wd_next=$(dirname "$_wd_dir")
+    [ "$_wd_next" = "$_wd_dir" ] && break
+    _wd_dir=$_wd_next
+  done
+  [ -d "$_wd_dir" ] || return 0
+  if in_primary_tree "$_wd_dir"; then
+    set_deny_reason "$_wd_kind destination '$_wd_path'"
+    return 1
+  fi
+  return 0
 }
 
 _mbg_var_get() { # $1=name -> prints value; rc 1 when unknown or tombstoned
@@ -732,6 +832,18 @@ check_segment() {
     check_command_string "$_dash_c_inner"
     return
   fi
+  if git_extract_remote_inner "$1"; then
+    _saved_remote=${WRITE_REMOTE_HOST:-}
+    WRITE_REMOTE_HOST=$_remote_host
+    check_command_string "$_remote_inner"
+    _remote_rc=$?
+    WRITE_REMOTE_HOST=$_saved_remote
+    return "$_remote_rc"
+  fi
+  write_scan_segment "$1" || return $?
+  # Git WHERE checks are local today. Remote direct writes are covered above;
+  # a remote agent is independently guarded when dispatched through the fleet.
+  [ -n "${WRITE_REMOTE_HOST:-}" ] && return 0
   git_scan_segment "$1"
 }
 

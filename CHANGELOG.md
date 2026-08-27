@@ -49,6 +49,14 @@
 
 ### Fixed
 
+- **Primary-checkout writes are blocked at their destination, including across
+  machines.** The existing `main-branch-guard` is now registered fleet-wide for
+  `Bash|Write|Edit|MultiEdit|NotebookEdit`; its shared parser surfaces shell
+  redirects, copy/install tools, scp/rsync destinations, and raw quoted commands
+  inside `ssh` / `agents ssh`. Each local or remote destination resolves its own
+  repo, while linked worktrees, `~/.agents/**`, and `/tmp/**` remain allowed
+  (PHNX-3312).
+
 - **merge-guard closes a self-merge bypass — author-authored verdicts no longer
   clear (PHNX-3236).** `pr-verdict.py`'s `has_verdict` cleared a merge whenever
   ANY review/comment on the PR carried an APPROVE/APPROVED verdict, with no
