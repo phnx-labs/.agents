@@ -88,6 +88,14 @@ expect 1 "tee checks every destination, not only the last" \
   "tee /Users/muqsit/src/github.com/muqsitnawaz/agents/first.txt /tmp/safe.txt"
 expect 1 "target-directory option identifies the write destination" \
   "cp --target-directory /Users/muqsit/src/github.com/muqsitnawaz/agents /tmp/x"
+expect 1 "glued short target-directory identifies destination" \
+  "cp -t/Users/muqsit/src/github.com/muqsitnawaz/agents /tmp/x"
+expect 1 "Bash clobber redirect identifies destination" \
+  "printf x >| /Users/muqsit/src/github.com/muqsitnawaz/agents/clobber.txt"
+expect 1 "install directory mode checks every operand" \
+  "install -d /Users/muqsit/src/github.com/muqsitnawaz/agents/new-dir /tmp/safe-dir"
+expect 1 "command wrapper preserves covered copy destination" \
+  "command cp /tmp/x /Users/muqsit/src/github.com/muqsitnawaz/agents/wrapped.txt"
 
 # Regression for the POC gap: retain the complete quoted inner command before
 # splitting its && chain, then qualify the discovered destination with the host.
