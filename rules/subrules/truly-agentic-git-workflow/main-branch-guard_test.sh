@@ -214,6 +214,26 @@ run_guard 0 "remote /dev/null discard is not a write" \
 run_guard 0 "local /dev/null discard is not a write" \
   "$(bj "ls -la 2>/dev/null > /dev/null" "$MAIN_REPO")"
 
+# Regression, 2026-08-27 — three more shapes that BLOCKED read-only fleet work.
+# A redirect trailing a quoted remote command belongs to the LOCAL shell.
+run_guard 0 "redirect after a quoted ssh command is local, not remote" \
+  "$(bj "agents ssh win-mini 'type config.yaml' > /private/tmp/out.yaml" "$MAIN_REPO")"
+# ...but a local redirect INTO the checkout after an ssh command still denies.
+run_guard 2 "local redirect into the checkout after ssh still denies" \
+  "$(bj "agents ssh win-mini 'type config.yaml' > $MAIN_REPO/leak.yaml" "$MAIN_REPO")"
+# ...and a genuine remote write into a remote checkout is unaffected.
+run_guard 0 "quoted remote command with no trailing redirect is untouched" \
+  "$(bj "agents ssh yosemite-m5 'ls -la ~/.agents'" "$MAIN_REPO")"
+# macOS resolves /tmp to /private/tmp, where every agent scratchpad lives.
+run_guard 0 "/private/tmp is the macOS canonical /tmp and is safe" \
+  "$(bj "cp /etc/hosts /private/tmp/hosts.copy" "$MAIN_REPO")"
+# An unexpanded variable cannot be resolved; joining it to cwd fabricates a path.
+run_guard 0 "an unexpanded \$VAR destination is not fabricated into a cwd path" \
+  "$(bj "tee \$SP/winhome/agents.yaml" "$MAIN_REPO")"
+# A RESOLVABLE assignment in the same chain must still be followed and denied.
+run_guard 2 "a resolvable assignment in-chain is still followed" \
+  "$(bj "SP=$MAIN_REPO; cat > \$SP/leak.md" "$MAIN_REPO")"
+
 run_guard 2 "git -C main commit"                 "$(bj "git -C $MAIN_REPO commit -m x")"
 run_guard 2 "git commit, cwd on main"            "$(bj "git commit -m x" "$MAIN_REPO")"
 run_guard 2 "git add, cwd on main"               "$(bj "git add ." "$MAIN_REPO")"
