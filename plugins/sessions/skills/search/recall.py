@@ -163,7 +163,12 @@ def _blocks_to_events(role, content):
     blocks (text/tool_use/tool_result), the shape Claude Code, Droid, and
     Codex all converge on once role+content are pulled out of their own
     envelope."""
-    if role not in ("user", "assistant"):
+    if role == "developer":
+        # Codex's auto-injected system/fleet/host context — real searchable
+        # text (team roster, in-flight PRs, host info), just not a human
+        # turn. Bucket it with tool output rather than dropping it.
+        role = "tool"
+    if role not in ("user", "assistant", "tool"):
         return
     if content is None:
         return

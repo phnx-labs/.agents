@@ -25,9 +25,11 @@
   `agents sessions "<phrase>"` and is recovered by `recall.py` via a neighboring
   indexed term. Transcript parsing covers each harness's own on-disk shape — Claude
   Code / Droid's `message.role`/`message.content` envelope, Codex's
-  `response_item`/`payload` envelope, and Grok's unwrapped `type`-as-role records
-  (read from the sibling `chat_history.jsonl`, since `sessions.file_path` points at
-  Grok's `summary.json` metadata, not the transcript). A session the index matches
+  `response_item`/`payload` envelope (including its auto-injected `developer`-role
+  system/fleet/host context, bucketed as `tool` rather than dropped), and Grok's
+  unwrapped `type`-as-role records (read from the sibling `chat_history.jsonl`,
+  since `sessions.file_path` points at Grok's `summary.json` metadata, not the
+  transcript). A session the index matches
   but recall.py cannot fully parse (currently: Kimi, whose transcript is split
   across several per-agent files) never silently drops out of the digest — it comes
   back as an index-only hit with a `note`, so a real zero is never confused with

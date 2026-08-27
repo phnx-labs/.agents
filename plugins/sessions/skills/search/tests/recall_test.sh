@@ -257,5 +257,81 @@ else
 fi
 
 echo
+echo "--- test 3: cross-harness — Codex gets a real snippet, an unparseable harness never vanishes ---"
+# Regression coverage for the exact bug this fixup fixed: the transcript
+# parser used to only understand Claude Code's envelope, so a Codex/Kimi
+# session the FIND phase matched via the index would silently return 0
+# hits from recall.py. Checked directly against recall.py's own
+# find_candidates/build_digest (bypassing --limit ranking cutoffs, which are
+# a candidate-ranking concern, not a recovery concern) for real local data:
+#   (a) a Codex session with a real indexed term gets a genuine RECOVERED
+#       snippet (not an index-only stub) — the parser actually reads it.
+#   (b) a Kimi session (transcript format recall.py does not parse yet)
+#       with a real indexed term still shows up in the digest as an
+#       index-only stub with a `note` — it never just disappears.
+CROSS_HARNESS=$(python3 - "$DIR/.." "$DB" <<'PY'
+import re, sqlite3, sys
+sys.path.insert(0, sys.argv[1])
+import recall
+
+db = sqlite3.connect(f"file:{sys.argv[2]}?mode=ro", uri=True)
+
+
+def pick_fixture(agent):
+    cur = db.cursor()
+    cur.execute(
+        "SELECT s.id, s.short_id, t.content FROM session_text t JOIN sessions s ON s.id = t.session_id "
+        "WHERE s.agent = ? AND length(t.content) > 100 ORDER BY s.timestamp DESC LIMIT 30",
+        (agent,),
+    )
+    for sid, short_id, content in cur.fetchall():
+        for w in dict.fromkeys(re.findall(r"[A-Za-z]{7,}", content)):
+            # confirm this term actually resolves this exact session as a
+            # FIND candidate (not just present somewhere in its content —
+            # bm25/tool-text tokenization can differ), independent of rank.
+            conn = recall.open_db()
+            try:
+                candidates = recall.find_candidates(conn, [w], None, None, 200)
+            finally:
+                conn.close()
+            match = next((c for c in candidates if c["id"] == sid), None)
+            if match:
+                return short_id, w, [match]
+    return None
+
+
+for agent, label in (("codex", "CODEX"), ("kimi", "KIMI")):
+    fixture = pick_fixture(agent)
+    if not fixture:
+        print(f"{label}\tSKIP\tno local {agent} session with a term that resolves as a FIND candidate")
+        continue
+    short_id, term, candidates = fixture
+    digest = recall.build_digest(candidates, [term], 3, 1)
+    hit = next((d for d in digest if d["shortId"] == short_id), None)
+    if hit is None:
+        print(f"{label}\tMISSING\t{short_id}\t{term}")
+    elif hit["snippets"]:
+        print(f"{label}\tRECOVERED\t{short_id}\t{term}")
+    else:
+        print(f"{label}\tSTUB\t{short_id}\t{term}\t{hit.get('note')}")
+PY
+)
+
+while IFS=$'\t' read -r LABEL STATUS A B C; do
+  [ -z "$LABEL" ] && continue
+  case "$LABEL:$STATUS" in
+    CODEX:SKIP) echo "SKIP - $A" ;;
+    CODEX:RECOVERED) ok "codex session $A ('$B') got a real recovered snippet, not a stub" ;;
+    CODEX:MISSING) bad "codex session $A vanished from the digest for its own indexed term '$B' (candidate confirmed present)" ;;
+    CODEX:STUB) bad "codex session $A only produced an index-only stub ($C) for its own indexed term '$B' — parser regression" ;;
+    KIMI:SKIP) echo "SKIP - $A" ;;
+    KIMI:STUB) ok "kimi session $A ('$B') stays in the digest as an honest index-only stub, not dropped" ;;
+    KIMI:MISSING) bad "kimi session $A silently vanished from the digest for its own indexed term '$B' (candidate confirmed present) — the never-drop guarantee regressed" ;;
+    KIMI:RECOVERED) echo "note: kimi session $A unexpectedly got a real recovered snippet (parser support improved) — not a failure" ;;
+    *) bad "unrecognized test-3 result line: $LABEL $STATUS $A $B $C" ;;
+  esac
+done <<< "$CROSS_HARNESS"
+
+echo
 echo "recall: $pass passed, $fail failed"
 [ "$fail" -eq 0 ]
