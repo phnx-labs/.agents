@@ -210,6 +210,20 @@ run_guard 0 "git commit in non-git cwd"          "$(bj "git commit -m x" "$NOGIT
 run_guard 0 "non-git bash on main (fast path)"   "$(bj "echo hello" "$MAIN_REPO")"
 run_guard 0 "ls with no git token"               "$(bj "ls -la" "$MAIN_REPO")"
 
+# --- Bash write destinations: policy follows the destination, never cwd ---
+run_guard 2 "cp destination in primary tree from parent cwd" \
+  "$(bj "cp /tmp/source '$MAIN_REPO/content-source-materials-2026-08-10.md'" "$TMP")"
+run_guard 2 "scp local-form destination in primary tree" \
+  "$(bj "scp -q /tmp/refocus-brief.md '$MAIN_REPO/refocus-brief.md'" "$NOGIT")"
+run_guard 2 "shell redirect destination in primary tree" \
+  "$(bj "cat > '$MAIN_REPO/notes.md'" "$NOGIT")"
+run_guard 0 "documented plan readback destination /tmp" \
+  "$(bj "scp '$MAIN_REPO/plan.html' /tmp/ && open /tmp/plan.html" "$MAIN_REPO")"
+run_guard 0 "write destination under repo-nested worktree path wins first" \
+  "$(bj "cat > '$MAIN_REPO/.agents/worktrees/fix-x/notes.md'" "$MAIN_REPO")"
+run_guard 0 "write destination under agent home" \
+  "$(bj "cat > '$HOME/.agents/notes.md'" "$MAIN_REPO")"
+
 # --- Extra edge cases (from review) ---
 run_guard 0 "Write in real linked worktree (feat)" "$(wj Write file_path "$WT_LINK/tracked.txt")"
 run_guard 0 "git commit in real linked worktree"   "$(bj "git commit -m x" "$WT_LINK")"

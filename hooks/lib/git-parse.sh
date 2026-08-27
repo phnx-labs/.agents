@@ -16,9 +16,9 @@
 # to land in three places; they drifted (large-file grew a redundant sh/bash arm,
 # main-branch grew `-C` capture the others lacked). One definition, one fix site.
 #
-# The parser is policy-free: it identifies the git subcommand and hands it to a
-# consumer-supplied `git_on_command <sub> <args...>` callback. WHAT/WHERE policy
-# lives in the guard, not here — this file only finds the git invocation.
+# The parser is policy-free: it identifies git invocations and shell write
+# destinations, then hands them to consumer callbacks. WHAT/WHERE policy lives
+# in the guard, not here — this file only finds commands and destinations.
 
 # git_extract_sh_c_inner <raw> — detect a `sh|bash -c <inner>` wrapper at the
 # raw-string level (BEFORE any token split, so a quoted inner command like
@@ -55,6 +55,53 @@ git_extract_sh_c_inner() {
   return 0
 }
 
+# git_extract_remote_inner <raw> — detect `ssh <host> <inner>` and
+# `agents|ag ssh <host> <inner>` at the raw-string level, before token splitting
+# can shred a quoted inner command. On a match, sets _remote_host and
+# _remote_inner (one-layer-unquoted) and returns 0. SSH transport flags before
+# the host are skipped; flags whose next token is an argument consume it too.
+git_extract_remote_inner() {
+  _rr=$1
+  _rr=$(printf '%s' "$_rr" | sed 's/^[[:space:]]*//')
+  while :; do
+    _pre=$_rr
+    _rr=$(printf '%s' "$_rr" | sed 's/^[A-Za-z_][A-Za-z_0-9]*=[^[:space:]]*[[:space:]][[:space:]]*//')
+    [ "$_rr" = "$_pre" ] && break
+  done
+  case "$_rr" in
+    agents\ ssh\ *) _rr=${_rr#agents ssh } ;;
+    ag\ ssh\ *)     _rr=${_rr#ag ssh } ;;
+    ssh\ *)         _rr=${_rr#ssh } ;;
+    */ssh\ *)       _rr=${_rr#*/ssh } ;;
+    *) return 1 ;;
+  esac
+  _rr=$(printf '%s' "$_rr" | sed 's/^[[:space:]]*//')
+  while [ -n "$_rr" ]; do
+    _rw=${_rr%%[[:space:]]*}
+    if [ "$_rw" = "$_rr" ]; then _rr=''; else _rr=${_rr#"$_rw"}; fi
+    _rr=$(printf '%s' "$_rr" | sed 's/^[[:space:]]*//')
+    case "$_rw" in
+      -b|-c|-D|-E|-e|-F|-I|-i|-J|-L|-l|-m|-O|-o|-p|-Q|-R|-S|-W|-w)
+        [ -n "$_rr" ] || return 1
+        _ra=${_rr%%[[:space:]]*}
+        if [ "$_ra" = "$_rr" ]; then _rr=''; else _rr=${_rr#"$_ra"}; fi
+        _rr=$(printf '%s' "$_rr" | sed 's/^[[:space:]]*//') ;;
+      --) ;;
+      -*) ;;
+      *)
+        _remote_host=$(git_unwrap_quotes "$_rw")
+        [ -n "$_rr" ] || return 1
+        case "$_rr" in
+          \"*\") _rr=${_rr#\"}; _rr=${_rr%\"} ;;
+          \'*\') _rr=${_rr#\'}; _rr=${_rr%\'} ;;
+        esac
+        _remote_inner=$_rr
+        return 0 ;;
+    esac
+  done
+  return 1
+}
+
 # git_unwrap_quotes <token> — strip ONE layer of matching single or double
 # quotes from a token (`"git"` -> git, `'/tmp/x'` -> /tmp/x); prints the token
 # unchanged when it is not wholly quote-wrapped. Used for the first token and
@@ -67,17 +114,29 @@ git_unwrap_quotes() {
   esac
 }
 
-# git_split_chains <cmd> — split a command string on the chain operators
-# `&&`, `||`, `;`, `|` and on real newlines, printing one segment per line.
-# The real newline in the sed replacement is inserted via a backslash-newline
-# continuation (a GNU/BSD-portable extension, reliable on the macOS sed we
-# target). Callers iterate the output with IFS set to newline.
+# git_split_chains <cmd> — split a command string on chain operators and real
+# newlines OUTSIDE quotes. Quoted remote/shell inner commands must stay whole so
+# their raw-level extractor sees the complete string before recursion.
 git_split_chains() {
-  printf '%s' "$1" | sed 's/&&/\
-/g; s/||/\
-/g; s/;/\
-/g; s/|/\
-/g'
+  printf '%s\n' "$1" | awk '
+    {
+      s = $0; out = ""; sq = 0; dq = 0; esc = 0
+      for (i = 1; i <= length(s); i++) {
+        c = substr(s, i, 1); n = substr(s, i + 1, 1)
+        if (esc) { out = out c; esc = 0; continue }
+        if (c == "\\" && !sq) { out = out c; esc = 1; continue }
+        if (c == sprintf("%c", 39) && !dq) { sq = !sq; out = out c; continue }
+        if (c == "\"" && !sq) { dq = !dq; out = out c; continue }
+        if (!sq && !dq && (c == ";" || c == "|" || (c == "&" && n == "&"))) {
+          print out; out = ""
+          if ((c == "|" && n == "|") || (c == "&" && n == "&")) i++
+          continue
+        }
+        out = out c
+      }
+      print out
+    }
+  '
 }
 
 # git_scan_segment <segment> — reduce ONE already-split segment to the git
@@ -142,4 +201,82 @@ git_scan_segment() {
   _sub=$1
   shift
   git_on_command "$_sub" "$@"
+}
+
+# write_scan_segment <segment> — surface direct filesystem write destinations
+# in one already-split shell segment through the consumer callback:
+#   write_on_destination <kind> <destination> <remote-host>
+# WRITE_REMOTE_HOST is supplied by a recursive remote-command consumer; empty
+# means the command runs locally. This scanner deliberately contains no repo,
+# branch, allowlist, or deny policy.
+_write_extract_redirects() {
+  # Character scan keeps `>` inside quoted prose/data from becoming a phantom
+  # destination. It also returns every real redirection in the segment rather
+  # than only the final one. One-layer shell quotes around a target are removed.
+  awk '
+    {
+      s = $0; sq = 0; dq = 0; esc = 0
+      for (i = 1; i <= length(s); i++) {
+        c = substr(s, i, 1)
+        if (esc) { esc = 0; continue }
+        if (c == "\\" && !sq) { esc = 1; continue }
+        if (c == sprintf("%c", 39) && !dq) { sq = !sq; continue }
+        if (c == "\"" && !sq) { dq = !dq; continue }
+        if (c != ">" || sq || dq) continue
+        if (substr(s, i + 1, 1) == ">") i++
+        j = i + 1
+        while (j <= length(s) && substr(s, j, 1) ~ /[ \t]/) j++
+        out = ""; osq = 0; odq = 0; oesc = 0
+        for (; j <= length(s); j++) {
+          d = substr(s, j, 1)
+          if (oesc) { out = out d; oesc = 0; continue }
+          if (d == "\\" && !osq) { oesc = 1; continue }
+          if (d == sprintf("%c", 39) && !odq) { osq = !osq; continue }
+          if (d == "\"" && !osq) { odq = !odq; continue }
+          if (!osq && !odq && d ~ /[ \t|;&]/) break
+          out = out d
+        }
+        if (out != "") print out
+        i = j
+      }
+    }
+  '
+}
+
+write_scan_segment() {
+  _ws_raw=$1
+  _ws_remote=${WRITE_REMOTE_HOST:-}
+
+  # Redirections are syntax, not argv. Heredoc bodies are removed by the
+  # consumer before chain splitting.
+  _ws_oldifs=${IFS-}
+  IFS='
+'
+  for _ws_redir in $(printf '%s\n' "$_ws_raw" | _write_extract_redirects); do
+    IFS=$_ws_oldifs
+    write_on_destination redirect "$_ws_redir" "$_ws_remote" || return $?
+    IFS='
+'
+  done
+  IFS=$_ws_oldifs
+
+  unset IFS
+  # shellcheck disable=SC2086
+  set -- $_ws_raw
+  while [ $# -gt 0 ]; do case "$1" in *=*) shift ;; *) break ;; esac; done
+  [ $# -gt 0 ] || return 0
+  _ws_cmd=$(git_unwrap_quotes "$1")
+  shift
+  case "$_ws_cmd" in
+    scp|*/scp|rsync|*/rsync|cp|*/cp|mv|*/mv|install|*/install|tee|*/tee)
+      _ws_dest=''
+      for _ws_arg in "$@"; do
+        case "$_ws_arg" in -*) ;; *) _ws_dest=$_ws_arg ;; esac
+      done
+      [ -n "$_ws_dest" ] || return 0
+      _ws_dest=$(git_unwrap_quotes "$_ws_dest")
+      write_on_destination "${_ws_cmd##*/}" "$_ws_dest" "$_ws_remote" || return $?
+      ;;
+  esac
+  return 0
 }
