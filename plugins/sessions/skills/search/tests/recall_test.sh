@@ -337,5 +337,30 @@ while IFS=$'\t' read -r LABEL STATUS A B C; do
 done <<< "$CROSS_HARNESS"
 
 echo
+echo "--- test 4: snippet size is hard-capped, even when a term recurs densely ---"
+# Deterministic (no live DB): a term recurring closer than the merge distance
+# must NOT collapse into one runaway snippet. The digest-vs-transcript byte
+# check in test 1 is too loose to catch this; assert the per-snippet line cap
+# directly against grep_snippets.
+CAP_OUT=$(python3 - "$DIR/.." <<'PY'
+import sys
+sys.path.insert(0, sys.argv[1])
+import recall
+context = 3
+lines = [("user", "hit foo here" if i % 4 == 0 else "filler line %d" % i) for i in range(200)]
+snips = recall.grep_snippets(lines, ["foo"], context, 5)
+cap = 3 * context + 2            # the documented per-snippet span
+worst = max((len(s["text"].splitlines()) for s in snips), default=0)
+# +1 tolerance for the truncation marker line
+print("OK" if snips and worst <= cap + 1 else f"FAIL worst={worst} cap={cap}")
+PY
+)
+if [ "$CAP_OUT" = "OK" ]; then
+  ok "no single snippet exceeds the ~$((3*3+2))-line cap under a dense-recurrence term"
+else
+  bad "snippet cap breached: $CAP_OUT"
+fi
+
+echo
 echo "recall: $pass passed, $fail failed"
 [ "$fail" -eq 0 ]
