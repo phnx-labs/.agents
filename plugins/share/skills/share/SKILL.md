@@ -1,8 +1,8 @@
 ---
 name: share
-description: "Publish an agent-generated HTML artifact (a plan, viz, or report) to a shareable link on the user's own Cloudflare R2 (zero egress, ~$0) via `agents artifacts share`. Public (the default) gets an auto Open Graph cover so the link unfurls into a preview card in Slack/iMessage/Twitter/Discord; pass --private for an unlisted auto-expiring link with no card. Use when an agent has produced HTML worth handing to a human, or when a plan/viz should outlive /tmp. Triggers on: 'share this', 'publish the plan', 'make a link', 'shareable link', 'send me the plan', 'og image / preview card for this', '/share --private'."
+description: "Publish an agent-generated HTML artifact (a plan, viz, or report) to a shareable link via the managed Phoenix endpoint by default, or the user's own Cloudflare R2 when BYO is configured. Public gets an auto Open Graph cover so the link unfurls into a preview card in Slack/iMessage/Twitter/Discord; pass --private for an unlisted auto-expiring link with no card. Use when an agent has produced HTML worth handing to a human, or when a plan/viz should outlive /tmp. Triggers on: 'share this', 'publish the plan', 'make a link', 'shareable link', 'send me the plan', 'og image / preview card for this', '/share --private'."
 argument-hint: "[file | empty for the session's most recent HTML] [--private]"
-allowed-tools: Bash(agents artifacts share*), Bash(agents secrets*), Read(*), Bash(ls*), Bash(curl *)
+allowed-tools: Bash(agents artifacts share*), Bash(agents auth*), Bash(agents secrets*), Read(*), Bash(ls*), Bash(curl *)
 user-invocable: true
 ---
 
@@ -29,9 +29,10 @@ Cloudflare R2 when BYO is configured. The page outlives the agent that made it.
    often under `/tmp` or `~/Downloads`). If you can't confidently identify one, ask
    which file.
 2. **Check setup.** Run `agents artifacts share status`. If it prints no endpoint,
-   tell the user to run `agents artifacts setup` once (provisions an R2 bucket +
-   Worker on their own Cloudflare) — or `agents artifacts share join <baseUrl>` to
-   use an existing endpoint — then stop. Do not try to provision silently.
+   offer `agents auth login` for the managed Phoenix endpoint. The explicit BYO
+   alternatives remain `agents artifacts setup` (provisions an R2 bucket + Worker
+   on the user's Cloudflare) or `agents artifacts share join <baseUrl>` (uses an
+   existing endpoint). Then stop; do not sign in, provision, or join silently.
 3. **Publish.**
    - **Public** (default): `agents artifacts share <file>`
      HTML pages get an auto-generated Open Graph cover. The managed Worker lazily
@@ -39,16 +40,15 @@ Cloudflare R2 when BYO is configured. The page outlives the agent that made it.
      the local hero-screenshot fallback. As an optional override, pass `--slug <project>-<feature>`
      to pin a stable name;
      otherwise the default `<project>-<feature>-<hash>` is used.
-   - **Private** (`/share --private <file>`): `agents artifacts share <file> --no-cover --expire 7d`
+   - **Private** (`/share --private <file>`): `agents artifacts share <file> --unlisted --no-cover --expire 7d`
+     - `--unlisted` — hides the page from the public gallery and default listing.
      - `--no-cover` — no OG image, so the link does **not** unfurl into a preview
        card and won't be pulled into a rich embed.
      - `--expire 7d` — auto-expires after a week (offer a different window if the
        user wants; the Worker returns `410` and deletes the object past expiry).
-     Do **not** pass the CLI's `--private` flag for this mode. On
-     `agents artifacts share`, `--private` is an alias of `--unlisted` (hides the
-     page from the public gallery and `agents artifacts share list`); it does not
-     skip the cover or set 7-day expiry. Slash-command private mode is the two
-     flags above.
+     On `agents artifacts share`, `--private` is an alias of `--unlisted`; either
+     supplies the required visibility flag, but neither skips the cover or sets
+     7-day expiry by itself. Slash-command private mode uses all three flags above.
 4. **Report** the printed link. Public: also the `cover` URL, and tell the user it
    will unfurl into a preview card in Slack, iMessage, Twitter/X, and Discord.
    Private: say when it expires.
@@ -57,11 +57,12 @@ Cloudflare R2 when BYO is configured. The page outlives the agent that made it.
 
 `agents artifacts share` needs an endpoint first. Check with `agents artifacts share status`:
 
-- **Empty** → the user must run **`agents artifacts setup`** once (provisions an R2 bucket
-  + a tiny Worker on their Cloudflare, read from their `cloudflare.com` secrets bundle;
-  maps `share.<domain>` if the token owns the zone, else a free `*.workers.dev` URL), or
-  **`agents artifacts share join <baseUrl>`** to publish through an existing endpoint with a shared
-  write token. **Do not provision silently** — tell the user and stop if it's unset.
+- **Empty** → offer **`agents auth login`** for the managed Phoenix endpoint. For
+  explicit BYO, the user can instead run **`agents artifacts setup`** once
+  (provisions an R2 bucket + tiny Worker on their Cloudflare) or
+  **`agents artifacts share join <baseUrl>`** to use an existing endpoint with a
+  shared write token. **Do not sign in, provision, or join silently** — tell the
+  user and stop if status is unset.
 - **Configured** → just publish.
 
 ## Publishing
@@ -87,7 +88,7 @@ agents artifacts share report.html --expire 7d   # auto-expire (30d / 12h / 2026
 
 - **Public** (`/share`, the default): a preview-card link meant to be posted.
   Anyone with the URL can read it — that's the point.
-- **Private** (`/share --private`): `--no-cover --expire 7d` — unlisted, auto-expiring,
+- **Private** (`/share --private`): `--unlisted --no-cover --expire 7d` — unlisted, auto-expiring,
   no card. **Be honest**: this is *unlisted, not authenticated*. R2 reads are public, so
   anyone with the exact URL can still read it. Never call it encrypted or access-restricted.
   True view restriction (a viewer token) is a future Worker enhancement.

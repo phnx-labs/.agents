@@ -10,7 +10,7 @@ one step through the managed Phoenix share endpoint, or your own Cloudflare R2
 | Command | What it does |
 | --- | --- |
 | `/share <file>` | Publish a **public** link with an auto-generated OG cover, so it unfurls into a preview card in Slack / iMessage / Twitter/X / Discord. Managed shares use a deterministic server-rendered card; BYO keeps the local hero screenshot fallback. Default slug `<project>-<feature>-<hash>`. |
-| `/share --private <file>` | Same command, private modifier: an **unlisted**, auto-expiring (`--expire 7d`) link with **no** preview card (`--no-cover`). Unguessable slug — but still public-read, not authenticated. |
+| `/share --private <file>` | Publish with `--unlisted --no-cover --expire 7d`: an **unlisted**, auto-expiring link with **no** preview card. Unguessable slug — but still public-read, not authenticated. |
 
 Both resolve `<file>` from the argument, else the most recent HTML artifact of the
 session, else they ask. Shared steps live in the `share` skill; the command file
@@ -42,8 +42,8 @@ and it renders the card above.
 ## Public vs private
 
 `/share` is meant to be posted: it has a preview card. `/share --private` is for
-discreet sharing: no card (`--no-cover` so the link does not unfurl into a preview
-card), auto-expires after 7 days (the Worker returns `410` afterwards). Note that
-R2 reads are public, so anyone with the exact URL can view a "private" link — it's
-unlisted, not access-controlled. True view restriction (a viewer token) is a future Worker
-enhancement.
+discreet sharing: it publishes with `--unlisted --no-cover --expire 7d`, hiding
+the page from the public gallery, suppressing the preview card, and expiring it
+after 7 days (the Worker returns `410` afterwards). Note that reads remain public,
+so anyone with the exact URL can view a "private" link — it is unlisted, not
+access-controlled. True view restriction (a viewer token) is a future Worker enhancement.
