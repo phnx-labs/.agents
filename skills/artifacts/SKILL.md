@@ -29,14 +29,38 @@ The kind changes the content contract, not the rendering pipeline.
    If it is missing, report that prerequisite. Do not replace it with a
    hand-written HTML fallback.
 
-2. Resolve the dated artifact directory:
+2. Resolve the artifact directory. It lives in the DURABLE HOME, never in a
+   git checkout:
 
    ```bash
-   ROOT=$(git rev-parse --show-toplevel 2>/dev/null)
    DATE=$(date +%F)
-   ARTIFACTS_DIR="${ROOT:-.}/.agents/artifacts/$DATE"
+   ARTIFACTS_DIR="$HOME/.agents/artifacts/$DATE/<slug>"
    mkdir -p "$ARTIFACTS_DIR"
    ```
+
+   `~/.agents/artifacts/` is outside every repository, is never reaped, and is
+   already date-partitioned. The `<slug>` level exists so two agents working on
+   the same day cannot collide on `plan.md`.
+
+   Do NOT write into `<repo>/.agents/artifacts/`. That directory is TRACKED —
+   untracked files inside it are what make `git checkout` and `git merge` refuse
+   with "would be overwritten". Writing there also means writing into a primary
+   checkout, which `main-branch-guard` denies. The only artifacts that belong in
+   a repo are ones deliberately committed with their feature, through a worktree
+   and a PR like any other tracked file.
+
+   Alongside the Markdown and HTML, write `.artifact.json` so the artifact is
+   findable days later by slug rather than by a path someone has to remember:
+
+   ```json
+   {"v":1,"slug":"<slug>","title":"<title>","kind":"plan","session":"<id>",
+    "agent":"<harness>","host":"<machine>","share_url":null,"ticket":null,
+    "created_at":"<date>","updated_at":"<date>"}
+   ```
+
+   When the artifact is published, record the returned slug in `share_url` and
+   pass it back via `--slug` on the next publish — that is what keeps a
+   long-running artifact on one stable link.
 
 3. Author Markdown directly under that directory. Require `kind` and `title`;
    require `surface` for plans. Provenance auto-fills from the Git checkout and
@@ -84,6 +108,15 @@ The kind changes the content contract, not the rendering pipeline.
    agents ssh <host> 'agents browser navigate --url file:///tmp/<slug>.html'
    ```
 
+   `/tmp` is the only correct destination for this copy. Never `scp` an artifact
+   into a checkout on the target machine — that is a write into someone's
+   primary working tree from another host, and it is exactly how twelve
+   untracked files ended up in the agents repo on `main`.
+
+   Prefer publishing over copying when the artifact is worth keeping: a share
+   link needs no file transfer at all, works from any machine, and survives the
+   session.
+
    If no interactive host is reachable, retain the durable Markdown and HTML and
    report their exact paths.
 
@@ -98,7 +131,7 @@ The kind changes the content contract, not the rendering pipeline.
 
 ## `kind: plan`
 
-Write `.agents/artifacts/yyyy-mm-dd/plan-<slug>.md` with frontmatter shaped like:
+Write `~/.agents/artifacts/yyyy-mm-dd/<slug>/plan.md` with frontmatter shaped like:
 
 ```yaml
 ---
@@ -192,7 +225,7 @@ Stop/plan-exit guard checks for it separately from the render.
 
 ## `kind: visual`
 
-Write `.agents/artifacts/yyyy-mm-dd/<slug>.md` with `kind: visual`, a precise
+Write `~/.agents/artifacts/yyyy-mm-dd/<slug>/<slug>.md` with `kind: visual`, a precise
 title, and a short single-takeaway summary. Choose the page shape from the
 content: infographic, explainer, status dashboard, data story, or comparison.
 

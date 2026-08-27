@@ -49,9 +49,16 @@ API/CLI-surface or architecture change (a subagent checks the surface is clean
 and follows existing conventions — **findings land in the HTML**, not only
 chat); and render + inspect the HTML.
 
-**Artifact path:** all durable outputs land in
-`.agents/artifacts/yyyy-mm-dd/<slug>.md` (plans as `plan-<slug>.md`), HTML
-rendered next to the source. One dated layout, no kind subdirs.
+**Artifact path:** durable outputs land in the DURABLE HOME —
+`~/.agents/artifacts/yyyy-mm-dd/<slug>/plan.md`, HTML rendered next to the
+source, plus an `.artifact.json` sidecar so the artifact is findable by slug days
+later. One dated layout, no kind subdirs.
+
+Outside any checkout, deliberately. A repo's `.agents/artifacts/` is tracked, so
+stray files there collide on `git checkout` / `git merge`; it is also a primary
+working tree, so `main-branch-guard` denies the write. The exception is a plan
+deliberately committed WITH its feature — that still belongs in the repo, and
+gets there through a worktree and a PR like any other tracked file.
 
 **Mechanics** (the full look lives in the `artifacts` skill):
 
