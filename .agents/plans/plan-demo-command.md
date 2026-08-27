@@ -7,7 +7,7 @@ summary: >
   work:demo skill that recovers the original intent, exercises the shipped thing in
   its real environment, puts before/after side by side, captures screenshots, and
   delivers a report — the recurring ask the owner types by hand after every landing.
-status: draft
+status: in-review
 host: a fleet worker
 session: " "
 harness: agents-cli
@@ -314,36 +314,37 @@ precedent):
 # arg    → demo that ticket / PR / described landing
 ```
 
-Flags kept minimal (surface-convention: intuitive over flag soup):
+**Shipped surface (Phase 1): freeform `$ARGUMENTS` only** — no flags. The command routes
+to the `work:demo` skill, which decides environment, device, and report scope from context.
+Keeping it flagless matches the surface convention (intuitive over flag soup) and the
+"command only" scope you confirmed.
 
-| Flag | Effect | Default |
-|---|---|---|
-| `--env <prod\|preprod\|installed>` | which environment to demonstrate against | auto-detect (prod if deployed, else installed) |
-| `--device <name>` | run the demo on a specific fleet box | auto |
-| `--no-report` | drive + capture + verbally summarize, skip the HTML report | report on |
-| `--attach <pr>` | PR to attach the report/captures to | the session's owned PR |
-
-`--help` ships a `setHelpSections` block: the seven-step playbook first, flags last.
+Deferred to a follow-up (NOT in this PR): `--env <prod|preprod|installed>`, `--device`,
+`--no-report`, `--attach <pr>`, and a `setHelpSections` help block. They're worth adding
+once the ritual has real mileage, but the skill covers each decision today.
 
 ## Plan
 
-- [ ] **T1 — home decision** (blocks the rest): confirm `work:demo` + top-level `/demo` alias vs a standalone `demo` plugin.
-- [ ] **T2 — skill**: `plugins/work/skills/demo/SKILL.md` — the seven-step ritual, with a `demo_test.sh` beside it (deterministic: fixture landing → asserts report has intent + before/after + gaps sections).
-- [ ] **T3 — command**: `plugins/work/commands/demo.md` (`/work:demo`) + top-level `commands/demo.md` alias, both with `setHelpSections`.
-- [ ] **T4 — three-places-agree**: update `plugins/work/.claude-plugin/plugin.json` description, `plugins/README.md` table (work count 2→3), `commands/README.md`; bump `CHANGELOG.md` (`work` minor). Run `claude plugin validate . --strict`.
-- [ ] **T5 — wire references**: `plugins/work/README.md`, the `work:loop`/`work:dispatch` "not done at dispatched" lines point at `/demo` as the capstone; the top-level README "what should I run?" gets a row.
-- [ ] **T6 — self-demo**: run `/demo` on THIS change (demo the demo), attach the report to the PR — the acceptance proof.
+- [x] **T1 — home decision**: confirmed `work:demo` + top-level `/demo` alias (not a standalone plugin).
+- [x] **T2 — skill**: `plugins/work/skills/demo/SKILL.md` — the seven-step ritual, with a `tests/demo_test.sh` contract test beside it (asserts alias wiring + the load-bearing mandate; 11/11 green).
+- [x] **T3 — command**: `plugins/work/commands/demo.md` (`/work:demo`) + top-level `commands/demo.md` alias. (Flagless Phase 1 — no `setHelpSections` yet; deferred with the flags above.)
+- [x] **T4 — three-places-agree**: `plugins/work/.claude-plugin/plugin.json` + `.claude-plugin/marketplace.json` (`work` 0.4.0 → 0.5.0), `plugins/README.md`, `commands/README.md`, `CHANGELOG.md`. JSON valid; registration test green.
+- [x] **T5 — wire references**: `plugins/work/README.md` capstone rows + "how the pieces fit" + "merged ≠ demonstrated"; top-level `commands/README.md` and root `README.md` "What should I run?" rows.
+- [ ] **T6 — self-demo (post-merge)**: once released + installed, run `/demo` on this change and attach the report — the dogfood acceptance proof. Can't run pre-merge (the command isn't installed yet), so it's the first post-merge action, not a PR gate.
 
 ## Validation
 
-- **Self-referential proof**: the PR that adds `/demo` is validated *by running
-  `/demo` on itself* — recover this plan's intent, drive the installed command on a
-  fleet box, before/after (agent-sits vs report-produced), report attached to the PR.
-  If the command can't demo its own landing, it isn't done.
-- `demo_test.sh` runs green next to the skill (real path, no mocks): a fixture
-  landing in, a report with the required sections out.
-- `claude plugin validate . --strict` passes; three-places-agree count holds.
-- Rendered report inspected headlessly in both themes before it's shown.
+- **Contract test green** (in this PR): `bash plugins/work/skills/demo/tests/demo_test.sh`
+  → 11/11, real files no mocks — asserts the alias wiring and every load-bearing mandate
+  phrase (dev-build ban, real-inputs, sign-in, before/after, measured delta, gaps,
+  browser/computer). It fails if a rewrite drops one.
+- **Registration + manifests green** (in this PR): `bash skills/tests/registration_test.sh`
+  passes (`demo` is a unique name); `jq -e .` on both manifests; three-places-agree holds.
+- **Self-referential dogfood** (post-merge, T6): once released + installed, run `/demo` on
+  this very change — recover this plan's intent, drive the installed command, before/after
+  (agent-sits vs report-produced), attach the report. It's the acceptance proof, run as the
+  first post-merge action rather than a pre-merge gate (the command isn't installed until
+  release).
 
 ## Risks
 
@@ -359,11 +360,13 @@ Flags kept minimal (surface-convention: intuitive over flag soup):
 - **Surface bloat** on an already 45%-dead command set (your own usage report).
   Mitigation: no new plugin — `work:demo` + one alias; `/demo` earns its slot as a
   verbatim top-5 recurring ask, not a speculative feature.
-- **Cost/time** — a full demo per landing is not free. Mitigation: `--no-report`
-  for the quick path; the report is the default only because it's what you keep
-  asking for.
+- **Cost/time** — a full demo per landing is not free. Mitigation: the skill scales the
+  demo to the surface (quoted output for a small CLI change, a full driven report for a
+  UI change); a lightweight `--no-report` fast path is a deferred flag if the default
+  proves too heavy.
 
 ## Tracking
 
 - This plan: `.agents/plans/plan-demo-command.md` (committed with the feature).
-- Ticket + PR links added here once the home decision (T1) is confirmed.
+- **PR #411** — https://github.com/phnx-labs/.agents-system/pull/411 (built, reviewed, MERGEABLE; awaiting code-owner merge).
+- Home decision (T1) confirmed with the owner: `work:demo` + `/demo` alias, Phase 1 (command only).

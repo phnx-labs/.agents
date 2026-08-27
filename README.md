@@ -84,6 +84,7 @@ to type.
 | **One** clear task (any kind) to an agent | `/work:dispatch` or `/dispatch` | `work` for kind-agnostic; top-level `/dispatch` leans engineering |
 | Decide keep/cancel/priority on the **whole board** | `/work:loop triage` | Triage mode — forces keep-and-schedule or cancel, never a hedge state |
 | Drive the **current task** to fully delivered | `/finish` | [`sessions`](plugins/sessions/README.md) — never stops at a recap or partial handoff |
+| **Demonstrate** what just landed — real env, before/after, report | `/demo` | [`work`](plugins/work/README.md) — recover intent, drive the shipped surface on real inputs, deliver a report on your screen + the PR |
 | Fan work across **parallel agents** | `/swarm` (or `/swarm plan` / `spec` / `debug`) | [`swarm`](plugins/swarm/README.md) |
 | Plan a feature with live research, diagrams, mock-ups + blind check | `/swarm plan …` or `/plan` | Swarm plan is multi-agent; `/plan` is single-agent grounded design |
 | Durable **source-of-truth spec** of a capability | `/swarm spec …` | So others do not invent wrong behavior |
