@@ -19,7 +19,7 @@ I run?* and § *Automate your work*. This page is the plugin catalog.
 | Engineering queue to **merge** | **code** | `/code:loop` |
 | PR review or whole-repo architecture scan | **code** | `/code:review` |
 | Parallel agents / blind plan / spec / debug | **swarm** | `/swarm`, `/swarm:plan`, … |
-| Resume / restore sessions / session analytics | **sessions** | `/continue`, `/finish`, `/insights`, `/sessions:restore`, `/sessions:fork` |
+| Resume / restore / recall sessions / session analytics | **sessions** | `/continue`, `/finish`, `/insights`, `/recall`, `/fork`, `/sessions:restore` |
 | Current repository's agent output, cost, mix, and workflow tax as HTML | **yc** | `/yc:workweave` |
 | Multi-machine sync / onboard | **fleet** | `/fleet:sync`, `/fleet:onboard` |
 | Publish HTML artifact | **share** | `/share` (`--private` for `--no-cover --expire 7d`) |
@@ -40,7 +40,7 @@ Do not stretch `code:loop` into browser outreach — use `work:loop`.
 | [`share`](./share/README.md) | 1 | Publish agent-generated HTML to a link on your own Cloudflare R2 — `/share` (auto OG cover), `/share --private` (`--no-cover --expire 7d`) |
 | [`design`](./design/README.md) | 1 | One keyless, offline-first front door for design — routes an intent to a mode and renders self-contained HTML/SVG |
 | [`self`](./self/README.md) | 3 | Agent self-operations — `/self:close` cleanly self-terminates the session (guarded SIGTERM to the harness); `/self:hibernate` sleeps the session until a future time; `/self:reflect` recalls corrections and constraints before revising work |
-| [`sessions`](./sessions/README.md) | 5 | Session lifecycle + analytics — `/sessions:continue` finishes prior work here, `/sessions:finish` drives the current task to delivered, `/sessions:insights` orchestrates insights/trends/perf/stats, `/sessions:restore` re-opens crash windows, `/sessions:fork` branches into a new independent session; top-level `/continue` `/finish` `/insights` are thin aliases |
+| [`sessions`](./sessions/README.md) | 3 | Session lifecycle + analytics — `/sessions:continue` finishes prior work here, `/sessions:restore` re-opens crash windows, `/sessions:search` pulls ranked snippet-level context from prior sessions (falls back to a bundled `recall.py` that recovers assistant answers the index misses); `/sessions:finish`/`/sessions:insights`/`/sessions:fork` skills are reached only via their top-level `/finish` `/insights` `/fork` aliases, and `/recall` aliases `/sessions:search` |
 | [`yc`](./yc/README.md) | 1 | Local recreations of YC startup products using a general-purpose agent plus focused skills/scripts; first recipe `/yc:workweave` turns indexed agent sessions, output, cost, resource use, hook/command latency, and friction into private HTML |
 
 <p align="center">

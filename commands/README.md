@@ -46,13 +46,15 @@ recap-and-leave, run `/recap` then [`/self:close`](../plugins/self/README.md).
 | [`/recap`](./recap.md) | Recap the current session, or transfer concise context from a prior session selected by ID, prefix, or keywords |
 | [`/continue`](./continue.md) | Alias of `/sessions:continue` — resume prior work **in this session** (reattach only if genuinely live); group-capable. Also finishes crashed sessions headlessly (`/continue recover`). |
 | [`/insights`](./insights.md) | Alias of `/sessions:insights` — orchestrate `agents insights` + trends + perf + sessions stats into evidence-backed actions |
+| [`/recall`](./recall.md) | Alias of `/sessions:search` — pull ranked, snippet-level context from prior sessions on a topic, without loading full transcripts. Falls back to the bundled `recall.py` when the CLI is thin — it's the only path that recovers assistant answers, since the index never stores them. |
+| [`/fork`](./fork.md) | Alias of `/sessions:fork` — fork this conversation into a NEW, independent session in a fresh terminal; the original is untouched. |
 | [`/learn`](./learn.md) | Post-session reflection that writes durable improvements forward — distill the lessons that generalize and route them to the right skill/rule/memory; `/learn <target>` audits one skill or command across all past sessions |
 
-The procedures for `/continue` and `/insights` live in the
+The procedures for `/continue`, `/insights`, `/recall`, and `/fork` live in the
 [`sessions` plugin](../plugins/sessions/README.md) skills. Top-level files only invoke
 those skills (same pattern as `/continue` → `/sessions:continue`). Re-opening crashed
 sessions as windows is [`/sessions:restore`](../plugins/sessions/README.md) (no top-level
-alias); `/fork` is [`/sessions:fork`](../plugins/sessions/README.md).
+alias).
 
 `/hibernate` and `/reflect` moved to the [`self` plugin](../plugins/self/README.md) as `/self:hibernate` and `/self:reflect`.
 

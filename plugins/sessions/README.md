@@ -16,16 +16,19 @@ bodies) still get the full procedure.
 | `sessions:insights` | Analyze how you and your agents work. **Conductor** over `agents insights`, `agents insights mix`, `agents perf`, and `agents sessions stats` — returns evidence-backed actions. No separate `/trends` or `/perf` plugin commands. |
 | `sessions:restore` | Re-open sessions killed by a crash/reboot as **terminal windows**, each resuming its real transcript. Not "finish the work here". |
 | `sessions:fork` | Fork this conversation into a NEW, independent session and open it in a fresh terminal — the "git branch" of sessions (the original is untouched). Bare = fork the current session; `<id>` = fork a specific one. |
+| `sessions:search` | Pull ranked, snippet-level context from prior sessions on a topic — layered `agents sessions` discovery plus the bundled [`recall.py`](./skills/search/recall.py) fallback that recovers assistant answers the index never stores (it only holds user turns + title/topic/project). |
 
 ## Commands
+
+Only `continue`, `restore`, and `search` keep a plugin-namespaced command door;
+`finish`, `insights`, and `fork` are reached through their top-level alias only
+(one door per skill, not two) — see `../../commands/README.md`.
 
 | Command | Invokes |
 | --- | --- |
 | `/sessions:continue` | `sessions:continue` |
-| `/sessions:finish` | `sessions:finish` |
-| `/sessions:insights` | `sessions:insights` |
 | `/sessions:restore` | `sessions:restore` |
-| `/sessions:fork` | `sessions:fork` |
+| `/sessions:search` | `sessions:search` |
 
 ### Top-level aliases
 
@@ -34,12 +37,14 @@ bodies) still get the full procedure.
 | `/continue` | `sessions:continue` |
 | `/finish` | `sessions:finish` |
 | `/insights` | `sessions:insights` |
+| `/fork` | `sessions:fork` |
+| `/recall` | `sessions:search` |
 
 The low-level browse/search skill remains the top-level [`sessions`](../../skills/sessions/SKILL.md)
 skill (`agents sessions` CLI). This plugin does not replace it — it adds lifecycle +
 analytics verbs on top.
 
-## How the five verbs differ
+## How the six verbs differ
 
 ```
 continue          →  this agent finishes the work (here; group-capable)
@@ -48,12 +53,14 @@ finish            →  drive the CURRENT task to delivered (anti-stopping ship g
 restore           →  put the original windows back
 fork              →  branch into a NEW independent session (original untouched)
 insights          →  orchestrate local analytics engines → actions
+search            →  pull ranked, snippet-level context from PAST sessions on a topic
 ```
 
 ## Requirements
 
 - [`agents-cli`](https://github.com/phnx-labs/agents-cli) on `$PATH` with `agents sessions`,
   `agents insights`, `agents insights mix`, `agents perf` available for the surfaces you invoke.
+- `python3` (stdlib only) on `$PATH` for `sessions:search`'s `recall.py` fallback.
 - Optional: Ghostty (or another terminal emulator) on the interactive Mac for
   `sessions:restore` window relaunch.
 
