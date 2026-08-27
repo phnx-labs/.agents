@@ -15,9 +15,11 @@
   restores the command door to it.
 - **`commands/learn.md`** — `/learn` command routing to the top-level `learn` skill, so
   post-session reflection is one typed word.
-- **`plugins/work/skills/triage/`** + **`plugins/work/commands/triage.md`** — `/work:triage`:
-  the board-wide keep-and-schedule-or-cancel sweep moved under the `work` plugin as a
-  skill plus a thin command.
+- **`plugins/work/skills/loop/SKILL.md`** — `work:loop` gains a **`triage` mode**
+  (`/work:loop triage`): the board-wide keep-and-schedule-or-cancel decision sweep, folded
+  into the drain skill rather than shipped as the separate `/work:triage` command/skill that
+  was staged earlier in this cycle (0 recorded invocations across the 100-day /
+  24,283-session / 14-device usage scan).
 
 ### Changed
 
@@ -43,8 +45,20 @@
 - **`skills/registration_test.sh`** → **`skills/tests/registration_test.sh`** — a loose
   script directly under `skills/` showed up as a bogus skill entry in
   `agents inspect --skills`.
-- Plugin manifests: `sessions` 0.1.0 → 0.2.0, `work` 0.2.0 → 0.3.0, `self` 0.1.0 → 0.1.1
-  (descriptions follow the command moves).
+- **`plugins/code/skills/refactor/SKILL.md`** — adds a **`quality` mode**
+  (`/code:refactor quality`): the small, in-flight cleanup pass — fix a duplicate, a bad
+  abstraction, or a pattern that should exist but doesn't, always tied to a concrete change
+  — mirroring the global `simplify` skill. This is where the retired `/code:quality` acting
+  pass lives now; the read-only whole-repo scan stays `code:review` Mode C. Stale
+  `/code:quality` and `/code:prune` references scrubbed from `plugins/code/README.md` and
+  `plugins/code/skills/review/SKILL.md`.
+- **`plugins/fleet/commands/onboard.md`** — folds the full token-minting flow (native
+  device/OAuth in a per-device account slot; Claude setup-token / API-key as the syncable
+  alternative) into onboarding, so onboarding a device also mints its auth in one flow.
+  Cross-references that pointed at `/fleet:mint-auth` now point in-doc.
+- Plugin manifests: `sessions` 0.1.0 → 0.2.0, `work` 0.2.0 → 0.4.0, `code` 0.12.1 → 0.13.0,
+  `fleet` 0.1.0 → 0.2.0, `self` 0.1.0 → 0.1.1 (descriptions follow the command moves and the
+  surface prune).
 
 ### Removed
 
@@ -52,7 +66,16 @@
   again; the pick-up-the-next-ticket half was redundant with the board context hooks
   already inject at session start.
 - **`commands/loop.md`** — the top-level `/loop` alias; use `/work:loop`.
-- **`commands/triage.md`** — moved to `/work:triage`.
+- **`commands/triage.md`** — folded into `/work:loop`'s `triage` mode.
+- **`plugins/code/commands/prune.md`** — `/code:prune` deleted. 0 invocations across the
+  100-day / 24,283-session / 14-device usage scan, and no live equivalent — the merged-branch
+  and worktree cleanup it wrapped is plain `git` + `gh pr merge --delete-branch`.
+- **`plugins/code/commands/score.md`** + **`plugins/code/skills/score/`** — `/code:score`
+  and its skill deleted. 0 invocations across the same scan; the skill itself also read 0.
+- **`plugins/work/commands/output.md`** — `/work:output` deleted. 0 invocations across the
+  same scan.
+- **`plugins/fleet/commands/mint-auth.md`** — `/fleet:mint-auth` deleted; its token-minting
+  recipes are now folded into `/fleet:onboard` (see Changed).
 - **`skills/devices/`** — zero recorded loads in its ~8-week lifetime across 18,426
   indexed sessions (sessions.db `tool_calls` + transcript FTS, 2026-07-01 → 2026-08-26).
   The read side is injected into every session by the device-topology session-start hook;

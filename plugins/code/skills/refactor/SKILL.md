@@ -4,7 +4,7 @@ description: "Restructure a codebase the way a principal engineer does as a prod
   concept the contract its job calls for — the provider pattern (Go interface, TS interface, Python
   Protocol, Rust trait) with one implementation per variant in a registry, instead of the same
   if/else-by-name chain repeated across twenty files. Evidence-first: a module dependency graph (god modules, cycles, extraction candidates, upward imports), measured agent traffic per file, and a surface census — then before/after architecture figures rendered with artifacts-cli, then behavior-preserving PRs. Triggers on: 'refactor this codebase', 'clean up the architecture', 'the codebase has gotten messy', 'agents keep getting lost in this repo', 'merge these duplicate concepts', 'extract an SDK', 'split this package', 'module boundaries', 'reorganize the file tree', 'circular dependencies', 'god module', 'too many commands', 'does the code match the docs', 'provider pattern', 'should this be an interface', 'if/else chain on a name', 'plugin architecture', 'strategy pattern'."
-argument-hint: "[empty = this repo | <path> | --scan-only | --top N | --days N | --depth N | --execute]"
+argument-hint: "[empty = this repo | <path> | quality | --scan-only | --top N | --days N | --depth N | --execute]"
 allowed-tools: Bash(agents *), Bash(artifacts *), Bash(git *), Bash(gh *), Bash(rg *), Bash(fd *), Bash(ls *), Bash(cat *), Bash(jq *), Bash(sqlite3 *), Bash(bun *), Bash(wc *), Bash(sort *), Bash(uniq *), Read(*), Write(*), Edit(*), Task(*)
 user-invocable: true
 ---
@@ -53,9 +53,32 @@ them. If you start writing an invariants grep or a duplicate-function clusterer 
 stop: they exist at `plugins/code/skills/review/{invariants,identifiers,signatures,code-health}.ts`.
 A skill that preaches "no duplicate surfaces" and then grows one has failed its own rubric.
 
-**Boundary with `/code:prune`** — git plumbing (merged branches, worktrees). No overlap.
 **Boundary with `/code:learn`** — when a doc is wrong and the code is right, fix the doc
 here; route genuinely new navigation knowledge to `code:learn` (it owns `AGENTS.md`).
+
+## Quality mode — the small, in-flight cleanup pass
+
+`quality` (`/code:refactor quality`, the small-change door this skill shares with the
+global `simplify` skill) is **not** the full evidence-first architectural run. It is the
+targeted cleanup you make *while* you are already in a file: skip Phases 0–5, go straight
+to a concrete fix, and land it in the same change.
+
+The one rule that separates it from a linter: **every quality finding is tied to a change
+you actually make — never a report you file and walk away from.** When you act in this
+mode, also fix what is right in front of you —
+
+- **duplicate code** — two blocks that encode the *same decision* (bias 1); merge the
+  concept, not merely the lines.
+- **a bad abstraction** — a one-caller indirection, an eight-boolean `doThing(opts)`, a
+  wrapper that buys nothing; take the highest rung of the deletion ladder that works.
+- **a pattern that should exist but doesn't** — the contract a family already calls for
+  (the provider pattern), a helper five call sites reinvent, the canonical home a stray
+  function belongs in.
+
+Same three biases, same behavior-preserving contract, same "prove no caller before you
+delete" hard line — just scoped to the change at hand and landed in the same PR rather
+than sequenced across a plan. If a cleanup outgrows a small in-flight change into a real
+structural move, stop and run the full skill instead.
 
 ## The three biases that decide every call
 
@@ -96,6 +119,7 @@ that owns it beats a mention in a reference table.
 | `$ARGUMENTS` | Effect |
 |---|---|
 | empty | this repo (its dominant package in a monorepo — say which you picked) |
+| `quality` | small-change cleanup pass — see **Quality mode** above; skips the phases below |
 | `<path>` | scope to those dirs |
 | `--depth N` | module granularity for the graph (default 2 path segments) |
 | `--days N` | window for churn + agent traffic (default 90) |

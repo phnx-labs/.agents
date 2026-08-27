@@ -64,13 +64,13 @@ alias); `/fork` is [`/sessions:fork`](../plugins/sessions/README.md).
 | [`/teams`](./teams.md) | Spawn parallel agents to work on a task together |
 
 The `tickets` skill is the general-purpose primitive (list, claim, comment, close).
-[`/work:triage`](../plugins/work/README.md) is a board-wide sweep that forces every open
+[`/work:loop triage`](../plugins/work/README.md) is a board-wide sweep that forces every open
 item to a real decision — keep-and-schedule-this-cycle or cancel, never Backlog.
 `/dispatch` is the single-task path from idea to a running agent.
 [`/work:loop`](../plugins/work/README.md) is the unattended **queue** drain across projects
-and kinds (not engineering-only). Easy to confuse: `/work:triage` never touches code;
-`/dispatch` always ends with an agent building something; `/work:loop` keeps going
-unattended until the clear queue is empty.
+and kinds (not engineering-only). Easy to confuse: `/work:loop triage` decides the board
+without touching code; `/dispatch` always ends with an agent building something;
+`/work:loop` keeps going unattended until the clear queue is empty.
 
 ## Present
 
@@ -80,7 +80,7 @@ unattended until the clear queue is empty.
 
 ## Observe
 
-The fleet token-burn / output report moved to [`/work:output`](../plugins/work/README.md); machine profiling to [`/fleet:profile`](../plugins/fleet/README.md); durable watchers are the `agents monitors` CLI + the [`monitors` skill](../skills/README.md).
+Machine profiling is [`/fleet:profile`](../plugins/fleet/README.md); durable watchers are the `agents monitors` CLI + the [`monitors` skill](../skills/README.md).
 
 ## Related
 

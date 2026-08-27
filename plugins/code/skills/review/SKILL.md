@@ -519,8 +519,7 @@ Emits ranked findings with file:line, rendered as an HTML report. Fixes flow bac
 
 Invoke when: landing a multi-commit branch before opening a PR, a fresh checkout of an
 unfamiliar surface, a recurring drift check on the default branch, or "what's wrong with
-this branch" / "any parallel implementations of X?". This mode is what used to be a
-separate `/quality` command — it's now `code:review`'s third mode because the rubric is
+this branch" / "any parallel implementations of X?". Mode C exists because the rubric is
 the same one Mode B applies to a diff: reuse of existing primitives, cross-cutting logic
 at the source, no duplicate surfaces, load-bearing seams honored, doc-asserted invariants
 respected. Mode C runs that rubric over a whole repo or path instead of one PR's diff.

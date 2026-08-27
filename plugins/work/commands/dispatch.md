@@ -6,13 +6,13 @@ You're being asked to dispatch work: $ARGUMENTS
 
 `/work:dispatch` takes ONE unit of work — a ticket id, a described task, or "the next thing to do on <project>" — and gets it done by the right agent on the right machine. Unlike `/dispatch`, it is **not engineering-only**: a work item can be code (a fix, a feature, a release) OR non-coding (a blog post, creator outreach, a research pull, a design asset, a form/portal task). Because the fleet holds **browser + secrets**, an agent can actually *do* the non-coding work, not just file it.
 
-This is a **single-target dispatch**, not a board sweep. There is **no survey, no bulk pass** — deciding the whole board (keep/cancel/reprioritize) is `/work:triage`'s job, and cancel/priority calls that need the human are surfaced there, never auto-dispatched here.
+This is a **single-target dispatch**, not a board sweep. There is **no survey, no bulk pass** — deciding the whole board (keep/cancel/reprioritize) is `/work:loop triage`'s job, and cancel/priority calls that need the human are surfaced there, never auto-dispatched here.
 
 ## Step 1: Resolve the target — find the ticket
 
 - **`$ARGUMENTS` names a ticket** (e.g. `RUSH-1234`) → that's the target.
 - **`$ARGUMENTS` describes a task** → look for an existing ticket first (the `tickets` skill's detection; e.g. `linear tasks --query`, `gh issue list`) and **check for in-flight work** (an open PR or a live `agents sessions --active` on it). Never dispatch a duplicate of something already being built — that is the #1 waste on a busy board.
-- **`$ARGUMENTS` says "next work on <project>"** → pull that project's board, pick the top **clear, unblocked, keep-worthy** item. Skip anything that needs a human decision (is it wanted? cancel? reprioritize?) — surface it for `/work:triage`, don't dispatch it.
+- **`$ARGUMENTS` says "next work on <project>"** → pull that project's board, pick the top **clear, unblocked, keep-worthy** item. Skip anything that needs a human decision (is it wanted? cancel? reprioritize?) — surface it for `/work:loop triage`, don't dispatch it.
 - **Ground once** in the project (its `AGENTS.md`/`README`/`CHANGELOG`, or the Linear goal spine) so the spec isn't re-derived per call.
 
 ## Step 2: Classify — coding or not
@@ -50,7 +50,7 @@ In flight is not done. Watch it to its real finish — a merged PR, a published 
 ## Anti-patterns
 
 - **Treating this as engineering-only.** Non-coding work is first-class here — that's the whole point of `work` over `code`.
-- **Doing a survey / bulk sweep.** That's `/work:triage`. This is ONE target.
+- **Doing a survey / bulk sweep.** That's `/work:loop triage`. This is ONE target.
 - **Dispatching a duplicate** of in-flight work — check for an open PR / live session first.
 - **Filing a messy ticket** to dispatch — clean it at filing.
 - **Auto-dispatching a call that needs the human** (cancel / is-this-wanted / reprioritize) — surface it, don't build it.

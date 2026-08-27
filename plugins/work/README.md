@@ -9,29 +9,26 @@ the fleet holds browser + computer + secrets.
 
 | Command | Use when |
 | --- | --- |
-| `/work:loop` | **Unattended drain** of many items across projects. Spreads load (`agents teams` + balanced accounts + worker hosts). Uses browser/computer when the task needs it. **Drives each item to landed** — engineering merges on green behind a non-author review; you are asked only for a real product/credential decision. |
+| `/work:loop` | **Unattended drain** of many items across projects. Spreads load (`agents teams` + balanced accounts + worker hosts). Uses browser/computer when the task needs it. **Drives each item to landed** — engineering merges on green behind a non-author review; you are asked only for a real product/credential decision. Its **`triage` mode** (`/work:loop triage`) instead forces every open board item to keep-and-schedule-this-cycle or cancel — never a hedge state. |
 | `/work:dispatch` | **ONE** unit of work — ticket, described task, or "next on `<project>`". Classify coding vs non-coding, file clean if needed, route to the right executor, drive to done. Single-target; not a board sweep. |
-| `/work:triage` | **Board-wide decision sweep** — ground in real product goals, then force every open item to keep-and-schedule-this-cycle or cancel. Never parks in Backlog. Was the top-level `/triage`. |
-| `/work:output` | **Fleet-wide token-burn + output report** — runs `agents output` across every device, folds in relay-only machines, renders an HTML dashboard, drops a PDF in Downloads, and opens it. Was the top-level `/output`. |
 
 ## Skills
 
 | Skill | Role |
 | --- | --- |
-| `work:loop` | Orchestrator for overnight / multi-item drain. Composes engineering patterns from `code:loop`, including its merge-on-green completion. |
-| `work:triage` | Board-wide keep/cancel decision pass — the procedure behind `/work:triage`. |
+| `work:loop` | Orchestrator for overnight / multi-item drain. Composes engineering patterns from `code:loop`, including its merge-on-green completion. Its `triage` mode is the board-wide keep-and-schedule-or-cancel decision pass. |
 | (dispatch is command-first today) | One-item path in `commands/dispatch.md`. |
 
 ## How the pieces fit
 
 ```
-/work:triage     → decide keep/cancel/priority (human-shaped)
-/work:loop       → drain everything clear, unattended, spread load
-/work:dispatch   → one item, any kind
-/code:loop       → engineering-only queue (worktrees, merge-oriented)
+/work:loop triage → decide keep/cancel/priority on the whole board
+/work:loop        → drain everything clear, unattended, spread load
+/work:dispatch    → one item, any kind
+/code:loop        → engineering-only queue (worktrees, merge-oriented)
 ```
 
-- **`/work:triage`** — board decisions. `work:loop` skips items that need cancel/taste.
+- **`/work:loop triage`** — board decisions. A plain `work:loop` drain skips items that need cancel/taste; `triage` mode is where those calls get made.
 - **`/code:loop`** — engineering drain with merge-oriented "done". `work:loop` reuses its
   worktree/claim patterns **and its completion bar**: engineering items land **merged** on
   green behind a non-author review, never parked on the user as an open PR.
