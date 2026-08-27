@@ -49,4 +49,13 @@ deny:
   - "Bash(git fsck:*)"
   - "Bash(git stash:*)"
   - "Bash(git branch -D:*)"
-  - "Bash(git config:*)"
+  # git config — deny only the dangerous WRITE forms (hook hijack / alias
+  # injection / global-scope writes). The old blanket `git config:*` deny also
+  # blocked read-only `git config --get` / `--list`; these three targeted denies
+  # stop that over-blocking. All git config WRITES remain blocked: git-guard.sh
+  # independently hard-denies every write regardless of these permission rules,
+  # so the effective gate is unchanged. `git -C <path> config` can still evade
+  # a token-prefix deny; git-guard is the real backstop.
+  - "Bash(git config --global:*)"
+  - "Bash(git config core.hooksPath:*)"
+  - "Bash(git config alias:*)"

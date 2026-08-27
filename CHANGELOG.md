@@ -21,6 +21,20 @@
 
 ### Changed
 
+- **`permissions/groups/99-deny.yaml`** — **security (git-config narrowing, PHNX-3294).**
+  The blanket `git config:*` deny is replaced by three targeted denies for the dangerous
+  WRITE forms only (`git config --global:*`, `git config core.hooksPath:*`,
+  `git config alias:*` — hook hijack, alias injection, global-scope writes). The
+  practical effect: the permission layer no longer blocks read-only `git config --get` /
+  `--list` calls; all git config WRITES remain blocked because git-guard.sh independently
+  hard-denies every config write regardless of these permission rules. Every other deny
+  in the file is untouched — `sudo:*`, `timeout:*`, the git history-rewriters (`git reset`,
+  `git push --force`/`-f`, `git clean`, `git checkout`/`switch`/`branch`, `git revert`,
+  `git cherry-pick`, `git filter-branch`, `git branch -D`, …), and all credential paths
+  (`~/.ssh`, `~/.aws/{credentials,config}`, `~/.netrc`, `~/.pgpass`,
+  `~/.config/{gcloud,op}`, `~/.docker/config.json`, `~/.npmrc`, `~/.kube/config`).
+  `git -C <path> config` can still evade a token-prefix deny; git-guard is the real
+  backstop. Regenerated `permissions/default.yaml` via `permissions/build.sh`.
 - **`skills/secrets/SKILL.md`** — slimmed from 181 to ~100 lines. The command table and
   basic add/view examples are dropped in favor of `agents secrets --help`; what stays is
   the behavior `--help` can't teach: `bundle@host`, ephemeral remote injection,
