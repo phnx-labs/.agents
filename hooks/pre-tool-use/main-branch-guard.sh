@@ -1,0 +1,1 @@
+../../rules/subrules/truly-agentic-git-workflow/main-branch-guard.sh

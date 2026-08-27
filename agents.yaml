@@ -120,7 +120,13 @@ hooks:
     events:
       - PreToolUse
     matcher: "Bash|Write|Edit|MultiEdit|NotebookEdit"
-    script: rules/subrules/truly-agentic-git-workflow/main-branch-guard.sh
+    # Path is relative to hooks/ — agents-cli resolveHookScriptPath (install.ts:47)
+    # ONLY resolves under <root>/hooks/ and rejects anything escaping it, so a
+    # rules/subrules/... path here resolves to null and the hook is SILENTLY
+    # SKIPPED. hooks/pre-tool-use/main-branch-guard.sh is a symlink to the
+    # canonical script in the subrule dir (which keeps its tests + git-parse
+    # sourcing). This is why the guard sat unregistered in 25 settings files.
+    script: pre-tool-use/main-branch-guard.sh
     timeout: 5
   rm-guard:
     events:
