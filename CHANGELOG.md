@@ -2,6 +2,27 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- **`main-branch-guard` was registered at a path agents-cli can never resolve, so
+  it never ran.** The manifest entry pointed at
+  `rules/subrules/truly-agentic-git-workflow/main-branch-guard.sh`, but
+  `resolveHookScriptPath` (agents-cli `cli/src/lib/hooks/install.ts:47`) only resolves a
+  manifest `script:` under `<root>/hooks/`, and `resolveContainedHookPath` rejects any
+  candidate escaping that root. The entry resolved to `null` and the hook was **silently
+  skipped** — no error, no warning. Verified after a real `agents sync claude@all system`:
+  all 9 Claude version homes still reported zero `PreToolUse` matchers covering
+  `Write|Edit`, and no shim existed in `~/.agents/.cache/shims/hooks/`. This is why the
+  guard sat unregistered across 25 settings files on 3 machines while agent sessions wrote
+  into a primary checkout on `main`.
+  Fix: the guard now lives at **`hooks/pre-tool-use/main-branch-guard.sh`** as a real file,
+  alongside `git-guard.sh`, `rm-guard.sh` and `secrets-guard.sh`, and its relative lib
+  candidate is the sibling `../lib/` that those guards already use. A symlink was rejected
+  because `collectHookFilesFromRoot` (`install.ts:545,570`) skips symlinks during hook
+  discovery, so a linked guard would never get a version-home-local copy. The 106-case
+  suite, both lib-sourcing fixtures, and the subrule `hooks.yaml` follow the new path.
+  Source: `hooks/pre-tool-use/main-branch-guard.sh`, `agents.yaml`. (PHNX-3312)
+
 ### Added
 
 - **`plugins/sessions/skills/finish/`** — the `sessions:finish` skill, its

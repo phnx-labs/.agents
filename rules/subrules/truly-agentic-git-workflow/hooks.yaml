@@ -9,7 +9,10 @@
 # Co-located with this subrule (NOT under hooks/<event>/). agents-cli
 # collectSubruleHooks rewrites script: to an absolute path under this dir.
 main-branch-guard:
-  script: main-branch-guard.sh
+  # Script moved to hooks/pre-tool-use/ so agents-cli resolveHookScriptPath
+  # can find it (it only resolves under <root>/hooks/). Registered from
+  # agents.yaml; this entry keeps the subrule-composition path working.
+  script: ../../../hooks/pre-tool-use/main-branch-guard.sh
   events: [PreToolUse]
   matcher: "Bash|Write|Edit|MultiEdit|NotebookEdit"
   timeout: 5

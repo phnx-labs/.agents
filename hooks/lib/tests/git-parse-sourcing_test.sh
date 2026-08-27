@@ -39,7 +39,7 @@ cp "$ROOT/hooks/lib/git-facts.sh" "$FAKELIB/git-facts.sh" 2>/dev/null || true
 CASES="
 hooks/pre-tool-use/git-guard.sh|git reset --hard HEAD
 hooks/pre-tool-use/large-file-add-guard.sh|git add bigfile.bin
-rules/subrules/truly-agentic-git-workflow/main-branch-guard.sh|git commit -m x
+hooks/pre-tool-use/main-branch-guard.sh|git commit -m x
 "
 
 run_isolated() { # $1=script-relpath  $2=command  -> sets RC, ERR (git-parse unreachable)

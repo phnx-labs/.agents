@@ -9,7 +9,7 @@
 # Write/Edit/NotebookEdit path and the `git commit|add` Bash path.
 set -u
 DIR=$(cd "$(dirname "$0")" && pwd)
-GUARD="$DIR/main-branch-guard.sh"
+GUARD="$DIR/../../../hooks/pre-tool-use/main-branch-guard.sh"
 pass=0
 fail=0
 
@@ -402,10 +402,10 @@ fi
 # a STALE git-facts.sh (present but lacking git_facts_in_primary_tree) must FAIL
 # SAFE via the git-fork fallback, not fall through to allow. Uses a fake install
 # layout so the guard's relative candidate resolves to the stale lib.
-FAKE="$TMP/fake"; mkdir -p "$FAKE/rules/subrules/truly-agentic-git-workflow" "$FAKE/hooks/lib"
-cp "$GUARD" "$FAKE/rules/subrules/truly-agentic-git-workflow/main-branch-guard.sh"
+FAKE="$TMP/fake"; mkdir -p "$FAKE/hooks/pre-tool-use" "$FAKE/hooks/lib"
+cp "$GUARD" "$FAKE/hooks/pre-tool-use/main-branch-guard.sh"
 printf '#!/bin/sh\ngit_facts_on_default() { return 1; }\n' > "$FAKE/hooks/lib/git-facts.sh"
-FAKE_GUARD="$FAKE/rules/subrules/truly-agentic-git-workflow/main-branch-guard.sh"
+FAKE_GUARD="$FAKE/hooks/pre-tool-use/main-branch-guard.sh"
 # FEAT_REPO is a PRIMARY tree on a feature branch — only the NEW primary-tree
 # logic denies it, so this proves the fork fallback (not the stale fn) protects it.
 _sk=$(printf '%s' "$(bj "git commit -m x" "$FEAT_REPO")" | HOME="$TMP/home" "$FAKE_GUARD" >/dev/null 2>&1; echo $?)

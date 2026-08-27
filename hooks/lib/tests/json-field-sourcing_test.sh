@@ -30,7 +30,7 @@ hooks/pre-tool-use/secrets-guard.sh|2|agents secrets export x --plaintext
 hooks/pre-tool-use/large-file-add-guard.sh|2|git add bigfile.bin
 hooks/pre-tool-use/public-artifact-guard.sh|2|git add .agents/artifacts/2026-08-23/x.md
 hooks/pre-tool-use/01-git-require-clean-tree.sh|2|git pull
-rules/subrules/truly-agentic-git-workflow/main-branch-guard.sh|2|git commit -m x
+hooks/pre-tool-use/main-branch-guard.sh|2|git commit -m x
 rules/subrules/gh-merge-guard/merge-guard.sh|2|gh pr merge --admin 1
 rules/subrules/parallel-teams/teams-roster-guard.sh|0|agents teams add t kimi x
 rules/subrules/truly-agentic-git-workflow/pr-description-reminder.sh|0|gh pr create --body x
