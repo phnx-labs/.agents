@@ -15,6 +15,16 @@
 
 ### Added
 
+- **`plugins/work/skills/demo/`** — the `work:demo` skill, its `/work:demo` command, and a
+  top-level **`commands/demo.md`** alias (`/demo`). The post-ship demonstration ritual: agents
+  that land a feature stop at "it's merged / shipped / released" and sit — `/demo` is the
+  capstone that recovers the ORIGINAL intent (not the diff), exercises the shipped thing in
+  its **real** environment (installed/deployed, never the dev build) on **real representative
+  inputs** signed in as the owner via `agents browser`/`agents computer`, puts before/after
+  side by side with a **measured** delta, analyzes completeness against the intent, and
+  delivers an analyzed HTML report on the owner's screen + attached to the PR. Grounded in the
+  owner's own recurring ask across 100 days of sessions ("show me a demo..", "side by side",
+  "did we ship all of it", "test it in prod"). `work` plugin 0.4.0 → 0.5.0.
 - **`plugins/sessions/skills/finish/`** — the `sessions:finish` skill and a top-level
   **`commands/finish.md`** alias (no plugin-namespaced `/sessions:finish` command — one
   door, not two; see the sessions consolidation entry below). Restores the

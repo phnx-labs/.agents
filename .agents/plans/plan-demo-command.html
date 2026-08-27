@@ -1,0 +1,600 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>/demo — the post-ship demonstration ritual</title>
+<style>
+:root{--font-body:Inter,Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;--font-display:Inter,Inter,system-ui,sans-serif;--font-mono:"JetBrains Mono","JetBrains Mono","SFMono-Regular",Consolas,monospace;}
+@page{margin:24px}
+:root{color-scheme:light;--bg:#faf9f6;--surface:#ffffff;--surface-alt:#f2f4f0;--line:#e2e6df;--text:#1a1c1a;--muted:#5c655c;--accent:#4d7c0f;--accent-alt:#0e7490;--warn:#b45309;--danger:#dc2626;--artifact-fg:#1a1c1a;--artifact-muted:#5c655c;--artifact-accent:#4d7c0f;--content-width:980px;--page-padding:24px;--mobile-page-padding:16px;--hero-top:40px;--hero-bottom:28px;--section-spacing:36px;--figure-spacing:22px;--panel-padding:16px;--footer-spacing:64px;--print-margin:24px;--code:#0c0f0d;--code-text:#e7ece8;--radius:10px}
+@media(prefers-color-scheme:dark){:root:not([data-theme]){color-scheme:dark;--bg:#0a0a0a;--surface:#111312;--surface-alt:#161a18;--line:#26302a;--text:#e7ece8;--muted:#8b938c;--accent:#a3e635;--accent-alt:#5ad6c0;--warn:#f5c451;--danger:#ff6b6b;--artifact-fg:#e7ece8;--artifact-muted:#8b938c;--artifact-accent:#a3e635;}}
+:root[data-theme="light"]{color-scheme:light;--bg:#faf9f6;--surface:#ffffff;--surface-alt:#f2f4f0;--line:#e2e6df;--text:#1a1c1a;--muted:#5c655c;--accent:#4d7c0f;--accent-alt:#0e7490;--warn:#b45309;--danger:#dc2626;--artifact-fg:#1a1c1a;--artifact-muted:#5c655c;--artifact-accent:#4d7c0f;}
+:root[data-theme="dark"]{color-scheme:dark;--bg:#0a0a0a;--surface:#111312;--surface-alt:#161a18;--line:#26302a;--text:#e7ece8;--muted:#8b938c;--accent:#a3e635;--accent-alt:#5ad6c0;--warn:#f5c451;--danger:#ff6b6b;--artifact-fg:#e7ece8;--artifact-muted:#8b938c;--artifact-accent:#a3e635;}
+@media print{:root,:root[data-theme="light"],:root[data-theme="dark"]{color-scheme:light;--bg:#faf9f6;--surface:#ffffff;--surface-alt:#f2f4f0;--line:#e2e6df;--text:#1a1c1a;--muted:#5c655c;--accent:#4d7c0f;--accent-alt:#0e7490;--warn:#b45309;--danger:#dc2626;--artifact-fg:#1a1c1a;--artifact-muted:#5c655c;--artifact-accent:#4d7c0f;}}
+.reader-highlight{background:color-mix(in srgb,var(--warn) 38%,var(--bg));color:inherit;border-radius:2px;box-decoration-break:clone;-webkit-box-decoration-break:clone;cursor:pointer}.reader-highlight:hover{background:color-mix(in srgb,var(--warn) 55%,var(--bg))}.reload-chip{display:inline-flex;align-items:center;height:30px;margin-right:8px;padding:0 12px;border:1px solid color-mix(in srgb,var(--accent) 40%,var(--line));border-radius:999px;background:color-mix(in srgb,var(--accent) 12%,var(--surface));color:var(--accent);font:500 12px/1 var(--font-mono);cursor:pointer}.reload-chip[hidden]{display:none}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font-body);line-height:1.6;-webkit-font-smoothing:antialiased;transition:background-color .15s ease,color .15s ease}main{width:100%;max-width:var(--content-width);min-width:0;margin:0 auto;padding:24px var(--page-padding) 80px}.document-header{display:flex;align-items:center;justify-content:flex-end;min-height:42px;border-bottom:1px solid var(--line);color:var(--muted);font-family:var(--font-mono);font-size:12px}.header-label{min-width:0;margin-right:auto;padding-right:12px;overflow-wrap:anywhere;color:var(--text);font-weight:650}.theme-toggle{display:inline-flex;flex:0 0 auto;align-items:center;gap:6px;height:30px;padding:0 12px;border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--muted);font:500 12px/1 var(--font-mono);cursor:pointer}.theme-toggle:hover{color:var(--accent);border-color:var(--accent)}.theme-toggle:focus-visible{outline:2px solid var(--accent);outline-offset:2px}.hero{padding:var(--hero-top) 0 var(--hero-bottom);border-bottom:1px solid var(--line)}.kicker{display:flex;flex-wrap:wrap;align-items:center;gap:8px 10px;font-family:var(--font-mono);font-size:12px;text-transform:uppercase;letter-spacing:.14em;color:var(--accent);font-weight:500}.kicker-part{color:var(--accent)}.kicker-separator{color:var(--muted);padding:0 2px}.status-badge{display:inline-flex;align-items:center;height:22px;padding:0 9px;border-radius:999px;border:1px solid color-mix(in srgb,var(--warn) 40%,var(--line));background:color-mix(in srgb,var(--warn) 14%,transparent);color:var(--warn);font-family:var(--font-mono);font-size:10.5px;font-weight:650;letter-spacing:.1em;text-transform:uppercase;line-height:1}.status-badge.status-implementing,.status-badge.status-in-progress,.status-badge.status-review,.status-badge.status-done,.status-badge.status-complete{border-color:color-mix(in srgb,var(--accent) 40%,var(--line));background:color-mix(in srgb,var(--accent) 12%,transparent);color:var(--accent)}.hero h1{font-family:var(--font-display);font-size:clamp(30px,4vw,44px);line-height:1.1;margin:12px 0 14px;letter-spacing:-.01em}.summary{max-width:760px;color:var(--muted);font-size:17px;margin:0}.meta{display:grid;gap:14px;margin-top:20px}.facts-line{margin:0;color:var(--muted);font-family:var(--font-mono);font-size:12.5px;line-height:1.7}.meta-block{display:grid;gap:8px}.meta-label{font-family:var(--font-mono);font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:500}.meta-row{display:flex;flex-wrap:wrap;gap:8px;list-style:none;margin:0;padding:0}.chip{display:inline-flex;align-items:center;gap:4px;max-width:100%;border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:4px 11px;color:var(--muted);font-family:var(--font-mono);font-size:11.5px;line-height:1.5}.chip-value{color:var(--text);overflow-wrap:anywhere}.chip-icon{display:inline-block;width:12px;height:12px;margin-right:5px;vertical-align:-1.5px;fill:currentColor;flex:0 0 auto}.chip-favicon{display:inline-block;width:12px;height:12px;margin-right:5px;vertical-align:-1.5px;border-radius:2px;object-fit:contain;flex:0 0 auto}.chip-value a{color:inherit;text-decoration:none}.chip-value a:hover{text-decoration:underline}.provenance-line{margin:0;color:var(--muted);font-family:var(--font-mono);font-size:12.5px;line-height:1.7}.provenance-line a{color:var(--accent-alt);text-decoration:none}.provenance-line a:hover{text-decoration:underline}.provenance-part{color:var(--muted)}.meta-sep{margin:0 7px;opacity:.45}.toc{display:grid;gap:4px;margin:24px 0 8px;font-family:var(--font-mono);font-size:13px}.toc-item{display:block;padding:2px 0 2px 10px;border-left:2px solid transparent;color:var(--muted);text-decoration:none;overflow-wrap:anywhere}.toc-item.toc-sub{padding-left:24px;font-size:.92em;opacity:.85}.toc-item:hover{color:var(--accent)}.toc-item.is-active{color:var(--accent);border-left-color:var(--accent)}.toc-item.is-active .toc-index{opacity:1}@media (min-width:1380px){.toc{position:fixed;top:88px;left:max(20px,calc(50% - var(--content-width)/2 - 236px));width:212px;max-height:calc(100vh - 132px);overflow-y:auto;margin:0;z-index:5;scrollbar-width:thin}.toc::-webkit-scrollbar{width:6px}.toc::-webkit-scrollbar-thumb{background:var(--line);border-radius:3px}}@media (max-width:1379px){.toc-item.toc-sub{display:none}}.code-diff{margin:var(--figure-spacing) 0;border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;background:var(--code)}.code-diff-pre{margin:0;padding:10px 0;background:none;border:none;border-radius:0;overflow-x:auto;font-family:var(--font-mono);font-size:12.5px;line-height:1.55;color:var(--code-text)}.cd-line{display:block;white-space:pre;padding:0 14px}.cd-sign{display:inline-block;width:1.4ch;color:var(--muted);user-select:none}.cd-add{background:color-mix(in srgb,var(--accent) 15%,transparent)}.cd-add .cd-sign{color:var(--accent)}.cd-del{background:color-mix(in srgb,var(--danger) 15%,transparent)}.cd-del .cd-sign{color:var(--danger)}.cd-hunk,.cd-meta{color:var(--muted);opacity:.8}.code-diff>summary{list-style:none;cursor:pointer;padding:8px 14px;font-family:var(--font-mono);font-size:12px;color:var(--code-text);background:color-mix(in srgb,var(--code-text) 8%,var(--code));border-bottom:1px solid transparent;user-select:none}.code-diff[open]>summary{border-bottom-color:color-mix(in srgb,var(--code-text) 15%,transparent)}.code-diff>summary::-webkit-details-marker{display:none}.code-diff>summary::before{content:"\25B8";display:inline-block;margin-right:7px;color:color-mix(in srgb,var(--code-text) 55%,transparent);font-size:10px;transition:transform .12s ease}.code-diff[open]>summary::before{transform:rotate(90deg)}.checklist{margin:var(--figure-spacing) 0;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);padding:var(--panel-padding)}.checklist-head{font-family:var(--font-mono);font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:10px}.checklist-items{list-style:none;margin:0;padding:0;display:grid;gap:7px}.cl-item{display:flex;align-items:baseline;gap:9px}.cl-box{flex:0 0 auto;font-family:var(--font-mono);font-size:.95em}.cl-done .cl-box{color:var(--accent)}.cl-todo .cl-box{color:var(--muted)}.cl-doing .cl-box{color:var(--warn)}.cl-done .cl-text{color:var(--muted);text-decoration:line-through;text-decoration-color:var(--line)}.toc a{color:var(--muted);text-decoration:none}.toc a:hover{color:var(--accent)}.toc a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}.toc-index{color:var(--accent);font-family:var(--font-mono);font-size:.9em}.artifact-body{min-width:0;padding-top:18px;counter-reset:section}h2{font-size:24px;margin:var(--section-spacing) 0 12px;line-height:1.2;letter-spacing:-.01em}.artifact-body>h2{counter-increment:section}.artifact-body>h2::before{content:counter(section,decimal-leading-zero);font-family:var(--font-mono);font-size:.62em;color:var(--accent);margin-right:10px;opacity:.85}h3{font-size:17px;margin:calc(var(--section-spacing) * .78) 0 10px}a{color:var(--accent);text-decoration:none}a:hover{text-decoration:underline}.link-pill{display:inline-flex;align-items:center;gap:4px;max-width:100%;padding:0 6px;border:1px solid var(--line);border-radius:6px;background:var(--surface-alt);color:var(--text);font-size:.92em;line-height:1.35;text-decoration:none;vertical-align:baseline;transition:border-color .12s ease,color .12s ease,background-color .12s ease}.link-pill:hover{border-color:var(--accent);color:var(--accent);background:color-mix(in srgb,var(--accent) 10%,var(--surface-alt));text-decoration:none}.link-pill:focus-visible{outline:2px solid var(--accent);outline-offset:2px}.link-pill-icon{width:12px;height:12px;flex:0 0 auto;fill:currentColor;opacity:.9}.link-pill-favicon{display:inline-block;width:12px;height:12px;flex:0 0 auto;border-radius:3px;object-fit:contain}.link-pill-text{min-width:0;overflow-wrap:anywhere}.link-pill code{background:none;border:none;padding:0;color:inherit}td .link-pill,li .link-pill{vertical-align:-1px}p,li,dd,figcaption{overflow-wrap:anywhere}pre{background:var(--code);color:var(--code-text);padding:var(--panel-padding);border-radius:12px;overflow:auto;border:1px solid var(--line)}code{font-family:var(--font-mono);font-size:.88em;background:var(--surface-alt);border:1px solid var(--line);border-radius:5px;padding:1.5px 6px;color:var(--accent-alt)}pre code{background:none;border:none;padding:0;color:inherit}table{width:100%;border-collapse:collapse;margin:18px 0}th,td{border-bottom:1px solid var(--line);padding:10px;text-align:left;vertical-align:top}th{font-family:var(--font-mono);font-size:11.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:500}blockquote{border-left:3px solid var(--accent);padding-left:var(--panel-padding);color:var(--muted);margin-left:0}img{display:block;max-width:100%;height:auto}svg{max-width:100%;height:auto}.artifact-body>p>img{margin:var(--figure-spacing) auto}.artifact-grid{display:grid;gap:var(--panel-padding);margin:var(--figure-spacing) 0}.artifact-grid-2{grid-template-columns:repeat(2,minmax(0,1fr))}.artifact-grid-3{grid-template-columns:repeat(3,minmax(0,1fr))}.artifact-panel,.artifact-stat{min-width:0;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);padding:var(--panel-padding)}.artifact-panel h3{margin:10px 0 8px;font-size:16px}.artifact-stat-value,.artifact-stat-label{display:block}.artifact-stat-value{color:var(--text);font-family:var(--font-display);font-size:24px;line-height:1.15}.artifact-stat-label{margin-top:6px;color:var(--muted);font-size:13px}.artifact-tag{display:inline-block;--tag-color:var(--muted);background:color-mix(in srgb,var(--tag-color) 12%,transparent);border:1px solid color-mix(in srgb,var(--tag-color) 30%,transparent);border-radius:6px;padding:2px 8px;color:var(--tag-color);font-family:var(--font-mono);font-size:11px;font-weight:600;text-transform:uppercase}.artifact-tag-accent{--tag-color:var(--accent)}.artifact-callout{margin:var(--figure-spacing) 0;border:1px solid var(--line);border-left:3px solid var(--accent);border-radius:0 var(--radius) var(--radius) 0;background:var(--surface-alt);padding:var(--panel-padding)}.artifact-callout-warn{border-left-color:var(--warn)}.artifact-callout-danger{border-left-color:var(--danger)}.artifact-callout strong{color:var(--text)}.artifact-figure{margin:var(--figure-spacing) 0;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);padding:var(--panel-padding);overflow-x:auto}.artifact-figure>img,.artifact-image{width:auto;max-width:100%;height:auto;margin:0 auto}.artifact-figure-diagram{background:#0e120f;border-color:#26302a}.artifact-diagram{display:block;width:100%;height:auto;margin:0 auto}.artifact-figure-tall{width:100%;max-width:394px;margin-left:auto;margin-right:auto}.artifact-figure figcaption{margin-top:12px;color:var(--muted);font-family:var(--font-mono);font-size:12px;text-align:center}.artifact-figure.artifact-figure-diagram figcaption{color:#8b938c}.artifact-legend{display:flex;flex-wrap:wrap;gap:8px 16px;margin:12px 0;color:var(--muted);font-family:var(--font-mono);font-size:11.5px}.artifact-behavior{margin:var(--figure-spacing) 0;border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;display:grid;grid-template-columns:1fr 1fr}.artifact-behavior-panel{padding:var(--panel-padding);background:var(--surface)}.artifact-behavior-panel+.artifact-behavior-panel{border-left:1px solid var(--line)}.artifact-behavior-panel::before{display:block;font-family:var(--font-mono);font-size:10.5px;text-transform:uppercase;letter-spacing:.12em;color:var(--muted);font-weight:500;margin-bottom:8px;content:""}.artifact-behavior-panel[data-state="current"]::before{content:"Current"}.artifact-behavior-panel[data-state="proposed"]{background:color-mix(in srgb,var(--accent) 6%,var(--surface))}.artifact-behavior-panel[data-state="proposed"]::before{content:"Proposed";color:var(--accent)}.document-footer{margin-top:var(--footer-spacing);padding-top:18px;border-top:1px solid var(--line);color:var(--muted);font-family:var(--font-mono);font-size:12px}.references-list{margin:0;padding-left:1.6em;display:grid;gap:7px}.reference-item{color:var(--muted)}.reference-item::marker{font-family:var(--font-mono);font-size:.86em;color:var(--muted)}.reference-link{display:inline-flex;align-items:center;gap:7px;max-width:100%;color:var(--text);text-decoration:none;overflow-wrap:anywhere}.reference-link:hover{color:var(--accent);text-decoration:none}.reference-link:hover .reference-text{text-decoration:underline}.reference-host{color:var(--muted);font-family:var(--font-mono);font-size:.82em}.view-count{color:var(--muted);font-family:var(--font-mono);font-size:11.5px;margin-right:12px;white-space:nowrap}
+.artifact-figure-diagram{--artifact-fg:#e7ece8;--artifact-muted:#b7c0b8;--artifact-accent:#a3e635}.artifact-figure.artifact-figure-diagram figcaption{color:var(--artifact-muted)}
+@media(max-width:720px){main{padding:32px var(--mobile-page-padding) 64px}.artifact-grid-2,.artifact-grid-3{grid-template-columns:1fr}.artifact-figure{padding:min(12px,var(--panel-padding))}.artifact-figure-wide .artifact-diagram{min-width:640px}.artifact-behavior{grid-template-columns:1fr}.artifact-behavior-panel+.artifact-behavior-panel{border-left:none;border-top:1px solid var(--line)}table{display:block;max-width:100%;overflow-x:auto}th,td{min-width:140px;overflow-wrap:anywhere}pre{white-space:pre-wrap;overflow-wrap:anywhere}}
+@media print{body{transition:none;-webkit-print-color-adjust:exact;print-color-adjust:exact}.toc,.theme-toggle,.view-count{display:none}.document-header-empty{display:none}main{max-width:none;padding:0}:root[data-pdf-layout="poster"] main{max-width:var(--content-width);margin:0 auto;padding:var(--print-margin)}.chip{background:var(--surface)}.chip-value{color:var(--text)}.provenance-line,.provenance-line a,.facts-line{color:var(--text)}.status-badge{color:var(--text);border-color:var(--line)}h2,h3{break-after:avoid-page}.artifact-figure,.artifact-grid,.artifact-panel,.artifact-stat,.artifact-callout,.artifact-behavior,pre,table,blockquote,.meta{break-inside:avoid}.artifact-figure-wide .artifact-diagram{min-width:0}.artifact-figure-tall{max-width:330px}pre{white-space:pre-wrap;overflow-wrap:anywhere}a{color:var(--text);text-decoration:underline}.link-pill{color:var(--text);text-decoration:none;background:var(--surface);border-color:var(--line);break-inside:avoid}}
+</style>
+
+</head>
+<body>
+<main>
+<header class="document-header document-header-empty"><span class="view-count" hidden></span><button class="reload-chip" type="button" hidden>Updated · Reload</button><button class="theme-toggle" type="button" aria-label="Toggle color theme" aria-pressed="false" title="Toggle color theme"><span aria-hidden="true">&#9680;</span> theme</button></header>
+
+<section class="hero">
+<div class="kicker"><span class="kicker-part">.agents-system</span><span class="kicker-separator" aria-hidden="true">&middot;</span><span class="kicker-part">plan</span><span class="status-badge status-draft">draft</span></div>
+<h1>/demo — the post-ship demonstration ritual</h1>
+<p class="summary">Agents stop at "it's merged / shipped / released" and sit. Add a /demo command + work:demo skill that recovers the original intent, exercises the shipped thing in its real environment, puts before/after side by side, captures screenshots, and delivers a report — the recurring ask the owner types by hand after every landing.
+</p>
+<div class="meta" aria-label="Artifact metadata"><div class="meta-block meta-links"><div class="meta-label">Related</div><ul class="meta-row meta-row-links"><li class="chip"><span class="chip-value"><svg class="chip-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.385.6.113.82-.258.82-.577 0-.285-.01-1.04-.015-2.04-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22 0 1.606-.015 2.896-.015 3.286 0 .315.21.69.825.57C20.565 22.092 24 17.592 24 12.297c0-6.627-5.373-12-12-12"/></svg><a href="https://github.com/phnx-labs/.agents-system (this repo)" target="_blank" rel="noopener">.agents-system (this repo)</a></span></li></ul></div><p class="provenance-line" aria-label="Provenance"><span class="provenance-part"><a href="https://github.com/phnx-labs/.agents-system" target="_blank" rel="noopener">phnx-labs/.agents-system</a></span><span class="meta-sep" aria-hidden="true">·</span><span class="provenance-part">demo-command</span><span class="meta-sep" aria-hidden="true">·</span><span class="provenance-part">Agents-cli Claude</span><span class="meta-sep" aria-hidden="true">·</span><span class="provenance-part">Muqsit</span><span class="meta-sep" aria-hidden="true">·</span><span class="provenance-part">a fleet worker</span><span class="meta-sep" aria-hidden="true">·</span><span class="provenance-part">2026-08-27</span></p></div>
+</section>
+<nav class="toc" aria-label="Artifact sections"><a class="toc-item" href="#focus-for-review" data-toc-for="focus-for-review"><span class="toc-index">01&nbsp;&middot;&nbsp;</span>Focus for review</a><a class="toc-item" href="#purpose" data-toc-for="purpose"><span class="toc-index">02&nbsp;&middot;&nbsp;</span>Purpose</a><a class="toc-item toc-sub" href="#why-the-existing-gate-isn-t-enough" data-toc-for="why-the-existing-gate-isn-t-enough">Why the existing gate isn't enough</a><a class="toc-item" href="#current-architecture" data-toc-for="current-architecture"><span class="toc-index">03&nbsp;&middot;&nbsp;</span>Current architecture</a><a class="toc-item" href="#what-the-command-actually-does-behavior" data-toc-for="what-the-command-actually-does-behavior"><span class="toc-index">04&nbsp;&middot;&nbsp;</span>What the command actually does (behavior)</a><a class="toc-item toc-sub" href="#the-ritual-the-instructions-that-go-in-the-skill" data-toc-for="the-ritual-the-instructions-that-go-in-the-skill">The ritual — the instructions that go in the skill</a><a class="toc-item" href="#proposed-changes" data-toc-for="proposed-changes"><span class="toc-index">05&nbsp;&middot;&nbsp;</span>Proposed Changes</a><a class="toc-item" href="#public-interface" data-toc-for="public-interface"><span class="toc-index">06&nbsp;&middot;&nbsp;</span>Public Interface</a><a class="toc-item" href="#plan" data-toc-for="plan"><span class="toc-index">07&nbsp;&middot;&nbsp;</span>Plan</a><a class="toc-item" href="#validation" data-toc-for="validation"><span class="toc-index">08&nbsp;&middot;&nbsp;</span>Validation</a><a class="toc-item" href="#risks" data-toc-for="risks"><span class="toc-index">09&nbsp;&middot;&nbsp;</span>Risks</a><a class="toc-item" href="#tracking" data-toc-for="tracking"><span class="toc-index">10&nbsp;&middot;&nbsp;</span>Tracking</a></nav><article class="artifact-body"><h2 id="focus-for-review">Focus for review</h2><p>Five decisions worth your eyes before anyone builds this:</p>
+<ol>
+<li><strong>Home + name.</strong> Recommended: canonical skill in the <strong><code>work</code></strong> plugin
+(<code>work:demo</code>) with a top-level <strong><code>/demo</code></strong> alias — this satisfies <em>both</em>
+options you floated ("the work command <strong>or</strong> a top-level <code>/demo</code>") at once,
+and keeps the surface lean (no new plugin on an already 45%-dead command set).
+The alternative is a standalone <code>demo</code> plugin. <strong>This is the one call I want
+from you.</strong></li>
+<li><strong>Explicit command now, hook-nudge later.</strong> Phase 1 is a command you (or an
+agent) invoke: <code>/demo</code>. Phase 2 (optional) teaches the <code>verify-work-complete</code>
+Stop hook to <em>suggest</em> a demo when it sees a ship-claim on a user-visible
+surface. Phase 1 ships clean and standalone; Phase 2 is a separate opt-in.</li>
+<li><strong>Which environment counts as "real."</strong> The skill demands the <em>installed /
+deployed</em> artifact — prod if deployed, else the pre-prod/staging box, else the
+installed binary — <strong>never the dev build or the worktree</strong>. Is "installed
+binary on a fleet box" a strong enough floor when there's no prod to hit?</li>
+<li><strong>How hard is "side by side"?</strong> Before/after of the <em>same</em> flow is always in
+scope. Comparing <em>alternative solutions</em> (the approaches considered) is only
+possible when the alternatives are cheap to run. The skill asks for before/after
+always, alternatives when feasible — not a hard requirement that stalls.</li>
+<li><strong>Report format.</strong> Reuse the <code>artifacts</code> skill (<code>kind: report</code>) so the output
+is a branded, self-contained HTML report delivered on your box + attached to the
+PR — same pipeline as the plans and recaps you already like.</li>
+</ol>
+<h2 id="purpose">Purpose</h2><p>Restating your ask, verbatim from this session:</p>
+<blockquote>
+<p>whenever we land a feature and the Agents ship that, they just sit there and say
+"Oh, it's merged or it's shipped or whatever, it's released." But they do not
+test it deeply in production or pre-production... they're supposed to take the
+context of the original intent and then even compare solutions, put things side
+by side, take screenshots, prepare a report, and analyze it.</p>
+</blockquote>
+<p>This is not a one-off. Mining 100 days of your sessions, the <strong>same post-ship ask
+recurs in your own words</strong> across at least five landings:</p>
+<table>
+<thead>
+<tr>
+<th>Landing</th>
+<th>Date</th>
+<th>What you typed after "it's shipped"</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>A</td>
+<td>08-27</td>
+<td><strong>"Show me a demo.."</strong> → <em>"how does it look side by side.. I thought we had a report too."</em></td>
+</tr>
+<tr>
+<td>B</td>
+<td>08-26</td>
+<td><em>"test it quickly... on a worker box... and then <strong>attach your screenshots in the PR</strong>"</em></td>
+</tr>
+<tr>
+<td>C</td>
+<td>08-25</td>
+<td><em>"Did we ship <strong>all</strong> the UI side changes??"</em> (completeness vs intent)</td>
+</tr>
+<tr>
+<td>D</td>
+<td>08-25</td>
+<td><em>"do the merge, do the release <strong>and then test it as well</strong>... create some more complex artifacts"</em></td>
+</tr>
+<tr>
+<td>E</td>
+<td>08-27</td>
+<td><em>"Did we ship this?"</em> → the plan lived only in <code>/tmp</code></td>
+</tr>
+</tbody></table>
+<p>Every one is the same missing ritual: <strong>the agent proved the code compiles and
+merged, but never demonstrated the shipped thing works against what you actually
+asked for.</strong> <code>/demo</code> makes that ritual a first-class command so you stop typing it
+by hand.</p>
+<h3 id="why-the-existing-gate-isn-t-enough">Why the existing gate isn't enough</h3><p><code>hooks/stop/00-agent-verify-work-complete.sh</code> already blocks a <em>stop</em> that claims
+"done" without evidence, and bans "builds / merges / proxies are not proof." But it
+is a <strong>negative gate on stopping</strong> — it stops a bad stop; it does not <em>produce a
+demonstration</em>. It has no notion of the <em>original intent</em>, no side-by-side, no
+report, no delivery to your screen. <code>/demo</code> is the <strong>positive</strong> capstone the gate
+implies: the artifact you asked for, not just permission to stop.</p>
+<h2 id="current-architecture">Current architecture</h2><p>How a landing flows today, and where it dead-ends:</p>
+<figure class="artifact-figure artifact-figure-diagram">
+<svg viewBox="0 0 920 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Current landing flow dead-ends at 'it's shipped'">
+  <rect x="10" y="120" width="150" height="60" rx="8" fill="#1b2a1b" stroke="#4a7a3a" stroke-width="1.5"></rect>
+  <text x="85" y="146" fill="#cde8b8" font-size="13" text-anchor="middle">code:loop /</text>
+  <text x="85" y="164" fill="#cde8b8" font-size="13" text-anchor="middle">work:dispatch</text>
+
+  <rect x="200" y="120" width="150" height="60" rx="8" fill="#1b2333" stroke="#3a5a7a"></rect>
+  <text x="275" y="146" fill="#b8d4e8" font-size="13" text-anchor="middle">PR merged</text>
+  <text x="275" y="164" fill="#8fb3cc" font-size="11" text-anchor="middle">CI green + review</text>
+
+  <rect x="390" y="120" width="150" height="60" rx="8" fill="#1b2333" stroke="#3a5a7a"></rect>
+  <text x="465" y="146" fill="#b8d4e8" font-size="13" text-anchor="middle">released</text>
+  <text x="465" y="164" fill="#8fb3cc" font-size="11" text-anchor="middle">npm / tag</text>
+
+  <rect x="580" y="112" width="170" height="76" rx="8" fill="#3a1b1b" stroke="#a35050"></rect>
+  <text x="665" y="140" fill="#f0b8b8" font-size="13" text-anchor="middle" font-weight="600">agent sits.</text>
+  <text x="665" y="158" fill="#f0b8b8" font-size="12" text-anchor="middle">"it's shipped."</text>
+  <text x="665" y="174" fill="#d89090" font-size="11" text-anchor="middle">no demo. no proof.</text>
+
+  <rect x="580" y="230" width="330" height="52" rx="8" fill="#2a2410" stroke="#8a7a30" stroke-dasharray="5 4"></rect>
+  <text x="745" y="252" fill="#e8d88f" font-size="12" text-anchor="middle">YOU type it by hand, every time:</text>
+  <text x="745" y="270" fill="#c9b96a" font-size="12" text-anchor="middle">"show me a demo.." · "side by side" · "did we ship all of it?"</text>
+
+  <line x1="160" y1="150" x2="198" y2="150" stroke="#6a8a5a" stroke-width="2" marker-end="url(#a)"></line>
+  <line x1="350" y1="150" x2="388" y2="150" stroke="#5a7a9a" stroke-width="2" marker-end="url(#a)"></line>
+  <line x1="540" y1="150" x2="578" y2="150" stroke="#5a7a9a" stroke-width="2" marker-end="url(#a)"></line>
+  <line x1="665" y1="188" x2="665" y2="228" stroke="#8a7a30" stroke-width="2" stroke-dasharray="5 4" marker-end="url(#a)"></line>
+  <defs>
+    <marker id="a" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#8a9a7a"></path></marker>
+  </defs>
+</svg>
+<figcaption>Today: the flow ends at a claim. The demonstration is outsourced to you.</figcaption>
+</figure><p>Proposed: <code>/demo</code> closes the loop — the agent runs the ritual the moment work lands,
+and hands you the report instead of the other way around.</p>
+<figure class="artifact-figure artifact-figure-diagram">
+<svg viewBox="0 0 920 340" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Proposed /demo ritual closing the loop">
+  <rect x="10" y="150" width="130" height="54" rx="8" fill="#1b2333" stroke="#3a5a7a"></rect>
+  <text x="75" y="182" fill="#b8d4e8" font-size="13" text-anchor="middle">shipped</text>
+
+  <rect x="185" y="20" width="200" height="300" rx="10" fill="#12180f" stroke="#4a7a3a" stroke-width="1.5"></rect>
+  <text x="285" y="44" fill="#a3e635" font-size="13" text-anchor="middle" font-weight="600">/demo</text>
+  <g>
+    <rect x="200" y="58" width="170" height="34" rx="6" fill="#1b2a1b" stroke="#3a5a2a"></rect>
+    <text x="285" y="79" fill="#cde8b8" text-anchor="middle">1 · recover intent</text>
+    <rect x="200" y="100" width="170" height="34" rx="6" fill="#1b2a1b" stroke="#3a5a2a"></rect>
+    <text x="285" y="121" fill="#cde8b8" text-anchor="middle">2 · pick real env</text>
+    <rect x="200" y="142" width="170" height="34" rx="6" fill="#1b2a1b" stroke="#3a5a2a"></rect>
+    <text x="285" y="163" fill="#cde8b8" text-anchor="middle">3 · drive + capture</text>
+    <rect x="200" y="184" width="170" height="34" rx="6" fill="#1b2a1b" stroke="#3a5a2a"></rect>
+    <text x="285" y="205" fill="#cde8b8" text-anchor="middle">4 · before / after</text>
+    <rect x="200" y="226" width="170" height="34" rx="6" fill="#1b2a1b" stroke="#3a5a2a"></rect>
+    <text x="285" y="247" fill="#cde8b8" text-anchor="middle">5 · analyze vs intent</text>
+    <rect x="200" y="268" width="170" height="34" rx="6" fill="#1b2a1b" stroke="#3a5a2a"></rect>
+    <text x="285" y="289" fill="#cde8b8" text-anchor="middle">6 · report</text>
+  </g>
+
+  <rect x="430" y="70" width="150" height="60" rx="8" fill="#1b2333" stroke="#3a5a7a"></rect>
+  <text x="505" y="96" fill="#b8d4e8" font-size="12" text-anchor="middle">report on YOUR</text>
+  <text x="505" y="114" fill="#b8d4e8" font-size="12" text-anchor="middle">your screen</text>
+
+  <rect x="430" y="150" width="150" height="60" rx="8" fill="#1b2333" stroke="#3a5a7a"></rect>
+  <text x="505" y="176" fill="#b8d4e8" font-size="12" text-anchor="middle">attached to</text>
+  <text x="505" y="194" fill="#b8d4e8" font-size="12" text-anchor="middle">the PR</text>
+
+  <rect x="430" y="230" width="150" height="60" rx="8" fill="#1b2333" stroke="#3a5a7a"></rect>
+  <text x="505" y="256" fill="#b8d4e8" font-size="12" text-anchor="middle">honest gaps</text>
+  <text x="505" y="274" fill="#8fb3cc" font-size="11" text-anchor="middle">→ filed as tickets</text>
+
+  <rect x="640" y="150" width="150" height="60" rx="8" fill="#1b2a1b" stroke="#4a7a3a"></rect>
+  <text x="715" y="176" fill="#cde8b8" font-size="13" text-anchor="middle" font-weight="600">you see it</text>
+  <text x="715" y="194" fill="#a8c898" font-size="11" text-anchor="middle">without asking</text>
+
+  <line x1="140" y1="177" x2="183" y2="177" stroke="#5a7a9a" stroke-width="2" marker-end="url(#b)"></line>
+  <line x1="385" y1="100" x2="428" y2="100" stroke="#5a7a5a" stroke-width="2" marker-end="url(#b)"></line>
+  <line x1="385" y1="180" x2="428" y2="180" stroke="#5a7a5a" stroke-width="2" marker-end="url(#b)"></line>
+  <line x1="385" y1="260" x2="428" y2="260" stroke="#5a7a5a" stroke-width="2" marker-end="url(#b)"></line>
+  <line x1="580" y1="180" x2="638" y2="180" stroke="#5a7a9a" stroke-width="2" marker-end="url(#b)"></line>
+  <defs>
+    <marker id="b" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#8a9a7a"></path></marker>
+  </defs>
+</svg>
+<figcaption>Proposed: the agent runs the ritual and hands you the report — the loop closes on the agent's side.</figcaption>
+</figure><p class="artifact-callout">The one call I need from you: <strong>home + name</strong>. My recommendation is <code>work:demo</code> (canonical skill) plus a top-level <code>/demo</code> alias — it satisfies both options you floated and adds zero new plugins. Everything else follows from that.</p>
+
+<h2 id="what-the-command-actually-does-behavior">What the command actually does (behavior)</h2><figure class="artifact-figure artifact-behavior">
+  <section data-state="current" data-evidence="mockup">
+    <h4>Current — the agent sits at "it's shipped"</h4>
+    <pre><code>◆ Recap
+  We merged the change, filed the follow-up ticket, and released.
+  Honest status / what's left:
+   - PR merged (signed squash), worktree cleaned.
+   - Report is on your screen but lives in /tmp — say the word and
+     I'll publish it so it persists.
+  Nothing outstanding on the delivery itself.
+
+∗ Worked for 38m 34s
+
+› Show me a demo..
+  └ 2 skills available
+
+∗ Envisioning…                                    ← it just sits here</code></pre>
+    <p>Faithful reconstruction of a real landing this session: the agent delivered a solid status wrap-up — merged PR, filed ticket, honest "what's left" — then <em>stopped</em>. You had to type <strong>"Show me a demo.."</strong> and it sat at "Envisioning…". No demo was produced until asked. (Anonymized for this public repo; the live capture was shown on your screen.)</p>
+  </section>
+  <section data-state="proposed" data-evidence="mockup">
+    <h4>Proposed — <code>/demo</code> produces the demonstration report</h4>
+    <pre><code>$ /demo PHNX-3350
+  recovered intent · ticket + this session's ask + PR #NNN
+  env: installed `agents` on a fleet worker (not the dev build)
+  drove: 3 flows · 6 screenshots · before/after captured
+✓ intent delivered: 4/5 acceptance criteria
+△ gap: macOS timeout nudge not yet wired → filed PHNX-XXXX
+→ report on your screen · attached to PR · feed posted</code></pre>
+    <p>A branded HTML report opens on your box: intent-vs-delivered table, before/after side by side, the captures, the measured delta, and the honest gaps filed as tickets.</p>
+  </section>
+</figure><h3 id="the-ritual-the-instructions-that-go-in-the-skill">The ritual — the instructions that go in the skill</h3><p>This is the core of your question ("what instructions do we need to put there?").
+The <code>work:demo</code> skill is these seven steps, in order:</p>
+<ol>
+<li><strong>Recover the intent — don't trust the diff.</strong> Pull the <em>original</em> ask: this
+session's opening request, the ticket's acceptance criteria, the PR description.
+Use <code>/recall</code> (<code>sessions:search</code>) to gather every relevant prior-session thread
+on the topic <strong>without</strong> reloading full transcripts. Restate what was asked in
+one paragraph. The bar is the <em>intent</em>, not "the code I wrote."</li>
+<li><strong>Pick the real environment.</strong> Demonstrate where it actually runs: <strong>production
+if deployed; else the pre-prod/staging box; else the installed binary</strong> on a
+fleet box. <strong>Never the dev build or the worktree</strong> — the verify hook already
+bans "builds/merges/proxies are not proof," and a demo of the dev build is the
+same lie. State which environment and why.</li>
+<li><strong>Drive it end-to-end on the real surface — reach for the tools, hard.</strong> You are
+not limited to the terminal. You have <strong><code>agents browser</code></strong> (open the web app,
+click through it, upload, screenshot) and <strong><code>agents computer</code></strong> (native desktop,
+element mode) — <em>use</em> them, don't describe what they'd show. The skill spells this
+out so no agent forgets it exists:<ul>
+<li><strong>Sign in as the user.</strong> The fleet's interactive box already has a browser profile
+logged into the owner's services (the SessionStart host context names it) —
+<code>agents browser profiles logins --device &lt;interactive-box&gt;</code> lists which. Where a native login is needed, <code>agents computer</code>
+can select the owner's normal account and sign in. Demonstrate on the <strong>real,
+logged-in account</strong>, never a logged-out or throwaway session.</li>
+<li><strong>Use REAL, representative inputs — never toy examples.</strong> Upload / paste / feed
+the <em>kind of data the owner actually hits</em>: a real repo, a real transcript, a
+real file, a real prompt — not "hello world." A green screenshot on a toy input
+proves nothing. If the real input is sensitive, use a representative sample of
+the same shape and say so.</li>
+<li><strong>Capture every meaningful step</strong> — screenshot or record. Quoted output counts
+for non-visual surfaces.</li>
+</ul>
+</li>
+<li><strong>Put it side by side and quantify the delta.</strong> Before vs after of the <strong>same real
+input</strong>, always — run the old behavior and the new behavior on identical,
+representative data and place the two captures adjacent. Then <strong>measure</strong>: how much
+better (a number, a latency, a token count, fewer steps), or honestly <em>none</em> if it
+didn't move. Alternatives considered vs the chosen one when they're cheap to run.
+This is the "compare solutions / side by side / see how much improvement" ask — the
+improvement must be <strong>shown clearly</strong>, not asserted.</li>
+<li><strong>Analyze against the intent.</strong> Did it deliver <strong>every</strong> part of the ask (the
+"did we ship <em>all</em> the UI changes??" completeness check)? Quote the measured
+improvement — a number, a latency, a token cost. Name what's still a gap and
+<strong>file it as a ticket</strong> rather than burying it.</li>
+<li><strong>Build the report.</strong> Reuse the <code>artifacts</code> skill (<code>kind: report</code>): hero
+side-by-side figure, the captures, an intent→delivered table, the measured
+delta, honest gaps. Concrete, not a slogan.</li>
+<li><strong>Deliver it where you'll see it.</strong> Render, inspect headlessly (both themes,
+desktop + mobile), then show it on the owner's interactive box in one reused
+tab, <strong>attach the report + captures to the PR</strong>, and post a feed milestone.
+Close with an honest status line that distinguishes <em>merged / released /
+installed / verified-in-prod</em> — never overclaim.</li>
+</ol>
+<p class="artifact-callout artifact-callout-warn">The heaviest reminder in the skill: <strong>you have <code>agents browser</code> and <code>agents computer</code> — open the real web app, sign in with the owner's normal account (the interactive box's profile is already logged in), and upload / drive <em>real, representative inputs</em>, not toy examples.</strong> Then compare before vs after on that same real input and <strong>show the improvement clearly</strong> — a measured delta, or an honest "no change." A demo on a logged-out toy example is theater, not proof.</p>
+
+<h2 id="proposed-changes">Proposed Changes</h2><p>New skill + command + top-level alias, then the three-places-agree bookkeeping. No
+existing behavior changes — this is additive.</p>
+<p><strong><code>plugins/work/skills/demo/SKILL.md</code></strong> (new) — the seven-step ritual as operating
+instructions, <code>allowed-tools</code> scoped to browser/computer/artifacts/recall:</p>
+<div class="code-diff"><pre class="code-diff-pre"><span class="cd-line cd-add"><span class="cd-sign">+</span><span class="cd-code">---</span></span><span class="cd-line cd-add"><span class="cd-sign">+</span><span class="cd-code">name: demo</span></span><span class="cd-line cd-add"><span class="cd-sign">+</span><span class="cd-code">description: Demonstrate landed work — recover the original intent, exercise the</span></span><span class="cd-line cd-add"><span class="cd-sign">+</span><span class="cd-code">  shipped thing in its real environment, put before/after side by side, capture</span></span><span class="cd-line cd-add"><span class="cd-sign">+</span><span class="cd-code">  screenshots, and deliver an analyzed report on the owner's screen + the PR.</span></span><span class="cd-line cd-add"><span class="cd-sign">+</span><span class="cd-code">allowed-tools: Bash, Read, Write, Edit, WebFetch</span></span><span class="cd-line cd-add"><span class="cd-sign">+</span><span class="cd-code">---</span></span><span class="cd-line cd-add"><span class="cd-sign">+</span><span class="cd-code"># work:demo — prove it, don't just ship it</span></span><span class="cd-line cd-add"><span class="cd-sign">+</span><span class="cd-code">... seven steps (recover intent → pick real env → drive+capture → side by side</span></span><span class="cd-line cd-add"><span class="cd-sign">+</span><span class="cd-code">    → analyze vs intent → report → deliver) ...</span></span></pre></div><p><strong><code>plugins/work/commands/demo.md</code></strong> (new) → <code>/work:demo</code>, and <strong><code>commands/demo.md</code></strong>
+(new) → top-level <code>/demo</code> alias that invokes the same skill (the <code>/recall</code>→<code>sessions:search</code>
+precedent):</p>
+<div class="code-diff"><pre class="code-diff-pre"><span class="cd-line cd-add"><span class="cd-sign">+</span><span class="cd-code">---</span></span><span class="cd-line cd-add"><span class="cd-sign">+</span><span class="cd-code">description: Demonstrate landed work — recover intent, exercise the shipped thing</span></span><span class="cd-line cd-add"><span class="cd-sign">+</span><span class="cd-code">  in its real environment, before/after side by side, screenshots, analyzed report.</span></span><span class="cd-line cd-add"><span class="cd-sign">+</span><span class="cd-code">argument-hint: "[&lt;ticket|PR|session-id|what was shipped&gt;]"</span></span><span class="cd-line cd-add"><span class="cd-sign">+</span><span class="cd-code">---</span></span><span class="cd-line cd-add"><span class="cd-sign">+</span><span class="cd-code">**`/demo` invokes the `work:demo` skill.** Arguments: $ARGUMENTS</span></span></pre></div><p><strong>Three-places-agree + docs</strong> (edits):</p>
+<div class="code-diff"><pre class="code-diff-pre"><span class="cd-line cd-ctx"><span class="cd-sign"></span><span class="cd-code"># plugins/work/.claude-plugin/plugin.json — bump description + version (0.4.0 → 0.5.0)</span></span><span class="cd-line cd-ctx"><span class="cd-sign"></span><span class="cd-code"># plugins/README.md — work "Commands" count 2 → 3, add /demo row</span></span><span class="cd-line cd-ctx"><span class="cd-sign"></span><span class="cd-code"># commands/README.md — add /demo alias row</span></span><span class="cd-line cd-ctx"><span class="cd-sign"></span><span class="cd-code"># plugins/work/README.md — /demo as the delivery capstone after loop/dispatch</span></span><span class="cd-line cd-ctx"><span class="cd-sign"></span><span class="cd-code"># CHANGELOG.md — work plugin minor: "/demo post-ship demonstration ritual"</span></span></pre></div><h2 id="public-interface">Public Interface</h2><pre><code>/demo [&lt;ticket|PR|session-id|"what was shipped"&gt;]
+/work:demo &lt;same&gt;          # canonical; /demo is the top-level alias
+
+# no arg → demo the work THIS session just landed (recover intent from the transcript)
+# arg    → demo that ticket / PR / described landing
+</code></pre>
+<p>Flags kept minimal (surface-convention: intuitive over flag soup):</p>
+<table>
+<thead>
+<tr>
+<th>Flag</th>
+<th>Effect</th>
+<th>Default</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>--env &lt;prod|preprod|installed&gt;</code></td>
+<td>which environment to demonstrate against</td>
+<td>auto-detect (prod if deployed, else installed)</td>
+</tr>
+<tr>
+<td><code>--device &lt;name&gt;</code></td>
+<td>run the demo on a specific fleet box</td>
+<td>auto</td>
+</tr>
+<tr>
+<td><code>--no-report</code></td>
+<td>drive + capture + verbally summarize, skip the HTML report</td>
+<td>report on</td>
+</tr>
+<tr>
+<td><code>--attach &lt;pr&gt;</code></td>
+<td>PR to attach the report/captures to</td>
+<td>the session's owned PR</td>
+</tr>
+</tbody></table>
+<p><code>--help</code> ships a <code>setHelpSections</code> block: the seven-step playbook first, flags last.</p>
+<h2 id="plan">Plan</h2><div class="checklist"><div class="checklist-head">0 / 6 done</div><ul class="checklist-items"><li class="cl-item cl-todo"><span class="cl-box">○</span><span class="cl-text"><strong>T1 — home decision</strong> (blocks the rest): confirm <code>work:demo</code> + top-level <code>/demo</code> alias vs a standalone <code>demo</code> plugin.</span></li><li class="cl-item cl-todo"><span class="cl-box">○</span><span class="cl-text"><strong>T2 — skill</strong>: <code>plugins/work/skills/demo/SKILL.md</code> — the seven-step ritual, with a <code>demo_test.sh</code> beside it (deterministic: fixture landing → asserts report has intent + before/after + gaps sections).</span></li><li class="cl-item cl-todo"><span class="cl-box">○</span><span class="cl-text"><strong>T3 — command</strong>: <code>plugins/work/commands/demo.md</code> (<code>/work:demo</code>) + top-level <code>commands/demo.md</code> alias, both with <code>setHelpSections</code>.</span></li><li class="cl-item cl-todo"><span class="cl-box">○</span><span class="cl-text"><strong>T4 — three-places-agree</strong>: update <code>plugins/work/.claude-plugin/plugin.json</code> description, <code>plugins/README.md</code> table (work count 2→3), <code>commands/README.md</code>; bump <code>CHANGELOG.md</code> (<code>work</code> minor). Run <code>claude plugin validate . --strict</code>.</span></li><li class="cl-item cl-todo"><span class="cl-box">○</span><span class="cl-text"><strong>T5 — wire references</strong>: <code>plugins/work/README.md</code>, the <code>work:loop</code>/<code>work:dispatch</code> "not done at dispatched" lines point at <code>/demo</code> as the capstone; the top-level README "what should I run?" gets a row.</span></li><li class="cl-item cl-todo"><span class="cl-box">○</span><span class="cl-text"><strong>T6 — self-demo</strong>: run <code>/demo</code> on THIS change (demo the demo), attach the report to the PR — the acceptance proof.</span></li></ul></div>
+<h2 id="validation">Validation</h2><ul>
+<li><strong>Self-referential proof</strong>: the PR that adds <code>/demo</code> is validated <em>by running
+<code>/demo</code> on itself</em> — recover this plan's intent, drive the installed command on a
+fleet box, before/after (agent-sits vs report-produced), report attached to the PR.
+If the command can't demo its own landing, it isn't done.</li>
+<li><code>demo_test.sh</code> runs green next to the skill (real path, no mocks): a fixture
+landing in, a report with the required sections out.</li>
+<li><code>claude plugin validate . --strict</code> passes; three-places-agree count holds.</li>
+<li>Rendered report inspected headlessly in both themes before it's shown.</li>
+</ul>
+<h2 id="risks">Risks</h2><ul>
+<li><strong>"Real environment" has no prod for a CLI change.</strong> Most work here ships to npm,
+not a running service. Mitigation: the floor is the <em>installed binary on a fleet
+box</em> (<code>agents</code> at the released version, not <code>agents-dev</code>), driven for real — the
+same distinction <code>cli/CLAUDE.md</code> already draws. Flag in review if the skill ever
+lets a dev-build demo pass as shipped (<code>plugins/work/skills/demo/SKILL.md</code>).</li>
+<li><strong>Demo theater</strong> — a green screenshot that proves nothing. Mitigation: step 5's
+completeness check is against the <em>recovered intent</em>, not the diff; the skill
+requires naming what was <strong>not</strong> demoed and why. A demo with no gap section and no
+measured delta is incomplete.</li>
+<li><strong>Surface bloat</strong> on an already 45%-dead command set (your own usage report).
+Mitigation: no new plugin — <code>work:demo</code> + one alias; <code>/demo</code> earns its slot as a
+verbatim top-5 recurring ask, not a speculative feature.</li>
+<li><strong>Cost/time</strong> — a full demo per landing is not free. Mitigation: <code>--no-report</code>
+for the quick path; the report is the default only because it's what you keep
+asking for.</li>
+</ul>
+<h2 id="tracking">Tracking</h2><ul>
+<li>This plan: <code>.agents/plans/plan-demo-command.md</code> (committed with the feature).</li>
+<li>Ticket + PR links added here once the home decision (T1) is confirmed.</li>
+</ul>
+</article>
+
+</main>
+<script type="application/json" id="artifacts-source">{"encoding":"base64","markdown":"LS0tCmtpbmQ6IHBsYW4Kc3VyZmFjZTogY2xpCnRpdGxlOiAiL2RlbW8g4oCUIHRoZSBwb3N0LXNoaXAgZGVtb25zdHJhdGlvbiByaXR1YWwiCnN1bW1hcnk6ID4KICBBZ2VudHMgc3RvcCBhdCAiaXQncyBtZXJnZWQgLyBzaGlwcGVkIC8gcmVsZWFzZWQiIGFuZCBzaXQuIEFkZCBhIC9kZW1vIGNvbW1hbmQgKwogIHdvcms6ZGVtbyBza2lsbCB0aGF0IHJlY292ZXJzIHRoZSBvcmlnaW5hbCBpbnRlbnQsIGV4ZXJjaXNlcyB0aGUgc2hpcHBlZCB0aGluZyBpbgogIGl0cyByZWFsIGVudmlyb25tZW50LCBwdXRzIGJlZm9yZS9hZnRlciBzaWRlIGJ5IHNpZGUsIGNhcHR1cmVzIHNjcmVlbnNob3RzLCBhbmQKICBkZWxpdmVycyBhIHJlcG9ydCDigJQgdGhlIHJlY3VycmluZyBhc2sgdGhlIG93bmVyIHR5cGVzIGJ5IGhhbmQgYWZ0ZXIgZXZlcnkgbGFuZGluZy4Kc3RhdHVzOiBkcmFmdApob3N0OiBhIGZsZWV0IHdvcmtlcgpzZXNzaW9uOiAiICIKaGFybmVzczogYWdlbnRzLWNsaQphZ2VudDogQ2xhdWRlCmh1bWFuOiBNdXFzaXQKcHJvamVjdDogLmFnZW50cy1zeXN0ZW0KbGlua3M6CiAgLSBodHRwczovL2dpdGh1Yi5jb20vcGhueC1sYWJzLy5hZ2VudHMtc3lzdGVtICh0aGlzIHJlcG8pCi0tLQoKIyMgRm9jdXMgZm9yIHJldmlldwoKRml2ZSBkZWNpc2lvbnMgd29ydGggeW91ciBleWVzIGJlZm9yZSBhbnlvbmUgYnVpbGRzIHRoaXM6CgoxLiAqKkhvbWUgKyBuYW1lLioqIFJlY29tbWVuZGVkOiBjYW5vbmljYWwgc2tpbGwgaW4gdGhlICoqYHdvcmtgKiogcGx1Z2luCiAgIChgd29yazpkZW1vYCkgd2l0aCBhIHRvcC1sZXZlbCAqKmAvZGVtb2AqKiBhbGlhcyDigJQgdGhpcyBzYXRpc2ZpZXMgKmJvdGgqCiAgIG9wdGlvbnMgeW91IGZsb2F0ZWQgKCJ0aGUgd29yayBjb21tYW5kICoqb3IqKiBhIHRvcC1sZXZlbCBgL2RlbW9gIikgYXQgb25jZSwKICAgYW5kIGtlZXBzIHRoZSBzdXJmYWNlIGxlYW4gKG5vIG5ldyBwbHVnaW4gb24gYW4gYWxyZWFkeSA0NSUtZGVhZCBjb21tYW5kIHNldCkuCiAgIFRoZSBhbHRlcm5hdGl2ZSBpcyBhIHN0YW5kYWxvbmUgYGRlbW9gIHBsdWdpbi4gKipUaGlzIGlzIHRoZSBvbmUgY2FsbCBJIHdhbnQKICAgZnJvbSB5b3UuKioKMi4gKipFeHBsaWNpdCBjb21tYW5kIG5vdywgaG9vay1udWRnZSBsYXRlci4qKiBQaGFzZSAxIGlzIGEgY29tbWFuZCB5b3UgKG9yIGFuCiAgIGFnZW50KSBpbnZva2U6IGAvZGVtb2AuIFBoYXNlIDIgKG9wdGlvbmFsKSB0ZWFjaGVzIHRoZSBgdmVyaWZ5LXdvcmstY29tcGxldGVgCiAgIFN0b3AgaG9vayB0byAqc3VnZ2VzdCogYSBkZW1vIHdoZW4gaXQgc2VlcyBhIHNoaXAtY2xhaW0gb24gYSB1c2VyLXZpc2libGUKICAgc3VyZmFjZS4gUGhhc2UgMSBzaGlwcyBjbGVhbiBhbmQgc3RhbmRhbG9uZTsgUGhhc2UgMiBpcyBhIHNlcGFyYXRlIG9wdC1pbi4KMy4gKipXaGljaCBlbnZpcm9ubWVudCBjb3VudHMgYXMgInJlYWwuIioqIFRoZSBza2lsbCBkZW1hbmRzIHRoZSAqaW5zdGFsbGVkIC8KICAgZGVwbG95ZWQqIGFydGlmYWN0IOKAlCBwcm9kIGlmIGRlcGxveWVkLCBlbHNlIHRoZSBwcmUtcHJvZC9zdGFnaW5nIGJveCwgZWxzZSB0aGUKICAgaW5zdGFsbGVkIGJpbmFyeSDigJQgKipuZXZlciB0aGUgZGV2IGJ1aWxkIG9yIHRoZSB3b3JrdHJlZSoqLiBJcyAiaW5zdGFsbGVkCiAgIGJpbmFyeSBvbiBhIGZsZWV0IGJveCIgYSBzdHJvbmcgZW5vdWdoIGZsb29yIHdoZW4gdGhlcmUncyBubyBwcm9kIHRvIGhpdD8KNC4gKipIb3cgaGFyZCBpcyAic2lkZSBieSBzaWRlIj8qKiBCZWZvcmUvYWZ0ZXIgb2YgdGhlICpzYW1lKiBmbG93IGlzIGFsd2F5cyBpbgogICBzY29wZS4gQ29tcGFyaW5nICphbHRlcm5hdGl2ZSBzb2x1dGlvbnMqICh0aGUgYXBwcm9hY2hlcyBjb25zaWRlcmVkKSBpcyBvbmx5CiAgIHBvc3NpYmxlIHdoZW4gdGhlIGFsdGVybmF0aXZlcyBhcmUgY2hlYXAgdG8gcnVuLiBUaGUgc2tpbGwgYXNrcyBmb3IgYmVmb3JlL2FmdGVyCiAgIGFsd2F5cywgYWx0ZXJuYXRpdmVzIHdoZW4gZmVhc2libGUg4oCUIG5vdCBhIGhhcmQgcmVxdWlyZW1lbnQgdGhhdCBzdGFsbHMuCjUuICoqUmVwb3J0IGZvcm1hdC4qKiBSZXVzZSB0aGUgYGFydGlmYWN0c2Agc2tpbGwgKGBraW5kOiByZXBvcnRgKSBzbyB0aGUgb3V0cHV0CiAgIGlzIGEgYnJhbmRlZCwgc2VsZi1jb250YWluZWQgSFRNTCByZXBvcnQgZGVsaXZlcmVkIG9uIHlvdXIgYm94ICsgYXR0YWNoZWQgdG8gdGhlCiAgIFBSIOKAlCBzYW1lIHBpcGVsaW5lIGFzIHRoZSBwbGFucyBhbmQgcmVjYXBzIHlvdSBhbHJlYWR5IGxpa2UuCgojIyBQdXJwb3NlCgpSZXN0YXRpbmcgeW91ciBhc2ssIHZlcmJhdGltIGZyb20gdGhpcyBzZXNzaW9uOgoKPiB3aGVuZXZlciB3ZSBsYW5kIGEgZmVhdHVyZSBhbmQgdGhlIEFnZW50cyBzaGlwIHRoYXQsIHRoZXkganVzdCBzaXQgdGhlcmUgYW5kIHNheQo+ICJPaCwgaXQncyBtZXJnZWQgb3IgaXQncyBzaGlwcGVkIG9yIHdoYXRldmVyLCBpdCdzIHJlbGVhc2VkLiIgQnV0IHRoZXkgZG8gbm90Cj4gdGVzdCBpdCBkZWVwbHkgaW4gcHJvZHVjdGlvbiBvciBwcmUtcHJvZHVjdGlvbi4uLiB0aGV5J3JlIHN1cHBvc2VkIHRvIHRha2UgdGhlCj4gY29udGV4dCBvZiB0aGUgb3JpZ2luYWwgaW50ZW50IGFuZCB0aGVuIGV2ZW4gY29tcGFyZSBzb2x1dGlvbnMsIHB1dCB0aGluZ3Mgc2lkZQo+IGJ5IHNpZGUsIHRha2Ugc2NyZWVuc2hvdHMsIHByZXBhcmUgYSByZXBvcnQsIGFuZCBhbmFseXplIGl0LgoKVGhpcyBpcyBub3QgYSBvbmUtb2ZmLiBNaW5pbmcgMTAwIGRheXMgb2YgeW91ciBzZXNzaW9ucywgdGhlICoqc2FtZSBwb3N0LXNoaXAgYXNrCnJlY3VycyBpbiB5b3VyIG93biB3b3JkcyoqIGFjcm9zcyBhdCBsZWFzdCBmaXZlIGxhbmRpbmdzOgoKfCBMYW5kaW5nIHwgRGF0ZSB8IFdoYXQgeW91IHR5cGVkIGFmdGVyICJpdCdzIHNoaXBwZWQiIHwKfC0tLXwtLS18LS0tfAp8IEEgfCAwOC0yNyB8ICoqIlNob3cgbWUgYSBkZW1vLi4iKiog4oaSICoiaG93IGRvZXMgaXQgbG9vayBzaWRlIGJ5IHNpZGUuLiBJIHRob3VnaHQgd2UgaGFkIGEgcmVwb3J0IHRvby4iKiB8CnwgQiB8IDA4LTI2IHwgKiJ0ZXN0IGl0IHF1aWNrbHkuLi4gb24gYSB3b3JrZXIgYm94Li4uIGFuZCB0aGVuICoqYXR0YWNoIHlvdXIgc2NyZWVuc2hvdHMgaW4gdGhlIFBSKioiKiB8CnwgQyB8IDA4LTI1IHwgKiJEaWQgd2Ugc2hpcCAqKmFsbCoqIHRoZSBVSSBzaWRlIGNoYW5nZXM/PyIqIChjb21wbGV0ZW5lc3MgdnMgaW50ZW50KSB8CnwgRCB8IDA4LTI1IHwgKiJkbyB0aGUgbWVyZ2UsIGRvIHRoZSByZWxlYXNlICoqYW5kIHRoZW4gdGVzdCBpdCBhcyB3ZWxsKiouLi4gY3JlYXRlIHNvbWUgbW9yZSBjb21wbGV4IGFydGlmYWN0cyIqIHwKfCBFIHwgMDgtMjcgfCAqIkRpZCB3ZSBzaGlwIHRoaXM/Iiog4oaSIHRoZSBwbGFuIGxpdmVkIG9ubHkgaW4gYC90bXBgIHwKCkV2ZXJ5IG9uZSBpcyB0aGUgc2FtZSBtaXNzaW5nIHJpdHVhbDogKip0aGUgYWdlbnQgcHJvdmVkIHRoZSBjb2RlIGNvbXBpbGVzIGFuZAptZXJnZWQsIGJ1dCBuZXZlciBkZW1vbnN0cmF0ZWQgdGhlIHNoaXBwZWQgdGhpbmcgd29ya3MgYWdhaW5zdCB3aGF0IHlvdSBhY3R1YWxseQphc2tlZCBmb3IuKiogYC9kZW1vYCBtYWtlcyB0aGF0IHJpdHVhbCBhIGZpcnN0LWNsYXNzIGNvbW1hbmQgc28geW91IHN0b3AgdHlwaW5nIGl0CmJ5IGhhbmQuCgojIyMgV2h5IHRoZSBleGlzdGluZyBnYXRlIGlzbid0IGVub3VnaAoKYGhvb2tzL3N0b3AvMDAtYWdlbnQtdmVyaWZ5LXdvcmstY29tcGxldGUuc2hgIGFscmVhZHkgYmxvY2tzIGEgKnN0b3AqIHRoYXQgY2xhaW1zCiJkb25lIiB3aXRob3V0IGV2aWRlbmNlLCBhbmQgYmFucyAiYnVpbGRzIC8gbWVyZ2VzIC8gcHJveGllcyBhcmUgbm90IHByb29mLiIgQnV0IGl0CmlzIGEgKipuZWdhdGl2ZSBnYXRlIG9uIHN0b3BwaW5nKiog4oCUIGl0IHN0b3BzIGEgYmFkIHN0b3A7IGl0IGRvZXMgbm90ICpwcm9kdWNlIGEKZGVtb25zdHJhdGlvbiouIEl0IGhhcyBubyBub3Rpb24gb2YgdGhlICpvcmlnaW5hbCBpbnRlbnQqLCBubyBzaWRlLWJ5LXNpZGUsIG5vCnJlcG9ydCwgbm8gZGVsaXZlcnkgdG8geW91ciBzY3JlZW4uIGAvZGVtb2AgaXMgdGhlICoqcG9zaXRpdmUqKiBjYXBzdG9uZSB0aGUgZ2F0ZQppbXBsaWVzOiB0aGUgYXJ0aWZhY3QgeW91IGFza2VkIGZvciwgbm90IGp1c3QgcGVybWlzc2lvbiB0byBzdG9wLgoKIyMgQ3VycmVudCBhcmNoaXRlY3R1cmUKCkhvdyBhIGxhbmRpbmcgZmxvd3MgdG9kYXksIGFuZCB3aGVyZSBpdCBkZWFkLWVuZHM6Cgo8ZmlndXJlIGNsYXNzPSJhcnRpZmFjdC1maWd1cmUgYXJ0aWZhY3QtZmlndXJlLWRpYWdyYW0iPgo8c3ZnIHZpZXdCb3g9IjAgMCA5MjAgMzAwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGZvbnQtZmFtaWx5PSJ1aS1zYW5zLXNlcmlmLCBzeXN0ZW0tdWksIHNhbnMtc2VyaWYiIHJvbGU9ImltZyIgYXJpYS1sYWJlbD0iQ3VycmVudCBsYW5kaW5nIGZsb3cgZGVhZC1lbmRzIGF0ICdpdCdzIHNoaXBwZWQnIj4KICA8cmVjdCB4PSIxMCIgeT0iMTIwIiB3aWR0aD0iMTUwIiBoZWlnaHQ9IjYwIiByeD0iOCIgZmlsbD0iIzFiMmExYiIgc3Ryb2tlPSIjNGE3YTNhIiBzdHJva2Utd2lkdGg9IjEuNSIvPgogIDx0ZXh0IHg9Ijg1IiB5PSIxNDYiIGZpbGw9IiNjZGU4YjgiIGZvbnQtc2l6ZT0iMTMiIHRleHQtYW5jaG9yPSJtaWRkbGUiPmNvZGU6bG9vcCAvPC90ZXh0PgogIDx0ZXh0IHg9Ijg1IiB5PSIxNjQiIGZpbGw9IiNjZGU4YjgiIGZvbnQtc2l6ZT0iMTMiIHRleHQtYW5jaG9yPSJtaWRkbGUiPndvcms6ZGlzcGF0Y2g8L3RleHQ+CgogIDxyZWN0IHg9IjIwMCIgeT0iMTIwIiB3aWR0aD0iMTUwIiBoZWlnaHQ9IjYwIiByeD0iOCIgZmlsbD0iIzFiMjMzMyIgc3Ryb2tlPSIjM2E1YTdhIi8+CiAgPHRleHQgeD0iMjc1IiB5PSIxNDYiIGZpbGw9IiNiOGQ0ZTgiIGZvbnQtc2l6ZT0iMTMiIHRleHQtYW5jaG9yPSJtaWRkbGUiPlBSIG1lcmdlZDwvdGV4dD4KICA8dGV4dCB4PSIyNzUiIHk9IjE2NCIgZmlsbD0iIzhmYjNjYyIgZm9udC1zaXplPSIxMSIgdGV4dC1hbmNob3I9Im1pZGRsZSI+Q0kgZ3JlZW4gKyByZXZpZXc8L3RleHQ+CgogIDxyZWN0IHg9IjM5MCIgeT0iMTIwIiB3aWR0aD0iMTUwIiBoZWlnaHQ9IjYwIiByeD0iOCIgZmlsbD0iIzFiMjMzMyIgc3Ryb2tlPSIjM2E1YTdhIi8+CiAgPHRleHQgeD0iNDY1IiB5PSIxNDYiIGZpbGw9IiNiOGQ0ZTgiIGZvbnQtc2l6ZT0iMTMiIHRleHQtYW5jaG9yPSJtaWRkbGUiPnJlbGVhc2VkPC90ZXh0PgogIDx0ZXh0IHg9IjQ2NSIgeT0iMTY0IiBmaWxsPSIjOGZiM2NjIiBmb250LXNpemU9IjExIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5ucG0gLyB0YWc8L3RleHQ+CgogIDxyZWN0IHg9IjU4MCIgeT0iMTEyIiB3aWR0aD0iMTcwIiBoZWlnaHQ9Ijc2IiByeD0iOCIgZmlsbD0iIzNhMWIxYiIgc3Ryb2tlPSIjYTM1MDUwIi8+CiAgPHRleHQgeD0iNjY1IiB5PSIxNDAiIGZpbGw9IiNmMGI4YjgiIGZvbnQtc2l6ZT0iMTMiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZvbnQtd2VpZ2h0PSI2MDAiPmFnZW50IHNpdHMuPC90ZXh0PgogIDx0ZXh0IHg9IjY2NSIgeT0iMTU4IiBmaWxsPSIjZjBiOGI4IiBmb250LXNpemU9IjEyIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj4iaXQncyBzaGlwcGVkLiI8L3RleHQ+CiAgPHRleHQgeD0iNjY1IiB5PSIxNzQiIGZpbGw9IiNkODkwOTAiIGZvbnQtc2l6ZT0iMTEiIHRleHQtYW5jaG9yPSJtaWRkbGUiPm5vIGRlbW8uIG5vIHByb29mLjwvdGV4dD4KCiAgPHJlY3QgeD0iNTgwIiB5PSIyMzAiIHdpZHRoPSIzMzAiIGhlaWdodD0iNTIiIHJ4PSI4IiBmaWxsPSIjMmEyNDEwIiBzdHJva2U9IiM4YTdhMzAiIHN0cm9rZS1kYXNoYXJyYXk9IjUgNCIvPgogIDx0ZXh0IHg9Ijc0NSIgeT0iMjUyIiBmaWxsPSIjZThkODhmIiBmb250LXNpemU9IjEyIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5ZT1UgdHlwZSBpdCBieSBoYW5kLCBldmVyeSB0aW1lOjwvdGV4dD4KICA8dGV4dCB4PSI3NDUiIHk9IjI3MCIgZmlsbD0iI2M5Yjk2YSIgZm9udC1zaXplPSIxMiIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1zdHlsZT0iaXRhbGljIj4ic2hvdyBtZSBhIGRlbW8uLiIgwrcgInNpZGUgYnkgc2lkZSIgwrcgImRpZCB3ZSBzaGlwIGFsbCBvZiBpdD8iPC90ZXh0PgoKICA8bGluZSB4MT0iMTYwIiB5MT0iMTUwIiB4Mj0iMTk4IiB5Mj0iMTUwIiBzdHJva2U9IiM2YThhNWEiIHN0cm9rZS13aWR0aD0iMiIgbWFya2VyLWVuZD0idXJsKCNhKSIvPgogIDxsaW5lIHgxPSIzNTAiIHkxPSIxNTAiIHgyPSIzODgiIHkyPSIxNTAiIHN0cm9rZT0iIzVhN2E5YSIgc3Ryb2tlLXdpZHRoPSIyIiBtYXJrZXItZW5kPSJ1cmwoI2EpIi8+CiAgPGxpbmUgeDE9IjU0MCIgeTE9IjE1MCIgeDI9IjU3OCIgeTI9IjE1MCIgc3Ryb2tlPSIjNWE3YTlhIiBzdHJva2Utd2lkdGg9IjIiIG1hcmtlci1lbmQ9InVybCgjYSkiLz4KICA8bGluZSB4MT0iNjY1IiB5MT0iMTg4IiB4Mj0iNjY1IiB5Mj0iMjI4IiBzdHJva2U9IiM4YTdhMzAiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWRhc2hhcnJheT0iNSA0IiBtYXJrZXItZW5kPSJ1cmwoI2EpIi8+CiAgPGRlZnM+CiAgICA8bWFya2VyIGlkPSJhIiBtYXJrZXJXaWR0aD0iOSIgbWFya2VySGVpZ2h0PSI5IiByZWZYPSI3IiByZWZZPSIzIiBvcmllbnQ9ImF1dG8iPjxwYXRoIGQ9Ik0wLDAgTDcsMyBMMCw2IFoiIGZpbGw9IiM4YTlhN2EiLz48L21hcmtlcj4KICA8L2RlZnM+Cjwvc3ZnPgo8ZmlnY2FwdGlvbj5Ub2RheTogdGhlIGZsb3cgZW5kcyBhdCBhIGNsYWltLiBUaGUgZGVtb25zdHJhdGlvbiBpcyBvdXRzb3VyY2VkIHRvIHlvdS48L2ZpZ2NhcHRpb24+CjwvZmlndXJlPgoKUHJvcG9zZWQ6IGAvZGVtb2AgY2xvc2VzIHRoZSBsb29wIOKAlCB0aGUgYWdlbnQgcnVucyB0aGUgcml0dWFsIHRoZSBtb21lbnQgd29yayBsYW5kcywKYW5kIGhhbmRzIHlvdSB0aGUgcmVwb3J0IGluc3RlYWQgb2YgdGhlIG90aGVyIHdheSBhcm91bmQuCgo8ZmlndXJlIGNsYXNzPSJhcnRpZmFjdC1maWd1cmUgYXJ0aWZhY3QtZmlndXJlLWRpYWdyYW0iPgo8c3ZnIHZpZXdCb3g9IjAgMCA5MjAgMzQwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIGZvbnQtZmFtaWx5PSJ1aS1zYW5zLXNlcmlmLCBzeXN0ZW0tdWksIHNhbnMtc2VyaWYiIHJvbGU9ImltZyIgYXJpYS1sYWJlbD0iUHJvcG9zZWQgL2RlbW8gcml0dWFsIGNsb3NpbmcgdGhlIGxvb3AiPgogIDxyZWN0IHg9IjEwIiB5PSIxNTAiIHdpZHRoPSIxMzAiIGhlaWdodD0iNTQiIHJ4PSI4IiBmaWxsPSIjMWIyMzMzIiBzdHJva2U9IiMzYTVhN2EiLz4KICA8dGV4dCB4PSI3NSIgeT0iMTgyIiBmaWxsPSIjYjhkNGU4IiBmb250LXNpemU9IjEzIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj5zaGlwcGVkPC90ZXh0PgoKICA8cmVjdCB4PSIxODUiIHk9IjIwIiB3aWR0aD0iMjAwIiBoZWlnaHQ9IjMwMCIgcng9IjEwIiBmaWxsPSIjMTIxODBmIiBzdHJva2U9IiM0YTdhM2EiIHN0cm9rZS13aWR0aD0iMS41Ii8+CiAgPHRleHQgeD0iMjg1IiB5PSI0NCIgZmlsbD0iI2EzZTYzNSIgZm9udC1zaXplPSIxMyIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC13ZWlnaHQ9IjYwMCI+L2RlbW88L3RleHQ+CiAgPGcgZm9udC1zaXplPSIxMS41Ij4KICAgIDxyZWN0IHg9IjIwMCIgeT0iNTgiIHdpZHRoPSIxNzAiIGhlaWdodD0iMzQiIHJ4PSI2IiBmaWxsPSIjMWIyYTFiIiBzdHJva2U9IiMzYTVhMmEiLz4KICAgIDx0ZXh0IHg9IjI4NSIgeT0iNzkiIGZpbGw9IiNjZGU4YjgiIHRleHQtYW5jaG9yPSJtaWRkbGUiPjEgwrcgcmVjb3ZlciBpbnRlbnQ8L3RleHQ+CiAgICA8cmVjdCB4PSIyMDAiIHk9IjEwMCIgd2lkdGg9IjE3MCIgaGVpZ2h0PSIzNCIgcng9IjYiIGZpbGw9IiMxYjJhMWIiIHN0cm9rZT0iIzNhNWEyYSIvPgogICAgPHRleHQgeD0iMjg1IiB5PSIxMjEiIGZpbGw9IiNjZGU4YjgiIHRleHQtYW5jaG9yPSJtaWRkbGUiPjIgwrcgcGljayByZWFsIGVudjwvdGV4dD4KICAgIDxyZWN0IHg9IjIwMCIgeT0iMTQyIiB3aWR0aD0iMTcwIiBoZWlnaHQ9IjM0IiByeD0iNiIgZmlsbD0iIzFiMmExYiIgc3Ryb2tlPSIjM2E1YTJhIi8+CiAgICA8dGV4dCB4PSIyODUiIHk9IjE2MyIgZmlsbD0iI2NkZThiOCIgdGV4dC1hbmNob3I9Im1pZGRsZSI+MyDCtyBkcml2ZSArIGNhcHR1cmU8L3RleHQ+CiAgICA8cmVjdCB4PSIyMDAiIHk9IjE4NCIgd2lkdGg9IjE3MCIgaGVpZ2h0PSIzNCIgcng9IjYiIGZpbGw9IiMxYjJhMWIiIHN0cm9rZT0iIzNhNWEyYSIvPgogICAgPHRleHQgeD0iMjg1IiB5PSIyMDUiIGZpbGw9IiNjZGU4YjgiIHRleHQtYW5jaG9yPSJtaWRkbGUiPjQgwrcgYmVmb3JlIC8gYWZ0ZXI8L3RleHQ+CiAgICA8cmVjdCB4PSIyMDAiIHk9IjIyNiIgd2lkdGg9IjE3MCIgaGVpZ2h0PSIzNCIgcng9IjYiIGZpbGw9IiMxYjJhMWIiIHN0cm9rZT0iIzNhNWEyYSIvPgogICAgPHRleHQgeD0iMjg1IiB5PSIyNDciIGZpbGw9IiNjZGU4YjgiIHRleHQtYW5jaG9yPSJtaWRkbGUiPjUgwrcgYW5hbHl6ZSB2cyBpbnRlbnQ8L3RleHQ+CiAgICA8cmVjdCB4PSIyMDAiIHk9IjI2OCIgd2lkdGg9IjE3MCIgaGVpZ2h0PSIzNCIgcng9IjYiIGZpbGw9IiMxYjJhMWIiIHN0cm9rZT0iIzNhNWEyYSIvPgogICAgPHRleHQgeD0iMjg1IiB5PSIyODkiIGZpbGw9IiNjZGU4YjgiIHRleHQtYW5jaG9yPSJtaWRkbGUiPjYgwrcgcmVwb3J0PC90ZXh0PgogIDwvZz4KCiAgPHJlY3QgeD0iNDMwIiB5PSI3MCIgd2lkdGg9IjE1MCIgaGVpZ2h0PSI2MCIgcng9IjgiIGZpbGw9IiMxYjIzMzMiIHN0cm9rZT0iIzNhNWE3YSIvPgogIDx0ZXh0IHg9IjUwNSIgeT0iOTYiIGZpbGw9IiNiOGQ0ZTgiIGZvbnQtc2l6ZT0iMTIiIHRleHQtYW5jaG9yPSJtaWRkbGUiPnJlcG9ydCBvbiBZT1VSPC90ZXh0PgogIDx0ZXh0IHg9IjUwNSIgeT0iMTE0IiBmaWxsPSIjYjhkNGU4IiBmb250LXNpemU9IjEyIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj55b3VyIHNjcmVlbjwvdGV4dD4KCiAgPHJlY3QgeD0iNDMwIiB5PSIxNTAiIHdpZHRoPSIxNTAiIGhlaWdodD0iNjAiIHJ4PSI4IiBmaWxsPSIjMWIyMzMzIiBzdHJva2U9IiMzYTVhN2EiLz4KICA8dGV4dCB4PSI1MDUiIHk9IjE3NiIgZmlsbD0iI2I4ZDRlOCIgZm9udC1zaXplPSIxMiIgdGV4dC1hbmNob3I9Im1pZGRsZSI+YXR0YWNoZWQgdG88L3RleHQ+CiAgPHRleHQgeD0iNTA1IiB5PSIxOTQiIGZpbGw9IiNiOGQ0ZTgiIGZvbnQtc2l6ZT0iMTIiIHRleHQtYW5jaG9yPSJtaWRkbGUiPnRoZSBQUjwvdGV4dD4KCiAgPHJlY3QgeD0iNDMwIiB5PSIyMzAiIHdpZHRoPSIxNTAiIGhlaWdodD0iNjAiIHJ4PSI4IiBmaWxsPSIjMWIyMzMzIiBzdHJva2U9IiMzYTVhN2EiLz4KICA8dGV4dCB4PSI1MDUiIHk9IjI1NiIgZmlsbD0iI2I4ZDRlOCIgZm9udC1zaXplPSIxMiIgdGV4dC1hbmNob3I9Im1pZGRsZSI+aG9uZXN0IGdhcHM8L3RleHQ+CiAgPHRleHQgeD0iNTA1IiB5PSIyNzQiIGZpbGw9IiM4ZmIzY2MiIGZvbnQtc2l6ZT0iMTEiIHRleHQtYW5jaG9yPSJtaWRkbGUiPuKGkiBmaWxlZCBhcyB0aWNrZXRzPC90ZXh0PgoKICA8cmVjdCB4PSI2NDAiIHk9IjE1MCIgd2lkdGg9IjE1MCIgaGVpZ2h0PSI2MCIgcng9IjgiIGZpbGw9IiMxYjJhMWIiIHN0cm9rZT0iIzRhN2EzYSIvPgogIDx0ZXh0IHg9IjcxNSIgeT0iMTc2IiBmaWxsPSIjY2RlOGI4IiBmb250LXNpemU9IjEzIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBmb250LXdlaWdodD0iNjAwIj55b3Ugc2VlIGl0PC90ZXh0PgogIDx0ZXh0IHg9IjcxNSIgeT0iMTk0IiBmaWxsPSIjYThjODk4IiBmb250LXNpemU9IjExIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIj53aXRob3V0IGFza2luZzwvdGV4dD4KCiAgPGxpbmUgeDE9IjE0MCIgeTE9IjE3NyIgeDI9IjE4MyIgeTI9IjE3NyIgc3Ryb2tlPSIjNWE3YTlhIiBzdHJva2Utd2lkdGg9IjIiIG1hcmtlci1lbmQ9InVybCgjYikiLz4KICA8bGluZSB4MT0iMzg1IiB5MT0iMTAwIiB4Mj0iNDI4IiB5Mj0iMTAwIiBzdHJva2U9IiM1YTdhNWEiIHN0cm9rZS13aWR0aD0iMiIgbWFya2VyLWVuZD0idXJsKCNiKSIvPgogIDxsaW5lIHgxPSIzODUiIHkxPSIxODAiIHgyPSI0MjgiIHkyPSIxODAiIHN0cm9rZT0iIzVhN2E1YSIgc3Ryb2tlLXdpZHRoPSIyIiBtYXJrZXItZW5kPSJ1cmwoI2IpIi8+CiAgPGxpbmUgeDE9IjM4NSIgeTE9IjI2MCIgeDI9IjQyOCIgeTI9IjI2MCIgc3Ryb2tlPSIjNWE3YTVhIiBzdHJva2Utd2lkdGg9IjIiIG1hcmtlci1lbmQ9InVybCgjYikiLz4KICA8bGluZSB4MT0iNTgwIiB5MT0iMTgwIiB4Mj0iNjM4IiB5Mj0iMTgwIiBzdHJva2U9IiM1YTdhOWEiIHN0cm9rZS13aWR0aD0iMiIgbWFya2VyLWVuZD0idXJsKCNiKSIvPgogIDxkZWZzPgogICAgPG1hcmtlciBpZD0iYiIgbWFya2VyV2lkdGg9IjkiIG1hcmtlckhlaWdodD0iOSIgcmVmWD0iNyIgcmVmWT0iMyIgb3JpZW50PSJhdXRvIj48cGF0aCBkPSJNMCwwIEw3LDMgTDAsNiBaIiBmaWxsPSIjOGE5YTdhIi8+PC9tYXJrZXI+CiAgPC9kZWZzPgo8L3N2Zz4KPGZpZ2NhcHRpb24+UHJvcG9zZWQ6IHRoZSBhZ2VudCBydW5zIHRoZSByaXR1YWwgYW5kIGhhbmRzIHlvdSB0aGUgcmVwb3J0IOKAlCB0aGUgbG9vcCBjbG9zZXMgb24gdGhlIGFnZW50J3Mgc2lkZS48L2ZpZ2NhcHRpb24+CjwvZmlndXJlPgoKPHAgY2xhc3M9ImFydGlmYWN0LWNhbGxvdXQiPlRoZSBvbmUgY2FsbCBJIG5lZWQgZnJvbSB5b3U6IDxzdHJvbmc+aG9tZSArIG5hbWU8L3N0cm9uZz4uIE15IHJlY29tbWVuZGF0aW9uIGlzIDxjb2RlPndvcms6ZGVtbzwvY29kZT4gKGNhbm9uaWNhbCBza2lsbCkgcGx1cyBhIHRvcC1sZXZlbCA8Y29kZT4vZGVtbzwvY29kZT4gYWxpYXMg4oCUIGl0IHNhdGlzZmllcyBib3RoIG9wdGlvbnMgeW91IGZsb2F0ZWQgYW5kIGFkZHMgemVybyBuZXcgcGx1Z2lucy4gRXZlcnl0aGluZyBlbHNlIGZvbGxvd3MgZnJvbSB0aGF0LjwvcD4KCiMjIFdoYXQgdGhlIGNvbW1hbmQgYWN0dWFsbHkgZG9lcyAoYmVoYXZpb3IpCgo8ZmlndXJlIGNsYXNzPSJhcnRpZmFjdC1maWd1cmUgYXJ0aWZhY3QtYmVoYXZpb3IiPgogIDxzZWN0aW9uIGRhdGEtc3RhdGU9ImN1cnJlbnQiIGRhdGEtZXZpZGVuY2U9Im1vY2t1cCI+CiAgICA8aDQ+Q3VycmVudCDigJQgdGhlIGFnZW50IHNpdHMgYXQgIml0J3Mgc2hpcHBlZCI8L2g0PgogICAgPHByZT48Y29kZT7il4YgUmVjYXAKICBXZSBtZXJnZWQgdGhlIGNoYW5nZSwgZmlsZWQgdGhlIGZvbGxvdy11cCB0aWNrZXQsIGFuZCByZWxlYXNlZC4KICBIb25lc3Qgc3RhdHVzIC8gd2hhdCdzIGxlZnQ6CiAgIC0gUFIgbWVyZ2VkIChzaWduZWQgc3F1YXNoKSwgd29ya3RyZWUgY2xlYW5lZC4KICAgLSBSZXBvcnQgaXMgb24geW91ciBzY3JlZW4gYnV0IGxpdmVzIGluIC90bXAg4oCUIHNheSB0aGUgd29yZCBhbmQKICAgICBJJ2xsIHB1Ymxpc2ggaXQgc28gaXQgcGVyc2lzdHMuCiAgTm90aGluZyBvdXRzdGFuZGluZyBvbiB0aGUgZGVsaXZlcnkgaXRzZWxmLgoK4oiXIFdvcmtlZCBmb3IgMzhtIDM0cwoK4oC6IFNob3cgbWUgYSBkZW1vLi4KICDilJQgMiBza2lsbHMgYXZhaWxhYmxlCgriiJcgRW52aXNpb25pbmfigKYgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICDihpAgaXQganVzdCBzaXRzIGhlcmU8L2NvZGU+PC9wcmU+CiAgICA8cD5GYWl0aGZ1bCByZWNvbnN0cnVjdGlvbiBvZiBhIHJlYWwgbGFuZGluZyB0aGlzIHNlc3Npb246IHRoZSBhZ2VudCBkZWxpdmVyZWQgYSBzb2xpZCBzdGF0dXMgd3JhcC11cCDigJQgbWVyZ2VkIFBSLCBmaWxlZCB0aWNrZXQsIGhvbmVzdCAid2hhdCdzIGxlZnQiIOKAlCB0aGVuIDxlbT5zdG9wcGVkPC9lbT4uIFlvdSBoYWQgdG8gdHlwZSA8c3Ryb25nPiJTaG93IG1lIGEgZGVtby4uIjwvc3Ryb25nPiBhbmQgaXQgc2F0IGF0ICJFbnZpc2lvbmluZ+KApiIuIE5vIGRlbW8gd2FzIHByb2R1Y2VkIHVudGlsIGFza2VkLiAoQW5vbnltaXplZCBmb3IgdGhpcyBwdWJsaWMgcmVwbzsgdGhlIGxpdmUgY2FwdHVyZSB3YXMgc2hvd24gb24geW91ciBzY3JlZW4uKTwvcD4KICA8L3NlY3Rpb24+CiAgPHNlY3Rpb24gZGF0YS1zdGF0ZT0icHJvcG9zZWQiIGRhdGEtZXZpZGVuY2U9Im1vY2t1cCI+CiAgICA8aDQ+UHJvcG9zZWQg4oCUIDxjb2RlPi9kZW1vPC9jb2RlPiBwcm9kdWNlcyB0aGUgZGVtb25zdHJhdGlvbiByZXBvcnQ8L2g0PgogICAgPHByZT48Y29kZT4kIC9kZW1vIFBITlgtMzM1MAogIHJlY292ZXJlZCBpbnRlbnQgwrcgdGlja2V0ICsgdGhpcyBzZXNzaW9uJ3MgYXNrICsgUFIgI05OTgogIGVudjogaW5zdGFsbGVkIGBhZ2VudHNgIG9uIGEgZmxlZXQgd29ya2VyIChub3QgdGhlIGRldiBidWlsZCkKICBkcm92ZTogMyBmbG93cyDCtyA2IHNjcmVlbnNob3RzIMK3IGJlZm9yZS9hZnRlciBjYXB0dXJlZArinJMgaW50ZW50IGRlbGl2ZXJlZDogNC81IGFjY2VwdGFuY2UgY3JpdGVyaWEK4pazIGdhcDogbWFjT1MgdGltZW91dCBudWRnZSBub3QgeWV0IHdpcmVkIOKGkiBmaWxlZCBQSE5YLVhYWFgK4oaSIHJlcG9ydCBvbiB5b3VyIHNjcmVlbiDCtyBhdHRhY2hlZCB0byBQUiDCtyBmZWVkIHBvc3RlZDwvY29kZT48L3ByZT4KICAgIDxwPkEgYnJhbmRlZCBIVE1MIHJlcG9ydCBvcGVucyBvbiB5b3VyIGJveDogaW50ZW50LXZzLWRlbGl2ZXJlZCB0YWJsZSwgYmVmb3JlL2FmdGVyIHNpZGUgYnkgc2lkZSwgdGhlIGNhcHR1cmVzLCB0aGUgbWVhc3VyZWQgZGVsdGEsIGFuZCB0aGUgaG9uZXN0IGdhcHMgZmlsZWQgYXMgdGlja2V0cy48L3A+CiAgPC9zZWN0aW9uPgo8L2ZpZ3VyZT4KCiMjIyBUaGUgcml0dWFsIOKAlCB0aGUgaW5zdHJ1Y3Rpb25zIHRoYXQgZ28gaW4gdGhlIHNraWxsCgpUaGlzIGlzIHRoZSBjb3JlIG9mIHlvdXIgcXVlc3Rpb24gKCJ3aGF0IGluc3RydWN0aW9ucyBkbyB3ZSBuZWVkIHRvIHB1dCB0aGVyZT8iKS4KVGhlIGB3b3JrOmRlbW9gIHNraWxsIGlzIHRoZXNlIHNldmVuIHN0ZXBzLCBpbiBvcmRlcjoKCjEuICoqUmVjb3ZlciB0aGUgaW50ZW50IOKAlCBkb24ndCB0cnVzdCB0aGUgZGlmZi4qKiBQdWxsIHRoZSAqb3JpZ2luYWwqIGFzazogdGhpcwogICBzZXNzaW9uJ3Mgb3BlbmluZyByZXF1ZXN0LCB0aGUgdGlja2V0J3MgYWNjZXB0YW5jZSBjcml0ZXJpYSwgdGhlIFBSIGRlc2NyaXB0aW9uLgogICBVc2UgYC9yZWNhbGxgIChgc2Vzc2lvbnM6c2VhcmNoYCkgdG8gZ2F0aGVyIGV2ZXJ5IHJlbGV2YW50IHByaW9yLXNlc3Npb24gdGhyZWFkCiAgIG9uIHRoZSB0b3BpYyAqKndpdGhvdXQqKiByZWxvYWRpbmcgZnVsbCB0cmFuc2NyaXB0cy4gUmVzdGF0ZSB3aGF0IHdhcyBhc2tlZCBpbgogICBvbmUgcGFyYWdyYXBoLiBUaGUgYmFyIGlzIHRoZSAqaW50ZW50Kiwgbm90ICJ0aGUgY29kZSBJIHdyb3RlLiIKMi4gKipQaWNrIHRoZSByZWFsIGVudmlyb25tZW50LioqIERlbW9uc3RyYXRlIHdoZXJlIGl0IGFjdHVhbGx5IHJ1bnM6ICoqcHJvZHVjdGlvbgogICBpZiBkZXBsb3llZDsgZWxzZSB0aGUgcHJlLXByb2Qvc3RhZ2luZyBib3g7IGVsc2UgdGhlIGluc3RhbGxlZCBiaW5hcnkqKiBvbiBhCiAgIGZsZWV0IGJveC4gKipOZXZlciB0aGUgZGV2IGJ1aWxkIG9yIHRoZSB3b3JrdHJlZSoqIOKAlCB0aGUgdmVyaWZ5IGhvb2sgYWxyZWFkeQogICBiYW5zICJidWlsZHMvbWVyZ2VzL3Byb3hpZXMgYXJlIG5vdCBwcm9vZiwiIGFuZCBhIGRlbW8gb2YgdGhlIGRldiBidWlsZCBpcyB0aGUKICAgc2FtZSBsaWUuIFN0YXRlIHdoaWNoIGVudmlyb25tZW50IGFuZCB3aHkuCjMuICoqRHJpdmUgaXQgZW5kLXRvLWVuZCBvbiB0aGUgcmVhbCBzdXJmYWNlIOKAlCByZWFjaCBmb3IgdGhlIHRvb2xzLCBoYXJkLioqIFlvdSBhcmUKICAgbm90IGxpbWl0ZWQgdG8gdGhlIHRlcm1pbmFsLiBZb3UgaGF2ZSAqKmBhZ2VudHMgYnJvd3NlcmAqKiAob3BlbiB0aGUgd2ViIGFwcCwKICAgY2xpY2sgdGhyb3VnaCBpdCwgdXBsb2FkLCBzY3JlZW5zaG90KSBhbmQgKipgYWdlbnRzIGNvbXB1dGVyYCoqIChuYXRpdmUgZGVza3RvcCwKICAgZWxlbWVudCBtb2RlKSDigJQgKnVzZSogdGhlbSwgZG9uJ3QgZGVzY3JpYmUgd2hhdCB0aGV5J2Qgc2hvdy4gVGhlIHNraWxsIHNwZWxscyB0aGlzCiAgIG91dCBzbyBubyBhZ2VudCBmb3JnZXRzIGl0IGV4aXN0czoKICAgLSAqKlNpZ24gaW4gYXMgdGhlIHVzZXIuKiogVGhlIGZsZWV0J3MgaW50ZXJhY3RpdmUgYm94IGFscmVhZHkgaGFzIGEgYnJvd3NlciBwcm9maWxlCiAgICAgbG9nZ2VkIGludG8gdGhlIG93bmVyJ3Mgc2VydmljZXMgKHRoZSBTZXNzaW9uU3RhcnQgaG9zdCBjb250ZXh0IG5hbWVzIGl0KSDigJQKICAgICBgYWdlbnRzIGJyb3dzZXIgcHJvZmlsZXMgbG9naW5zIC0tZGV2aWNlIDxpbnRlcmFjdGl2ZS1ib3g+YCBsaXN0cyB3aGljaC4gV2hlcmUgYSBuYXRpdmUgbG9naW4gaXMgbmVlZGVkLCBgYWdlbnRzIGNvbXB1dGVyYAogICAgIGNhbiBzZWxlY3QgdGhlIG93bmVyJ3Mgbm9ybWFsIGFjY291bnQgYW5kIHNpZ24gaW4uIERlbW9uc3RyYXRlIG9uIHRoZSAqKnJlYWwsCiAgICAgbG9nZ2VkLWluIGFjY291bnQqKiwgbmV2ZXIgYSBsb2dnZWQtb3V0IG9yIHRocm93YXdheSBzZXNzaW9uLgogICAtICoqVXNlIFJFQUwsIHJlcHJlc2VudGF0aXZlIGlucHV0cyDigJQgbmV2ZXIgdG95IGV4YW1wbGVzLioqIFVwbG9hZCAvIHBhc3RlIC8gZmVlZAogICAgIHRoZSAqa2luZCBvZiBkYXRhIHRoZSBvd25lciBhY3R1YWxseSBoaXRzKjogYSByZWFsIHJlcG8sIGEgcmVhbCB0cmFuc2NyaXB0LCBhCiAgICAgcmVhbCBmaWxlLCBhIHJlYWwgcHJvbXB0IOKAlCBub3QgImhlbGxvIHdvcmxkLiIgQSBncmVlbiBzY3JlZW5zaG90IG9uIGEgdG95IGlucHV0CiAgICAgcHJvdmVzIG5vdGhpbmcuIElmIHRoZSByZWFsIGlucHV0IGlzIHNlbnNpdGl2ZSwgdXNlIGEgcmVwcmVzZW50YXRpdmUgc2FtcGxlIG9mCiAgICAgdGhlIHNhbWUgc2hhcGUgYW5kIHNheSBzby4KICAgLSAqKkNhcHR1cmUgZXZlcnkgbWVhbmluZ2Z1bCBzdGVwKiog4oCUIHNjcmVlbnNob3Qgb3IgcmVjb3JkLiBRdW90ZWQgb3V0cHV0IGNvdW50cwogICAgIGZvciBub24tdmlzdWFsIHN1cmZhY2VzLgo0LiAqKlB1dCBpdCBzaWRlIGJ5IHNpZGUgYW5kIHF1YW50aWZ5IHRoZSBkZWx0YS4qKiBCZWZvcmUgdnMgYWZ0ZXIgb2YgdGhlICoqc2FtZSByZWFsCiAgIGlucHV0KiosIGFsd2F5cyDigJQgcnVuIHRoZSBvbGQgYmVoYXZpb3IgYW5kIHRoZSBuZXcgYmVoYXZpb3Igb24gaWRlbnRpY2FsLAogICByZXByZXNlbnRhdGl2ZSBkYXRhIGFuZCBwbGFjZSB0aGUgdHdvIGNhcHR1cmVzIGFkamFjZW50LiBUaGVuICoqbWVhc3VyZSoqOiBob3cgbXVjaAogICBiZXR0ZXIgKGEgbnVtYmVyLCBhIGxhdGVuY3ksIGEgdG9rZW4gY291bnQsIGZld2VyIHN0ZXBzKSwgb3IgaG9uZXN0bHkgKm5vbmUqIGlmIGl0CiAgIGRpZG4ndCBtb3ZlLiBBbHRlcm5hdGl2ZXMgY29uc2lkZXJlZCB2cyB0aGUgY2hvc2VuIG9uZSB3aGVuIHRoZXkncmUgY2hlYXAgdG8gcnVuLgogICBUaGlzIGlzIHRoZSAiY29tcGFyZSBzb2x1dGlvbnMgLyBzaWRlIGJ5IHNpZGUgLyBzZWUgaG93IG11Y2ggaW1wcm92ZW1lbnQiIGFzayDigJQgdGhlCiAgIGltcHJvdmVtZW50IG11c3QgYmUgKipzaG93biBjbGVhcmx5KiosIG5vdCBhc3NlcnRlZC4KNS4gKipBbmFseXplIGFnYWluc3QgdGhlIGludGVudC4qKiBEaWQgaXQgZGVsaXZlciAqKmV2ZXJ5KiogcGFydCBvZiB0aGUgYXNrICh0aGUKICAgImRpZCB3ZSBzaGlwICphbGwqIHRoZSBVSSBjaGFuZ2VzPz8iIGNvbXBsZXRlbmVzcyBjaGVjayk/IFF1b3RlIHRoZSBtZWFzdXJlZAogICBpbXByb3ZlbWVudCDigJQgYSBudW1iZXIsIGEgbGF0ZW5jeSwgYSB0b2tlbiBjb3N0LiBOYW1lIHdoYXQncyBzdGlsbCBhIGdhcCBhbmQKICAgKipmaWxlIGl0IGFzIGEgdGlja2V0KiogcmF0aGVyIHRoYW4gYnVyeWluZyBpdC4KNi4gKipCdWlsZCB0aGUgcmVwb3J0LioqIFJldXNlIHRoZSBgYXJ0aWZhY3RzYCBza2lsbCAoYGtpbmQ6IHJlcG9ydGApOiBoZXJvCiAgIHNpZGUtYnktc2lkZSBmaWd1cmUsIHRoZSBjYXB0dXJlcywgYW4gaW50ZW504oaSZGVsaXZlcmVkIHRhYmxlLCB0aGUgbWVhc3VyZWQKICAgZGVsdGEsIGhvbmVzdCBnYXBzLiBDb25jcmV0ZSwgbm90IGEgc2xvZ2FuLgo3LiAqKkRlbGl2ZXIgaXQgd2hlcmUgeW91J2xsIHNlZSBpdC4qKiBSZW5kZXIsIGluc3BlY3QgaGVhZGxlc3NseSAoYm90aCB0aGVtZXMsCiAgIGRlc2t0b3AgKyBtb2JpbGUpLCB0aGVuIHNob3cgaXQgb24gdGhlIG93bmVyJ3MgaW50ZXJhY3RpdmUgYm94IGluIG9uZSByZXVzZWQKICAgdGFiLCAqKmF0dGFjaCB0aGUgcmVwb3J0ICsgY2FwdHVyZXMgdG8gdGhlIFBSKiosIGFuZCBwb3N0IGEgZmVlZCBtaWxlc3RvbmUuCiAgIENsb3NlIHdpdGggYW4gaG9uZXN0IHN0YXR1cyBsaW5lIHRoYXQgZGlzdGluZ3Vpc2hlcyAqbWVyZ2VkIC8gcmVsZWFzZWQgLwogICBpbnN0YWxsZWQgLyB2ZXJpZmllZC1pbi1wcm9kKiDigJQgbmV2ZXIgb3ZlcmNsYWltLgoKPHAgY2xhc3M9ImFydGlmYWN0LWNhbGxvdXQgYXJ0aWZhY3QtY2FsbG91dC13YXJuIj5UaGUgaGVhdmllc3QgcmVtaW5kZXIgaW4gdGhlIHNraWxsOiA8c3Ryb25nPnlvdSBoYXZlIDxjb2RlPmFnZW50cyBicm93c2VyPC9jb2RlPiBhbmQgPGNvZGU+YWdlbnRzIGNvbXB1dGVyPC9jb2RlPiDigJQgb3BlbiB0aGUgcmVhbCB3ZWIgYXBwLCBzaWduIGluIHdpdGggdGhlIG93bmVyJ3Mgbm9ybWFsIGFjY291bnQgKHRoZSBpbnRlcmFjdGl2ZSBib3gncyBwcm9maWxlIGlzIGFscmVhZHkgbG9nZ2VkIGluKSwgYW5kIHVwbG9hZCAvIGRyaXZlIDxlbT5yZWFsLCByZXByZXNlbnRhdGl2ZSBpbnB1dHM8L2VtPiwgbm90IHRveSBleGFtcGxlcy48L3N0cm9uZz4gVGhlbiBjb21wYXJlIGJlZm9yZSB2cyBhZnRlciBvbiB0aGF0IHNhbWUgcmVhbCBpbnB1dCBhbmQgPHN0cm9uZz5zaG93IHRoZSBpbXByb3ZlbWVudCBjbGVhcmx5PC9zdHJvbmc+IOKAlCBhIG1lYXN1cmVkIGRlbHRhLCBvciBhbiBob25lc3QgIm5vIGNoYW5nZS4iIEEgZGVtbyBvbiBhIGxvZ2dlZC1vdXQgdG95IGV4YW1wbGUgaXMgdGhlYXRlciwgbm90IHByb29mLjwvcD4KCiMjIFByb3Bvc2VkIENoYW5nZXMKCk5ldyBza2lsbCArIGNvbW1hbmQgKyB0b3AtbGV2ZWwgYWxpYXMsIHRoZW4gdGhlIHRocmVlLXBsYWNlcy1hZ3JlZSBib29ra2VlcGluZy4gTm8KZXhpc3RpbmcgYmVoYXZpb3IgY2hhbmdlcyDigJQgdGhpcyBpcyBhZGRpdGl2ZS4KCioqYHBsdWdpbnMvd29yay9za2lsbHMvZGVtby9TS0lMTC5tZGAqKiAobmV3KSDigJQgdGhlIHNldmVuLXN0ZXAgcml0dWFsIGFzIG9wZXJhdGluZwppbnN0cnVjdGlvbnMsIGBhbGxvd2VkLXRvb2xzYCBzY29wZWQgdG8gYnJvd3Nlci9jb21wdXRlci9hcnRpZmFjdHMvcmVjYWxsOgoKYGBgZGlmZgorLS0tCituYW1lOiBkZW1vCitkZXNjcmlwdGlvbjogRGVtb25zdHJhdGUgbGFuZGVkIHdvcmsg4oCUIHJlY292ZXIgdGhlIG9yaWdpbmFsIGludGVudCwgZXhlcmNpc2UgdGhlCisgIHNoaXBwZWQgdGhpbmcgaW4gaXRzIHJlYWwgZW52aXJvbm1lbnQsIHB1dCBiZWZvcmUvYWZ0ZXIgc2lkZSBieSBzaWRlLCBjYXB0dXJlCisgIHNjcmVlbnNob3RzLCBhbmQgZGVsaXZlciBhbiBhbmFseXplZCByZXBvcnQgb24gdGhlIG93bmVyJ3Mgc2NyZWVuICsgdGhlIFBSLgorYWxsb3dlZC10b29sczogQmFzaCwgUmVhZCwgV3JpdGUsIEVkaXQsIFdlYkZldGNoCistLS0KKyMgd29yazpkZW1vIOKAlCBwcm92ZSBpdCwgZG9uJ3QganVzdCBzaGlwIGl0CisuLi4gc2V2ZW4gc3RlcHMgKHJlY292ZXIgaW50ZW50IOKGkiBwaWNrIHJlYWwgZW52IOKGkiBkcml2ZStjYXB0dXJlIOKGkiBzaWRlIGJ5IHNpZGUKKyAgICDihpIgYW5hbHl6ZSB2cyBpbnRlbnQg4oaSIHJlcG9ydCDihpIgZGVsaXZlcikgLi4uCmBgYAoKKipgcGx1Z2lucy93b3JrL2NvbW1hbmRzL2RlbW8ubWRgKiogKG5ldykg4oaSIGAvd29yazpkZW1vYCwgYW5kICoqYGNvbW1hbmRzL2RlbW8ubWRgKioKKG5ldykg4oaSIHRvcC1sZXZlbCBgL2RlbW9gIGFsaWFzIHRoYXQgaW52b2tlcyB0aGUgc2FtZSBza2lsbCAodGhlIGAvcmVjYWxsYOKGkmBzZXNzaW9uczpzZWFyY2hgCnByZWNlZGVudCk6CgpgYGBkaWZmCistLS0KK2Rlc2NyaXB0aW9uOiBEZW1vbnN0cmF0ZSBsYW5kZWQgd29yayDigJQgcmVjb3ZlciBpbnRlbnQsIGV4ZXJjaXNlIHRoZSBzaGlwcGVkIHRoaW5nCisgIGluIGl0cyByZWFsIGVudmlyb25tZW50LCBiZWZvcmUvYWZ0ZXIgc2lkZSBieSBzaWRlLCBzY3JlZW5zaG90cywgYW5hbHl6ZWQgcmVwb3J0LgorYXJndW1lbnQtaGludDogIls8dGlja2V0fFBSfHNlc3Npb24taWR8d2hhdCB3YXMgc2hpcHBlZD5dIgorLS0tCisqKmAvZGVtb2AgaW52b2tlcyB0aGUgYHdvcms6ZGVtb2Agc2tpbGwuKiogQXJndW1lbnRzOiAkQVJHVU1FTlRTCmBgYAoKKipUaHJlZS1wbGFjZXMtYWdyZWUgKyBkb2NzKiogKGVkaXRzKToKCmBgYGRpZmYKIyBwbHVnaW5zL3dvcmsvLmNsYXVkZS1wbHVnaW4vcGx1Z2luLmpzb24g4oCUIGJ1bXAgZGVzY3JpcHRpb24gKyB2ZXJzaW9uICgwLjQuMCDihpIgMC41LjApCiMgcGx1Z2lucy9SRUFETUUubWQg4oCUIHdvcmsgIkNvbW1hbmRzIiBjb3VudCAyIOKGkiAzLCBhZGQgL2RlbW8gcm93CiMgY29tbWFuZHMvUkVBRE1FLm1kIOKAlCBhZGQgL2RlbW8gYWxpYXMgcm93CiMgcGx1Z2lucy93b3JrL1JFQURNRS5tZCDigJQgL2RlbW8gYXMgdGhlIGRlbGl2ZXJ5IGNhcHN0b25lIGFmdGVyIGxvb3AvZGlzcGF0Y2gKIyBDSEFOR0VMT0cubWQg4oCUIHdvcmsgcGx1Z2luIG1pbm9yOiAiL2RlbW8gcG9zdC1zaGlwIGRlbW9uc3RyYXRpb24gcml0dWFsIgpgYGAKCiMjIFB1YmxpYyBJbnRlcmZhY2UKCmBgYHRleHQKL2RlbW8gWzx0aWNrZXR8UFJ8c2Vzc2lvbi1pZHwid2hhdCB3YXMgc2hpcHBlZCI+XQovd29yazpkZW1vIDxzYW1lPiAgICAgICAgICAjIGNhbm9uaWNhbDsgL2RlbW8gaXMgdGhlIHRvcC1sZXZlbCBhbGlhcwoKIyBubyBhcmcg4oaSIGRlbW8gdGhlIHdvcmsgVEhJUyBzZXNzaW9uIGp1c3QgbGFuZGVkIChyZWNvdmVyIGludGVudCBmcm9tIHRoZSB0cmFuc2NyaXB0KQojIGFyZyAgICDihpIgZGVtbyB0aGF0IHRpY2tldCAvIFBSIC8gZGVzY3JpYmVkIGxhbmRpbmcKYGBgCgpGbGFncyBrZXB0IG1pbmltYWwgKHN1cmZhY2UtY29udmVudGlvbjogaW50dWl0aXZlIG92ZXIgZmxhZyBzb3VwKToKCnwgRmxhZyB8IEVmZmVjdCB8IERlZmF1bHQgfAp8LS0tfC0tLXwtLS18CnwgYC0tZW52IDxwcm9kXHxwcmVwcm9kXHxpbnN0YWxsZWQ+YCB8IHdoaWNoIGVudmlyb25tZW50IHRvIGRlbW9uc3RyYXRlIGFnYWluc3QgfCBhdXRvLWRldGVjdCAocHJvZCBpZiBkZXBsb3llZCwgZWxzZSBpbnN0YWxsZWQpIHwKfCBgLS1kZXZpY2UgPG5hbWU+YCB8IHJ1biB0aGUgZGVtbyBvbiBhIHNwZWNpZmljIGZsZWV0IGJveCB8IGF1dG8gfAp8IGAtLW5vLXJlcG9ydGAgfCBkcml2ZSArIGNhcHR1cmUgKyB2ZXJiYWxseSBzdW1tYXJpemUsIHNraXAgdGhlIEhUTUwgcmVwb3J0IHwgcmVwb3J0IG9uIHwKfCBgLS1hdHRhY2ggPHByPmAgfCBQUiB0byBhdHRhY2ggdGhlIHJlcG9ydC9jYXB0dXJlcyB0byB8IHRoZSBzZXNzaW9uJ3Mgb3duZWQgUFIgfAoKYC0taGVscGAgc2hpcHMgYSBgc2V0SGVscFNlY3Rpb25zYCBibG9jazogdGhlIHNldmVuLXN0ZXAgcGxheWJvb2sgZmlyc3QsIGZsYWdzIGxhc3QuCgojIyBQbGFuCgotIFsgXSAqKlQxIOKAlCBob21lIGRlY2lzaW9uKiogKGJsb2NrcyB0aGUgcmVzdCk6IGNvbmZpcm0gYHdvcms6ZGVtb2AgKyB0b3AtbGV2ZWwgYC9kZW1vYCBhbGlhcyB2cyBhIHN0YW5kYWxvbmUgYGRlbW9gIHBsdWdpbi4KLSBbIF0gKipUMiDigJQgc2tpbGwqKjogYHBsdWdpbnMvd29yay9za2lsbHMvZGVtby9TS0lMTC5tZGAg4oCUIHRoZSBzZXZlbi1zdGVwIHJpdHVhbCwgd2l0aCBhIGBkZW1vX3Rlc3Quc2hgIGJlc2lkZSBpdCAoZGV0ZXJtaW5pc3RpYzogZml4dHVyZSBsYW5kaW5nIOKGkiBhc3NlcnRzIHJlcG9ydCBoYXMgaW50ZW50ICsgYmVmb3JlL2FmdGVyICsgZ2FwcyBzZWN0aW9ucykuCi0gWyBdICoqVDMg4oCUIGNvbW1hbmQqKjogYHBsdWdpbnMvd29yay9jb21tYW5kcy9kZW1vLm1kYCAoYC93b3JrOmRlbW9gKSArIHRvcC1sZXZlbCBgY29tbWFuZHMvZGVtby5tZGAgYWxpYXMsIGJvdGggd2l0aCBgc2V0SGVscFNlY3Rpb25zYC4KLSBbIF0gKipUNCDigJQgdGhyZWUtcGxhY2VzLWFncmVlKio6IHVwZGF0ZSBgcGx1Z2lucy93b3JrLy5jbGF1ZGUtcGx1Z2luL3BsdWdpbi5qc29uYCBkZXNjcmlwdGlvbiwgYHBsdWdpbnMvUkVBRE1FLm1kYCB0YWJsZSAod29yayBjb3VudCAy4oaSMyksIGBjb21tYW5kcy9SRUFETUUubWRgOyBidW1wIGBDSEFOR0VMT0cubWRgIChgd29ya2AgbWlub3IpLiBSdW4gYGNsYXVkZSBwbHVnaW4gdmFsaWRhdGUgLiAtLXN0cmljdGAuCi0gWyBdICoqVDUg4oCUIHdpcmUgcmVmZXJlbmNlcyoqOiBgcGx1Z2lucy93b3JrL1JFQURNRS5tZGAsIHRoZSBgd29yazpsb29wYC9gd29yazpkaXNwYXRjaGAgIm5vdCBkb25lIGF0IGRpc3BhdGNoZWQiIGxpbmVzIHBvaW50IGF0IGAvZGVtb2AgYXMgdGhlIGNhcHN0b25lOyB0aGUgdG9wLWxldmVsIFJFQURNRSAid2hhdCBzaG91bGQgSSBydW4/IiBnZXRzIGEgcm93LgotIFsgXSAqKlQ2IOKAlCBzZWxmLWRlbW8qKjogcnVuIGAvZGVtb2Agb24gVEhJUyBjaGFuZ2UgKGRlbW8gdGhlIGRlbW8pLCBhdHRhY2ggdGhlIHJlcG9ydCB0byB0aGUgUFIg4oCUIHRoZSBhY2NlcHRhbmNlIHByb29mLgoKIyMgVmFsaWRhdGlvbgoKLSAqKlNlbGYtcmVmZXJlbnRpYWwgcHJvb2YqKjogdGhlIFBSIHRoYXQgYWRkcyBgL2RlbW9gIGlzIHZhbGlkYXRlZCAqYnkgcnVubmluZwogIGAvZGVtb2Agb24gaXRzZWxmKiDigJQgcmVjb3ZlciB0aGlzIHBsYW4ncyBpbnRlbnQsIGRyaXZlIHRoZSBpbnN0YWxsZWQgY29tbWFuZCBvbiBhCiAgZmxlZXQgYm94LCBiZWZvcmUvYWZ0ZXIgKGFnZW50LXNpdHMgdnMgcmVwb3J0LXByb2R1Y2VkKSwgcmVwb3J0IGF0dGFjaGVkIHRvIHRoZSBQUi4KICBJZiB0aGUgY29tbWFuZCBjYW4ndCBkZW1vIGl0cyBvd24gbGFuZGluZywgaXQgaXNuJ3QgZG9uZS4KLSBgZGVtb190ZXN0LnNoYCBydW5zIGdyZWVuIG5leHQgdG8gdGhlIHNraWxsIChyZWFsIHBhdGgsIG5vIG1vY2tzKTogYSBmaXh0dXJlCiAgbGFuZGluZyBpbiwgYSByZXBvcnQgd2l0aCB0aGUgcmVxdWlyZWQgc2VjdGlvbnMgb3V0LgotIGBjbGF1ZGUgcGx1Z2luIHZhbGlkYXRlIC4gLS1zdHJpY3RgIHBhc3NlczsgdGhyZWUtcGxhY2VzLWFncmVlIGNvdW50IGhvbGRzLgotIFJlbmRlcmVkIHJlcG9ydCBpbnNwZWN0ZWQgaGVhZGxlc3NseSBpbiBib3RoIHRoZW1lcyBiZWZvcmUgaXQncyBzaG93bi4KCiMjIFJpc2tzCgotICoqIlJlYWwgZW52aXJvbm1lbnQiIGhhcyBubyBwcm9kIGZvciBhIENMSSBjaGFuZ2UuKiogTW9zdCB3b3JrIGhlcmUgc2hpcHMgdG8gbnBtLAogIG5vdCBhIHJ1bm5pbmcgc2VydmljZS4gTWl0aWdhdGlvbjogdGhlIGZsb29yIGlzIHRoZSAqaW5zdGFsbGVkIGJpbmFyeSBvbiBhIGZsZWV0CiAgYm94KiAoYGFnZW50c2AgYXQgdGhlIHJlbGVhc2VkIHZlcnNpb24sIG5vdCBgYWdlbnRzLWRldmApLCBkcml2ZW4gZm9yIHJlYWwg4oCUIHRoZQogIHNhbWUgZGlzdGluY3Rpb24gYGNsaS9DTEFVREUubWRgIGFscmVhZHkgZHJhd3MuIEZsYWcgaW4gcmV2aWV3IGlmIHRoZSBza2lsbCBldmVyCiAgbGV0cyBhIGRldi1idWlsZCBkZW1vIHBhc3MgYXMgc2hpcHBlZCAoYHBsdWdpbnMvd29yay9za2lsbHMvZGVtby9TS0lMTC5tZGApLgotICoqRGVtbyB0aGVhdGVyKiog4oCUIGEgZ3JlZW4gc2NyZWVuc2hvdCB0aGF0IHByb3ZlcyBub3RoaW5nLiBNaXRpZ2F0aW9uOiBzdGVwIDUncwogIGNvbXBsZXRlbmVzcyBjaGVjayBpcyBhZ2FpbnN0IHRoZSAqcmVjb3ZlcmVkIGludGVudCosIG5vdCB0aGUgZGlmZjsgdGhlIHNraWxsCiAgcmVxdWlyZXMgbmFtaW5nIHdoYXQgd2FzICoqbm90KiogZGVtb2VkIGFuZCB3aHkuIEEgZGVtbyB3aXRoIG5vIGdhcCBzZWN0aW9uIGFuZCBubwogIG1lYXN1cmVkIGRlbHRhIGlzIGluY29tcGxldGUuCi0gKipTdXJmYWNlIGJsb2F0Kiogb24gYW4gYWxyZWFkeSA0NSUtZGVhZCBjb21tYW5kIHNldCAoeW91ciBvd24gdXNhZ2UgcmVwb3J0KS4KICBNaXRpZ2F0aW9uOiBubyBuZXcgcGx1Z2luIOKAlCBgd29yazpkZW1vYCArIG9uZSBhbGlhczsgYC9kZW1vYCBlYXJucyBpdHMgc2xvdCBhcyBhCiAgdmVyYmF0aW0gdG9wLTUgcmVjdXJyaW5nIGFzaywgbm90IGEgc3BlY3VsYXRpdmUgZmVhdHVyZS4KLSAqKkNvc3QvdGltZSoqIOKAlCBhIGZ1bGwgZGVtbyBwZXIgbGFuZGluZyBpcyBub3QgZnJlZS4gTWl0aWdhdGlvbjogYC0tbm8tcmVwb3J0YAogIGZvciB0aGUgcXVpY2sgcGF0aDsgdGhlIHJlcG9ydCBpcyB0aGUgZGVmYXVsdCBvbmx5IGJlY2F1c2UgaXQncyB3aGF0IHlvdSBrZWVwCiAgYXNraW5nIGZvci4KCiMjIFRyYWNraW5nCgotIFRoaXMgcGxhbjogYC5hZ2VudHMvcGxhbnMvcGxhbi1kZW1vLWNvbW1hbmQubWRgIChjb21taXR0ZWQgd2l0aCB0aGUgZmVhdHVyZSkuCi0gVGlja2V0ICsgUFIgbGlua3MgYWRkZWQgaGVyZSBvbmNlIHRoZSBob21lIGRlY2lzaW9uIChUMSkgaXMgY29uZmlybWVkLgo="}</script>
+<script>
+(() => {
+  const root = document.documentElement;
+  const button = document.querySelector('.theme-toggle');
+  const media = window.matchMedia('(prefers-color-scheme: dark)');
+  const configured = "system";
+  const stored = () => { try { const value = localStorage.getItem('artifacts-theme'); return value === 'light' || value === 'dark' ? value : null; } catch { return null; } };
+  const preferred = () => stored() || (configured === 'system' ? (media.matches ? 'dark' : 'light') : configured);
+  const apply = (theme, persist) => {
+    root.dataset.theme = theme;
+    root.style.colorScheme = theme;
+    const next = theme === 'dark' ? 'light' : 'dark';
+    button.setAttribute('aria-label', 'Switch to ' + next + ' theme');
+    button.setAttribute('title', 'Switch to ' + next + ' theme');
+    button.setAttribute('aria-pressed', theme === 'dark' ? 'true' : 'false');
+    if (persist) { try { localStorage.setItem('artifacts-theme', theme); } catch {} }
+  };
+  apply(preferred(), false);
+  button.addEventListener('click', () => apply(root.dataset.theme === 'dark' ? 'light' : 'dark', true));
+  media.addEventListener('change', () => { if (configured === 'system' && !stored()) apply(media.matches ? 'dark' : 'light', false); });
+})();
+</script><script>
+(() => {
+  // Scroll-spy: mark the section the reader is currently in. The active heading
+  // is the last one whose top has passed the reading line, so a heading is
+  // "current" from the moment it reaches the top, not when it leaves.
+  const links = [...document.querySelectorAll('.toc-item')];
+  if (links.length) {
+    const targets = links
+      .map((link) => ({ link, heading: document.getElementById(link.dataset.tocFor) }))
+      .filter((entry) => entry.heading);
+    let active = null;
+    let queued = false;
+    const sync = () => {
+      queued = false;
+      const line = 120;
+      let current = targets[0];
+      for (const entry of targets) {
+        if (entry.heading.getBoundingClientRect().top <= line) current = entry;
+        else break;
+      }
+      // Past the end of the document the last section is the one being read.
+      if (window.innerHeight + window.scrollY >= document.body.scrollHeight - 4) current = targets[targets.length - 1];
+      if (!current || current.link === active) return;
+      if (active) active.classList.remove('is-active');
+      active = current.link;
+      active.classList.add('is-active');
+      const rail = active.closest('.toc');
+      if (rail && rail.scrollHeight > rail.clientHeight) {
+        const top = active.offsetTop - rail.clientHeight / 2;
+        rail.scrollTo({ top, behavior: 'smooth' });
+      }
+    };
+    const onScroll = () => { if (!queued) { queued = true; requestAnimationFrame(sync); } };
+    addEventListener('scroll', onScroll, { passive: true });
+    addEventListener('resize', onScroll, { passive: true });
+    sync();
+  }
+
+  // Local read count. Per-browser, keyed by this artifact's own identity, so a
+  // shared link counts each reader's own visits rather than a global total.
+  try {
+    const key = 'artifacts-views:' + location.origin + location.pathname + ':' + (document.title || '');
+    const count = (parseInt(localStorage.getItem(key) || '0', 10) || 0) + 1;
+    localStorage.setItem(key, String(count));
+    const label = document.querySelector('.view-count');
+    if (label) {
+      label.textContent = count === 1 ? 'first read' : count + ' reads';
+      label.hidden = false;
+    }
+  } catch {}
+})();
+</script><script>
+(() => {
+  const current = document.querySelector('meta[name="artifacts-content-hash"]')?.content;
+  const chip = document.querySelector('.reload-chip');
+  if (!current || !chip || !['127.0.0.1', 'localhost', '::1'].includes(location.hostname)) return;
+  chip.addEventListener('click', () => location.reload());
+  const check = async () => {
+    try {
+      const response = await fetch(location.href, { cache: 'no-store' });
+      const html = await response.text();
+      const next = html.match(/<meta name="artifacts-content-hash" content="([^"]+)">/)?.[1];
+      if (next && next !== current) chip.hidden = false;
+    } catch {}
+  };
+  setInterval(check, 1500);
+})();
+</script><script>
+(() => {
+  const root = document.querySelector('.artifact-body');
+  if (!root) return;
+
+  const storageKey = 'artifacts-highlights:' + location.origin + location.pathname + ':' + (document.title || '');
+  const selector = 'h2,h3,p,li,blockquote,pre,figcaption,td,th,dd';
+  const hash = (value) => {
+    let result = 2166136261;
+    for (let index = 0; index < value.length; index += 1) { result ^= value.charCodeAt(index); result = Math.imul(result, 16777619); }
+    return (result >>> 0).toString(36);
+  };
+  const anchors = [...root.querySelectorAll(selector)].filter((element) => !element.parentElement.closest(selector));
+  const bases = [];
+  let section = 'document';
+  for (const anchor of anchors) {
+    if ((anchor.tagName === 'H2' || anchor.tagName === 'H3') && anchor.id) section = anchor.id;
+    anchor.dataset.readerSection = section;
+    const text = (anchor.textContent || '').replace(/\s+/g, ' ').trim();
+    bases.push(anchor.id ? 'id:' + anchor.id : section + ':' + anchor.tagName.toLowerCase() + ':' + hash(text));
+  }
+  const totals = new Map();
+  for (const base of bases) totals.set(base, (totals.get(base) || 0) + 1);
+  const occurrences = new Map();
+  for (let index = 0; index < anchors.length; index += 1) {
+    const anchor = anchors[index];
+    const base = bases[index];
+    const occurrence = (occurrences.get(base) || 0) + 1;
+    occurrences.set(base, occurrence);
+    anchor.dataset.readerAnchor = base.startsWith('id:') ? base : base + ':count:' + totals.get(base) + ':occurrence:' + occurrence;
+  }
+  const byId = new Map(anchors.map((anchor) => [anchor.dataset.readerAnchor, anchor]));
+
+  const read = () => {
+    try {
+      const value = JSON.parse(localStorage.getItem(storageKey) || '[]');
+      return Array.isArray(value) ? value.filter((item) => item && item.id && item.start && item.end).map((item) => ({
+        quote: '', note: '', section: 'document', created_at: new Date().toISOString(), ...item,
+      })) : [];
+    } catch { return []; }
+  };
+  let highlights = read();
+  let postTimer;
+  const post = () => {
+    if (location.protocol !== 'http:' || !['127.0.0.1', 'localhost', '::1'].includes(location.hostname)) return;
+    fetch('/notes', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ schema: 'artifacts.notes.v1', notes: highlights }) }).catch(() => {});
+  };
+  const write = () => {
+    try { localStorage.setItem(storageKey, JSON.stringify(highlights)); } catch {}
+    clearTimeout(postTimer); postTimer = setTimeout(post, 600);
+  };
+  const textLength = (anchor) => (anchor.textContent || '').length;
+  const offsetAt = (anchor, node, offset) => {
+    const range = document.createRange(); range.selectNodeContents(anchor);
+    try { range.setEnd(node, offset); } catch { return null; }
+    return range.toString().length;
+  };
+  const wrap = (anchor, start, end, id) => {
+    if (end <= start) return;
+    const nodes = []; const walker = document.createTreeWalker(anchor, NodeFilter.SHOW_TEXT); let cursor = 0; let node = walker.nextNode();
+    while (node) {
+      const nodeStart = cursor; const nodeEnd = cursor + node.data.length;
+      if (nodeEnd > start && nodeStart < end) nodes.push([node, Math.max(0, start - nodeStart), Math.min(node.data.length, end - nodeStart)]);
+      cursor = nodeEnd; node = walker.nextNode();
+    }
+    for (let index = nodes.length - 1; index >= 0; index -= 1) {
+      const [textNode, from, to] = nodes[index]; if (to <= from) continue;
+      const range = document.createRange(); range.setStart(textNode, from); range.setEnd(textNode, to);
+      const mark = document.createElement('mark'); mark.className = 'reader-highlight'; mark.dataset.highlightId = id; mark.title = 'Open note';
+      range.surroundContents(mark);
+    }
+  };
+  const clearMarks = () => {
+    for (const mark of root.querySelectorAll('mark[data-highlight-id]')) mark.replaceWith(...mark.childNodes);
+    for (const anchor of anchors) anchor.normalize();
+  };
+  const render = () => {
+    clearMarks();
+    for (const highlight of highlights) {
+      const first = byId.get(highlight.start.anchor); const last = byId.get(highlight.end.anchor);
+      const firstIndex = anchors.indexOf(first); const lastIndex = anchors.indexOf(last);
+      if (!first || !last || firstIndex < 0 || lastIndex < firstIndex) continue;
+      for (let index = firstIndex; index <= lastIndex; index += 1) wrap(anchors[index], index === firstIndex ? highlight.start.offset : 0, index === lastIndex ? highlight.end.offset : textLength(anchors[index]), highlight.id);
+    }
+  };
+
+  const style = document.createElement('style');
+  style.textContent = '.reader-toolbar,.reader-popover{position:fixed;z-index:40;display:flex;align-items:center;gap:6px;padding:7px;border:1px solid var(--line,#ccc);border-radius:10px;background:var(--surface,#fff);color:var(--text,#111);box-shadow:0 10px 35px rgba(0,0,0,.18);font:500 12px/1.2 var(--font-mono,monospace)}.reader-toolbar[hidden],.reader-popover[hidden]{display:none}.reader-toolbar-status{padding:0 6px;color:var(--muted,#666)}.reader-toolbar button,.reader-popover button{border:1px solid var(--line,#ccc);border-radius:999px;background:var(--surface-alt,#f5f5f5);color:inherit;padding:6px 9px;font:inherit;cursor:pointer}.reader-popover{width:min(360px,calc(100vw - 24px));align-items:stretch;flex-direction:column;padding:12px}.reader-popover-quote{margin:0;color:var(--muted,#666);font-style:italic;line-height:1.45}.reader-popover textarea{width:100%;min-height:84px;resize:vertical;border:1px solid var(--line,#ccc);border-radius:7px;padding:8px;background:var(--bg,#fff);color:inherit;font:13px/1.4 var(--font-body,sans-serif)}.reader-popover-actions{display:flex;gap:6px}.reader-remove{margin-left:auto;color:var(--danger,#b91c1c)!important}';
+  document.head.append(style);
+  const toolbar = document.createElement('div'); toolbar.className = 'reader-toolbar'; toolbar.hidden = true;
+  toolbar.innerHTML = '<span class="reader-toolbar-status">Copied</span><span aria-hidden="true">·</span><button type="button" data-reader-action="highlight">Highlight</button><span aria-hidden="true">·</span><button type="button" data-reader-action="note">Note</button>';
+  document.body.append(toolbar);
+  const popover = document.createElement('div'); popover.className = 'reader-popover'; popover.hidden = true;
+  popover.innerHTML = '<p class="reader-popover-quote"></p><textarea aria-label="Note" placeholder="Attach a note…"></textarea><div class="reader-popover-actions"><button type="button" data-reader-action="copy">Copy</button><button type="button" class="reader-remove" data-reader-action="remove">Remove</button></div>';
+  document.body.append(popover);
+  let pending = null; let activeId = null; let noteTimer;
+  const place = (element, rect) => { element.style.left = Math.max(8, Math.min(innerWidth - element.offsetWidth - 8, rect.left)) + 'px'; element.style.top = Math.max(8, rect.bottom + 8) + 'px'; };
+  const openNote = (item, rect) => {
+    activeId = item.id; toolbar.hidden = true; popover.hidden = false;
+    popover.querySelector('.reader-popover-quote').textContent = '“' + item.quote + '”'; popover.querySelector('textarea').value = item.note || '';
+    place(popover, rect);
+  };
+  const persistPending = (open) => {
+    if (!pending) return;
+    const duplicate = highlights.find((item) => item.start.anchor === pending.start.anchor && item.start.offset === pending.start.offset && item.end.anchor === pending.end.anchor && item.end.offset === pending.end.offset);
+    const item = duplicate || { id: Date.now().toString(36) + Math.random().toString(36).slice(2), ...pending, created_at: new Date().toISOString() };
+    if (!duplicate) highlights.push(item);
+    write(); toolbar.hidden = true; render();
+    if (open) openNote(item, pending.rect);
+  };
+
+  root.addEventListener('mouseup', () => {
+    const selection = getSelection(); if (!selection || selection.isCollapsed || !selection.rangeCount) return;
+    const range = selection.getRangeAt(0); const startAnchor = range.startContainer.parentElement?.closest('[data-reader-anchor]'); const endAnchor = range.endContainer.parentElement?.closest('[data-reader-anchor]');
+    if (!startAnchor || !endAnchor || !root.contains(startAnchor) || !root.contains(endAnchor)) return;
+    const startOffset = offsetAt(startAnchor, range.startContainer, range.startOffset); const endOffset = offsetAt(endAnchor, range.endContainer, range.endOffset);
+    if (startOffset === null || endOffset === null) return;
+    const startIndex = anchors.indexOf(startAnchor); const endIndex = anchors.indexOf(endAnchor);
+    if (startIndex > endIndex || (startIndex === endIndex && startOffset >= endOffset)) return;
+    const quote = selection.toString(); const rect = range.getBoundingClientRect();
+    pending = { quote, note: '', section: startAnchor.dataset.readerSection || 'document', start: { anchor: startAnchor.dataset.readerAnchor, offset: startOffset }, end: { anchor: endAnchor.dataset.readerAnchor, offset: endOffset }, rect };
+    navigator.clipboard?.writeText(quote).catch(() => {});
+    popover.hidden = true; toolbar.hidden = false; requestAnimationFrame(() => place(toolbar, rect));
+  });
+  toolbar.addEventListener('mousedown', (event) => event.preventDefault());
+  toolbar.addEventListener('click', (event) => {
+    const action = event.target.closest('button')?.dataset.readerAction;
+    if (action === 'highlight') persistPending(false);
+    if (action === 'note') persistPending(true);
+  });
+  root.addEventListener('click', (event) => {
+    const mark = event.target.closest('mark[data-highlight-id]'); if (!mark || !root.contains(mark)) return;
+    event.preventDefault(); event.stopPropagation();
+    const item = highlights.find((value) => value.id === mark.dataset.highlightId); if (item) openNote(item, mark.getBoundingClientRect());
+  });
+  popover.querySelector('textarea').addEventListener('input', (event) => {
+    clearTimeout(noteTimer); noteTimer = setTimeout(() => {
+      const item = highlights.find((value) => value.id === activeId); if (item) { item.note = event.target.value; write(); }
+    }, 600);
+  });
+  popover.addEventListener('click', (event) => {
+    const action = event.target.closest('button')?.dataset.readerAction; const item = highlights.find((value) => value.id === activeId); if (!item) return;
+    if (action === 'copy') navigator.clipboard?.writeText(item.quote).catch(() => {});
+    if (action === 'remove') { highlights = highlights.filter((value) => value.id !== activeId); write(); popover.hidden = true; render(); }
+  });
+  render();
+})();
+</script>
+</body>
+</html>

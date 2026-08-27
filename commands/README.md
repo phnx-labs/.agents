@@ -35,6 +35,7 @@ debt moved into the code plugin, and became architectural restructuring there:
 | Command | What it does |
 |---|---|
 | [`/finish`](./finish.md) | Alias of `/sessions:finish` — drive the current task all the way to delivered: verify end-to-end, docs, commit, PR, release checklist, close the ticket. Never stops at a recap, blocker, or partial handoff |
+| [`/demo`](./demo.md) | Alias of `/work:demo` — demonstrate landed work: recover the original intent, exercise the shipped thing in its REAL environment on real representative inputs (signed in as the owner via `agents browser`/`agents computer`), before/after side by side with a measured delta, then deliver an analyzed report on your screen + the PR. The answer to "show me a demo.." |
 
 Reviewing and merging PRs is [`/code:review`](../plugins/code/README.md). To
 recap-and-leave, run `/recap` then [`/self:close`](../plugins/self/README.md).
