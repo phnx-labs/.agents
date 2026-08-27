@@ -108,13 +108,21 @@ scan_roots=""
 if [ -n "${PLAN_HTML_SCAN_ROOT:-}" ]; then
   scan_roots="$PLAN_HTML_SCAN_ROOT"
 else
+  # The durable home is the canonical location: artifacts live OUTSIDE any
+  # checkout, because a repo directory is both tracked (so stray files collide
+  # on merge) and a primary working tree (so main-branch-guard denies the
+  # write). It is scanned first and always.
+  scan_roots="${HOME}/.agents/artifacts"
   repo_root=$(git rev-parse --show-toplevel 2>/dev/null || true)
   if [ -n "$repo_root" ]; then
-    scan_roots="$repo_root/.agents/artifacts"
+    # Also accept an in-repo artifact: a plan deliberately committed WITH its
+    # feature still belongs under the repo, arrived at through a worktree + PR.
+    # Both roots count so neither workflow blocks ExitPlanMode.
+    scan_roots="$scan_roots
+$repo_root/.agents/artifacts"
   else
-    # Legacy fallback: /tmp only when we are not inside a git repo. Inside a repo
-    # the canonical artifact path is the only accepted location.
-    scan_roots="/tmp"
+    scan_roots="$scan_roots
+/tmp"
   fi
 fi
 
@@ -168,7 +176,7 @@ for scan_root in $scan_roots; do
     esac
     [ "$html_ok" = 1 ] && break
   done <<EOF
-$(find -L "$scan_root" -maxdepth 6 \( -name 'plan-*.html' -o -name '*-plan.html' \) -mmin -90 -print 2>/dev/null)
+$(find -L "$scan_root" -maxdepth 6 \( -name 'plan-*.html' -o -name '*-plan.html' -o -name 'plan.html' \) -mmin -90 -print 2>/dev/null)
 EOF
   [ "$html_ok" = 1 ] && break
 done
@@ -211,7 +219,7 @@ fi
   if [ "$html_ok" != 1 ]; then
     echo "* Render and inspect a FIGURE-RICH browser-ready HTML plan headlessly."
     echo "  Load the artifacts skill. Author Markdown under the dated artifact layout:"
-    echo "    .agents/artifacts/yyyy-mm-dd/plan-<slug>.md"
+    echo "    ~/.agents/artifacts/yyyy-mm-dd/<slug>/plan.md"
     echo "  then:"
     echo "    DATE=\$(date +%F)"
     echo "    artifacts render .agents/artifacts/\$DATE/plan-<slug>.md"

@@ -307,6 +307,46 @@ mkfile_cl
 run 2 "multi-step plan, checklist ok but no HTML -> block" \
   '{"tool_name":"ExitPlanMode","tool_input":{"plan":"'"$MULTI"'"},"transcript_path":"'"$TX"'"}'
 
+# --- Durable home is the canonical artifact root -------------------------------
+# Artifacts moved OUT of the repo: a checkout is tracked (stray files collide on
+# merge) and is a primary working tree (main-branch-guard denies the write). The
+# hook must accept ~/.agents/artifacts/ so plan mode is not blocked by the move,
+# while still accepting an in-repo plan committed with its feature.
+
+FAKE_HOME=$(mktemp -d)
+HOME_DATE_DIR="$FAKE_HOME/.agents/artifacts/2026-08-27/durable-slug"
+mkdir -p "$HOME_DATE_DIR"
+
+run_home() {
+  want=$1; label=$2; json=$3; cwd=$4
+  got=0
+  (
+    unset PLAN_HTML_SCAN_ROOT
+    HOME=$FAKE_HOME
+    export HOME
+    cd "$cwd"
+    printf '%s' "$json" | sh "$HOOK" >/dev/null 2>&1 || exit $?
+  ) || got=$?
+  if [ "$got" = "$want" ]; then
+    pass=$((pass+1)); echo "ok   — $label (rc=$got)"
+  else
+    fail=$((fail+1)); echo "FAIL — $label (want rc=$want, got rc=$got)"
+  fi
+}
+
+# 20. Fresh figure-bearing HTML in the DURABLE HOME -> ALLOW, from a non-repo cwd.
+write_figure_html "$HOME_DATE_DIR/plan.html"
+NON_REPO=$(mktemp -d)
+run_home 0 "durable home artifact satisfies the render check" \
+  '{"tool_name":"ExitPlanMode","tool_input":{"plan":"'"$MULTI"'"},"transcript_path":"'"$TX"'"}' \
+  "$NON_REPO"
+
+# 21. Nothing anywhere -> still BLOCK. The new root must not become a blanket pass.
+rm -f "$HOME_DATE_DIR"/*.html "$HOME_DATE_DIR"/*.md 2>/dev/null || true
+run_home 2 "empty durable home still blocks" \
+  '{"tool_name":"ExitPlanMode","tool_input":{"plan":"'"$MULTI"'"},"transcript_path":"'"$TX"'"}' \
+  "$NON_REPO"
+
 echo "----"
 echo "pass=$pass fail=$fail"
 [ "$fail" = 0 ]
