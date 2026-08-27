@@ -217,6 +217,8 @@ run_guard 2 "scp local-form destination in primary tree" \
   "$(bj "scp -q /tmp/refocus-brief.md '$MAIN_REPO/refocus-brief.md'" "$NOGIT")"
 run_guard 2 "shell redirect destination in primary tree" \
   "$(bj "cat > '$MAIN_REPO/notes.md'" "$NOGIT")"
+run_guard 2 "cd then relative redirect follows destination cwd" \
+  "$(bj "cd '$MAIN_REPO' && cat > notes-relative.md" "$NOGIT")"
 run_guard 0 "documented plan readback destination /tmp" \
   "$(bj "scp '$MAIN_REPO/plan.html' /tmp/ && open /tmp/plan.html" "$MAIN_REPO")"
 run_guard 0 "write destination under repo-nested worktree path wins first" \
