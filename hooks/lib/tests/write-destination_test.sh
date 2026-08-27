@@ -82,6 +82,14 @@ expect 0 "agent home and tmp destinations" \
   "cp /tmp/a ~/.agents/cache/a && tee /tmp/b"
 expect 0 "quoted greater-than prose is not a redirection" \
   "echo 'example: cat > /Users/muqsit/src/github.com/muqsitnawaz/agents/nope.md'"
+# Regression, 2026-08-27: both of these BLOCKED real work on this machine before
+# the extractor kept quote/heredoc state across lines. awk reset state per line,
+# so the second line of any multi-line quoted argument reopened as "unquoted" and
+# an arrow in prose became a phantom destination. A guard that blocks a write
+# that does not exist gets switched off, which is strictly worse than no guard.
+expect 0 "an arrow in a multi-line quoted argument is prose, not a redirection" \
+  "$(printf 'linear create "bug" --description "line one\nsession eadada83 belongs to yosemite-m5 -> resuming there\nline three"')"
+
 expect 1 "quoted destination with spaces stays one token" \
   "cp /tmp/x '/Users/muqsit/src/github.com/muqsitnawaz/agents/dir with space/file.txt'"
 expect 1 "tee checks every destination, not only the last" \

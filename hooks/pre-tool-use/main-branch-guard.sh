@@ -643,7 +643,17 @@ _mbg_strip_heredoc_bodies() {
         pre = substr(scan, 1, RSTART - 1)
         t1 = pre; ndq = gsub(dq, "&", t1)
         t2 = pre; nsq = gsub("[" q "]", "&", t2)
-        if (ndq % 2 == 0 && nsq % 2 == 0) {
+        # Command substitution reopens shell syntax INSIDE a quoted string, so
+        # quote parity alone misreads it. Real case, 2026-08-27:
+        #   linear create --title "..." --description "$(cat <<'DESC'
+        # has three double quotes before `<<` (odd), so the opener was rejected,
+        # the body was never stripped, and prose containing an arrow parsed as a
+        # redirection into the primary checkout. Count unclosed `$(` before the
+        # `<<`: inside one, the `<<` is shell syntax whatever the quote parity.
+        t3 = pre; nopen  = gsub(/\$\(/, "&", t3)
+        t4 = pre; nclose = gsub(/\)/, "&", t4)
+        insub = (nopen > nclose)
+        if (insub || (ndq % 2 == 0 && nsq % 2 == 0)) {
           m = substr(scan, RSTART, RLENGTH)
           strip_tabs = (substr(m, 3, 1) == "-")
           sub(/^<<-?[ \t]*/, "", m)

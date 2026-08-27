@@ -194,6 +194,20 @@ run_guard 2 "Write tracked file still denied (ignore-scoped)" "$(wj Write file_p
 run_guard 2 "Write force-added tracked file under ignored dir" "$(wj Write file_path "$MAIN_REPO/scratch/forced.txt")"
 
 # --- Bash git commit/add: DENY on default branch (exit 2) ---
+# Regression, 2026-08-27 — both of these BLOCKED real work on this machine.
+# (1) A heredoc opened inside a command substitution that itself sits inside a
+# quoted argument. The quote-parity check saw an ODD number of double quotes
+# before `<<` and refused to treat it as a heredoc opener, so the body was never
+# stripped and prose containing an arrow parsed as a redirection into the
+# primary checkout. Real command shape:
+#   linear create --title "..." --description "$(cat <<'DESC' ... DESC )"
+run_guard 0 "arrow in a heredoc body opened inside \$( ) is prose, not a write" \
+  "$(bj "$(printf 'linear create --title "resume bug" --description "$(cat <<%sDESC%s\nsession eadada83 belongs to yosemite-m5 -> resuming there\nDESC\n)"' "'" "'")" "$MAIN_REPO")"
+# (2) The same shape must NOT become a blanket bypass: a genuine redirection on
+# the heredoc OPENER line still writes to the checkout and must still deny.
+run_guard 2 "a real redirect on the heredoc opener line still denies" \
+  "$(bj "$(printf 'cat <<%sEOF%s > %s/leak.md\nbody\nEOF' "'" "'" "$MAIN_REPO")" "$MAIN_REPO")"
+
 run_guard 2 "git -C main commit"                 "$(bj "git -C $MAIN_REPO commit -m x")"
 run_guard 2 "git commit, cwd on main"            "$(bj "git commit -m x" "$MAIN_REPO")"
 run_guard 2 "git add, cwd on main"               "$(bj "git add ." "$MAIN_REPO")"

@@ -214,9 +214,32 @@ _write_extract_redirects() {
   # Character scan keeps `>` inside quoted prose/data from becoming a phantom
   # destination. It also returns every real redirection in the segment rather
   # than only the final one. One-layer shell quotes around a target are removed.
+  #
+  # Quote state and heredoc state PERSIST ACROSS LINES. Resetting them per line
+  # was a false-positive factory: a multi-line quoted argument (a commit message,
+  # a PR body, a ticket description) reopens as "unquoted" on its second line, so
+  # an arrow in ordinary prose read as a redirection and the guard blocked a
+  # write that never existed. Heredoc bodies are data, never shell syntax, and
+  # are skipped wholesale until their delimiter line.
   awk '
+    BEGIN { sq = 0; dq = 0; esc = 0; hd = "" }
     {
-      s = $0; sq = 0; dq = 0; esc = 0
+      s = $0
+      # Inside a heredoc body: pure data. Consume until the delimiter line.
+      if (hd != "") {
+        line = s
+        sub(/^[ \t]+/, "", line); sub(/[ \t]+$/, "", line)
+        if (line == hd) hd = ""
+        next
+      }
+      # A heredoc opener on this line means everything AFTER it is data. Record
+      # the delimiter (<<WORD, <<-WORD, <<"WORD", <<'"'"'WORD'"'"') and still scan the
+      # command part of this same line for real redirections.
+      if (!sq && !dq && match(s, /<<-?[ \t]*("[^"]+"|'"'"'[^'"'"']+'"'"'|[A-Za-z_][A-Za-z0-9_]*)/)) {
+        hd = substr(s, RSTART, RLENGTH)
+        sub(/^<<-?[ \t]*/, "", hd)
+        gsub(/["'"'"']/, "", hd)
+      }
       for (i = 1; i <= length(s); i++) {
         c = substr(s, i, 1)
         if (esc) { esc = 0; continue }
@@ -224,6 +247,9 @@ _write_extract_redirects() {
         if (c == sprintf("%c", 39) && !dq) { sq = !sq; continue }
         if (c == "\"" && !sq) { dq = !dq; continue }
         if (c != ">" || sq || dq) continue
+        # `<<` already consumed above as a heredoc; a lone `<` is a READ, not a
+        # write, and never yields a destination.
+        if (i > 1 && substr(s, i - 1, 1) == "<") continue
         if (substr(s, i + 1, 1) == ">") i++
         j = i + 1
         while (j <= length(s) && substr(s, j, 1) ~ /[ \t]/) j++
