@@ -307,10 +307,16 @@ def grep_snippets(lines, terms, context, max_snippets):
     if not hit_idx:
         return []
 
+    # Hard cap on a single snippet's span. Adjacent hits merge into one window
+    # ONLY while it stays under max_span; a densely-recurring term therefore
+    # produces several bounded snippets, never one runaway block. Without this,
+    # a term recurring closer than 2*context+1 lines apart collapses the whole
+    # transcript into a single "snippet", breaking the capped-not-dumped promise.
+    max_span = 3 * context + 2
     windows = []
     for i in hit_idx:
         lo, hi = max(0, i - context), min(len(lines) - 1, i + context)
-        if windows and lo <= windows[-1][1] + 1:
+        if windows and lo <= windows[-1][1] + 1 and (hi - windows[-1][0] + 1) <= max_span:
             windows[-1] = (windows[-1][0], hi, windows[-1][2] | {i})
         else:
             windows.append((lo, hi, {i}))
@@ -320,8 +326,14 @@ def grep_snippets(lines, terms, context, max_snippets):
     snippets = []
     for lo, hi, hit_set in windows[:max_snippets]:
         window_lines = lines[lo:hi + 1]
+        truncated = False
+        if len(window_lines) > max_span:            # belt-and-suspenders bound
+            window_lines = window_lines[:max_span]
+            truncated = True
         roles_hit = {lines[i][0] for i in hit_set}
         text = "\n".join(f"{role:>9}: {line}" for role, line in window_lines if line.strip())
+        if truncated:
+            text += "\n       …: (snippet truncated)"
         if text:
             snippets.append({"roles": sorted(roles_hit), "text": text})
     return snippets[:max_snippets]
