@@ -225,6 +225,14 @@ run_guard 2 "tee checks every output destination" \
   "$(bj "tee '$MAIN_REPO/tee-first.txt' /tmp/tee-safe.txt" "$NOGIT")"
 run_guard 2 "cp target-directory option is the destination" \
   "$(bj "cp --target-directory '$MAIN_REPO' /tmp/source" "$NOGIT")"
+run_guard 2 "cp glued target-directory option is the destination" \
+  "$(bj "cp -t'$MAIN_REPO' /tmp/source" "$NOGIT")"
+run_guard 2 "Bash clobber redirect destination in primary tree" \
+  "$(bj "printf x >| '$MAIN_REPO/clobber.txt'" "$NOGIT")"
+run_guard 2 "install directory mode checks every destination" \
+  "$(bj "install -d '$MAIN_REPO/new-dir' /tmp/safe-dir" "$NOGIT")"
+run_guard 2 "command wrapper preserves copy destination" \
+  "$(bj "command cp /tmp/source '$MAIN_REPO/wrapped.txt'" "$NOGIT")"
 run_guard 2 "worktree-shaped path cannot traverse into primary" \
   "$(bj "cat > '$MAIN_REPO/.agents/worktrees/fake/../../../traversal.txt'" "$NOGIT")"
 run_guard 0 "documented plan readback destination /tmp" \

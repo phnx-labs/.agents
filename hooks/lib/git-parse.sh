@@ -128,7 +128,7 @@ git_split_chains() {
         if (c == "\\" && !sq) { out = out c; esc = 1; continue }
         if (c == sprintf("%c", 39) && !dq) { sq = !sq; out = out c; continue }
         if (c == "\"" && !sq) { dq = !dq; out = out c; continue }
-        if (!sq && !dq && (c == "\n" || c == ";" || c == "|" || (c == "&" && n == "&"))) {
+        if (!sq && !dq && (c == "\n" || c == ";" || (c == "|" && substr(s, i - 1, 1) != ">") || (c == "&" && n == "&"))) {
           print out; out = ""
           if ((c == "|" && n == "|") || (c == "&" && n == "&")) i++
           continue
@@ -225,6 +225,7 @@ _write_extract_redirects() {
         if (c == "\"" && !sq) { dq = !dq; continue }
         if (c != ">" || sq || dq) continue
         if (substr(s, i + 1, 1) == ">") i++
+        else if (substr(s, i + 1, 1) == "|") i++
         j = i + 1
         while (j <= length(s) && substr(s, j, 1) ~ /[ \t]/) j++
         out = ""; osq = 0; odq = 0; oesc = 0
@@ -297,6 +298,20 @@ write_scan_segment() {
   [ $# -gt 0 ] || return 0
   _ws_cmd=$(git_unwrap_quotes "$1")
   shift
+  # Peel ordinary execution wrappers without evaluating any string. These do
+  # not change the filesystem destination of the wrapped command.
+  while :; do
+    case "$_ws_cmd" in
+      command|exec|nohup|caffeinate|time|unbuffer)
+        while [ $# -gt 0 ]; do case "$1" in --) shift; break ;; -*) shift ;; *) break ;; esac; done ;;
+      env)
+        while [ $# -gt 0 ]; do case "$1" in --) shift; break ;; -*|*=*) shift ;; *) break ;; esac; done ;;
+      *) break ;;
+    esac
+    [ $# -gt 0 ] || return 0
+    _ws_cmd=$(git_unwrap_quotes "$1")
+    shift
+  done
   case "$_ws_cmd" in
     cd)
       while [ $# -gt 0 ]; do
@@ -317,6 +332,19 @@ write_scan_segment() {
       done
       ;;
     scp|*/scp|rsync|*/rsync|cp|*/cp|mv|*/mv|install|*/install)
+      case "$_ws_cmd" in
+        install|*/install)
+          _ws_install_dirs=0
+          for _ws_arg in "$@"; do case "$_ws_arg" in -d|--directory) _ws_install_dirs=1 ;; esac; done
+          if [ "$_ws_install_dirs" -eq 1 ]; then
+            for _ws_arg in "$@"; do
+              case "$_ws_arg" in -*) ;; *)
+                write_on_destination install "$_ws_arg" "$_ws_remote" || return $? ;;
+              esac
+            done
+            return 0
+          fi ;;
+      esac
       _ws_dest=''
       _ws_need_target=0
       _ws_target_mode=0
@@ -326,6 +354,7 @@ write_scan_segment() {
         fi
         case "$_ws_arg" in
           -t|--target-directory) _ws_need_target=1 ;;
+          -t?*) _ws_dest=${_ws_arg#-t}; _ws_target_mode=1 ;;
           --target-directory=*) _ws_dest=${_ws_arg#*=}; _ws_target_mode=1 ;;
           -*) ;;
           *) [ "$_ws_target_mode" -eq 1 ] || _ws_dest=$_ws_arg ;;
