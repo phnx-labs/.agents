@@ -96,6 +96,22 @@ expect 1 "install directory mode checks every operand" \
   "install -d /Users/muqsit/src/github.com/muqsitnawaz/agents/new-dir /tmp/safe-dir"
 expect 1 "command wrapper preserves covered copy destination" \
   "command cp /tmp/x /Users/muqsit/src/github.com/muqsitnawaz/agents/wrapped.txt"
+expect 1 "env operand-taking option preserves wrapped destination" \
+  "env -u NAME cp /tmp/x /Users/muqsit/src/github.com/muqsitnawaz/agents/env-wrapped.txt"
+expect 1 "macOS env utility-path option preserves wrapped destination" \
+  "env -P /usr/bin cp /tmp/x /Users/muqsit/src/github.com/muqsitnawaz/agents/env-path-wrapped.txt"
+expect 1 "exec operand-taking option preserves wrapped destination" \
+  "exec -a copy cp /tmp/x /Users/muqsit/src/github.com/muqsitnawaz/agents/exec-wrapped.txt"
+expect 1 "exec clustered argv option preserves wrapped destination" \
+  "exec -ca copy cp /tmp/x /Users/muqsit/src/github.com/muqsitnawaz/agents/exec-clustered.txt"
+expect 1 "exec attached argv option preserves wrapped destination" \
+  "exec -acopy cp /tmp/x /Users/muqsit/src/github.com/muqsitnawaz/agents/exec-attached.txt"
+expect 1 "install grouped directory option checks every operand" \
+  "install -dm755 /Users/muqsit/src/github.com/muqsitnawaz/agents/grouped-dir /tmp/safe-dir"
+expect 0 "install attached owner operand is not directory mode" \
+  "install -odaemon /Users/muqsit/src/github.com/muqsitnawaz/agents/source /tmp/safe-destination"
+expect 1 "install end-of-options preserves dash-leading directory" \
+  "cd /Users/muqsit/src/github.com/muqsitnawaz/agents && install -d -- -new-dir"
 
 # Regression for the POC gap: retain the complete quoted inner command before
 # splitting its && chain, then qualify the discovered destination with the host.

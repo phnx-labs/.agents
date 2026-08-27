@@ -233,6 +233,22 @@ run_guard 2 "install directory mode checks every destination" \
   "$(bj "install -d '$MAIN_REPO/new-dir' /tmp/safe-dir" "$NOGIT")"
 run_guard 2 "command wrapper preserves copy destination" \
   "$(bj "command cp /tmp/source '$MAIN_REPO/wrapped.txt'" "$NOGIT")"
+run_guard 2 "env operand option preserves wrapped copy destination" \
+  "$(bj "env -u NAME cp /tmp/source '$MAIN_REPO/env-wrapped.txt'" "$NOGIT")"
+run_guard 2 "macOS env utility-path option preserves wrapped destination" \
+  "$(bj "env -P /usr/bin cp /tmp/source '$MAIN_REPO/env-path-wrapped.txt'" "$NOGIT")"
+run_guard 2 "exec operand option preserves wrapped copy destination" \
+  "$(bj "exec -a copy cp /tmp/source '$MAIN_REPO/exec-wrapped.txt'" "$NOGIT")"
+run_guard 2 "exec clustered argv option preserves wrapped destination" \
+  "$(bj "exec -ca copy cp /tmp/source '$MAIN_REPO/exec-clustered.txt'" "$NOGIT")"
+run_guard 2 "exec attached argv option preserves wrapped destination" \
+  "$(bj "exec -acopy cp /tmp/source '$MAIN_REPO/exec-attached.txt'" "$NOGIT")"
+run_guard 2 "install grouped directory option checks every destination" \
+  "$(bj "install -dm755 '$MAIN_REPO/grouped-dir' /tmp/safe-dir" "$NOGIT")"
+run_guard 0 "install attached owner operand is not directory mode" \
+  "$(bj "install -odaemon '$MAIN_REPO/tracked.txt' /tmp/safe-destination" "$NOGIT")"
+run_guard 2 "install end-of-options preserves dash-leading directory" \
+  "$(bj "cd '$MAIN_REPO' && install -d -- -new-dir" "$NOGIT")"
 run_guard 2 "worktree-shaped path cannot traverse into primary" \
   "$(bj "cat > '$MAIN_REPO/.agents/worktrees/fake/../../../traversal.txt'" "$NOGIT")"
 run_guard 0 "documented plan readback destination /tmp" \

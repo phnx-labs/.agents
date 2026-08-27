@@ -302,10 +302,46 @@ write_scan_segment() {
   # not change the filesystem destination of the wrapped command.
   while :; do
     case "$_ws_cmd" in
-      command|exec|nohup|caffeinate|time|unbuffer)
+      command)
         while [ $# -gt 0 ]; do case "$1" in --) shift; break ;; -*) shift ;; *) break ;; esac; done ;;
+      exec)
+        while [ $# -gt 0 ]; do
+          case "$1" in
+            --) shift; break ;;
+            -?*)
+              _ws_exec_cluster=${1#-}; _ws_exec_needs_arg=0
+              while [ -n "$_ws_exec_cluster" ]; do
+                _ws_exec_ch=${_ws_exec_cluster%"${_ws_exec_cluster#?}"}
+                _ws_exec_cluster=${_ws_exec_cluster#?}
+                case "$_ws_exec_ch" in
+                  a) [ -z "$_ws_exec_cluster" ] && _ws_exec_needs_arg=1
+                     _ws_exec_cluster='' ;;
+                esac
+              done
+              shift
+              if [ "$_ws_exec_needs_arg" -eq 1 ] && [ $# -gt 0 ]; then shift; fi ;;
+            *) break ;;
+          esac
+        done ;;
+      nohup|unbuffer)
+        while [ $# -gt 0 ]; do case "$1" in --) shift; break ;; -*) shift ;; *) break ;; esac; done ;;
+      caffeinate)
+        while [ $# -gt 0 ]; do
+          case "$1" in --) shift; break ;; -t|-w) shift; [ $# -gt 0 ] && shift ;; -*) shift ;; *) break ;; esac
+        done ;;
+      time)
+        while [ $# -gt 0 ]; do
+          case "$1" in --) shift; break ;; -o|-f|--output|--format) shift; [ $# -gt 0 ] && shift ;; -*) shift ;; *) break ;; esac
+        done ;;
       env)
-        while [ $# -gt 0 ]; do case "$1" in --) shift; break ;; -*|*=*) shift ;; *) break ;; esac; done ;;
+        while [ $# -gt 0 ]; do
+          case "$1" in
+            --) shift; break ;;
+            -u|-C|-S|-P|--unset|--chdir|--split-string) shift; [ $# -gt 0 ] && shift ;;
+            --unset=*|--chdir=*|--split-string=*|-u?*|-C?*|-S?*|-*|*=*) shift ;;
+            *) break ;;
+          esac
+        done ;;
       *) break ;;
     esac
     [ $# -gt 0 ] || return 0
@@ -335,13 +371,49 @@ write_scan_segment() {
       case "$_ws_cmd" in
         install|*/install)
           _ws_install_dirs=0
-          for _ws_arg in "$@"; do case "$_ws_arg" in -d|--directory) _ws_install_dirs=1 ;; esac; done
+          _ws_install_expect=0
+          _ws_install_options=1
+          _ws_install_operands=''
+          for _ws_arg in "$@"; do
+            if [ "$_ws_install_expect" -eq 1 ]; then _ws_install_expect=0; continue; fi
+            if [ "$_ws_install_options" -eq 0 ]; then
+              _ws_install_operands="${_ws_install_operands}
+$_ws_arg"
+              continue
+            fi
+            case "$_ws_arg" in
+              --) _ws_install_options=0; continue ;;
+              --directory) _ws_install_dirs=1; continue ;;
+              --group|--mode|--owner|--suffix|--target-directory)
+                _ws_install_expect=1; continue ;;
+              --group=*|--mode=*|--owner=*|--suffix=*|--target-directory=*|--*) continue ;;
+              -?*)
+                _ws_cluster=${_ws_arg#-}
+                while [ -n "$_ws_cluster" ]; do
+                  _ws_ch=${_ws_cluster%"${_ws_cluster#?}"}
+                  _ws_cluster=${_ws_cluster#?}
+                  case "$_ws_ch" in
+                    d) _ws_install_dirs=1 ;;
+                    B|f|g|m|M|o|S|t)
+                      if [ -z "$_ws_cluster" ]; then _ws_install_expect=1; fi
+                      _ws_cluster='' ;;
+                  esac
+                done
+                continue ;;
+            esac
+            _ws_install_operands="${_ws_install_operands}
+$_ws_arg"
+          done
           if [ "$_ws_install_dirs" -eq 1 ]; then
-            for _ws_arg in "$@"; do
-              case "$_ws_arg" in -*) ;; *)
-                write_on_destination install "$_ws_arg" "$_ws_remote" || return $? ;;
-              esac
+            _ws_saved_ifs=${IFS-}; IFS='
+'
+            for _ws_arg in $_ws_install_operands; do
+              IFS=$_ws_saved_ifs
+              write_on_destination install "$_ws_arg" "$_ws_remote" || return $?
+              IFS='
+'
             done
+            IFS=$_ws_saved_ifs
             return 0
           fi ;;
       esac
