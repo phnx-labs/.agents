@@ -4,11 +4,29 @@
 
 ### Added
 
-- **`plugins/sessions/skills/finish/`** — the `sessions:finish` skill, its
-  `/sessions:finish` command, and a top-level **`commands/finish.md`** alias. Restores the
+- **`plugins/sessions/skills/finish/`** — the `sessions:finish` skill and a top-level
+  **`commands/finish.md`** alias (no plugin-namespaced `/sessions:finish` command — one
+  door, not two; see the sessions consolidation entry below). Restores the
   drive-to-delivered ship gate that `1c9b9ae` folded into `/next`: recover the contract,
   act on what remains, verify end-to-end, then docs / commit / PR / release / tracker —
-  never stopping at a recap, blocker, or partial handoff. Skill-first, both commands thin.
+  never stopping at a recap, blocker, or partial handoff.
+- **`plugins/sessions/skills/search/`** — the `sessions:search` skill, its
+  `/sessions:search` command, and a top-level **`commands/recall.md`** alias
+  (`/recall`). `agents sessions "<q>"` only searches user turns + title/topic/project
+  (`session_text`); it never indexes assistant answers or tool activity, and results
+  are whole-session refs with no snippet. The skill teaches layered discovery (CLI
+  first, tool-activity query second) and falls back to a bundled, self-contained
+  `recall.py` (stdlib `sqlite3` only) when the CLI errors or returns thin. `recall.py`
+  ranks candidate sessions by fusing `session_text` (bm25) and `tool_call_text`
+  (trigram) matches by rank, then opens only those top-K candidates' own transcript
+  files and greps every role — user, assistant, tool — for the same terms, extracting
+  capped ±3-line snippets. This is what recovers assistant answers: verified live, a
+  phrase that exists only in an assistant turn returns zero hits from
+  `agents sessions "<phrase>"` and is recovered by `recall.py` via a neighboring
+  indexed term. `plugins/sessions/skills/search/tests/recall_test.sh` runs both
+  assertions against the real local `sessions.db` (no mocks).
+- **`commands/fork.md`** — top-level `/fork` alias for `sessions:fork`, restoring
+  parity with `/finish` and `/insights` after the sessions command consolidation below.
 - **`commands/visualize.md`** — restores `/visualize`: routes to the `artifacts` skill's
   `kind: visual` (infographic / explainer / dashboard / data story → self-contained
   branded HTML). The engine survived the three-skills consolidation (`08aa9ff`); this
@@ -56,12 +74,19 @@
   device/OAuth in a per-device account slot; Claude setup-token / API-key as the syncable
   alternative) into onboarding, so onboarding a device also mints its auth in one flow.
   Cross-references that pointed at `/fleet:mint-auth` now point in-doc.
-- Plugin manifests: `sessions` 0.1.0 → 0.2.0, `work` 0.2.0 → 0.4.0, `code` 0.12.1 → 0.13.0,
-  `fleet` 0.1.0 → 0.2.0, `self` 0.1.0 → 0.1.1 (descriptions follow the command moves and the
-  surface prune).
+- Plugin manifests: `sessions` 0.1.0 → 0.3.0, `work` 0.2.0 → 0.4.0, `code` 0.12.1 → 0.13.0,
+  `fleet` 0.1.0 → 0.2.0, `self` 0.1.0 → 0.1.1 (descriptions follow the command moves, the
+  surface prune, and the new `/recall` + `sessions:search`).
 
 ### Removed
 
+- **`plugins/sessions/commands/{finish,fork,insights}.md`** — the plugin-namespaced
+  `/sessions:finish`, `/sessions:fork`, `/sessions:insights` commands. Each skill already
+  has (or, for `fork`, now gets) a top-level alias — `/finish`, `/fork`, `/insights` —
+  so the plugin-namespaced door was a second, redundant entry point to the same
+  procedure. `/sessions:continue`, `/sessions:restore`, and the new `/sessions:search`
+  keep their plugin-namespaced command since they have no (or a differently-named)
+  top-level alias.
 - **`commands/next.md`** — `/next` deleted. Its drive-to-delivered half is `/finish`
   again; the pick-up-the-next-ticket half was redundant with the board context hooks
   already inject at session start.
