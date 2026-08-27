@@ -465,6 +465,31 @@ write_on_destination() {
   esac
   case "$_wd_path" in *\\*) _wd_path=$(printf '%s' "$_wd_path" | tr '\\' '/') ;; esac
 
+  # A destination whose first segment is still an unexpanded variable cannot be
+  # resolved without executing the shell, and joining it to cwd FABRICATES a
+  # path that never existed. Real case, 2026-08-27: `tee $SP/out.yaml` produced
+  # "/Users/.../agents/$SP/out.yaml in the PRIMARY working tree" — a literal
+  # `$SP` component, a file no write was ever going to touch. Resolvable
+  # assignments are still captured upstream by _mbg_note_assignment; what
+  # remains here is genuinely unknowable, and claiming it is a primary-tree
+  # write is a false statement, not a conservative one.
+  # Resolve a leading $VAR from assignments recorded earlier in the same chain
+  # (`SP=/repo; cat > $SP/x`). rc 1 means a leading variable exists that cannot
+  # be resolved — the shell alone knows where it points, and joining it to cwd
+  # FABRICATES a path. Real case, 2026-08-27: `tee $SP/out.yaml` was reported as
+  # "/Users/.../agents/$SP/out.yaml in the PRIMARY working tree" — a literal
+  # `$SP` component, a file no write was ever going to touch. Claiming that is a
+  # false statement, not a conservative one, so an unresolvable variable is
+  # allowed while every resolvable one is still followed and judged.
+  case "$_wd_path" in
+    '$HOME/'*|'${HOME}/'*) ;;
+    '$'*|'${'*)
+      if _wdx=$(_mbg_expand_leading_var "$_wd_path"); then
+        _wd_path=$_wdx
+      else
+        return 0
+      fi ;;
+  esac
   case "$_wd_path" in
     /*|[A-Za-z]:/*|'~/'*|'$HOME/'*) ;;
     *) _wd_path=${WRITE_DEST_CWD:-${cwd:-.}}/$_wd_path ;;
@@ -478,6 +503,10 @@ write_on_destination() {
   # documented artifact readback pattern and agent-owned state.
   case "$_wd_path" in
     /tmp|/tmp/*|'~/.agents'|'~/.agents/'*|'$HOME/.agents'|'$HOME/.agents/'*) return 0 ;;
+    # macOS resolves /tmp to /private/tmp, which is where every agent scratchpad
+    # actually lives. Without this the /tmp allowlist above never matched a real
+    # scratchpad path on a Mac.
+    /private/tmp|/private/tmp/*) return 0 ;;
   esac
   # Kernel sinks are not files in any repository, so they can never land in a
   # primary checkout. They must be allowed BEFORE the remote branch below:
@@ -879,10 +908,18 @@ check_segment() {
     _saved_dest_cwd=${WRITE_DEST_CWD:-}
     WRITE_REMOTE_HOST=$_remote_host
     WRITE_DEST_CWD='~'
+    _outer_rest=${_remote_outer_rest:-}
     check_command_string "$_remote_inner"
     _remote_rc=$?
     WRITE_REMOTE_HOST=$_saved_remote
     WRITE_DEST_CWD=$_saved_dest_cwd
+    # Anything trailing the quoted remote command belongs to the LOCAL shell —
+    # `agents ssh host '...' > out` captures stdout here, not there. Scan it in
+    # local context so a genuine local redirect is still caught.
+    if [ "$_remote_rc" -eq 0 ] && [ -n "$_outer_rest" ]; then
+      check_command_string "$_outer_rest"
+      _remote_rc=$?
+    fi
     return "$_remote_rc"
   fi
   write_scan_segment "$1" || return $?

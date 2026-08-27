@@ -91,11 +91,23 @@ git_extract_remote_inner() {
       *)
         _remote_host=$(git_unwrap_quotes "$_rw")
         [ -n "$_rr" ] || return 1
+        # Split at the MATCHING close quote. `${_rr%\'}` only strips a trailing
+        # quote when the string ENDS with one, so anything after the remote
+        # command — notably a redirection belonging to the OUTER, local shell —
+        # was swallowed into _remote_inner and judged against the remote host.
+        # Real case, 2026-08-27:
+        #   agents ssh win-mini 'type ...' > /local/scratch/out.yaml
+        # was denied as a write to 'win-mini:~/...'. That redirect captures the
+        # ssh command's stdout on THIS machine; it is not a remote write at all.
+        # _remote_outer_rest carries the remainder back for local scanning.
+        _remote_outer_rest=''
         case "$_rr" in
-          \"*\") _rr=${_rr#\"}; _rr=${_rr%\"} ;;
-          \'*\') _rr=${_rr#\'}; _rr=${_rr%\'} ;;
+          \"*) _rt=${_rr#\"}; _remote_inner=${_rt%%\"*}
+                 case "$_rt" in *\"*) _remote_outer_rest=${_rt#*\"} ;; esac ;;
+          \'*) _rt=${_rr#\'}; _remote_inner=${_rt%%\'*}
+                 case "$_rt" in *\'*) _remote_outer_rest=${_rt#*\'} ;; esac ;;
+          *)     _remote_inner=$_rr ;;
         esac
-        _remote_inner=$_rr
         return 0 ;;
     esac
   done
