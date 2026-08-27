@@ -92,6 +92,7 @@ to type.
 | Re-open crash sessions as **windows** | `/sessions:restore` | Not the same as `/continue` |
 | Finish many interrupted sessions **headlessly** | `/continue recover` | Mode of sessions continue |
 | How we have been working (analytics) | `/insights` | insights + trends + perf + stats |
+| Current repository's agent output, cost, mix, and workflow tax as charts | `/yc:workweave` | [`yc`](plugins/yc/README.md) — local session index to private HTML |
 | Score a repository's structure for coding agents | `/code:score` | `AGENTS.md` coverage, directory organization, ranked visual report |
 | Review PRs this session (or a whole repo scan) | `/code:review` | `code:review` — three modes |
 | Learn a codebase into project `AGENTS.md` | `/code:learn` | Durable nav notes for future agents |

@@ -92,6 +92,15 @@
 
 - **`hooks/stop/00-agent-verify-work-complete.sh`: drop the "Argued past 3 stop blocks" phone notification.** The hook still blocks the first two argue-past fires (exit 2); after that it silently allows the stop. The `--blocked` feed post that previously fired on the third attempt has been removed — it produced unwanted phone noise without adding actionable signal.
 
+- **`/yc:workweave` becomes an outcome-first visual report (PHNX-3255).** The report now
+  opens with a dense dashboard, uses prior-window comparisons from the collector, requires
+  at least eight accessible figures, reserves “output” for shipped-work evidence, and labels
+  token counts as generated tokens. The rendering contract adds aligned small multiples,
+  compact process diagnostics, four real desktop/mobile proof captures, and explicit visual
+  QA in both themes. It keeps the local differentiators—cost, harness/model mix, hook latency,
+  command latency, retries, friction, and unused resources—without imitating Weave's brand or
+  proprietary normalized-output and quality scores.
+
 - **Fleet auth guidance now prefers per-device native OAuth when the harness supports it (PHNX-3259).** `/fleet:mint-auth` documents the verified target-slot device-code flow: create a stable account slot, run login in a PTY on that target, authorize through a browser signed into the intended account, verify the resulting email, and repeat per device. Native OAuth files remain non-copyable; only named setup-token/API-key bundles may be distributed with `agents accounts sync`. Onboarding and the fleet catalog use the same distinction.
 
 - **`/plan` quality bar: required headings are a floor, not the plan (PHNX-3252).**
@@ -114,6 +123,18 @@
   `plugins/swarm/skills/plan/SKILL.md`, `plugins/swarm/skills/spec/SKILL.md`.
 
 ### Added
+
+- **`yc` plugin — local WorkWeave-style project analytics (PHNX-3255).** Adds
+  `/yc:workweave`, a thin command over the `yc:workweave` skill. It refreshes the local
+  agents-cli session index, takes every indexed session for the current repository as its
+  census, and composes the existing behavioral insights, shipped-output, cost,
+  harness/model-mix, resource-use, hook/command-latency, and guard-friction engines into a
+  private Markdown + HTML report. A bundled TypeScript collector owns index refresh,
+  parallel extraction, window normalization, and explicit engine-gap capture while the
+  agent owns interpretation and visual storytelling. The report carries exact-value SVG charts,
+  distinguishes project-scoped data from fleet-wide counters whose schemas lack `cwd`,
+  redacts identity/session details, opens in one reused browser tab, and never uploads raw
+  transcripts or requires a paid service.
 
 - **`hooks/post-tool-use/01-github-ratelimit-nudge.py` — after a GitHub rate limit,
   act instead of idling (PHNX-3234).** The first `PostToolUse` hook in the repo (new

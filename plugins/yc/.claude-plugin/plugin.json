@@ -1,0 +1,9 @@
+{
+  "name": "yc",
+  "version": "0.1.0",
+  "description": "yc — local recreations of YC startup products whose core functionality can be delivered by a general-purpose agent plus focused skills and scripts. First recipe: `/yc:workweave`, private engineering intelligence from the agents-cli session index.",
+  "author": {
+    "name": "Muqsit Nawaz",
+    "email": "contact@trp.so"
+  }
+}

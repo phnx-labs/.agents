@@ -20,6 +20,7 @@ I run?* and § *Automate your work*. This page is the plugin catalog.
 | PR review or whole-repo architecture scan | **code** | `/code:review` |
 | Parallel agents / blind plan / spec / debug | **swarm** | `/swarm`, `/swarm:plan`, … |
 | Resume / restore sessions / session analytics | **sessions** | `/continue`, `/finish`, `/insights`, `/sessions:restore`, `/sessions:fork` |
+| Current repository's agent output, cost, mix, and workflow tax as HTML | **yc** | `/yc:workweave` |
 | Multi-machine sync / onboard | **fleet** | `/fleet:sync`, `/fleet:onboard` |
 | Publish HTML artifact | **share** | `/share` (`--private` for `--no-cover --expire 7d`) |
 | Offline design render | **design** | `/design` |
@@ -40,6 +41,7 @@ Do not stretch `code:loop` into browser outreach — use `work:loop`.
 | [`design`](./design/README.md) | 1 | One keyless, offline-first front door for design — routes an intent to a mode and renders self-contained HTML/SVG |
 | [`self`](./self/README.md) | 3 | Agent self-operations — `/self:close` cleanly self-terminates the session (guarded SIGTERM to the harness); `/self:hibernate` sleeps the session until a future time; `/self:reflect` recalls corrections and constraints before revising work |
 | [`sessions`](./sessions/README.md) | 5 | Session lifecycle + analytics — `/sessions:continue` finishes prior work here, `/sessions:finish` drives the current task to delivered, `/sessions:insights` orchestrates insights/trends/perf/stats, `/sessions:restore` re-opens crash windows, `/sessions:fork` branches into a new independent session; top-level `/continue` `/finish` `/insights` are thin aliases |
+| [`yc`](./yc/README.md) | 1 | Local recreations of YC startup products using a general-purpose agent plus focused skills/scripts; first recipe `/yc:workweave` turns indexed agent sessions, output, cost, resource use, hook/command latency, and friction into private HTML |
 
 <p align="center">
   <img src="../.assets/share.png" alt="/share — one command turns any agent-generated HTML into a shareable link with an auto OG cover" width="82%">
