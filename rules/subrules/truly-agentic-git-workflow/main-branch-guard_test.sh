@@ -206,6 +206,14 @@ run_guard 0 "arrow in a heredoc body opened inside \$( ) is prose, not a write" 
 run_guard 2 "a real redirect on the heredoc opener line still denies" \
   "$(bj "$(printf 'cat <<%sEOF%s > %s/leak.md\nbody\nEOF' "'" "'" "$MAIN_REPO")" "$MAIN_REPO")"
 
+# Regression, 2026-08-27: discarding stderr over ssh was denied because
+# remote_primary_tree cannot classify a device node and fails closed. A kernel
+# sink is never a file in a repository.
+run_guard 0 "remote /dev/null discard is not a write" \
+  "$(bj "agents ssh yosemite-m5 'grep -A6 defaults: ~/.agents/agents.yaml 2>/dev/null'" "$MAIN_REPO")"
+run_guard 0 "local /dev/null discard is not a write" \
+  "$(bj "ls -la 2>/dev/null > /dev/null" "$MAIN_REPO")"
+
 run_guard 2 "git -C main commit"                 "$(bj "git -C $MAIN_REPO commit -m x")"
 run_guard 2 "git commit, cwd on main"            "$(bj "git commit -m x" "$MAIN_REPO")"
 run_guard 2 "git add, cwd on main"               "$(bj "git add ." "$MAIN_REPO")"

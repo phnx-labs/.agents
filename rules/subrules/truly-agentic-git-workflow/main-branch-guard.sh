@@ -479,6 +479,15 @@ write_on_destination() {
   case "$_wd_path" in
     /tmp|/tmp/*|'~/.agents'|'~/.agents/'*|'$HOME/.agents'|'$HOME/.agents/'*) return 0 ;;
   esac
+  # Kernel sinks are not files in any repository, so they can never land in a
+  # primary checkout. They must be allowed BEFORE the remote branch below:
+  # `agents ssh <host> '... 2>/dev/null'` otherwise reached remote_primary_tree,
+  # which cannot classify a device node and fails closed — blocking an ordinary
+  # discard of stderr. Real case, 2026-08-27: a read-only fleet sweep was denied
+  # with "could not verify remote redirect destination '<host>:/dev/null'".
+  case "$_wd_path" in
+    /dev/null|/dev/stdout|/dev/stderr|/dev/tty|/dev/fd/*) return 0 ;;
+  esac
 
   if [ -n "$_wd_host" ]; then
     case "$_wd_path" in /*|'~/'*) ;; *) return 0 ;; esac
