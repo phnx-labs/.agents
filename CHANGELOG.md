@@ -23,8 +23,16 @@
   capped ±3-line snippets. This is what recovers assistant answers: verified live, a
   phrase that exists only in an assistant turn returns zero hits from
   `agents sessions "<phrase>"` and is recovered by `recall.py` via a neighboring
-  indexed term. `plugins/sessions/skills/search/tests/recall_test.sh` runs both
-  assertions against the real local `sessions.db` (no mocks).
+  indexed term. Transcript parsing covers each harness's own on-disk shape — Claude
+  Code / Droid's `message.role`/`message.content` envelope, Codex's
+  `response_item`/`payload` envelope, and Grok's unwrapped `type`-as-role records
+  (read from the sibling `chat_history.jsonl`, since `sessions.file_path` points at
+  Grok's `summary.json` metadata, not the transcript). A session the index matches
+  but recall.py cannot fully parse (currently: Kimi, whose transcript is split
+  across several per-agent files) never silently drops out of the digest — it comes
+  back as an index-only hit with a `note`, so a real zero is never confused with
+  "found it, but couldn't grep it." `plugins/sessions/skills/search/tests/recall_test.sh`
+  runs both assertions against the real local `sessions.db` (no mocks).
 - **`commands/fork.md`** — top-level `/fork` alias for `sessions:fork`, restoring
   parity with `/finish` and `/insights` after the sessions command consolidation below.
 - **`commands/visualize.md`** — restores `/visualize`: routes to the `artifacts` skill's

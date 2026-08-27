@@ -75,25 +75,31 @@ print('1' if d['hits'] and d['hits'][0]['snippets'] and d['hits'][0]['snippets']
     || bad "first hit has no snippet text"
 
   # "loads 0 full transcripts": the digest must stay far smaller than the
-  # transcript it was extracted from, proving snippets were capped, not dumped.
-  TX_SIZE=$(python3 - "$DB" "$TERM" <<'PY'
-import os, sqlite3, sys
-db = sqlite3.connect(f"file:{sys.argv[1]}?mode=ro", uri=True)
-cur = db.cursor()
-cur.execute("SELECT session_id FROM session_text WHERE session_text MATCH ? ORDER BY bm25(session_text) LIMIT 1", ('"' + sys.argv[2] + '"',))
-row = cur.fetchone()
-if not row:
-    print(0); sys.exit()
-cur.execute("SELECT file_path FROM sessions WHERE id=?", (row[0],))
-fp = cur.fetchone()[0].replace("[HOME]", os.path.expanduser("~"))
-print(os.path.getsize(fp) if os.path.exists(fp) else 0)
+  # SUM of the transcripts recall.py actually opened for this exact query
+  # (same --limit 3), not an unrelated single file — otherwise this
+  # assertion compares apples to oranges and can flip on corpus shape alone.
+  TX_TOTAL=$(python3 - "$DIR/.." "$TERM" <<'PY'
+import os, sys
+sys.path.insert(0, sys.argv[1])
+import recall
+conn = recall.open_db()
+try:
+    candidates = recall.find_candidates(conn, [sys.argv[2]], None, None, 3)
+finally:
+    conn.close()
+total = 0
+for c in candidates:
+    fp = recall.resolve_transcript_path(c["filePath"])
+    if os.path.exists(fp):
+        total += os.path.getsize(fp)
+print(total)
 PY
 )
   OUT_BYTES=${#OUT}
-  if [ "${TX_SIZE:-0}" -gt 0 ] && [ "$OUT_BYTES" -lt "$TX_SIZE" ]; then
-    ok "digest ($OUT_BYTES bytes) is smaller than the source transcript ($TX_SIZE bytes) — capped, not dumped"
+  if [ "${TX_TOTAL:-0}" -gt 0 ] && [ "$OUT_BYTES" -lt "$TX_TOTAL" ]; then
+    ok "digest ($OUT_BYTES bytes) is smaller than the ${TX_TOTAL} bytes of transcripts it was drawn from — capped, not dumped"
   else
-    bad "digest size ($OUT_BYTES) not smaller than transcript size ($TX_SIZE) — snippet cap may not be working"
+    bad "digest size ($OUT_BYTES) not smaller than the $TX_TOTAL bytes actually opened — snippet cap may not be working"
   fi
 fi
 

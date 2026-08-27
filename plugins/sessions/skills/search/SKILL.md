@@ -92,6 +92,17 @@ topic was never discussed in an indexed local session, or lives on a device
 you have not searched (`--device <host>` on the CLI reaches a specific peer;
 `recall.py` is local-only by design, since it must open files directly).
 
+A session the FIND phase matched via the index never silently disappears,
+even when RECOVER cannot fully parse its transcript — it comes back as an
+index-only hit with a `note` instead ("matched via index only", or "transcript
+format not recognized"), so a real zero is never confused with "found it, but
+couldn't grep it." Transcript recovery is strongest for Claude Code, Codex,
+and Droid (full user/assistant/tool extraction) and Grok (reads the sibling
+`chat_history.jsonl` next to the indexed `summary.json`); Kimi's transcript is
+split across several per-agent files recall.py does not open yet, so Kimi
+hits are index-only until that lands. This never affects layers 1-2 or the
+FIND phase — only how much of a hit's *content* RECOVER can show.
+
 ## 3. Synthesize a compact digest — do not paste full sessions
 
 Your final answer to the user is a **ranked digest**, not raw tool output:
