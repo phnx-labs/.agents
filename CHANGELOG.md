@@ -34,7 +34,9 @@
   across several per-agent files) never silently drops out of the digest — it comes
   back as an index-only hit with a `note`, so a real zero is never confused with
   "found it, but couldn't grep it." `plugins/sessions/skills/search/tests/recall_test.sh`
-  runs both assertions against the real local `sessions.db` (no mocks).
+  runs all three assertion groups — snippet-cap, assistant-only recovery, and
+  cross-harness (Codex real snippet / Kimi honest stub) — against the real local
+  `sessions.db` (no mocks).
 - **`commands/fork.md`** — top-level `/fork` alias for `sessions:fork`, restoring
   parity with `/finish` and `/insights` after the sessions command consolidation below.
 - **`commands/visualize.md`** — restores `/visualize`: routes to the `artifacts` skill's

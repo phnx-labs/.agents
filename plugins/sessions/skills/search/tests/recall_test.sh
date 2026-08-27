@@ -13,6 +13,10 @@
 #      `agents sessions "<phrase>"` search (assistant text is not indexed),
 #      but recall.py recovers it via transcript grep once the session is a
 #      candidate through an indexed neighboring term.
+#   3. Cross-harness: a real Codex session with a real indexed term gets a
+#      genuine recovered snippet (not a stub), and a real Kimi session
+#      (transcript format recall.py does not parse yet) stays in the digest
+#      as an honest index-only stub rather than silently disappearing.
 set -u
 DIR=$(cd "$(dirname "$0")" && pwd)
 RECALL="$DIR/../recall.py"
