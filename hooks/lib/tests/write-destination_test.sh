@@ -14,6 +14,7 @@ fail=0
 
 ok() { pass=$((pass + 1)); printf 'ok   - %s\n' "$1"; }
 bad() { fail=$((fail + 1)); printf 'FAIL - %s\n' "$1"; }
+eq() { if [ "$2" = "$3" ]; then ok "$1"; else bad "$1: expected [$2], got [$3]"; fi; }
 
 write_on_destination() {
   kind=$1 path=$2 host=${3:-}
@@ -81,6 +82,12 @@ expect 0 "agent home and tmp destinations" \
   "cp /tmp/a ~/.agents/cache/a && tee /tmp/b"
 expect 0 "quoted greater-than prose is not a redirection" \
   "echo 'example: cat > /Users/muqsit/src/github.com/muqsitnawaz/agents/nope.md'"
+expect 1 "quoted destination with spaces stays one token" \
+  "cp /tmp/x '/Users/muqsit/src/github.com/muqsitnawaz/agents/dir with space/file.txt'"
+expect 1 "tee checks every destination, not only the last" \
+  "tee /Users/muqsit/src/github.com/muqsitnawaz/agents/first.txt /tmp/safe.txt"
+expect 1 "target-directory option identifies the write destination" \
+  "cp --target-directory /Users/muqsit/src/github.com/muqsitnawaz/agents /tmp/x"
 
 # Regression for the POC gap: retain the complete quoted inner command before
 # splitting its && chain, then qualify the discovered destination with the host.
@@ -110,6 +117,10 @@ expect 0 "agents teams remote is not direct remote shell" \
   "agents teams add x claude 'write the report' --device zion"
 expect 0 "crabbox run writes only its leased checkout" \
   "crabbox run --id blue-lobster -- sh -c 'cat > /repo/report.md'"
+
+split=$(git_split_chains 'echo "first
+second"; git reset --hard')
+eq "chain splitting retains quote state across newlines" $'echo "first\nsecond"\n git reset --hard' "$split"
 
 printf '\nwrite-destination: %s passed, %s failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]

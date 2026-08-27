@@ -416,7 +416,7 @@ remote_primary_tree() {
   _rp_path=$2
   command -v agents >/dev/null 2>&1 || return 2
   _rp_q=$(_mbg_shell_quote "$_rp_path")
-  _rp_script="p=$_rp_q; case \"\$p\" in '~/'*) p=\"\$HOME/\${p#'~/'}\" ;; esac; d=\$(dirname \"\$p\"); while [ ! -d \"\$d\" ]; do n=\$(dirname \"\$d\"); [ \"\$n\" = \"\$d\" ] && break; d=\$n; done; top=\$(git -C \"\$d\" rev-parse --show-toplevel 2>/dev/null) || { printf 'NONE\\n'; exit 0; }; if [ -f \"\$top/.git\" ] && grep -q '/worktrees/' \"\$top/.git\" 2>/dev/null; then printf 'LINKED\\n'; elif [ -d \"\$top/.git\" ] || [ -f \"\$top/.git\" ]; then cur=\$(git -C \"\$top\" symbolic-ref --short -q HEAD 2>/dev/null || true); printf 'PRIMARY|%s|%s\\n' \"\$top\" \"\$cur\"; else printf 'NONE\\n'; fi"
+  _rp_script="p=$_rp_q; case \"\$p\" in '~/'*) p=\"\$HOME/\${p#'~/'}\" ;; esac; if [ -d \"\$p\" ]; then d=\$p; else d=\$(dirname \"\$p\"); fi; while [ ! -d \"\$d\" ]; do n=\$(dirname \"\$d\"); [ \"\$n\" = \"\$d\" ] && break; d=\$n; done; top=\$(git -C \"\$d\" rev-parse --show-toplevel 2>/dev/null) || { printf 'NONE\\n'; exit 0; }; if [ -f \"\$top/.git\" ] && grep -q '/worktrees/' \"\$top/.git\" 2>/dev/null; then printf 'LINKED\\n'; elif [ -d \"\$top/.git\" ] || [ -f \"\$top/.git\" ]; then cur=\$(git -C \"\$top\" symbolic-ref --short -q HEAD 2>/dev/null || true); printf 'PRIMARY|%s|%s\\n' \"\$top\" \"\$cur\"; else printf 'NONE\\n'; fi"
   _rp_out=$(agents ssh "$_rp_host" "$_rp_script" 2>/dev/null) || return 2
   case "$_rp_out" in
     PRIMARY\|*)
@@ -432,6 +432,26 @@ remote_primary_tree() {
 # write_on_destination <kind> <destination> <remote-host> — WHERE policy for
 # write_scan_segment. The scanner stays policy-free; this callback resolves the
 # destination's own repo and blocks only primary checkouts.
+_mbg_lexical_path() {
+  printf '%s\n' "$1" | awk '
+    {
+      p = $0; prefix = ""
+      if (substr(p, 1, 2) == "~/") { prefix = "~/"; p = substr(p, 3) }
+      else if (substr(p, 1, 6) == "$HOME/") { prefix = "$HOME/"; p = substr(p, 7) }
+      else if (substr(p, 1, 1) == "/") { prefix = "/"; p = substr(p, 2) }
+      n = split(p, a, "/"); depth = 0
+      for (i = 1; i <= n; i++) {
+        if (a[i] == "" || a[i] == ".") continue
+        if (a[i] == "..") { if (depth > 0) depth--; else if (prefix == "") stack[++depth] = ".."; continue }
+        stack[++depth] = a[i]
+      }
+      out = prefix
+      for (i = 1; i <= depth; i++) out = out (i > 1 ? "/" : "") stack[i]
+      print out
+    }
+  '
+}
+
 write_on_destination() {
   _wd_kind=$1
   _wd_path=$2
@@ -445,18 +465,14 @@ write_on_destination() {
   esac
   case "$_wd_path" in *\\*) _wd_path=$(printf '%s' "$_wd_path" | tr '\\' '/') ;; esac
 
-  # This syntactic exception MUST precede repo discovery: linked worktrees live
-  # below the protected repo root, so prefix/root checks would otherwise deny
-  # every legitimate agent write.
   case "$_wd_path" in
-    */.agents/worktrees/*|.agents/worktrees/*) return 0 ;;
-  esac
-  case "$_wd_path" in
-    /*|[A-Za-z]:/*|'~/'*) ;;
+    /*|[A-Za-z]:/*|'~/'*|'$HOME/'*) ;;
     *) _wd_path=${WRITE_DEST_CWD:-${cwd:-.}}/$_wd_path ;;
   esac
-  # A relative destination may become a worktree path only after applying the
-  # shell's current directory; preserve the same worktree-first precedence.
+  _wd_path=$(_mbg_lexical_path "$_wd_path")
+  # This check MUST precede repo discovery: linked worktrees live below the
+  # protected repo root. Lexical normalization runs first so `worktrees/x/../..`
+  # cannot disguise a destination back in the primary checkout.
   case "$_wd_path" in */.agents/worktrees/*) return 0 ;; esac
   # Explicit always-safe destinations; avoid a remote round-trip for the
   # documented artifact readback pattern and agent-owned state.
@@ -491,7 +507,7 @@ fleet reachability and retry."
     /*|[A-Za-z]:/*) ;;
     *) _wd_path=${cwd:-.}/$_wd_path ;;
   esac
-  _wd_dir=$(dirname "$_wd_path")
+  if [ -d "$_wd_path" ]; then _wd_dir=$_wd_path; else _wd_dir=$(dirname "$_wd_path"); fi
   while [ ! -d "$_wd_dir" ]; do
     _wd_next=$(dirname "$_wd_dir")
     [ "$_wd_next" = "$_wd_dir" ] && break
