@@ -39,7 +39,7 @@ four real screenshots of the rendered report for desktop and mobile verification
 
 ## Requirements
 
-- `agents` with `sessions`, `insights`, and `perf`.
+- `agents` with `sessions` and `insights` (latency lives at `agents insights perf`).
 - `artifacts` for Markdown-to-HTML rendering.
 - A browser reachable through `agents browser` to open and inspect the result.
 
