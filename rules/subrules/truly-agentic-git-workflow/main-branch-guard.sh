@@ -503,11 +503,19 @@ write_on_destination() {
   # Explicit always-safe destinations; avoid a remote round-trip for the
   # documented artifact readback pattern and agent-owned state.
   case "$_wd_path" in
-    /tmp|/tmp/*|'~/.agents'|'~/.agents/'*|'$HOME/.agents'|'$HOME/.agents/'*) return 0 ;;
-    # macOS resolves /tmp to /private/tmp, which is where every agent scratchpad
-    # actually lives. Without this the /tmp allowlist above never matched a real
-    # scratchpad path on a Mac.
-    /private/tmp|/private/tmp/*) return 0 ;;
+    '~/.agents'|'~/.agents/'*|'$HOME/.agents'|'$HOME/.agents/'*) return 0 ;;
+  esac
+  # /tmp (and macOS /private/tmp) is the scratchpad. Remote /tmp stays
+  # always-safe: `scp … host:/tmp/` is the documented artifact-readback
+  # pattern and must not fail closed when the destination host cannot be
+  # classified. Local /tmp is NOT a bypass of a primary checkout that
+  # happens to live there (throwaway clones, CI fixtures, `mktemp -d`
+  # test repos): fall through to in_primary_tree so a git primary under
+  # /tmp is denied the same as any other primary tree.
+  case "$_wd_path" in
+    /tmp|/tmp/*|/private/tmp|/private/tmp/*)
+      [ -n "$_wd_host" ] && return 0
+      ;;
   esac
   # Kernel sinks are not files in any repository, so they can never land in a
   # primary checkout. They must be allowed BEFORE the remote branch below:

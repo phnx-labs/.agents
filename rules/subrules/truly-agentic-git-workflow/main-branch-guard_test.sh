@@ -251,6 +251,9 @@ run_guard 0 "non-git bash on main (fast path)"   "$(bj "echo hello" "$MAIN_REPO"
 run_guard 0 "ls with no git token"               "$(bj "ls -la" "$MAIN_REPO")"
 
 # --- Bash write destinations: policy follows the destination, never cwd ---
+# The fixtures live under mktemp (/tmp). Local /tmp is a scratchpad, not a
+# bypass of a primary checkout that happens to live there — these DENY
+# cases are the regression pin for that hole.
 run_guard 2 "cp destination in primary tree from parent cwd" \
   "$(bj "cp /tmp/source '$MAIN_REPO/content-source-materials-2026-08-10.md'" "$TMP")"
 run_guard 2 "scp local-form destination in primary tree" \
