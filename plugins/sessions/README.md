@@ -15,7 +15,7 @@ bodies) still get the full procedure.
 | `sessions:finish` | Drive the **current** task to fully delivered — verify E2E, docs, commit, PR, release checklist, close the ticket. The anti-stopping driver: never ends at a recap, blocker, or partial handoff. |
 | `sessions:insights` | Analyze how you and your agents work. **Conductor** over `agents insights`, `agents insights mix`, `agents insights perf`, and `agents sessions stats` — returns evidence-backed actions. No separate `/trends` or `/perf` plugin commands. |
 | `sessions:restore` | Re-open sessions killed by a crash/reboot as **terminal windows**, each resuming its real transcript. Not "finish the work here". |
-| `sessions:fork` | Fork this conversation into a NEW, independent session and open it in a fresh terminal — the "git branch" of sessions (the original is untouched). Bare = fork the current session; `<id>` = fork a specific one. |
+| `sessions:fork` | Fork a session into a NEW same-harness sibling seeded with a recap of the source — cross-device and cross-harness, the "git branch" of sessions (the original is untouched). Bare = fork the current session; `<id>` = fork a specific one. |
 | `sessions:search` | Pull ranked, snippet-level context from prior sessions on a topic — layered `agents sessions` discovery plus the bundled [`recall.py`](./skills/search/recall.py) fallback that recovers assistant answers the index never stores (it only holds user turns + title/topic/project). |
 
 ## Commands
