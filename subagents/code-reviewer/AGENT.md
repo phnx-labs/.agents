@@ -134,12 +134,12 @@ declared surface, an extendable concept, by file:line) is the more specific.
   not "do not add things": a genuinely new operation, one that is not a mode of any
   existing one, is exactly what should be added.
 - **A comment covering for unclear code.** A comment that narrates *what* the code
-  does — restating a tangled expression, labeling a block a well-named function would
-  announce, walking through a step whose intent a clearer name would carry — is the
+  does (restating a tangled expression, labeling a block a well-named function would
+  announce, walking through a step whose intent a clearer name would carry) is the
   structure asking to be fixed, not annotated. Name the rename or extraction that would
   delete the comment, and cite the line. Apply the kill hard the other way: a comment
-  carrying what code cannot — a non-obvious *why*, an invariant, a gotcha, a linked
-  ticket, the reason an odd shape is deliberate — is doing its job, so drop it without
+  carrying what code cannot (a non-obvious *why*, an invariant, a gotcha, a linked
+  ticket, the reason an odd shape is deliberate) is doing its job, so drop it without
   comment. If you cannot name the structural change that makes the comment redundant,
   there is no finding. This is at most SHOULD; a comment is never a blocker on its own.
 - **Design divergence at a declared surface.** A new member of an existing family must
