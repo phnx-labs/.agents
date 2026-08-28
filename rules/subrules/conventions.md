@@ -5,8 +5,8 @@
 - **Tickets — claim first; enrich before you create; open one only for work you
   are delivering now.** Linear context is injected at session start; read it
   before starting. Search the board for a ticket that already covers the work
-  and claim it. **Default to NOT creating.** When you have something worth
-  recording, first look for an existing ticket that overlaps — same subsystem,
+  and claim it. **Default to NOT creating.** When you have real, deliverable work
+  worth tracking, first look for an existing ticket that overlaps — same subsystem,
   same bug class, same surface — and **consolidate into it**: add your detail as
   a comment, sharpen its description, attach evidence, link the related ticket.
   A more complete existing ticket beats a new near-duplicate every time; two
