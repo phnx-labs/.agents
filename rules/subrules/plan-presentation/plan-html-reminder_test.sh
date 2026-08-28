@@ -225,6 +225,12 @@ run_no_override() {
   got=0
   (
     unset PLAN_HTML_SCAN_ROOT
+    # Isolate HOME so a fresh ~/.agents/artifacts plan from the host session
+    # cannot satisfy an in-repo stale-HTML assertion. Durable-home coverage
+    # lives in run_home below, which sets its own FAKE_HOME.
+    HOME="$SCAN/fake-home"
+    mkdir -p "$HOME"
+    export HOME
     cd "$cwd"
     printf '%s' "$json" | sh "$HOOK" >/dev/null 2>&1 || exit $?
   ) || got=$?
