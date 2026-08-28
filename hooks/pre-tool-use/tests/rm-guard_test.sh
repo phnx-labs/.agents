@@ -111,6 +111,14 @@ check_deny "bash -c wrapper"                          'bash -c "rm -rf ~/Rush"' 
 check_deny "quoted first token"                        "'rm' -rf ~/.agents" "protected path denied"
 check_deny "variable-expansion target treated as suspicious" 'rm -rf "$SOME_VAR"' "protected path denied"
 
+# PHNX-3350: timeout/gtimeout wrappers must not hide destructive rm on protected paths.
+check_deny "timeout-wrapped rm -rf \$HOME"      "timeout 5 rm -rf \$HOME" "protected path denied"
+check_deny "gtimeout-wrapped rm -rf ~"          "gtimeout 5 rm -rf ~" "protected path denied"
+check_deny "timeout with all common options"    "timeout --preserve-status --kill-after=2 -s KILL 5 rm -rf ~/.agents" "protected path denied"
+check_deny "timeout-wrapped sh -c rm"           'timeout 5 sh -c "rm -rf ~/.ssh"' "protected path denied"
+check_allow "timeout-wrapped rm on unprotected tmp dir" "timeout 5 rm -rf $TMP_SCRATCH"
+check_allow "timeout-wrapped rm single file"    "timeout 5 rm $PROTECTED_FILE"
+
 # --- 2. Allows the benign neighbour -------------------------------------------
 TMP_SCRATCH="$SANDBOX/scratch-dir"
 mkdir -p "$TMP_SCRATCH"
