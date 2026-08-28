@@ -67,14 +67,14 @@ a thing the user would otherwise have to do themselves after reading you.
 3. **Make sure one owner update went out — exactly one.** There is a single path:
    `agents feed post --title "<short outcome>" "<what you delivered + the one next
    step>" --level important`. The `feed.broadcast.owner` sink in `agents.yaml`
-   forwards an `important` post to `agents notify`, so that one call is both the
+   forwards an `important` post to the owner, so that one call is both the
    record and the phone delivery. Keep it to 1-4 lines, lead with whatever needs
    them, link the PR or ticket rather than restating it — the harness notifies *you*
    when the turn ends and never notifies them, so a recap that exists only in this
    window reaches nobody. **If this session already posted one, that was it.** The
    `verify-work-complete` Stop hook asks for the same single update before it hands
    off to `/recap`, so a second post here is a second phone buzz for one delivered
-   piece of work — do not repeat it, and do not reach for `agents notify` as a way
+   piece of work — do not repeat it, and do not reach for `agents notify` (deprecated; use `agents feed post --level important`) as a way
    around that. If no update has gone out yet, send this one.
 
 Scale it to the work: a question answered in-session has no ticket to close, no
