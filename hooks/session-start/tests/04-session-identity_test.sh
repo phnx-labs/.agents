@@ -21,6 +21,9 @@ HOOK="$HERE/../04-session-identity.sh"
 SANDBOX="$(mktemp -d)"
 trap 'rm -rf "$SANDBOX"' EXIT
 export HOME="$SANDBOX"
+# Live Grok/Claude/Gemini sessions export these. T3/T4 assert "no id anywhere"
+# and must not inherit the host session's identity.
+unset GROK_SESSION_ID GEMINI_SESSION_ID CLAUDE_SESSION_ID
 REG="$HOME/.agents/.cache/terminals/by-pid"
 SESS="$HOME/.agents/.cache/state/sessions"
 SELF=$$
