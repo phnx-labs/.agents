@@ -55,6 +55,105 @@ git_extract_sh_c_inner() {
   return 0
 }
 
+# git_peel_timeout_wrapper <raw> — detect a leading `timeout` or `gtimeout`
+# wrapper (and its options / duration) at the raw-string level. On a match,
+# returns the real inner command on stdout. If the first word is not
+# timeout/gtimeout, returns the original string unchanged. Preserves leading
+# VAR=value assignments and any quoting around the wrapper token.
+git_peel_timeout_wrapper() {
+  _pt_raw=$1
+
+  # Trim leading whitespace.
+  _pt_raw=$(printf '%s' "$_pt_raw" | sed 's/^[[:space:]]*//')
+
+  # Capture leading VAR=value assignments (no spaces inside the assignment).
+  # They belong to the inner command; the guard's existing env-prefix handler
+  # will strip them itself.
+  _pt_env=""
+  while :; do
+    _pt_assign=$(printf '%s' "$_pt_raw" | sed -n 's/^\([A-Za-z_][A-Za-z_0-9]*=[^[:space:]]*\)[[:space:]].*/\1/p')
+    if [ -z "$_pt_assign" ]; then break; fi
+    case "$_pt_raw" in
+      "$_pt_assign"*) ;;
+      *) break ;;
+    esac
+    _pt_env="$_pt_env $_pt_assign"
+    _pt_raw=$(printf '%s' "$_pt_raw" | sed 's/^[A-Za-z_][A-Za-z_0-9]*=[^[:space:]]*[[:space:]][[:space:]]*//')
+    _pt_raw=$(printf '%s' "$_pt_raw" | sed 's/^[[:space:]]*//')
+  done
+
+  # First word must be timeout/gtimeout (possibly absolute path, possibly quoted).
+  _pt_first=${_pt_raw%%[[:space:]]*}
+  _pt_first_raw=$_pt_first
+  case "$_pt_first" in
+    \"*) _pt_first=$(printf '%s' "$_pt_first" | sed 's/^"\(.*\)"$/\1/') ;;
+    \'*) _pt_first=$(printf '%s' "$_pt_first" | sed "s/^'\(.*\)'$/\1/") ;;
+  esac
+  case "$_pt_first" in
+    timeout|gtimeout|*/timeout|*/gtimeout) ;;
+    *) printf '%s' "$1"; return ;;
+  esac
+
+  # Remove the ORIGINAL (possibly quoted) first token.
+  _pt_raw=${_pt_raw#"$_pt_first_raw"}
+  _pt_raw=$(printf '%s' "$_pt_raw" | sed 's/^[[:space:]]*//')
+
+  # Skip timeout options. Stop when we consume the required duration argument.
+  _pt_done=0
+  while [ -n "$_pt_raw" ] && [ "$_pt_done" = 0 ]; do
+    _pt_tok=${_pt_raw%%[[:space:]]*}
+    _pt_tok_raw=$_pt_tok
+    case "$_pt_tok" in
+      \"*) _pt_tok=$(printf '%s' "$_pt_tok" | sed 's/^"\(.*\)"$/\1/') ;;
+      \'*) _pt_tok=$(printf '%s' "$_pt_tok" | sed "s/^'\(.*\)'$/\1/") ;;
+    esac
+
+    case "$_pt_tok" in
+      --)
+        _pt_raw=${_pt_raw#"$_pt_tok_raw"}
+        _pt_raw=$(printf '%s' "$_pt_raw" | sed 's/^[[:space:]]*//')
+        _pt_done=1
+        ;;
+      -k|--kill-after|-s|--signal)
+        _pt_raw=${_pt_raw#"$_pt_tok_raw"}
+        _pt_raw=$(printf '%s' "$_pt_raw" | sed 's/^[[:space:]]*//')
+        # Skip the option's argument if present.
+        if [ -n "$_pt_raw" ]; then
+          _pt_arg=${_pt_raw%%[[:space:]]*}
+          _pt_raw=${_pt_raw#"$_pt_arg"}
+          _pt_raw=$(printf '%s' "$_pt_raw" | sed 's/^[[:space:]]*//')
+        fi
+        ;;
+      --kill-after=*|--signal=*)
+        _pt_raw=${_pt_raw#"$_pt_tok_raw"}
+        _pt_raw=$(printf '%s' "$_pt_raw" | sed 's/^[[:space:]]*//')
+        ;;
+      --preserve-status|--foreground)
+        _pt_raw=${_pt_raw#"$_pt_tok_raw"}
+        _pt_raw=$(printf '%s' "$_pt_raw" | sed 's/^[[:space:]]*//')
+        ;;
+      -*)
+        _pt_raw=${_pt_raw#"$_pt_tok_raw"}
+        _pt_raw=$(printf '%s' "$_pt_raw" | sed 's/^[[:space:]]*//')
+        ;;
+      *)
+        # Required duration argument. Consume it; everything after is the command.
+        _pt_raw=${_pt_raw#"$_pt_tok_raw"}
+        _pt_raw=$(printf '%s' "$_pt_raw" | sed 's/^[[:space:]]*//')
+        _pt_done=1
+        ;;
+    esac
+  done
+
+  # Re-prefix env assignments so the inner command still looks like a normal
+  # shell invocation to the guard's existing env-prefix handler.
+  if [ -n "$_pt_env" ]; then
+    printf '%s %s' "$_pt_env" "$_pt_raw" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//'
+  else
+    printf '%s' "$_pt_raw"
+  fi
+}
+
 # git_extract_remote_inner <raw> — detect `ssh <host> <inner>` and
 # `agents|ag ssh <host> <inner>` at the raw-string level, before token splitting
 # can shred a quoted inner command. On a match, sets _remote_host and

@@ -46,6 +46,24 @@ if ! command -v _json_field >/dev/null 2>&1; then
   exit 2
 fi
 
+# --- shared timeout-wrapper peeler ------------------------------------------
+# `timeout 5 rm -rf $HOME` would otherwise bypass the guard because `timeout`
+# is the first token. The peeler lives in hooks/lib/git-parse.sh (shared with
+# git-guard and main-branch-guard) and returns the real inner command.
+_LIB_DIR=$(CDPATH= cd "${0%/*}" 2>/dev/null && pwd) || _LIB_DIR=""
+for _cand in "$_LIB_DIR/../lib/git-parse.sh" "${HOME}/.agents/.system/hooks/lib/git-parse.sh"; do
+  if [ -f "$_cand" ]; then
+    # shellcheck source=../lib/git-parse.sh
+    . "$_cand"
+    if command -v git_peel_timeout_wrapper >/dev/null 2>&1; then break; fi
+  fi
+done
+unset _LIB_DIR _cand
+if ! command -v git_peel_timeout_wrapper >/dev/null 2>&1; then
+  printf 'rm-guard: shared git-parse lib not found — refusing to run an rm command unchecked (fail-closed). Ensure ~/.agents/.system/hooks/lib/git-parse.sh is present.\n' >&2
+  exit 2
+fi
+
 # --- friction self-report ---------------------------------------------------
 # Guard hooks exit 2 before any `agents` process exists, so they cannot emit
 # in-process. This helper fires the hidden recorder in the background, fully
@@ -74,142 +92,6 @@ emit_deny() {
     "$deny_op" "$deny_reason" "$deny_next" >&2
 }
 
-# Peel a leading `timeout` or `gtimeout` wrapper (and its options / duration)
-# so the guard sees the real inner command. Returns the inner command on stdout;
-# if the first word is not timeout/gtimeout, returns the original string.
-peel_timeout_wrapper() {
-  _pt_raw=$1
-
-  # Trim leading whitespace.
-  while :; do
-    case "$_pt_raw" in
-      " "*) _pt_raw=${_pt_raw# } ;;
-      "	"*) _pt_raw=${_pt_raw#	} ;;
-      *) break ;;
-    esac
-  done
-
-  # Preserve leading VAR=value assignments; they belong to the inner command
-  # and the existing check_segment handler strips them itself.
-  _pt_env=""
-  while :; do
-    _assign=$(printf '%s' "$_pt_raw" | sed -n 's/^\([A-Za-z_][A-Za-z_0-9]*=[^[:space:]]*\)[[:space:]].*/\1/p')
-    if [ -z "$_assign" ]; then break; fi
-    case "$_pt_raw" in
-      "$_assign"*) ;;
-      *) break ;;
-    esac
-    _pt_env="$_pt_env $_assign"
-    _pt_raw=$(printf '%s' "$_pt_raw" | sed 's/^[A-Za-z_][A-Za-z_0-9]*=[^[:space:]]*[[:space:]][[:space:]]*//')
-  done
-
-  # First word must be timeout/gtimeout (possibly absolute path, possibly quoted).
-  _pt_first=${_pt_raw%%[[:space:]]*}
-  case "$_pt_first" in
-    \"*) _pt_first=$(printf '%s' "$_pt_first" | sed 's/^"\(.*\)"$/\1/') ;;
-    \'*) _pt_first=$(printf '%s' "$_pt_first" | sed "s/^'\(.*\)'$/\1/") ;;
-  esac
-  case "$_pt_first" in
-    timeout|gtimeout|*/timeout|*/gtimeout) ;;
-    *) printf '%s' "$1"; return ;;
-  esac
-
-  _pt_raw=${_pt_raw#"$_pt_first"}
-  while :; do
-    case "$_pt_raw" in
-      " "*) _pt_raw=${_pt_raw# } ;;
-      "	"*) _pt_raw=${_pt_raw#	} ;;
-      *) break ;;
-    esac
-  done
-
-  # Skip timeout options. Stop when we consume the required duration argument.
-  _pt_done=0
-  while [ -n "$_pt_raw" ] && [ "$_pt_done" = 0 ]; do
-    _pt_tok=${_pt_raw%%[[:space:]]*}
-
-    case "$_pt_tok" in
-      --)
-        _pt_raw=${_pt_raw#--}
-        _pt_done=1
-        ;;
-      -k|--kill-after|-s|--signal)
-        _pt_raw=${_pt_raw#"$_pt_tok"}
-        while :; do
-          case "$_pt_raw" in
-            " "*) _pt_raw=${_pt_raw# } ;;
-            "	"*) _pt_raw=${_pt_raw#	} ;;
-            *) break ;;
-          esac
-        done
-        # Skip the option's argument if present.
-        if [ -n "$_pt_raw" ]; then
-          _pt_arg=${_pt_raw%%[[:space:]]*}
-          _pt_raw=${_pt_raw#"$_pt_arg"}
-          while :; do
-            case "$_pt_raw" in
-              " "*) _pt_raw=${_pt_raw# } ;;
-              "	"*) _pt_raw=${_pt_raw#	} ;;
-              *) break ;;
-            esac
-          done
-        fi
-        ;;
-      --kill-after=*|--signal=*)
-        _pt_raw=${_pt_raw#"$_pt_tok"}
-        while :; do
-          case "$_pt_raw" in
-            " "*) _pt_raw=${_pt_raw# } ;;
-            "	"*) _pt_raw=${_pt_raw#	} ;;
-            *) break ;;
-          esac
-        done
-        ;;
-      --preserve-status|--foreground)
-        _pt_raw=${_pt_raw#"$_pt_tok"}
-        while :; do
-          case "$_pt_raw" in
-            " "*) _pt_raw=${_pt_raw# } ;;
-            "	"*) _pt_raw=${_pt_raw#	} ;;
-            *) break ;;
-          esac
-        done
-        ;;
-      -*)
-        # Unknown option: skip it. The options we must handle explicitly are
-        # enumerated above; any other flag is treated as a single token.
-        _pt_raw=${_pt_raw#"$_pt_tok"}
-        while :; do
-          case "$_pt_raw" in
-            " "*) _pt_raw=${_pt_raw# } ;;
-            "	"*) _pt_raw=${_pt_raw#	} ;;
-            *) break ;;
-          esac
-        done
-        ;;
-      *)
-        # Required duration argument. Consume it; everything after is the command.
-        _pt_raw=${_pt_raw#"$_pt_tok"}
-        while :; do
-          case "$_pt_raw" in
-            " "*) _pt_raw=${_pt_raw# } ;;
-            "	"*) _pt_raw=${_pt_raw#	} ;;
-            *) break ;;
-          esac
-        done
-        _pt_done=1
-        ;;
-    esac
-  done
-
-  # Re-prefix env assignments so the inner command still looks like a normal
-  # shell invocation to the guard's existing env-prefix handler.
-  if [ -n "$_pt_env" ]; then
-    printf '%s %s' "$_pt_env" "$_pt_raw" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//'
-  else
-    printf '%s' "$_pt_raw"
-  fi
-}
 
 # Fast path: no "rm" anywhere in the JSON payload, nothing to police.
 input=$(cat)
@@ -227,9 +109,8 @@ fi
 
 # Peel a leading `timeout`/`gtimeout` wrapper so the guard checks the real
 # inner command instead of allowing the destructive op to hide behind the
-# wrapper. The blanket Bash(timeout:*) deny is removed once both guards
-# handle this (PHNX-3350).
-cmd=$(peel_timeout_wrapper "$cmd")
+# wrapper (PHNX-3350).
+cmd=$(git_peel_timeout_wrapper "$cmd")
 
 is_protected_path() {
   _p=$1
