@@ -53,6 +53,12 @@ CARRIED = re.compile(
     re.I,
 )
 APPROVE = re.compile(r"\bAPPROVED?\b")
+FENCED_CODE = re.compile(r"```.*?(?:```|\Z)", re.S)
+INLINE_CODE = re.compile(r"`[^`\n]*(?:`|$)")
+NEGATION = re.compile(
+    r"\b(?:not|no|cannot|can't|won't|do\s+not|don't|refuse|reject|block(?:ed|ing)?)\b",
+    re.I,
+)
 
 
 def _b64_decode_text(segment: str) -> str:
@@ -114,11 +120,13 @@ def _body_approves(items) -> bool:
         return False
     for it in items:
         body = it.get("body") or ""
-        if not APPROVE.search(body):
-            continue
+        body = INLINE_CODE.sub("", FENCED_CODE.sub("", body))
         if CARRIED.search(body):
             continue
-        return True
+        for approval in APPROVE.finditer(body):
+            clause = re.split(r"[.!?;\n]", body[: approval.start()])[-1]
+            if not NEGATION.search(clause):
+                return True
     return False
 
 

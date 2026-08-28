@@ -59,6 +59,10 @@ check missing "APPROVE on #N citation" '[]' '[{"user":{"login":"reviewer-bot"},"
 check ok "APPROVED (past tense) in an issue comment" '[]' '[{"user":{"login":"reviewer-bot"},"body":"## Verdict\n**APPROVED.**"}]'
 check ok "APPROVED in a state=COMMENTED review body" '[{"state":"COMMENTED","user":{"login":"reviewer-bot"},"body":"Verdict at 641f33cf3: APPROVED."}]' '[]'
 check ok "bare stem APPROVE still clears" '[]' '[{"user":{"login":"reviewer-bot"},"body":"VERDICT: APPROVE"}]'
+check missing "explicit refusal does not approve" '[]' '[{"user":{"login":"reviewer-bot"},"body":"I do NOT APPROVE"}]'
+check missing "cannot approve does not approve" '[]' '[{"user":{"login":"reviewer-bot"},"body":"cannot APPROVE until tests pass"}]'
+check missing "fenced approval sample does not approve" '[]' '[{"user":{"login":"reviewer-bot"},"body":"Example:\n```text\nVERDICT: APPROVE\n```"}]'
+check missing "inline approval sample does not approve" '[]' '[{"user":{"login":"reviewer-bot"},"body":"Use `VERDICT: APPROVE` after review."}]'
 # The optional D has to be in the CARRIED filter too, or widening the verdict
 # regex silently reopens the #2736 laundering pattern for the past tense only.
 check missing "APPROVED on #N citation is still laundering" '[]' '[{"user":{"login":"reviewer-bot"},"body":"Non-author APPROVED on #2731 covers this."}]'
