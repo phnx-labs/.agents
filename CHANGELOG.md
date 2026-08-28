@@ -4,6 +4,21 @@
 
 ### Changed
 
+- **`code-quality` now names conceptual simplicity as the bar, and comments as a
+  smell before a fix.** Two rules added: *fewer concepts beat more code* (a
+  codebase's cost is the count of distinct ideas a reader must hold, not its line
+  count; agents generate ideas for free, so concept sprawl is the limit that bites,
+  and documentation earns its place only for a genuinely new core concept), and
+  *a comment is a smell before it is a fix* (make the code clear enough to delete
+  the comment; reserve prose for the non-obvious why, invariant, or gotcha code
+  can't carry). The `code-reviewer` subagent gains a matching hunt class: a comment
+  narrating *what* unclear code does, where a rename or extraction would delete it
+  (SHOULD, never a blocker; a legitimate *why* comment is explicitly protected),
+  mirrored into `code:review` Mode B. Concept-count was already enforced by the
+  reviewer's "new concept where an existing one could have been extended" class;
+  this adds the clarity-of-code half and states the principle in the rule.
+  Regenerated `rules/AGENTS.md`.
+
 - **The share plugin now teaches managed server-rendered OG covers (PHNX-2835).**
   Managed HTML shares no longer require publisher-side Chromium: the Worker
   lazily renders and caches the branded card under the page's visibility gate.
