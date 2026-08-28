@@ -1,7 +1,7 @@
 ---
 name: workweave
 description: "Render a fast, private WorkWeave-style engineering-intelligence report from every locally indexed agent session for the current repository. Reuses agents sessions, insights, output, cost, resource stats, hook/command latency, and guard-friction engines; writes Markdown + HTML and opens the result. Triggers on: /yc:workweave, workweave report, project agent analytics, engineering intelligence dashboard, chart our agent sessions."
-allowed-tools: Bash(agents sessions*), Bash(agents insights*), Bash(agents perf*), Bash(agents browser*), Bash(artifacts *), Bash(git *), Bash(jq *), Bash(mkdir *), Bash(date *), Bash(bun *), Read(*), Write(*)
+allowed-tools: Bash(agents sessions*), Bash(agents insights*), Bash(agents browser*), Bash(artifacts *), Bash(git *), Bash(jq *), Bash(mkdir *), Bash(date *), Bash(bun *), Read(*), Write(*)
 ---
 
 # yc:workweave
@@ -69,7 +69,7 @@ charting. Canonical project cost, generated output, duration, harness mix, model
 daily activity come from `sources.sessionMetrics`, aggregated from the sanitized census.
 Never add together unrelated projects.
 
-The direct mix recipes and `agents perf friction` currently have no project filter. Include
+The direct mix recipes and `agents insights perf friction` currently have no project filter. Include
 useful panels from them only with a visible **fleet-wide** label. `shippedOutput` is optional
 because older installed CLI versions ignore nested `--json`; when it is in `gaps`, show
 project session output/cost but state that PR/commit attribution is unavailable. Do not imply
