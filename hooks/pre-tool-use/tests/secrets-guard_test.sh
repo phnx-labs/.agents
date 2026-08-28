@@ -120,6 +120,19 @@ check_deny "tab-separated eval (the #336 re-review residual)" \
   "$(printf 'eval\t"agents secrets export prod --plaintext"')" \
   "secrets.export-plaintext"
 
+# PHNX-3350: timeout/gtimeout wrappers must not hide secret-exfil one-liners.
+check_deny "timeout-wrapped plaintext export" \
+  "timeout 5 agents secrets export prod --plaintext" \
+  "secrets.export-plaintext"
+check_deny "gtimeout-wrapped bundle-key get" \
+  "gtimeout 5 agents secrets get npmjs.com NPM_TOKEN" \
+  "secrets.get-bundle-key"
+check_deny "timeout-wrapped view reveal escape" \
+  "timeout --preserve-status --kill-after=2 -s KILL 5 agents secrets view r2.backups --reveal --plaintext" \
+  "secrets.view-reveal-plaintext"
+check_allow "timeout-wrapped paved-road exec" \
+  "timeout 5 agents secrets exec hetzner.com -- crabbox list"
+
 # --- allows: transfer modes, injection, human/metadata surfaces -------------
 check_allow "export push to device" \
   "agents secrets export apple.com --device mac-mini --remote-backend file"

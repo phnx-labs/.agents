@@ -369,10 +369,15 @@ done
 unset _LIB_DIR _cand
 if ! command -v git_scan_segment >/dev/null 2>&1 \
   || ! command -v write_scan_segment >/dev/null 2>&1 \
-  || ! command -v git_extract_remote_inner >/dev/null 2>&1; then
+  || ! command -v git_extract_remote_inner >/dev/null 2>&1 \
+  || ! command -v git_peel_timeout_wrapper >/dev/null 2>&1; then
   printf 'main-branch-guard: shared git-parse lib not found — refusing the tool call unchecked (fail-closed). Ensure ~/.agents/.system/hooks/lib/git-parse.sh is present.\n' >&2
   exit 2
 fi
+
+# Peel a leading `timeout`/`gtimeout` wrapper so the guard checks the real
+# inner command instead of allowing a primary-tree git mutation to hide behind it.
+cmd=$(git_peel_timeout_wrapper "$cmd")
 
 # --- `-C <path>` variable resolution (RUSH-2743) -----------------------------
 # The guard parses command STRINGS, so `git -C "$REPO" commit` reaches it with

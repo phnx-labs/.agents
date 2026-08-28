@@ -47,6 +47,24 @@ if ! command -v _json_field >/dev/null 2>&1; then
   exit 2
 fi
 
+# --- shared timeout-wrapper peeler ------------------------------------------
+# `timeout 5 agents secrets export ... --plaintext` would otherwise bypass the
+# guard because `timeout` is the first token. The peeler lives in
+# hooks/lib/git-parse.sh and returns the real inner command.
+_LIB_DIR=$(CDPATH= cd "${0%/*}" 2>/dev/null && pwd) || _LIB_DIR=""
+for _cand in "$_LIB_DIR/../lib/git-parse.sh" "${HOME}/.agents/.system/hooks/lib/git-parse.sh"; do
+  if [ -f "$_cand" ]; then
+    # shellcheck source=../lib/git-parse.sh
+    . "$_cand"
+    if command -v git_peel_timeout_wrapper >/dev/null 2>&1; then break; fi
+  fi
+done
+unset _LIB_DIR _cand
+if ! command -v git_peel_timeout_wrapper >/dev/null 2>&1; then
+  printf 'secrets-guard: shared git-parse lib not found — refusing to run the command unchecked (fail-closed). Ensure ~/.agents/.system/hooks/lib/git-parse.sh is present.\n' >&2
+  exit 2
+fi
+
 # --- friction self-report ---------------------------------------------------
 report_friction() {  # $1=failureId  $2=error-message
   [ -z "${AGENTS_DISABLE_FRICTION_LOG:-}" ] || return 0
@@ -83,6 +101,10 @@ if ! cmd=$(_json_field "$input" tool_input.command); then
 fi
 [ -z "$cmd" ] && cmd=$(_json_field "$input" toolInput.command) || true
 [ -z "$cmd" ] && exit 0
+
+# Peel a leading `timeout`/`gtimeout` wrapper so the guard checks the real
+# inner command instead of allowing a secret-exfil one-liner to hide behind it
+cmd=$(git_peel_timeout_wrapper "$cmd")
 
 # Detect `sh|bash -c <inner>` at raw string level (see git-guard.sh).
 extract_sh_c_inner() {

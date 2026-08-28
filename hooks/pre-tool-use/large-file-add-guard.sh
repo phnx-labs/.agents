@@ -86,6 +86,10 @@ fi
 [ -z "$cmd" ] && cmd=$(_json_field "$input" toolInput.command) || true
 [ -z "$cmd" ] && exit 0
 
+# Peel a leading `timeout`/`gtimeout` wrapper so the guard checks the real
+# inner command instead of allowing a large/binary `git add` to hide behind it.
+cmd=$(git_peel_timeout_wrapper "$cmd")
+
 is_binary_magic() {
   _f=$1
   [ -r "$_f" ] || return 1

@@ -138,6 +138,12 @@ check_deny "sh -c wrapper"                                        "sh -c \"git a
 check_deny "env-var prefix before git"                            "FOO=bar git add $BIGFILE_DEFAULT" "limit"
 check_deny "git stage (alias for add)"                            "git stage $BIGFILE_DEFAULT" "limit"
 
+# PHNX-3350: timeout/gtimeout wrappers must not hide large/binary git add.
+check_deny "timeout-wrapped large file add"                       "timeout 5 git add $BIGFILE_DEFAULT" "limit"
+check_deny "gtimeout-wrapped large file add"                      "gtimeout 5 git add $BIGFILE_DEFAULT" "limit"
+check_deny "timeout-wrapped binary magic add"                     "timeout --preserve-status --kill-after=2 -s KILL 5 git add $BINARYFILE" "binary magic bytes"
+check_allow "timeout-wrapped small file add"                      "timeout 5 git add $SMALLFILE"
+
 # --- 2. Allows the benign neighbour -------------------------------------------
 check_allow "small text file under threshold"          "git add $SMALLFILE"
 check_allow "non-add git command"                        "git status"

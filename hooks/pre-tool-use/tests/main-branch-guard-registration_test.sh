@@ -44,5 +44,28 @@ else
   bad "missing canonical guard: expected fail-closed rc=2, got rc=$rc [$out]"
 fi
 
+# PHNX-3350: timeout/gtimeout wrappers must not hide primary-tree git mutations.
+bash_payload=$(jq -n --arg c "$REPO" '{tool_name:"Bash",cwd:$c,tool_input:{command:"git commit -m x"}}')
+set +e
+out=$(printf '%s' "$bash_payload" | AGENTS_NO_AUTO_WORKTREE=1 "$ENTRY" 2>&1)
+rc=$?
+set -e
+if [ "$rc" -eq 2 ] && printf '%s' "$out" | grep -q 'PRIMARY working tree'; then
+  ok "Bash git commit in primary tree is denied"
+else
+  bad "Bash git commit in primary tree: expected denial rc=2, got rc=$rc [$out]"
+fi
+
+bash_payload=$(jq -n --arg c "$REPO" '{tool_name:"Bash",cwd:$c,tool_input:{command:"timeout 5 git commit -m x"}}')
+set +e
+out=$(printf '%s' "$bash_payload" | AGENTS_NO_AUTO_WORKTREE=1 "$ENTRY" 2>&1)
+rc=$?
+set -e
+if [ "$rc" -eq 2 ] && printf '%s' "$out" | grep -q 'PRIMARY working tree'; then
+  ok "timeout-wrapped Bash git commit in primary tree is denied"
+else
+  bad "timeout-wrapped Bash git commit in primary tree: expected denial rc=2, got rc=$rc [$out]"
+fi
+
 printf '\nmain-branch-guard-registration: %s passed, %s failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]
