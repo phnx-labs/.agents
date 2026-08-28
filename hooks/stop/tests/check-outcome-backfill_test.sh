@@ -4,6 +4,8 @@
 set -u
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=../../lib/test-sqlite.sh
+. "$HERE/../../lib/test-sqlite.sh"
 BF="$HERE/../check-outcome-backfill.py"
 STATE="$HERE/../verify-work-state.py"
 SANDBOX="$(mktemp -d)"

@@ -11,6 +11,8 @@
 # gh, git, and linear are stubbed via a PATH shim so no network is touched.
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=../../lib/test-sqlite.sh
+. "$HERE/../../lib/test-sqlite.sh"
 HOOK="$HERE/../00-agent-verify-work-complete.sh"
 
 SANDBOX="$(mktemp -d)"
