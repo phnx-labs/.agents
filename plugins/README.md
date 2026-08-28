@@ -16,6 +16,7 @@ I run?* and § *Automate your work*. This page is the plugin catalog.
 |---|---|---|
 | Overnight / unattended drain of **any** clear work (all projects) | **work** | `/work:loop` |
 | One mixed task (code *or* browser/outreach) | **work** | `/work:dispatch` |
+| Prove landed work — demo it in its real env, before/after, report | **work** | `/demo` (`/work:demo`) |
 | Engineering queue to **merge** | **code** | `/code:loop` |
 | PR review or whole-repo architecture scan | **code** | `/code:review` |
 | Parallel agents / blind plan / spec / debug | **swarm** | `/swarm`, `/swarm:plan`, … |
@@ -34,7 +35,7 @@ Do not stretch `code:loop` into browser outreach — use `work:loop`.
 | Plugin | Commands | What it's for |
 |---|---|---|
 | [`code`](./code/README.md) | 5 | The coding loop — `/code:loop`, `/code:review` (session PRs / cold PR review / whole-repo scan, three modes on one skill), `/code:learn` (writes project AGENTS.md nav notes), `/code:refactor` (architectural restructuring, plus a `quality` small-change mode), and `/code:commit`. `/code:review` spawns the repo's [`code-reviewer`](../subagents/code-reviewer/AGENT.md) subagent, which ships from `subagents/`, not from this plugin. |
-| [`work`](./work/README.md) | 2 | General-purpose work — `/work:loop` unattended multi-project drain with load spread + browser/computer, whose `triage` mode forces the whole board to keep-and-schedule or cancel; `/work:dispatch` is ONE unit of work (coding or not) |
+| [`work`](./work/README.md) | 3 | General-purpose work — `/work:loop` unattended multi-project drain with load spread + browser/computer, whose `triage` mode forces the whole board to keep-and-schedule or cancel; `/work:dispatch` is ONE unit of work (coding or not); `/work:demo` (top-level `/demo`) is the post-ship capstone — recover intent, exercise the shipped thing in its real environment on real inputs, before/after side by side, deliver an analyzed report |
 | [`swarm`](./swarm/README.md) | 4 | Fan a task across parallel agents — top-level `/swarm` + `/swarm:run`, `/swarm:plan`, `/swarm:spec`, `/swarm:debug` (test/qa removed; plan/spec require mock-ups) |
 | [`fleet`](./fleet/README.md) | 3 | Fleet-wide ops — `/fleet:sync` brings every device to latest, `/fleet:onboard` brings a bare box to parity and mints its agent auth in the same flow, `/fleet:profile` profiles a sluggish machine and attributes the load to agents-cli surfaces |
 | [`share`](./share/README.md) | 1 | Publish agent-generated HTML to a link on your own Cloudflare R2 — `/share` (auto OG cover), `/share --private` (`--no-cover --expire 7d`) |
