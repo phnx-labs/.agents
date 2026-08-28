@@ -4,14 +4,19 @@
 
 ### Changed
 
-- **`hooks/pre-tool-use/git-guard.sh` and `hooks/pre-tool-use/rm-guard.sh`** —
-  both guards now peel a leading `timeout`/`gtimeout` wrapper (plus `-k`,
-  `--kill-after`, `-s`, `--signal`, `--preserve-status`, `--foreground`, and the
-  required duration argument) to inspect the real inner command. This blocks
-  `timeout 5 git reset --hard` and `timeout 5 rm -rf $HOME`, which previously
-  slipped past because the wrapper was the first token. The blanket
-  `Bash(timeout:*)` deny in `permissions/groups/99-deny.yaml` has been removed
-  now that the guards handle the wrapped forms directly (PHNX-3350).
+- **`hooks/lib/git-parse.sh`** — adds `git_peel_timeout_wrapper()`, a shared
+  timeout/gtimeout peeler that strips the wrapper and its options (`-k`,
+  `--kill-after`, `-s`, `--signal`, `--preserve-status`, `--foreground`) plus
+  the required duration argument, returning the real inner command. It is now
+  sourced and used by `git-guard.sh`, `rm-guard.sh`, `large-file-add-guard.sh`,
+  `secrets-guard.sh`, and the canonical `main-branch-guard.sh`. This blocks
+  wrapped forms such as `timeout 5 git reset --hard`,
+  `timeout 5 rm -rf $HOME`, `timeout 5 git add <large-file>`,
+  `timeout 5 git commit -m x` in a primary tree, and
+  `timeout 5 agents secrets export ... --plaintext`, which previously slipped
+  past because `timeout` was the first token. The blanket `Bash(timeout:*)`
+  deny in `permissions/groups/99-deny.yaml` has been removed now that the
+  command-string-inspecting guards handle the wrapper directly (PHNX-3350).
 
 - **`code-quality` now names conceptual simplicity as the bar, and comments as a
   smell before a fix.** Two rules added: *fewer concepts beat more code* (a
