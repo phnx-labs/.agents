@@ -2,6 +2,8 @@
 set -u
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=../../lib/test-sqlite.sh
+. "$HERE/../../lib/test-sqlite.sh"
 HOOK="$HERE/../04-verify-work-state.py"
 SANDBOX="$(mktemp -d)"
 trap 'rm -rf "$SANDBOX"' EXIT
