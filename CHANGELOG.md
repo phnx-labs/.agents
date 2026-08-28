@@ -4,6 +4,12 @@
 
 ### Changed
 
+- **The share plugin now teaches managed server-rendered OG covers (PHNX-2835).**
+  Managed HTML shares no longer require publisher-side Chromium: the Worker
+  lazily renders and caches the branded card under the page's visibility gate.
+  BYO endpoints keep the local screenshot fallback. The requirements and cover
+  guidance now match the CLI behavior.
+
 - **`plugins/yc/skills/workweave/`** — the report now requires a **model
   cost-to-performance** figure (generated tokens per recorded dollar, ranked per model) in
   the composition section — the local analog of WorkWeave's model-comparison lens, and the
