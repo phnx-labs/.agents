@@ -122,9 +122,9 @@ check_deny "nested timeout wrappers"                  "timeout 5 timeout 5 rm -r
 check_deny "quoted nested timeout wrapper"            'timeout 5 "timeout" 5 rm -rf ~/.agents' "protected path denied"
 check_deny "single-quoted nested gtimeout wrapper"     "timeout 5 'gtimeout' 5 rm -rf ~/.agents" "protected path denied"
 check_deny "timeout -- end-of-options rm"             "timeout -- 5 rm -rf ~/.agents" "protected path denied"
+check_deny "env-prefix nested timeout wrapper"       "FOO=bar timeout 5 timeout 3 rm -rf ~/.agents" "protected path denied"
+check_deny "env-prefix inner gtimeout wrapper"       "FOO=bar timeout 5 BAZ=qux gtimeout 3 rm -rf ~/.agents" "protected path denied"
 check_deny "timeout inside sh -c wrapper"             'sh -c "timeout 5 rm -rf ~/.ssh"' "protected path denied"
-check_allow "timeout-wrapped rm on unprotected tmp dir" "timeout 5 rm -rf $TMP_SCRATCH"
-check_allow "timeout-wrapped rm single file"    "timeout 5 rm $PROTECTED_FILE"
 
 # --- 2. Allows the benign neighbour -------------------------------------------
 TMP_SCRATCH="$SANDBOX/scratch-dir"
@@ -134,6 +134,8 @@ PROTECTED_FILE="$SANDBOX/agents-like/one-file.txt"
 mkdir -p "$(dirname "$PROTECTED_FILE")"
 : > "$PROTECTED_FILE"
 check_allow "rm single file, no recursive flag"   "rm $PROTECTED_FILE"
+check_allow "timeout-wrapped rm on unprotected tmp dir" "timeout 5 rm -rf $TMP_SCRATCH"
+check_allow "timeout-wrapped rm single file"    "timeout 5 rm $PROTECTED_FILE"
 check_allow "non-rm command"                       "ls -la /tmp"
 check_allow "rm -f on a single file (no -r)"       "rm -f $PROTECTED_FILE"
 

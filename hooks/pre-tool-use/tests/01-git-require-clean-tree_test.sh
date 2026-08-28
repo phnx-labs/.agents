@@ -72,4 +72,12 @@ else
   fail=$((fail + 1))
 fi
 
+run_hook "{\"cwd\":\"$SANDBOX\",\"tool_input\":{\"command\":\"FOO=bar timeout 5 timeout 3 git pull\"}}"
+if [ "$RC" -eq 2 ] && grep -q 'working tree is dirty' "$SANDBOX/stderr"; then
+  echo 'ok   - dirty tree blocks env-prefix nested timeout wrapper git pull'
+else
+  echo "FAIL - dirty tree should block env-prefix nested timeout wrapper git pull (rc=$RC)"
+  fail=$((fail + 1))
+fi
+
 [ "$fail" -eq 0 ]

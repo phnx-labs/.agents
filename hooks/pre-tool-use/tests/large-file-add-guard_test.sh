@@ -147,6 +147,7 @@ check_deny "nested timeout wrappers"                            "timeout 5 timeo
 check_deny "quoted nested timeout wrapper"                      "timeout 5 \"timeout\" 5 git add $BIGFILE_DEFAULT" "limit"
 check_deny "single-quoted nested gtimeout wrapper"               "timeout 5 'gtimeout' 5 git add $BIGFILE_DEFAULT" "limit"
 check_deny "timeout -- end-of-options git add"                  "timeout -- 5 git add $BIGFILE_DEFAULT" "limit"
+check_deny "env-prefix nested timeout wrapper"                  "FOO=bar timeout 5 timeout 3 git add $BIGFILE_DEFAULT" "limit"
 check_deny "timeout inside sh -c wrapper"                       "sh -c \"timeout 5 git add $BIGFILE_DEFAULT\"" "limit"
 
 # --- 2. Allows the benign neighbour -------------------------------------------

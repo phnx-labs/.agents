@@ -92,7 +92,6 @@ emit_deny() {
     "$deny_op" "$deny_reason" "$deny_next" >&2
 }
 
-
 # Fast path: no "rm" anywhere in the JSON payload, nothing to police.
 input=$(cat)
 case "$input" in *rm*) ;; *) exit 0 ;; esac

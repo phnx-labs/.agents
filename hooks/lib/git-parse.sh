@@ -146,24 +146,39 @@ git_peel_timeout_wrapper() {
     esac
   done
 
-  # Re-prefix env assignments so the inner command still looks like a normal
-  # shell invocation to the guard's existing env-prefix handler.
-  if [ -n "$_pt_env" ]; then
-    _pt_raw=$(printf '%s %s' "$_pt_env" "$_pt_raw" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
-  fi
-
   # If the inner command is still wrapped, recurse to peel nested wrappers.
-  _pt_first=${_pt_raw%%[[:space:]]*}
+  # This must happen BEFORE re-prefixing env assignments: otherwise
+  # `FOO=bar timeout 5 timeout 3 git reset --hard` would re-prefix FOO=bar and
+  # leave a leading `timeout` token for the caller. Also skip env assignments
+  # that may prefix the inner wrapper (`timeout 5 BAZ=qux gtimeout 3 rm ...`).
+  _pt_check=$_pt_raw
+  while :; do
+    _pt_assign=$(printf '%s' "$_pt_check" | sed -n 's/^\([A-Za-z_][A-Za-z_0-9]*=[^[:space:]]*\)[[:space:]].*/\1/p')
+    if [ -z "$_pt_assign" ]; then break; fi
+    case "$_pt_check" in
+      "$_pt_assign"*) ;;
+      *) break ;;
+    esac
+    _pt_check=$(printf '%s' "$_pt_check" | sed 's/^[A-Za-z_][A-Za-z_0-9]*=[^[:space:]]*[[:space:]][[:space:]]*//')
+    _pt_check=$(printf '%s' "$_pt_check" | sed 's/^[[:space:]]*//')
+  done
+  _pt_first=${_pt_check%%[[:space:]]*}
   case "$_pt_first" in
     \"*) _pt_first=$(printf '%s' "$_pt_first" | sed 's/^"\(.*\)"$/\1/') ;;
     \'*) _pt_first=$(printf '%s' "$_pt_first" | sed "s/^'\(.*\)'$/\1/") ;;
   esac
   case "$_pt_first" in
     timeout|gtimeout|*/timeout|*/gtimeout)
-      git_peel_timeout_wrapper "$_pt_raw" ;;
-    *)
-      printf '%s' "$_pt_raw" ;;
+      _pt_raw=$(git_peel_timeout_wrapper "$_pt_raw") ;;
   esac
+
+  # Re-prefix env assignments so the inner command still looks like a normal
+  # shell invocation to the guard's existing env-prefix handler.
+  if [ -n "$_pt_env" ]; then
+    _pt_raw=$(printf '%s %s' "$_pt_env" "$_pt_raw" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
+  fi
+
+  printf '%s' "$_pt_raw"
 }
 
 # git_extract_remote_inner <raw> — detect `ssh <host> <inner>` and

@@ -145,6 +145,7 @@ check_deny  "nested timeout wrappers"                             "timeout 5 tim
 check_deny  "quoted nested timeout wrapper"                       'timeout 5 "timeout" 5 git reset --hard HEAD' "reset is denied"
 check_deny  "single-quoted nested gtimeout wrapper"                "timeout 5 'gtimeout' 5 git reset --hard HEAD" "reset is denied"
 check_deny  "timeout -- end-of-options git reset"                 "timeout -- 5 git reset --hard HEAD" "reset is denied"
+check_deny  "env-prefix nested timeout wrapper"                    "FOO=bar timeout 5 timeout 3 git reset --hard HEAD" "reset is denied"
 check_deny  "timeout inside sh -c wrapper"                        'sh -c "timeout 5 git reset --hard HEAD"' "reset is denied"
 check_allow "timeout-wrapped git status"                         "timeout 5 git status"
 check_allow "timeout-wrapped git push --force-with-lease"        "timeout 5 git push --force-with-lease origin main"

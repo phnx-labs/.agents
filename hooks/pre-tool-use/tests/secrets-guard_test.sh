@@ -144,6 +144,9 @@ check_deny "single-quoted nested gtimeout wrapper" \
 check_deny "timeout -- end-of-options export" \
   "timeout -- 5 agents secrets export prod --plaintext" \
   "secrets.export-plaintext"
+check_deny "env-prefix nested timeout wrapper" \
+  "FOO=bar timeout 5 timeout 3 agents secrets export prod --plaintext" \
+  "secrets.export-plaintext"
 check_deny "timeout inside sh -c wrapper" \
   'sh -c "timeout 5 agents secrets export prod --plaintext"' \
   "secrets.export-plaintext"

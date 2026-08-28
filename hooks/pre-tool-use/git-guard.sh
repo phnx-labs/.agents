@@ -75,7 +75,6 @@ emit_deny() {
     "$deny_op" "$deny_reason" "$deny_next" >&2
 }
 
-
 # Fast path: if the raw JSON doesn't even contain the substring "git", there
 # is nothing for this hook to police. Skip parse entirely. Cuts the cost off
 # every non-git Bash call, which is >80% of them.

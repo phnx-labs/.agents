@@ -6,7 +6,7 @@
 IFS= read -rd '' input
 
 case "$input" in
-  *'"command":"git '*|*'"command":"timeout '*|*'"command":"gtimeout '*|*'--autostash'*) ;;
+  *'"command":"git '*|*'"command":"timeout '*|*'"command":"gtimeout '*|*'"command":"'[A-Za-z_][A-Za-z_0-9]*'='*|*'--autostash'*) ;;
   *) exit 0 ;;
 esac
 
@@ -71,6 +71,14 @@ fi
 # Peel any leading timeout/gtimeout wrapper so the prefix match sees the real
 # git pull/rebase/autostash command.
 cmd=$(git_peel_timeout_wrapper "$cmd")
+
+# Strip leading VAR=value assignments (e.g. `FOO=bar git pull`) so the prefix
+# match works after the wrapper is peeled.
+while :; do
+  _pre=$cmd
+  cmd=$(printf '%s' "$cmd" | sed 's/^[A-Za-z_][A-Za-z_0-9]*=[^[:space:]]*[[:space:]][[:space:]]*//')
+  [ "$cmd" = "$_pre" ] && break
+done
 
 case "$cmd" in
   "git pull"*|"git rebase"*|*" git pull"*|*" git rebase"*|*"--autostash"*) ;;

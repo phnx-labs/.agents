@@ -896,9 +896,10 @@ git_on_command() {
   return 0
 }
 
-# Check one already-split segment: unwrap an `sh|bash -c` wrapper (recurse), else
-# hand the segment to the shared git-parse reducer, which dispatches any git
-# invocation to git_on_command above.
+# Check one already-split segment: peel a leading `timeout`/`gtimeout` wrapper,
+# then unwrap an `sh|bash -c` wrapper (recurse), then hand the segment to the
+# shared git-parse reducer, which dispatches any git invocation to git_on_command
+# above.
 check_segment() {
   _seg=$(git_peel_timeout_wrapper "$1")
   if git_extract_sh_c_inner "$_seg"; then
