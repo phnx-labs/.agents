@@ -4,6 +4,15 @@
 
 ### Changed
 
+- **`hooks/pre-tool-use/git-guard.sh` and `hooks/pre-tool-use/rm-guard.sh`** —
+  both guards now peel a leading `timeout`/`gtimeout` wrapper (plus `-k`,
+  `--kill-after`, `-s`, `--signal`, `--preserve-status`, `--foreground`, and the
+  required duration argument) to inspect the real inner command. This blocks
+  `timeout 5 git reset --hard` and `timeout 5 rm -rf $HOME`, which previously
+  slipped past because the wrapper was the first token. The blanket
+  `Bash(timeout:*)` deny in `permissions/groups/99-deny.yaml` has been removed
+  now that the guards handle the wrapped forms directly (PHNX-3350).
+
 - **`code-quality` now names conceptual simplicity as the bar, and comments as a
   smell before a fix.** Two rules added: *fewer concepts beat more code* (a
   codebase's cost is the count of distinct ideas a reader must hold, not its line
