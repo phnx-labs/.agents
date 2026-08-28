@@ -163,7 +163,7 @@ Every edit-mode brief carries the fixed parts — Mission, Full scope, **Owns**,
 
 **Feed/notify** — keep the owner informed, not spammed:
 
-> Post to the feed at IMPORTANT milestones only, never per step. Use a plain `agents feed post --title "<short subject>"` at start and at PR-opened (record-only). On final delivery — PR merged, or the composed work runs end-to-end — add `--level important` so it reaches the owner (`agents notify`). If you hit a real blocker, use `agents feed post --blocked` instead (never combined with `--level`). Do NOT narrate every step.
+> Post to the feed at IMPORTANT milestones only, never per step. Use a plain `agents feed post --title "<short subject>"` at start and at PR-opened (record-only). On final delivery — PR merged, or the composed work runs end-to-end — add `--level important` so it reaches the owner (deprecated alias: `agents notify`). If you hit a real blocker, use `agents feed post --blocked` instead (never combined with `--level`). Do NOT narrate every step.
 
 **Completion contract:**
 
@@ -173,7 +173,7 @@ A teammate is done only when its PR is **merged or handed to a named owner** —
 
 ## Orchestrator: post at boundaries, verify the seam
 
-You (the orchestrator) post one plain `agents feed post` on `teams start` and on team completion, and reach the owner only at delivery (`agents feed post --level important` / `agents notify`) or when a teammate is blocked (`--blocked`) — never `--level` together with `--blocked`.
+You (the orchestrator) post one plain `agents feed post` on `teams start` and on team completion, and reach the owner only at delivery (`agents feed post --level important` (deprecated alias: `agents notify`)) or when a teammate is blocked (`--blocked`) — never `--level` together with `--blocked`.
 
 **"All tracks merged" is not done.** Each teammate's tests and reviewer only saw its own diff; the **seam between tracks** — where track A calls what track B built — is the one thing nobody verified, and exactly where the composed feature breaks (a real case: a track shelled out to `agents mission-control digest` while the other track shipped a bin named `mission-control-digest` — every PR green, the feature dead). Before calling the swarm done: trigger the **composed cross-track flow end-to-end** against where it actually runs (installed binary / running daemon / deployed service, not just `origin/main`) and **quote its real output**. A green table is a report of merges, not proof of a working feature. If a seam genuinely can't be exercised, name it **unverified** — never fold it into "done end-to-end".
 

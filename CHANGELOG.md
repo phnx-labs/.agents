@@ -4,6 +4,15 @@
 
 ### Changed
 
+- **Fleet guidance now teaches `agents feed post --level important` instead of the
+  deprecated `agents notify`.** The commands, skills, rules, and CLI manifest that
+  previously presented `agents notify` as the owner-delivery path now point agents
+  at `agents feed post --level important` and label `agents notify` as the
+  deprecated alias. This aligns the system layer with PHNX-3323 in agents-cli.
+  Source: `commands/recap.md`, `commands/teams.md`, `clis/rush.yaml`,
+  `rules/subrules/feed-status-posts.md`, `rules/AGENTS.md`,
+  `skills/teams/SKILL.md`, `plugins/swarm/skills/orchestrate/SKILL.md`.
+
 - **`hooks/lib/git-parse.sh`** — adds `git_peel_timeout_wrapper()`, a shared
   timeout/gtimeout peeler that strips the wrapper and its options (`-k`,
   `--kill-after`, `-s`, `--signal`, `--preserve-status`, `--foreground`) plus

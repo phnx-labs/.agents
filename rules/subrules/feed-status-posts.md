@@ -30,7 +30,7 @@ two milestones matter for owner delivery:
    `<name>` — N teammates on `<tickets>`"). Record-only; do not `--level important`.
 2. **A teammate/agent finished & delivered** — its PR merged, or the composed
    cross-track work runs end-to-end. This is genuinely phone-worthy: mark it
-   `--level important` (or `agents notify` the owner). A **blocked** teammate is the
+   `--level important` (deprecated alias: `agents notify`). A **blocked** teammate is the
    other delivery-worthy event — use `--blocked`.
 
 Everything between those — each edit, each test run, each PR opened — is
