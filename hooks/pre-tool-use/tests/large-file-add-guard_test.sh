@@ -144,6 +144,9 @@ check_deny "gtimeout-wrapped large file add"                      "gtimeout 5 gi
 check_deny "timeout-wrapped binary magic add"                     "timeout --preserve-status --kill-after=2 -s KILL 5 git add $BINARYFILE" "binary magic bytes"
 check_allow "timeout-wrapped small file add"                      "timeout 5 git add $SMALLFILE"
 check_deny "nested timeout wrappers"                            "timeout 5 timeout 5 git add $BIGFILE_DEFAULT" "limit"
+check_deny "quoted nested timeout wrapper"                      "timeout 5 \"timeout\" 5 git add $BIGFILE_DEFAULT" "limit"
+check_deny "single-quoted nested gtimeout wrapper"               "timeout 5 'gtimeout' 5 git add $BIGFILE_DEFAULT" "limit"
+check_deny "timeout -- end-of-options git add"                  "timeout -- 5 git add $BIGFILE_DEFAULT" "limit"
 check_deny "timeout inside sh -c wrapper"                       "sh -c \"timeout 5 git add $BIGFILE_DEFAULT\"" "limit"
 
 # --- 2. Allows the benign neighbour -------------------------------------------

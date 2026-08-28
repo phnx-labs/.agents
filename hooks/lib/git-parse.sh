@@ -110,9 +110,10 @@ git_peel_timeout_wrapper() {
 
     case "$_pt_tok" in
       --)
+        # End-of-options marker: consume it and continue so the next token is
+        # treated as the required duration, then the rest is the command.
         _pt_raw=${_pt_raw#"$_pt_tok_raw"}
         _pt_raw=$(printf '%s' "$_pt_raw" | sed 's/^[[:space:]]*//')
-        _pt_done=1
         ;;
       -k|--kill-after|-s|--signal)
         _pt_raw=${_pt_raw#"$_pt_tok_raw"}
@@ -154,8 +155,8 @@ git_peel_timeout_wrapper() {
   # If the inner command is still wrapped, recurse to peel nested wrappers.
   _pt_first=${_pt_raw%%[[:space:]]*}
   case "$_pt_first" in
-    \"\") _pt_first=$(printf '%s' "$_pt_first" | sed 's/^"\(.*\)"$/\1/') ;;
-    \'\') _pt_first=$(printf '%s' "$_pt_first" | sed "s/^'\(.*\)'$/\1/") ;;
+    \"*) _pt_first=$(printf '%s' "$_pt_first" | sed 's/^"\(.*\)"$/\1/') ;;
+    \'*) _pt_first=$(printf '%s' "$_pt_first" | sed "s/^'\(.*\)'$/\1/") ;;
   esac
   case "$_pt_first" in
     timeout|gtimeout|*/timeout|*/gtimeout)
