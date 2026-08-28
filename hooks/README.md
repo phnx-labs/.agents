@@ -51,7 +51,8 @@ hooks/
   notification/           Notification (+ multi-event hooks that start there)
   lib/                    shared helpers sourced by hooks (not event scripts):
                             json-field.sh (JSON extractor), git-facts.sh (git-fact
-                            cache), git-parse.sh (git-command parser)
+                            cache), git-parse.sh (git-command parser),
+                            test-sqlite.sh (stdlib sqlite3 for tests; not a hook)
     tests/                  its *_test.sh files
   promptcuts.yaml         data for promptcuts (internal hook: expand-promptcuts)
   registration_test.sh    integrity check (top-level)

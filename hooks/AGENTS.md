@@ -59,7 +59,8 @@ hooks/<event-name>/<hook-file>.{sh,py}
   `git-parse.sh` (the git-command parser — `sh -c` unwrapping, chain splitting,
   env/quote stripping, global-flag peeling — shared by `git-guard`,
   `large-file-add-guard`, and `main-branch-guard`, which supply their own
-  `git_on_command` policy callback). Not event scripts: no `agents.yaml` entry,
+  `git_on_command` policy callback). `test-sqlite.sh` is sourced by hook tests
+  that query SQLite; it is not a hook. Not event scripts: no `agents.yaml` entry,
   skipped by `registration_test.sh`. Source them by path; do not register them as
   hooks.
 - **`promptcuts.yaml`** stays at `hooks/promptcuts.yaml` (hardcoded consumer paths).
