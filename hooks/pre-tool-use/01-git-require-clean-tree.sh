@@ -5,9 +5,17 @@
 
 IFS= read -rd '' input
 
-case "$input" in
-  *'"command":"git '*|*'"command":"timeout '*|*'"command":"gtimeout '*|*'"command":"'[A-Za-z_][A-Za-z_0-9]*'='*|*'--autostash'*) ;;
-  *) exit 0 ;;
+# Fast path: extract and normalize the first token of the command value. If it
+# is not git/timeout/gtimeout and not a leading VAR=value assignment, and the
+# payload does not contain --autostash, there is nothing to police. Leading
+# whitespace, JSON backslash escapes, and one layer of quotes around the first
+# token are stripped so quoted wrappers and leading whitespace do not bypass
+# the guard.
+_first=$(printf '%s' "$input" | sed -n 's/.*"command":"\([[:space:]]*[^[:space:]]*\).*/\1/p' \
+         | sed 's/\\//g; s/^[[:space:]]*//; s/^"//; s/^'"'"'//; s/"$//; s/'"'"'$//')
+case "$_first" in
+  git|timeout|gtimeout|*[A-Za-z_][A-Za-z_0-9]*=*) ;;
+  *) [ -z "${input##*--autostash*}" ] || exit 0 ;;
 esac
 
 # --- portable JSON field extractor (jq -> node -> python) -------------------

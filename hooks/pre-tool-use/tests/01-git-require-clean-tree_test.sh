@@ -72,6 +72,30 @@ else
   fail=$((fail + 1))
 fi
 
+run_hook "{\"cwd\":\"$SANDBOX\",\"tool_input\":{\"command\":\"'timeout' 5 git pull\"}}"
+if [ "$RC" -eq 2 ] && grep -q 'working tree is dirty' "$SANDBOX/stderr"; then
+  echo 'ok   - dirty tree blocks single-quoted timeout first-token git pull'
+else
+  echo "FAIL - dirty tree should block single-quoted timeout first-token git pull (rc=$RC)"
+  fail=$((fail + 1))
+fi
+
+run_hook "{\"cwd\":\"$SANDBOX\",\"tool_input\":{\"command\":\"\\\"timeout\\\" 5 git pull\"}}"
+if [ "$RC" -eq 2 ] && grep -q 'working tree is dirty' "$SANDBOX/stderr"; then
+  echo 'ok   - dirty tree blocks double-quoted timeout first-token git pull'
+else
+  echo "FAIL - dirty tree should block double-quoted timeout first-token git pull (rc=$RC)"
+  fail=$((fail + 1))
+fi
+
+run_hook "{\"cwd\":\"$SANDBOX\",\"tool_input\":{\"command\":\"  timeout 5 git pull\"}}"
+if [ "$RC" -eq 2 ] && grep -q 'working tree is dirty' "$SANDBOX/stderr"; then
+  echo 'ok   - dirty tree blocks leading-whitespace timeout first-token git pull'
+else
+  echo "FAIL - dirty tree should block leading-whitespace timeout first-token git pull (rc=$RC)"
+  fail=$((fail + 1))
+fi
+
 run_hook "{\"cwd\":\"$SANDBOX\",\"tool_input\":{\"command\":\"FOO=bar timeout 5 timeout 3 git pull\"}}"
 if [ "$RC" -eq 2 ] && grep -q 'working tree is dirty' "$SANDBOX/stderr"; then
   echo 'ok   - dirty tree blocks env-prefix nested timeout wrapper git pull'
