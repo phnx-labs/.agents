@@ -102,10 +102,6 @@ fi
 [ -z "$cmd" ] && cmd=$(_json_field "$input" toolInput.command) || true
 [ -z "$cmd" ] && exit 0
 
-# Peel a leading `timeout`/`gtimeout` wrapper so the guard checks the real
-# inner command instead of allowing a secret-exfil one-liner to hide behind it
-cmd=$(git_peel_timeout_wrapper "$cmd")
-
 # Detect `sh|bash -c <inner>` at raw string level (see git-guard.sh).
 extract_sh_c_inner() {
   _raw=$1
@@ -181,6 +177,8 @@ extract_substitution_inner() {  # sets _subst_inner
 
 check_segment() {
   _seg=$1
+
+  _seg=$(git_peel_timeout_wrapper "$_seg")
 
   if extract_sh_c_inner "$_seg"; then
     if ! check_command_string "$_dash_c_inner"; then return 1; fi

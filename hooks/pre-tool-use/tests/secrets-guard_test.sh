@@ -131,7 +131,19 @@ check_deny "timeout-wrapped view reveal escape" \
   "timeout --preserve-status --kill-after=2 -s KILL 5 agents secrets view r2.backups --reveal --plaintext" \
   "secrets.view-reveal-plaintext"
 check_allow "timeout-wrapped paved-road exec" \
-  "timeout 5 agents secrets exec hetzner.com -- crabbox list"
+check_deny "nested timeout wrappers" \
+  "timeout 5 timeout 5 agents secrets export prod --plaintext" \
+  "secrets.export-plaintext"
+check_deny "timeout inside sh -c wrapper" \
+  'sh -c "timeout 5 agents secrets export prod --plaintext"' \
+  "secrets.export-plaintext"
+check_deny "timeout inside eval" \
+  'eval "timeout 5 agents secrets export prod --plaintext"' \
+  "secrets.export-plaintext"
+
+check_deny "nested timeout wrappers" \
+  "timeout 5 timeout 5 agents secrets export prod --plaintext" \
+  "secrets.export-plaintext"
 
 # --- allows: transfer modes, injection, human/metadata surfaces -------------
 check_allow "export push to device" \

@@ -6,7 +6,7 @@
 IFS= read -rd '' input
 
 case "$input" in
-  *'"command":"git '*|*'--autostash'*) ;;
+  *'"command":"git '*|*'"command":"timeout '*|*'"command":"gtimeout '*|*'--autostash'*) ;;
   *) exit 0 ;;
 esac
 
@@ -34,6 +34,23 @@ fi
 
 _hook_skip_plan_mode "$input" && exit 0
 
+# --- shared timeout-wrapper peeler ------------------------------------------
+# `timeout 5 git pull origin main` would otherwise bypass the dirty-tree check
+# because `timeout` is the first token. The peeler lives in hooks/lib/git-parse.sh.
+_LIB_DIR=$(CDPATH= cd "${0%/*}" 2>/dev/null && pwd) || _LIB_DIR=""
+for _cand in "$_LIB_DIR/../lib/git-parse.sh" "${HOME}/.agents/.system/hooks/lib/git-parse.sh"; do
+  if [ -f "$_cand" ]; then
+    # shellcheck source=../lib/git-parse.sh
+    . "$_cand"
+    if command -v git_peel_timeout_wrapper >/dev/null 2>&1; then break; fi
+  fi
+done
+unset _LIB_DIR _cand
+if ! command -v git_peel_timeout_wrapper >/dev/null 2>&1; then
+  echo "git-require-clean-tree: shared git-parse lib not found — refusing git pull/rebase unchecked (fail-closed). Ensure ~/.agents/.system/hooks/lib/git-parse.sh is present." >&2
+  exit 2
+fi
+
 # --- friction self-report ---------------------------------------------------
 # This hook exits 2 before any `agents` process exists, so it cannot emit
 # in-process. Fires the hidden recorder in the background, fully fail-open,
@@ -50,6 +67,10 @@ if ! cmd=$(_json_field "$input" tool_input.command); then
   exit 2
 fi
 [ -z "$cmd" ] && cmd=$(_json_field "$input" toolInput.command) || true
+
+# Peel any leading timeout/gtimeout wrapper so the prefix match sees the real
+# git pull/rebase/autostash command.
+cmd=$(git_peel_timeout_wrapper "$cmd")
 
 case "$cmd" in
   "git pull"*|"git rebase"*|*" git pull"*|*" git rebase"*|*"--autostash"*) ;;

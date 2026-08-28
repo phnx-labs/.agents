@@ -72,7 +72,8 @@ for _cand in "$_LIB_DIR/../lib/git-parse.sh" "${HOME}/.agents/.system/hooks/lib/
   fi
 done
 unset _LIB_DIR _cand
-if ! command -v git_scan_segment >/dev/null 2>&1; then
+if ! command -v git_scan_segment >/dev/null 2>&1 \
+  || ! command -v git_peel_timeout_wrapper >/dev/null 2>&1; then
   printf 'large-file-add-guard: shared git-parse lib not found — refusing to run a git add unchecked (fail-closed). Ensure ~/.agents/.system/hooks/lib/git-parse.sh is present.\n' >&2
   exit 2
 fi
@@ -85,10 +86,6 @@ if ! cmd=$(_json_field "$input" tool_input.command); then
 fi
 [ -z "$cmd" ] && cmd=$(_json_field "$input" toolInput.command) || true
 [ -z "$cmd" ] && exit 0
-
-# Peel a leading `timeout`/`gtimeout` wrapper so the guard checks the real
-# inner command instead of allowing a large/binary `git add` to hide behind it.
-cmd=$(git_peel_timeout_wrapper "$cmd")
 
 is_binary_magic() {
   _f=$1
@@ -222,15 +219,17 @@ git_on_command() {
   return 0
 }
 
-# Check one already-split segment: unwrap an `sh|bash -c` wrapper (recurse), else
-# hand the segment to the shared git-parse reducer, which dispatches any git
-# invocation to git_on_command above.
+# Check one already-split segment: peel any leading `timeout`/`gtimeout`
+# wrapper, unwrap an `sh|bash -c` wrapper (recurse), then hand the segment to
+# the shared git-parse reducer, which dispatches any git invocation to
+# git_on_command above.
 check_segment() {
-  if git_extract_sh_c_inner "$1"; then
+  _seg=$(git_peel_timeout_wrapper "$1")
+  if git_extract_sh_c_inner "$_seg"; then
     check_command_string "$_dash_c_inner"
     return
   fi
-  git_scan_segment "$1"
+  git_scan_segment "$_seg"
 }
 
 check_command_string() {

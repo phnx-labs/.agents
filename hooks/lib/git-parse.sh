@@ -148,10 +148,21 @@ git_peel_timeout_wrapper() {
   # Re-prefix env assignments so the inner command still looks like a normal
   # shell invocation to the guard's existing env-prefix handler.
   if [ -n "$_pt_env" ]; then
-    printf '%s %s' "$_pt_env" "$_pt_raw" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//'
-  else
-    printf '%s' "$_pt_raw"
+    _pt_raw=$(printf '%s %s' "$_pt_env" "$_pt_raw" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')
   fi
+
+  # If the inner command is still wrapped, recurse to peel nested wrappers.
+  _pt_first=${_pt_raw%%[[:space:]]*}
+  case "$_pt_first" in
+    \"\") _pt_first=$(printf '%s' "$_pt_first" | sed 's/^"\(.*\)"$/\1/') ;;
+    \'\') _pt_first=$(printf '%s' "$_pt_first" | sed "s/^'\(.*\)'$/\1/") ;;
+  esac
+  case "$_pt_first" in
+    timeout|gtimeout|*/timeout|*/gtimeout)
+      git_peel_timeout_wrapper "$_pt_raw" ;;
+    *)
+      printf '%s' "$_pt_raw" ;;
+  esac
 }
 
 # git_extract_remote_inner <raw> — detect `ssh <host> <inner>` and

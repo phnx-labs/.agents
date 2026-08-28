@@ -375,10 +375,6 @@ if ! command -v git_scan_segment >/dev/null 2>&1 \
   exit 2
 fi
 
-# Peel a leading `timeout`/`gtimeout` wrapper so the guard checks the real
-# inner command instead of allowing a primary-tree git mutation to hide behind it.
-cmd=$(git_peel_timeout_wrapper "$cmd")
-
 # --- `-C <path>` variable resolution (RUSH-2743) -----------------------------
 # The guard parses command STRINGS, so `git -C "$REPO" commit` reaches it with
 # the variable unexpanded. resolve_repo_dir used to emit `<cwd>/$REPO` — a path
@@ -904,11 +900,12 @@ git_on_command() {
 # hand the segment to the shared git-parse reducer, which dispatches any git
 # invocation to git_on_command above.
 check_segment() {
-  if git_extract_sh_c_inner "$1"; then
+  _seg=$(git_peel_timeout_wrapper "$1")
+  if git_extract_sh_c_inner "$_seg"; then
     check_command_string "$_dash_c_inner"
     return
   fi
-  if git_extract_remote_inner "$1"; then
+  if git_extract_remote_inner "$_seg"; then
     _saved_remote=${WRITE_REMOTE_HOST:-}
     _saved_dest_cwd=${WRITE_DEST_CWD:-}
     WRITE_REMOTE_HOST=$_remote_host
@@ -927,11 +924,11 @@ check_segment() {
     fi
     return "$_remote_rc"
   fi
-  write_scan_segment "$1" || return $?
+  write_scan_segment "$_seg" || return $?
   # Git WHERE checks are local today. Remote direct writes are covered above;
   # a remote agent is independently guarded when dispatched through the fleet.
   [ -n "${WRITE_REMOTE_HOST:-}" ] && return 0
-  git_scan_segment "$1"
+  git_scan_segment "$_seg"
 }
 
 check_command_string() {

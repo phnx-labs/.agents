@@ -48,4 +48,12 @@ else
   fail=$((fail + 1))
 fi
 
+run_hook "{\"cwd\":\"$SANDBOX\",\"tool_input\":{\"command\":\"timeout 5 git pull\"}}"
+if [ "$RC" -eq 2 ] && grep -q 'working tree is dirty' "$SANDBOX/stderr"; then
+  echo 'ok   - dirty tree blocks timeout-wrapped git pull'
+else
+  echo "FAIL - dirty tree should block timeout-wrapped git pull (rc=$RC)"
+  fail=$((fail + 1))
+fi
+
 [ "$fail" -eq 0 ]

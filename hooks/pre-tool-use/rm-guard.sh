@@ -107,11 +107,6 @@ fi
 [ -z "$cmd" ] && cmd=$(_json_field "$input" toolInput.command) || true
 [ -z "$cmd" ] && exit 0
 
-# Peel a leading `timeout`/`gtimeout` wrapper so the guard checks the real
-# inner command instead of allowing the destructive op to hide behind the
-# wrapper (PHNX-3350).
-cmd=$(git_peel_timeout_wrapper "$cmd")
-
 is_protected_path() {
   _p=$1
   # Strip trailing slash for consistent comparison.
@@ -191,6 +186,8 @@ extract_sh_c_inner() {
 
 check_segment() {
   _seg=$1
+
+  _seg=$(git_peel_timeout_wrapper "$_seg")
 
   if extract_sh_c_inner "$_seg"; then
     if ! check_command_string "$_dash_c_inner"; then return 1; fi

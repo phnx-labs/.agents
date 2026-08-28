@@ -141,6 +141,8 @@ check_deny  "timeout-wrapped git switch"                         "timeout 5 git 
 check_deny  "timeout-wrapped sh -c git reset"                    'timeout 5 sh -c "git reset --hard HEAD"' "reset is denied"
 check_deny  "quoted timeout-wrapped git reset --hard"            '"timeout" 5 git reset --hard HEAD' "reset is denied"
 check_deny  "single-quoted gtimeout-wrapped git reset --hard"     "'gtimeout' 5 git reset --hard HEAD" "reset is denied"
+check_deny  "nested timeout wrappers"                             "timeout 5 timeout 5 git reset --hard HEAD" "reset is denied"
+check_deny  "timeout inside sh -c wrapper"                        'sh -c "timeout 5 git reset --hard HEAD"' "reset is denied"
 check_allow "timeout-wrapped git status"                         "timeout 5 git status"
 check_allow "timeout-wrapped git push --force-with-lease"        "timeout 5 git push --force-with-lease origin main"
 

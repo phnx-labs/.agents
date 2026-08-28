@@ -120,11 +120,6 @@ fi
 [ -z "$cmd" ] && cmd=$(_json_field "$input" toolInput.command) || true
 [ -z "$cmd" ] && exit 0
 
-# Peel a leading `timeout`/`gtimeout` wrapper so the guard checks the real
-# inner command instead of allowing the destructive op to hide behind the
-# wrapper (PHNX-3350).
-cmd=$(git_peel_timeout_wrapper "$cmd")
-
 # Session working directory, used to tell whether a history-rewriting op is
 # scoped to an isolated worktree (safe) vs the user's main checkout (blocked).
 cwd=$(_json_field "$input" cwd) || cwd=""
@@ -277,15 +272,17 @@ $(printf '%s\n' "$dirty" | head -5)" \
   return 0
 }
 
-# Check one already-split segment: unwrap an `sh|bash -c` wrapper (recurse into
-# its inner string), else hand the segment to the shared git-parse reducer,
-# which dispatches any git invocation to git_on_command above.
+# Check one already-split segment: peel any leading `timeout`/`gtimeout`
+# wrapper, unwrap an `sh|bash -c` wrapper (recurse into its inner string), then
+# hand the segment to the shared git-parse reducer, which dispatches any git
+# invocation to git_on_command above.
 check_segment() {
-  if git_extract_sh_c_inner "$1"; then
+  _seg=$(git_peel_timeout_wrapper "$1")
+  if git_extract_sh_c_inner "$_seg"; then
     check_command_string "$_dash_c_inner"
     return
   fi
-  git_scan_segment "$1"
+  git_scan_segment "$_seg"
 }
 
 # Top-level: split a command string on chain operators AND newlines, then
