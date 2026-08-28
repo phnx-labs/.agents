@@ -398,7 +398,10 @@ WHAT YOU MUST CHECK (in this order, stop at first BLOCKER)
 
 5. Messiness — did the diff make any of these worse? A function past 100 lines
    (warning, not BLOCKER); a switch/if-chain gaining an arm instead of a map; a new
-   file under a directory that already splits the same concern across files. Quote
+   file under a directory that already splits the same concern across files; a
+   comment that narrates WHAT unclear code does where a rename or extraction would
+   delete it (SHOULD, never a blocker — and never flag a comment carrying a
+   non-obvious WHY, invariant, or gotcha; that is doing its job). Quote
    before/after if found.
 
 6. Security (ONLY if the diff touches a risk surface). Classify by vulnerability
