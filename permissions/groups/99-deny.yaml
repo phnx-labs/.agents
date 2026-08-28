@@ -1,6 +1,5 @@
 deny:
   - "Bash(sudo:*)"
-  - "Bash(timeout:*)"
 
   # Credential files — never allow agents to read or write these.
   - "Read(~/.ssh/**)"
