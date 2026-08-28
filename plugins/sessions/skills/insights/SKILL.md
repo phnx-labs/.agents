@@ -2,7 +2,7 @@
 name: insights
 description: "Analyze how you and your agents work across harnesses — orchestrates agents insights, insights mix, perf, and sessions stats into one evidence-backed action list. No separate trends/perf slash commands. Triggers on: /insights, /sessions:insights, 'session insights', 'how have I been working', 'where do agents stall', 'skill dead weight', usage friction, harness mix."
 argument-hint: "[--since 30d | --all] [--agent <harness>] [--project <name>] [--json] [--narrative]"
-allowed-tools: Bash(agents insights*), Bash(agents perf*), Bash(agents sessions*), Bash(agents cost*), Bash(agents output*), Bash(jq *), Bash(ls *), Read(*), Write(*), Task(*)
+allowed-tools: Bash(agents insights*), Bash(agents sessions*), Bash(agents cost*), Bash(agents output*), Bash(jq *), Bash(ls *), Read(*), Write(*), Task(*)
 user-invocable: true
 ---
 
@@ -22,7 +22,7 @@ explicitly asked for a shareable HTML artifact.
 |---|---|---|
 | **How you work** | `agents insights` | Tools, friction, rhythm; default group-by account (Claude attribution; other harnesses under `unattributed:<agent>`) |
 | **Usage mix** | `agents insights mix` | Harness/model mix, token ratios, session volume, secrets-hot, browser activity |
-| **Latency / friction** | `agents perf` | Slow hooks/commands/runs; `agents perf friction` for guard-block loops |
+| **Latency / friction** | `agents insights perf` | Slow hooks/commands/runs; `agents insights perf friction` for guard-block loops |
 | **Resource dead weight** | `agents sessions stats` | Explicit skill/command invocations; installed-but-never-invoked |
 
 Related (only if the ask needs them; not the default path):
@@ -44,8 +44,8 @@ Run in parallel when the shell allows:
 
 ```bash
 agents insights --since 30d --json
-agents insights mix --days 30 --json    # or: agents insights harness-mix --json
-agents perf --days 30 --json            # plus: agents perf friction --days 30 --json when relevant
+agents insights mix --days 30 --json    # or: agents insights mix harness-mix --json
+agents insights perf --days 30 --json            # plus: agents insights perf friction --days 30 --json when relevant
 agents sessions stats --since 30d --json
 agents sessions stats --zero --since 30d --json   # dead weight
 ```

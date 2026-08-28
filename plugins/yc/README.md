@@ -23,7 +23,7 @@ already indexes, with no API key, hosted dashboard, or transcript upload.
   commit attribution from `agents insights output` when the installed CLI exposes JSON.
 - Repeated workflow friction and behavioral opportunities from `agents insights`.
 - Explicit skill/command use and dead weight from `agents sessions stats`.
-- Hook and CLI command latency, hook blocks, and retry loops from `agents perf`.
+- Hook and CLI command latency, hook blocks, and retry loops from `agents insights perf`.
 
 The report paginates through every indexed session for the repository as its census. It
 persists only sanitized analytic fields—never session IDs, paths, accounts, machines, prompt
