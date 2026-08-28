@@ -1,7 +1,8 @@
 #!/bin/bash
 # PreToolUse hook: block git pull/rebase/autostash when working tree is dirty.
-# Fast path uses pure-bash pattern matching (no forks) so non-git Bash calls
-# add ~2ms. Only git-ish commands pay for jq + git status.
+# Fast path extracts and normalizes the command value's first token with sed
+# (strip whitespace, JSON escapes, and one layer of quotes) so non-git Bash
+# calls are cheap. Only git-ish commands pay for jq + git status.
 
 IFS= read -rd '' input
 
