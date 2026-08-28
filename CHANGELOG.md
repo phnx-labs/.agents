@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- **`main-branch-guard` no longer treats a local `/tmp` path as a bypass of a primary checkout (PHNX-2732).** The scratchpad allowlist still skips remote `/tmp` (the documented `scp … host:/tmp/` artifact readback) and still allows non-git `/tmp` files, but a primary working tree that happens to live under `/tmp` (throwaway clones, CI fixtures, `mktemp -d` test repos) is denied the same as any other primary tree. 22 write-destination cases in `main-branch-guard_test.sh` were silently allowing because the fixtures themselves are `mktemp` dirs. Source: `rules/subrules/truly-agentic-git-workflow/main-branch-guard.sh`.
+- **Hook sqlite tests no longer require the `sqlite3` CLI (PHNX-2732).** Linux boxes ship `libsqlite3` + Python's stdlib module but not the binary; `verify-work-state`, `check-outcome-backfill`, and `04-verify-work-state` were red as `sqlite3: command not found` while the code under test was fine. Tests source `hooks/lib/test-sqlite.sh`, which prints the same `|`-separated rows the CLI prints.
+- **`plan-html-reminder_test.sh` isolates `HOME` in the no-override cases (PHNX-2732).** A fresh `~/.agents/artifacts` plan from the host session was satisfying the in-repo stale-HTML block (want rc=2, got rc=0). Durable-home coverage stays in `run_home`.
+- **`04-session-identity_test.sh` unsets host session-id env vars (PHNX-2732).** A live Grok session's `GROK_SESSION_ID` leaked into the "no id anywhere" cases (empty stdin / malformed JSON), so they recorded the host session instead of staying blank.
+
 ### Changed
 
 - **Fleet guidance now teaches `agents feed post --level important` instead of the
