@@ -6,15 +6,15 @@
 IFS= read -rd '' input
 
 # Fast path: extract and normalize the first token of the command value. If it
-# is not git/timeout/gtimeout and not a leading VAR=value assignment, and the
-# payload does not contain --autostash, there is nothing to police. Leading
-# whitespace, JSON backslash escapes, and one layer of quotes around the first
-# token are stripped so quoted wrappers and leading whitespace do not bypass
-# the guard.
+# is not git/timeout/gtimeout (possibly absolute/relative path), and not a
+# leading VAR=value assignment, and the payload does not contain --autostash,
+# there is nothing to police. Leading whitespace, JSON whitespace escapes, and
+# one layer of quotes around the first token are stripped so quoted wrappers and
+# escaped leading whitespace do not bypass the guard.
 _first=$(printf '%s' "$input" | sed -n 's/.*"command":"\([[:space:]]*[^[:space:]]*\).*/\1/p' \
-         | sed 's/\\//g; s/^[[:space:]]*//; s/^"//; s/^'"'"'//; s/"$//; s/'"'"'$//')
+         | sed 's/\\[tnrfbv]/ /g; s/\\//g; s/^[[:space:]]*//; s/^"//; s/^'"'"'//; s/"$//; s/'"'"'$//')
 case "$_first" in
-  git|timeout|gtimeout|*[A-Za-z_][A-Za-z_0-9]*=*) ;;
+  git|timeout|gtimeout|*/timeout|*/gtimeout|*[A-Za-z_][A-Za-z_0-9]*=*) ;;
   *) [ -z "${input##*--autostash*}" ] || exit 0 ;;
 esac
 

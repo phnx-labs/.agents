@@ -104,4 +104,36 @@ else
   fail=$((fail + 1))
 fi
 
+run_hook "{\"cwd\":\"$SANDBOX\",\"tool_input\":{\"command\":\"/usr/bin/timeout 5 git pull\"}}"
+if [ "$RC" -eq 2 ] && grep -q 'working tree is dirty' "$SANDBOX/stderr"; then
+  echo 'ok   - dirty tree blocks absolute-path timeout first-token git pull'
+else
+  echo "FAIL - dirty tree should block absolute-path timeout first-token git pull (rc=$RC)"
+  fail=$((fail + 1))
+fi
+
+run_hook "{\"cwd\":\"$SANDBOX\",\"tool_input\":{\"command\":\"./timeout 5 git pull\"}}"
+if [ "$RC" -eq 2 ] && grep -q 'working tree is dirty' "$SANDBOX/stderr"; then
+  echo 'ok   - dirty tree blocks relative-path timeout first-token git pull'
+else
+  echo "FAIL - dirty tree should block relative-path timeout first-token git pull (rc=$RC)"
+  fail=$((fail + 1))
+fi
+
+run_hook "{\"cwd\":\"$SANDBOX\",\"tool_input\":{\"command\":\"\\ttimeout 5 git pull\"}}"
+if [ "$RC" -eq 2 ] && grep -q 'working tree is dirty' "$SANDBOX/stderr"; then
+  echo 'ok   - dirty tree blocks JSON-escaped tab-prefixed timeout first-token git pull'
+else
+  echo "FAIL - dirty tree should block JSON-escaped tab-prefixed timeout first-token git pull (rc=$RC)"
+  fail=$((fail + 1))
+fi
+
+run_hook "{\"cwd\":\"$SANDBOX\",\"tool_input\":{\"command\":\"\\ntimeout 5 git pull\"}}"
+if [ "$RC" -eq 2 ] && grep -q 'working tree is dirty' "$SANDBOX/stderr"; then
+  echo 'ok   - dirty tree blocks JSON-escaped newline-prefixed timeout first-token git pull'
+else
+  echo "FAIL - dirty tree should block JSON-escaped newline-prefixed timeout first-token git pull (rc=$RC)"
+  fail=$((fail + 1))
+fi
+
 [ "$fail" -eq 0 ]
