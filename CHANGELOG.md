@@ -2,6 +2,17 @@
 
 ## [Unreleased]
 
+### Added
+
+- **`rules/subrules/mission.md` — a Mission rule, rendered first.** Agents booted
+  fluent in *how* to work (git, testing, fleet, tickets) and blind to *what* the fleet
+  is building or *why*. This adds a mission slot to the ruleset (`rules.yaml`, first in
+  the `default` preset) so product/mission context reaches every agent at boot. The
+  public system copy is a **generic placeholder** that points at the user layer; a
+  same-named `~/.agents/rules/subrules/mission.md` shadows it wholesale, so an operator's
+  real (often confidential) mission lives in their private user layer, never here.
+  `rules/AGENTS.md` regenerated with the new first section.
+
 ### Changed
 
 - **The share plugin now teaches managed server-rendered OG covers (PHNX-2835).**

@@ -33,7 +33,9 @@ fully internalized (0 guard fires across 7,493 transcripts).
 
 ## What the system layer ships
 
-`foundations` renders first — the five principles (F1–F5) every other rule references by
+`mission` renders first — the product mission this fleet ladders up to (a placeholder in
+this public layer, replaced wholesale by the user layer's own `mission.md`). Then
+`foundations` — the five principles (F1–F5) every other rule references by
 name instead of restating. Then, in order: `research-discipline`, `fleet-delegation`,
 `code-quality`, `testing-strict`, `truly-agentic-git-workflow`, `gh-merge-guard`,
 `no-pr-footer`, `operational`, `conventions`, `agents-cli`, `parallel-teams`, `tech-stack`,
