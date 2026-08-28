@@ -17,6 +17,18 @@
   past because `timeout` was the first token. The blanket `Bash(timeout:*)`
   deny in `permissions/groups/99-deny.yaml` has been removed now that the
   command-string-inspecting guards handle the wrapper directly (PHNX-3350).
+- **`conventions` + the `tickets` skill now make consolidation the default and
+  creating a ticket the last resort.** The rule already said "claim first, don't
+  file what you merely noticed"; it kept inflating anyway (a single AGI-project
+  pass found 95 open with 48 opened in the last three days). Added the missing
+  half: when you do have something worth recording, search wider than the exact
+  title (subsystem / file / bug class) and **enrich or consolidate into the
+  overlapping ticket** — comment your detail, sharpen its description, attach
+  evidence — instead of opening a parallel near-duplicate, and fold multiple
+  tickets covering one problem into a single canonical one, cancelling the rest.
+  The `tickets` skill's start-of-task lifecycle gains an explicit "enrich before
+  you create" step and its anti-patterns name near-duplicates, not just exact
+  duplicates. Regenerated `rules/AGENTS.md`.
 
 - **`code-quality` now names conceptual simplicity as the bar, and comments as a
   smell before a fix.** Two rules added: *fewer concepts beat more code* (a

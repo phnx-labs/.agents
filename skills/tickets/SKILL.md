@@ -31,11 +31,19 @@ Check in this order. Stop at the first one that's actually present.
 The `conventions` + `truly-agentic-git-workflow` rules ask every substantive task to run a
 small ticket lifecycle; this skill is the mechanism.
 
-1. **Check first.** Look for an open ticket that already covers the task (the injected Linear
-   context, or a quick `search` / `gh issue list`). Found one? Claim it (move to In Progress).
-2. **Open if missing.** None, and Step 1 found a configured tracker? Create one scoped to the
-   task before you start. No tracker? Skip this and describe the work in the PR.
-3. **Close on delivery.** When it ships, post the PR link plus a screenshot or short screen
+1. **Check first — search wider than the exact title.** Look for an open ticket that already
+   covers the task (the injected Linear context, and a real `search` — try the subsystem name,
+   the file, the bug class, not just the exact phrase). Found one? Claim it (move to In Progress).
+2. **Enrich before you create.** If a ticket partially overlaps — same subsystem, same surface,
+   same bug class — **consolidate into it** instead of opening a parallel one: add your findings
+   as a comment, sharpen its description, attach evidence. A more complete existing ticket beats
+   a new near-duplicate. If several tickets already cover one problem, fold them: comment the
+   full picture on the canonical one and cancel the rest with a "consolidated into <ID>" note.
+3. **Open only if genuinely missing.** Nothing on the board covers it, a tracker is configured,
+   and it's **work you're delivering now**? Create one scoped to the task. Not delivering it this
+   session — just noticed it? Put it in your owner update, don't mint a Todo. No tracker? Skip
+   and describe the work in the PR.
+4. **Close on delivery.** When it ships, post the PR link plus a screenshot or short screen
    recording of the outcome, then move it to Done. Close only with proof.
 
 ## Step 2: Do the thing
@@ -67,5 +75,8 @@ After doing the action, report:
 - Don't bypass the skill. If a `linear` (or `github`, etc.) skill is loaded, its SKILL.md is the source of truth — its commands are usually richer than what you'd reinvent (proof attachments, delegation, etc.).
 - Don't invent an ownership label. On Linear an issue is owned by its **delegate**, not by a label: `linear update <ID> --delegate <name>` claims it, `linear tasks --agent <name>` is that agent's queue, and an issue with no delegate is unowned. `agent:<name>` labels were retired in linear-cli 0.16.0 and confer nothing.
 - Don't close issues without proof. Engineering: PR URL or commit URL or screenshot of tests passing. Growth/content: published URL or metric.
-- Don't create duplicates. Quick search before creating a new issue.
+- Don't create duplicates or near-duplicates. Search wider than the exact title (subsystem,
+  file, bug class) and, when something overlaps, **enrich or consolidate into it** instead of
+  opening a parallel ticket. Default to not creating; a new Todo is the last resort, not the
+  reflex. Boards die from parallel copies of the same problem, not from too few tickets.
 - Don't leak the session transcript. A transcript can help a reviewer, but it carries secrets/tokens/paths — keep it **confidential**: attach it only as a **secret gist link** on a private tracker, never inline, never onto a public issue. See the `truly-agentic-git-workflow` rule.
