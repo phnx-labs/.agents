@@ -128,5 +128,42 @@ check missing "self-authored review quoting the marker still does not clear" \
   '[{"state":"COMMENTED","user":{"login":"pr-author-bot"},"body":"see ---AGENTS-SPLIT--- in the docstring. VERDICT: APPROVE"}]' \
   '[]'
 
+# PHNX-3118: negation. A body carrying the whole word APPROVE(D) but NEGATING it
+# must NOT clear the guard — no notion of use-vs-negate is exactly how a refusal
+# ("I have NOT APPROVED this yet") cleared a merge. These reach _body_approves
+# via the COMMENTED-review-body / issue-comment paths (a CHANGES_REQUESTED review
+# never calls _body_approves — that path is guarded by review STATE, tested above).
+check missing "issue comment: I have NOT APPROVED this yet" \
+  '[]' '[{"user":{"login":"reviewer-bot"},"body":"I have NOT APPROVED this yet."}]'
+check missing "issue comment: This is NOT APPROVED." \
+  '[]' '[{"user":{"login":"reviewer-bot"},"body":"This is NOT APPROVED."}]'
+check missing "issue comment: blocking, do not merge; not APPROVED" \
+  '[]' '[{"user":{"login":"reviewer-bot"},"body":"blocking, do not merge; not APPROVED - see below"}]'
+check missing "COMMENTED review body: NOT APPROVED - see below" \
+  '[{"state":"COMMENTED","user":{"login":"reviewer-bot"},"body":"NOT APPROVED - see below"}]' '[]'
+check missing "COMMENTED review body: cannot approve until fixed" \
+  '[{"state":"COMMENTED","user":{"login":"reviewer-bot"},"body":"I cannot approve until the null check is fixed."}]' '[]'
+check missing "issue comment: will not approve as-is" \
+  '[]' '[{"user":{"login":"reviewer-bot"},"body":"I will not approve as-is."}]'
+check missing "issue comment: don'\''t approve this" \
+  '[]' '[{"user":{"login":"reviewer-bot"},"body":"Please don'\''t approve this."}]'
+# A genuine approval that merely DISCUSSES a negation must still clear — the
+# negation guard is approval-specific, not a bare "not".
+check ok "genuine APPROVE that mentions an unrelated negation still clears" \
+  '[]' '[{"user":{"login":"reviewer-bot"},"body":"This is not a rubber-stamp; I re-ran the suite. VERDICT: APPROVE"}]'
+
+# PHNX-3118: fenced / inline code. A verdict token that appears ONLY inside a
+# code span/block is being discussed, not cast — it must not clear the guard.
+check missing "issue comment: APPROVE only inside an inline code span" \
+  '[]' '[{"user":{"login":"reviewer-bot"},"body":"The parser matches `APPROVE` in any body — here is why that is a bug. I have not reviewed the change itself."}]'
+check missing "issue comment: APPROVE only inside a fenced code block" \
+  '[]' '[{"user":{"login":"reviewer-bot"},"body":"Repro of the false positive:\n```\nVERDICT: APPROVE\n```\nThat is quoted, not my verdict."}]'
+check missing "COMMENTED review body: APPROVE only inside a fenced code block" \
+  '[{"state":"COMMENTED","user":{"login":"reviewer-bot"},"body":"see the regex:\n```python\nAPPROVE = re.compile(r\"APPROVED?\")\n```\nstill auditing"}]' '[]'
+# A real verdict alongside a code span that also mentions the token still clears —
+# stripping code removes the quoted token, the real one outside code remains.
+check ok "genuine APPROVE alongside a code span mentioning the token still clears" \
+  '[]' '[{"user":{"login":"reviewer-bot"},"body":"The matcher is `APPROVE.search(body)`. I re-verified both findings. VERDICT: APPROVE"}]'
+
 printf -- '---\npr-verdict: %s passed, %s failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]

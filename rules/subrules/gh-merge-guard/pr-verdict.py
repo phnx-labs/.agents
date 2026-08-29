@@ -4,7 +4,9 @@
 A PR is merge-clearing when EITHER:
   - a GitHub review has state APPROVED, OR
   - a whole-word APPROVE or APPROVED that is not a carried-from citation (the #2736
-    laundering pattern) appears in the body of a COMMENTED review
+    laundering pattern), not a NEGATED approval (PHNX-3118 — "NOT APPROVED", "do
+    not merge"), and not merely QUOTED inside fenced/inline code (PHNX-3118)
+    appears in the body of a COMMENTED review
     (`gh pr review --comment` — the fleet convention when self-approval is
     blocked) or an issue comment, POSTED BY SOMEONE OTHER THAN THE PR's AUTHOR.
     A CHANGES_REQUESTED or DISMISSED review body never clears the guard even if
@@ -53,6 +55,44 @@ CARRIED = re.compile(
     re.I,
 )
 APPROVE = re.compile(r"\bAPPROVED?\b")
+
+# PHNX-3118: matching a bare APPROVE anywhere in the body has no notion of
+# whether the body is USING the word or NEGATING it. An explicit refusal —
+# "I have NOT APPROVED this yet", "do not merge; not APPROVED", a COMMENTED
+# review reading "NOT APPROVED - see below" — contains the whole word APPROVE(D)
+# and cleared the guard. NEGATED is applied wholesale, exactly like CARRIED:
+# any negated-approval phrase in the (code-stripped) body drops the item before
+# the positive match. The direction is safe — a body that argues NOT to approve
+# failing toward "missing" only ever blocks a merge, it can never launder a
+# rejection into a pass. Kept approval-specific (not a bare "not") so a genuine
+# approval that merely discusses a negation ("this is not a rubber-stamp;
+# VERDICT: APPROVE") still clears.
+NEGATED = re.compile(
+    r"\bnot\s+(?:yet\s+)?approv(?:e|ed|ing)?\b"
+    r"|\b(?:do|does|did|will|would|should|is|are|was|were|has|have|had|"
+    r"wo|ca|could)(?:\s+not|n'?t)\s+(?:be\s+)?(?:approve|approved|merge|merged)\b"
+    r"|\bcannot\s+(?:approve|merge)\b"
+    r"|\bno\s+approval\b"
+    r"|\bwithout\s+(?:a\s+)?approv",
+    re.I,
+)
+
+# PHNX-3118: a verdict token that is only being DISCUSSED — quoted inside a
+# fenced code block (``` … ```) or an inline code span (` … `), which is exactly
+# how a review of THIS parser talks about the word APPROVE — is not a real
+# verdict. Strip both before matching so a body whose ONLY APPROVE is inside code
+# reads as "no verdict" rather than clearing the guard (same false-positive shape
+# as the footer-guard). Fenced blocks are removed first so their inner backticks
+# can't confuse the inline pass.
+FENCED_CODE = re.compile(r"```.*?```|~~~.*?~~~", re.S)
+INLINE_CODE = re.compile(r"`+[^`]*`+")
+
+
+def _strip_code(body: str) -> str:
+    """Blank fenced code blocks and inline code spans (replaced by a space so
+    surrounding word boundaries are preserved) so a quoted/discussed verdict
+    token is not read as a live verdict."""
+    return INLINE_CODE.sub(" ", FENCED_CODE.sub(" ", body))
 
 
 def _b64_decode_text(segment: str) -> str:
@@ -109,14 +149,19 @@ def _exclude_self_authored(items, pr_author: str):
 
 def _body_approves(items) -> bool:
     """True if any item has a whole-word APPROVE body that is not a carried-from
-    citation. Applies to both review bodies and issue-comment bodies."""
+    citation and not a negated approval. Applies to both review bodies and
+    issue-comment bodies. Fenced/inline code is stripped first (PHNX-3118) so a
+    verdict token merely quoted in code never counts, and CARRIED/NEGATED are
+    checked on that same code-stripped text."""
     if not isinstance(items, list):
         return False
     for it in items:
-        body = it.get("body") or ""
+        body = _strip_code(it.get("body") or "")
         if not APPROVE.search(body):
             continue
         if CARRIED.search(body):
+            continue
+        if NEGATED.search(body):
             continue
         return True
     return False
