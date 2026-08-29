@@ -512,10 +512,11 @@ write_on_destination() {
   # happens to live there (throwaway clones, CI fixtures, `mktemp -d`
   # test repos): fall through to in_primary_tree so a git primary under
   # /tmp is denied the same as any other primary tree.
-  # Spelled as an if-block, not `[ -n "$_wd_host" ] && return 0`: under the
-  # `set -eu` at the top of this file that one-liner leaves $? = 1 whenever the
-  # host is empty, so a future bare call site (every current one is `|| return
-  # $?`, which suspends -e) would abort the guard mid-check instead of denying.
+  # Spelled as an if-block rather than `[ -n "$_wd_host" ] && return 0` purely
+  # for legibility: `&&` used as control flow reads as a condition and hides
+  # that the arm's job is an early return (shellcheck SC2015). The two forms
+  # are behaviorally identical here, including under this file's `set -eu` and
+  # including for a hypothetical bare caller — verified in dash and bash.
   case "$_wd_path" in
     /tmp|/tmp/*|/private/tmp|/private/tmp/*)
       if [ -n "$_wd_host" ]; then return 0; fi
