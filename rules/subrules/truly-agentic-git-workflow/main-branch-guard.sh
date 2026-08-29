@@ -512,9 +512,13 @@ write_on_destination() {
   # happens to live there (throwaway clones, CI fixtures, `mktemp -d`
   # test repos): fall through to in_primary_tree so a git primary under
   # /tmp is denied the same as any other primary tree.
+  # Spelled as an if-block, not `[ -n "$_wd_host" ] && return 0`: under the
+  # `set -eu` at the top of this file that one-liner leaves $? = 1 whenever the
+  # host is empty, so a future bare call site (every current one is `|| return
+  # $?`, which suspends -e) would abort the guard mid-check instead of denying.
   case "$_wd_path" in
     /tmp|/tmp/*|/private/tmp|/private/tmp/*)
-      [ -n "$_wd_host" ] && return 0
+      if [ -n "$_wd_host" ]; then return 0; fi
       ;;
   esac
   # Kernel sinks are not files in any repository, so they can never land in a
