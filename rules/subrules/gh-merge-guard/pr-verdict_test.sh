@@ -164,7 +164,10 @@ check ok "APPROVE despite 'without approval issues' clears" \
   '[]' '[{"user":{"login":"reviewer-bot"},"body":"This ships without approval issues. VERDICT: APPROVE"}]'
 check ok "APPROVE after a resolved 'could not merge' clears" \
   '[]' '[{"user":{"login":"reviewer-bot"},"body":"Earlier this could not merge due to the null check, but that is fixed now. VERDICT: APPROVE"}]'
-check ok "APPROVE after a resolved past 'was not approved' clears" \
+# The APPROVE token is case-sensitive (the uppercase verdict convention), so a
+# lowercase "was not approved" in prose is not a token at all — only the real
+# uppercase VERDICT: APPROVE counts, and it is un-negated, so this clears.
+check ok "APPROVE despite a lowercase 'was not approved' in prose clears" \
   '[]' '[{"user":{"login":"reviewer-bot"},"body":"We discussed why this was not approved last round; that is resolved. VERDICT: APPROVE"}]'
 
 # PHNX-3118 (#422 review SHOULD): common refusals that name the APPROVE token
@@ -193,10 +196,41 @@ check missing "issue comment: cannot fully APPROVE until tests pass" \
   '[{"state":"COMMENTED","user":{"login":"reviewer-bot"},"body":"I cannot fully APPROVE this until tests pass."}]' '[]'
 check missing "issue comment: will not currently APPROVE" \
   '[]' '[{"user":{"login":"reviewer-bot"},"body":"I will not currently APPROVE this PR."}]'
-# The mirror must hold: a negation in a PRIOR clause (period boundary) with a
-# fresh verdict in the next clause still clears — clause scope, not body-wide.
-check ok "APPROVE after a prior-clause negation (period boundary) clears" \
+# The mirror must hold: a negation that does not govern an APPROVE token, with a
+# fresh verdict, still clears — the negation is on "find"/"blockers", not approve.
+check ok "APPROVE after a non-approve negation (did not find blockers) clears" \
   '[]' '[{"user":{"login":"reviewer-bot"},"body":"I did not find any blockers. VERDICT: APPROVE"}]'
+
+# PHNX-3118 (#422 review 3, BLOCKER: refusal must veto an incidental mention).
+# An explicit capitalized refusal that ALSO mentions the word elsewhere must NOT
+# clear — returning on the first un-negated token laundered a rejection into a
+# pass, the exact original vulnerability.
+check missing "refusal + incidental 'count as APPROVE' mention blocks" \
+  '[]' '[{"user":{"login":"reviewer-bot"},"body":"Testing the guard: does this count as APPROVE? I do NOT APPROVE this PR."}]'
+check missing "refusal then 'checking the regex: APPROVE' blocks" \
+  '[]' '[{"user":{"login":"reviewer-bot"},"body":"I do NOT APPROVE this. Just checking the regex: APPROVE."}]'
+check missing "refusal + parenthetical 'the word is APPROVE' blocks" \
+  '[]' '[{"user":{"login":"reviewer-bot"},"body":"I do NOT APPROVE this PR as-is. (Note to self: the word is APPROVE.)"}]'
+check missing "refusal then 'Signing off: APPROVE' mention blocks" \
+  '[{"state":"COMMENTED","user":{"login":"reviewer-bot"},"body":"This code is dangerous and I do NOT APPROVE it. Signing off: APPROVE"}]' '[]'
+
+# PHNX-3118 (#422 review 3, BLOCKER: an upstream negation on a NON-approve word
+# must not over-block a genuine verdict). A bare "not"/"cannot" governing a noun
+# several words before the token leaves the APPROVE live.
+check ok "APPROVE after 'not a single nit left' clears" \
+  '[]' '[{"user":{"login":"reviewer-bot"},"body":"There is not a single nit left, so APPROVE"}]'
+check ok "APPROVE after 'not often I see code this clean' clears" \
+  '[]' '[{"user":{"login":"reviewer-bot"},"body":"It is not often I see code this clean, APPROVE"}]'
+check ok "APPROVE after 'could not have asked for a cleaner diff' clears" \
+  '[]' '[{"user":{"login":"reviewer-bot"},"body":"We could not have asked for a cleaner diff, APPROVE"}]'
+check ok "APPROVE after 'not found any other issues' clears" \
+  '[]' '[{"user":{"login":"reviewer-bot"},"body":"I have not found any other issues, APPROVE"}]'
+# Prior-SENTENCE negation (period boundary) must not govern the verdict — a
+# negation cue counts only within the token's own clause AND word window.
+check ok "APPROVE after 'Cannot fault this diff.' (prior sentence) clears" \
+  '[]' '[{"user":{"login":"reviewer-bot"},"body":"Cannot fault this diff. APPROVE"}]'
+check ok "APPROVE after a double-negative prior sentence clears" \
+  '[]' '[{"user":{"login":"reviewer-bot"},"body":"Nothing here is not already covered. VERDICT: APPROVE"}]'
 
 # PHNX-3118: fenced / inline code. A verdict token that appears ONLY inside a
 # code span/block is being discussed, not cast — it must not clear the guard.
