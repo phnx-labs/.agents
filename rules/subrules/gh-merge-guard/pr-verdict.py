@@ -63,32 +63,49 @@ APPROVE = re.compile(r"\bAPPROVED?\b")
 # COMMENTED review reading "NOT APPROVED - see below" — contains the whole word
 # APPROVE(D) and cleared the guard.
 #
-# The negation is tied to the SPECIFIC token, not the whole body. A wholesale
-# body scan over-blocks the mirror-image case just as badly: an incidental
-# "no approval needed from anyone else — VERDICT: APPROVE", "ships without
-# approval issues; APPROVE", or a resolved past "this was not approved last
-# round, now fixed; VERDICT: APPROVE" all carry a real fresh verdict that a
-# body-wide negation match would silently drop — the exact false-negative the
-# base64 stdin contract above exists to prevent. So negation is checked only in
-# a short window immediately LEFT of each APPROVE token: a refusal counts only
-# when it attaches to that token, and any single un-negated token is a live
-# verdict. "this is not a rubber-stamp; VERDICT: APPROVE" still clears, because
-# the "not" sits before "rubber-stamp", not before APPROVE.
-NEGATION_WINDOW = 48
-NEGATED_BEFORE = re.compile(
+# Negation is judged per APPROVE token, and only within the token's OWN CLAUSE —
+# the text back to the nearest sentence/clause boundary (. ; : ! ? newline —).
+# That boundary is exactly what separates a refusal that governs the verb
+# ("I do not currently APPROVE") from an incidental earlier negation that does
+# not ("ships without approval issues. VERDICT: APPROVE", "was not approved last
+# round; resolved. VERDICT: APPROVE", "this is not a rubber-stamp; VERDICT:
+# APPROVE"). A word-distance allowlist was tried and rejected: any intervening
+# adverb outside the list ("do not CURRENTLY approve") slipped a real refusal
+# through. Clause scope tolerates arbitrary adverbs while still requiring the
+# negation and the token to sit in the same clause. NEGATION_CAP bounds how far
+# back inside one long, unpunctuated clause a negation can reach, so a positive
+# "I did not find any blockers so APPROVE" (no punctuation) is not suppressed by
+# a negation many words upstream. Any single un-negated token is a live verdict;
+# failing toward "missing" only ever blocks a merge, never launders a rejection.
+NEGATION_CAP = 40
+CLAUSE_BOUNDARY = re.compile(r"[.;:!?\n\r—]")
+NEGATION_CUE = re.compile(
     r"\b(?:"
     r"not|never|no|cannot|can\s*not|"
     r"can'?t|wo\s*n'?t|won'?t|do\s*n'?t|does\s*n'?t|did\s*n'?t|"
-    r"do\s+not|does\s+not|did\s+not|will\s+not|would\s+not|shall\s+not|"
-    r"should\s+not|could\s+not|is\s+not|are\s+not|was\s+not|were\s+not|"
-    r"has\s+not|have\s+not|had\s+not|"
+    r"should\s*n'?t|would\s*n'?t|could\s*n'?t|"
+    r"is\s*n'?t|are\s*n'?t|was\s*n'?t|were\s*n'?t|"
+    r"has\s*n'?t|have\s*n'?t|had\s*n'?t|"
+    r"(?:do|does|did|will|would|shall|should|could|can|is|are|was|were|"
+    r"has|have|had)\s+not|"
     r"refuse[sd]?\s+to|refusing\s+to|declin(?:e|es|ed|ing)\s+to|"
     r"unable\s+to|unwilling\s+to|holding\s+off\s+(?:on|from)"
-    r")"
-    r"(?:\s+(?:yet|be|to|going\s+to|able\s+to))*"
-    r"[^\w]*$",
+    r")\b",
     re.I,
 )
+
+
+def _token_negated(body: str, start: int) -> bool:
+    """True if a refusal governs the APPROVE token at ``start`` — a negation cue
+    inside the token's own clause. The clause runs from the nearest boundary
+    char left of the token (or NEGATION_CAP chars back, whichever is closer) up
+    to the token, so a negation in a PRIOR clause ("…issues. VERDICT: APPROVE")
+    or many words upstream in the same long clause never suppresses it."""
+    seg_start = max(0, start - NEGATION_CAP)
+    for b in CLAUSE_BOUNDARY.finditer(body, 0, start):
+        if b.end() > seg_start:
+            seg_start = b.end()
+    return bool(NEGATION_CUE.search(body[seg_start:start]))
 
 # PHNX-3118: a verdict token that is only being DISCUSSED — quoted inside a
 # fenced code block (``` … ```) or an inline code span (` … `), which is exactly
@@ -166,8 +183,8 @@ def _body_approves(items) -> bool:
     (PHNX-3118) so a verdict token merely quoted in code never counts. A
     "carried from #NNNN" citation launders a prior PR's approval, so the whole
     item is dropped wholesale (RUSH-3099). Negation, by contrast, is judged per
-    token: an APPROVE counts unless a refusal sits in the short window
-    immediately before THAT token — a single un-negated token clears."""
+    token: an APPROVE counts unless a refusal sits in that token's own clause
+    (_token_negated) — a single un-negated token clears."""
     if not isinstance(items, list):
         return False
     for it in items:
@@ -175,8 +192,7 @@ def _body_approves(items) -> bool:
         if CARRIED.search(body):
             continue
         for m in APPROVE.finditer(body):
-            left = body[max(0, m.start() - NEGATION_WINDOW):m.start()]
-            if NEGATED_BEFORE.search(left):
+            if _token_negated(body, m.start()):
                 continue
             return True
     return False

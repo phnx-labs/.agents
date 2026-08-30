@@ -180,6 +180,24 @@ check missing "issue comment: not able to APPROVE yet" \
 check missing "issue comment: no APPROVE from me" \
   '[]' '[{"user":{"login":"reviewer-bot"},"body":"no APPROVE from me."}]'
 
+# PHNX-3118 (#422 review 2, new BLOCKER): an intervening ADVERB between the
+# negation and the token must not launder the refusal through. A fixed
+# connector allowlist broke on any adverb outside it; clause-scoped negation
+# tolerates arbitrary adverbs. Each of these is an explicit refusal that names
+# the token and MUST block.
+check missing "issue comment: do not currently APPROVE" \
+  '[]' '[{"user":{"login":"reviewer-bot"},"body":"I do not currently APPROVE this."}]'
+check missing "issue comment: would not personally APPROVE" \
+  '[]' '[{"user":{"login":"reviewer-bot"},"body":"I would not personally APPROVE this yet."}]'
+check missing "issue comment: cannot fully APPROVE until tests pass" \
+  '[{"state":"COMMENTED","user":{"login":"reviewer-bot"},"body":"I cannot fully APPROVE this until tests pass."}]' '[]'
+check missing "issue comment: will not currently APPROVE" \
+  '[]' '[{"user":{"login":"reviewer-bot"},"body":"I will not currently APPROVE this PR."}]'
+# The mirror must hold: a negation in a PRIOR clause (period boundary) with a
+# fresh verdict in the next clause still clears — clause scope, not body-wide.
+check ok "APPROVE after a prior-clause negation (period boundary) clears" \
+  '[]' '[{"user":{"login":"reviewer-bot"},"body":"I did not find any blockers. VERDICT: APPROVE"}]'
+
 # PHNX-3118: fenced / inline code. A verdict token that appears ONLY inside a
 # code span/block is being discussed, not cast — it must not clear the guard.
 check missing "issue comment: APPROVE only inside an inline code span" \
