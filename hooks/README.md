@@ -106,6 +106,7 @@ implementation. See [§Subrule hooks](#subrule-hooks-rules-not-this-tree).
 
 | Hook | What it does |
 |---|---|
+| [`02-worktree-reclaim-nudge.py`](./post-tool-use/02-worktree-reclaim-nudge.py) | Advisory: after a **successful** `gh pr merge`, reminds the agent to reclaim the merged worktree with `agents worktree done` (PHNX-3503). Never removes anything itself — the destructive path always goes through the CLI's own fail-closed re-verification; exit 0, fails open |
 | [`01-github-ratelimit-nudge.py`](./post-tool-use/01-github-ratelimit-nudge.py) | Advisory: after a GitHub call comes back rate-limited, reminds once per session to act now (`agents browser` / `gh api`) instead of sitting idle for the reset or deferring to a background agent; exit 0, fails open |
 
 ### `user-prompt-submit/` — UserPromptSubmit
