@@ -22,6 +22,11 @@
 # burn tokens or depend on a logged-in account. Fail-soft: one unreadable repo
 # never aborts the rest.
 #
+# First run is NOT unattended: before this routine was enabled, the sweep was
+# driven by hand across the fleet — `--dry-run` first, output inspected, then
+# the real pass — so the nightly fire operates on an already-reconciled fleet
+# rather than making its first 800-worktree decision alone at 04:30.
+#
 # Safety is entirely delegated to `agents worktree sweep`, which fails closed —
 # it removes a worktree only when the tree is clean, nothing is missing upstream
 # (judged by patch-id, so squash/rebase merges count as landed), it is not the
@@ -34,8 +39,11 @@ timeout: 20m
 command: |
   set -u
   # Grace window: a merged worktree survives this long so it is still there for
-  # a follow-up look right after the PR lands.
-  GRACE="${AGENTS_WORKTREE_GRACE_DAYS:-3}"
+  # a follow-up look right after the PR lands. To change it on one box, copy
+  # this routine to ~/.agents/routines/worktree-sweep.yml and edit it there —
+  # that is the repo's per-device override, so this deliberately reads no
+  # bespoke env var of its own.
+  GRACE=3
 
   command -v agents >/dev/null 2>&1 || { echo "agents CLI not on PATH — skipping"; exit 0; }
   agents worktree --help >/dev/null 2>&1 || {
@@ -46,25 +54,42 @@ command: |
   total_repos=0
   total_reclaimed=0
 
-  # Only the roots where checkouts actually live on a fleet box. Bounded depth
-  # so this never walks an entire home directory.
-  for root in "$HOME/src" "$HOME/workspaces" "$HOME/fleet-base" "$HOME/fleet-work"; do
-    [ -d "$root" ] || continue
-    while IFS= read -r wtdir; do
-      repo=$(dirname "$(dirname "$wtdir")")
-      [ -d "$repo/.git" ] || continue
-      total_repos=$((total_repos + 1))
-      out=$(cd "$repo" && agents worktree sweep --older-than "$GRACE" --yes --json 2>/dev/null) || {
-        echo "skip (sweep failed): $repo"
-        continue
-      }
-      n=$(printf '%s' "$out" | grep -o '"reclaimed":\[[^]]*\]' | grep -o '"' | wc -l)
-      n=$((n / 2))
-      if [ "$n" -gt 0 ]; then
-        echo "reclaimed $n worktree(s): $repo"
-        total_reclaimed=$((total_reclaimed + n))
-      fi
-    done < <(find "$root" -maxdepth 6 -type d -path '*/.agents/worktrees' 2>/dev/null)
-  done
+  # DISCOVER the worktree containers on this box; do not guess roots. Measured
+  # on yosemite-s1 (2026-08-30), the previous hardcoded list — $HOME/src,
+  # $HOME/workspaces, $HOME/fleet-base, $HOME/fleet-work — found 14 containers
+  # where discovery finds 82. The remainder live under $HOME/.agents/repos,
+  # $HOME/.agents/.system, $HOME/agents-cli, $HOME/svatlas and $HOME itself,
+  # and three of those four roots do not exist anywhere on this fleet. Sweeping
+  # 17% of the leak would have read as success while the disk kept filling.
+  # Pruning the heavy directories keeps this at ~0.9s across a 3.7T home.
+  while IFS= read -r wtdir; do
+    repo=$(dirname "$(dirname "$wtdir")")
+    # `.git` is a directory in a normal checkout but a FILE inside a linked
+    # worktree, so test for existence, not for a directory.
+    [ -e "$repo/.git" ] || continue
+    total_repos=$((total_repos + 1))
+    out=$(cd "$repo" && agents worktree sweep --older-than "$GRACE" --yes --json 2>/dev/null) || {
+      echo "skip (sweep failed): $repo"
+      continue
+    }
+    # `agents worktree sweep --json` pretty-prints (JSON.stringify(x, null, 2)),
+    # so "reclaimed": [ and its entries land on SEPARATE lines. grep is
+    # line-based, so matching '"reclaimed":\[' against it never fired and this
+    # counter reported 0 on every box every night while genuinely deleting
+    # worktrees — masking both the real activity and any future regression in
+    # the CLI's fail-closed logic. Flatten first, then count. tr/sed/grep only:
+    # no jq or python3 dependency, so this behaves the same on macOS and Linux.
+    n=$(printf '%s' "$out" | tr -d '\n' \
+      | sed -n 's/.*"reclaimed"[[:space:]]*:[[:space:]]*\[\([^]]*\)\].*/\1/p' \
+      | grep -o '"' | wc -l)
+    n=$(( ${n:-0} / 2 ))
+    if [ "$n" -gt 0 ]; then
+      echo "reclaimed $n worktree(s): $repo"
+      total_reclaimed=$((total_reclaimed + n))
+    fi
+  done < <(find "$HOME" -maxdepth 7 \
+      \( -name node_modules -o -name .cache -o -name .npm -o -name .bun \
+         -o -name Library -o -name .venv -o -name dist -o -name target \) -prune -o \
+      -type d -path '*/.agents/worktrees' -print 2>/dev/null)
 
   echo "worktree-sweep: $total_reclaimed reclaimed across $total_repos repo(s) on $(hostname -s)"
