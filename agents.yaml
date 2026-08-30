@@ -22,6 +22,14 @@ hooks:
     matcher: Bash
     script: post-tool-use/01-github-ratelimit-nudge.py
     timeout: 5
+  worktree-reclaim-nudge:
+    # Advisory only: fires AFTER a PR merge succeeds and reminds once per session
+    # to reclaim the worktree the merge leaves behind. `gh pr merge
+    # --delete-branch` drops the branch, never the checkout (PHNX-3503).
+    events: [PostToolUse]
+    matcher: Bash
+    script: post-tool-use/02-worktree-reclaim-nudge.py
+    timeout: 5
   session-start-autosync:
     events:
       - SessionStart

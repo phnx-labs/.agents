@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+### Added
+
+- **Worktrees are reclaimed after merge, on every device (PHNX-3503).** Worktree law created a checkout per change and nothing ever removed it — `gh pr merge --delete-branch` drops the branch and leaves the tree — so merged worktrees accumulated until a box ran out of disk (581 worktrees / ~263 GB measured across the fleet; the release home base wedged at 1.6 GiB free, PHNX-3478). Two layers, both delegating their safety to `agents worktree` (agents-cli 1.22.61+), which fails closed and refuses anything dirty or not fully landed:
+  - `hooks/post-tool-use/02-worktree-reclaim-nudge.py` — advisory PostToolUse nudge after a **successful** PR merge, once per session, pointing at `agents worktree done`. Narrow firing rule: a real `gh pr merge` / REST merge that actually succeeded, so a `gh pr view`, a failed merge, or a `gh pr diff` carrying this hook's own source never trips it.
+  - `routines/worktree-sweep.yml` — daily 04:30 backstop that sweeps each box's own repos. **Deliberately no `devices:` restriction**, exactly like `check-updates.yml`: per §Scheduling & execution singularity an unrestricted routine may fire everywhere when its input is the firing device's own state, and worktree cleanup is device-local. Pinning it to one device would clean that box and leave every other one leaking, which is the failure being fixed.
+
+  The truly-agentic-git-workflow rule's cleanup step was also **wrong**, not just unenforced: it told agents to `worktree remove` *before* `gh pr merge`, which cannot work from inside the worktree and removes the tree while the branch is still unmerged. It now teaches merge-then-reclaim. No permission change was needed — `Bash(agents:*)` already covers the new command, while `git branch -d/-D` stays denied.
+
 ### Fixed
 
 - **`main-branch-guard` no longer treats a local `/tmp` path as a bypass of a primary checkout (PHNX-2732).** The scratchpad allowlist still skips remote `/tmp` (the documented `scp … host:/tmp/` artifact readback) and still allows non-git `/tmp` files, but a primary working tree that happens to live under `/tmp` (throwaway clones, CI fixtures, `mktemp -d` test repos) is denied the same as any other primary tree. 22 write-destination cases in `main-branch-guard_test.sh` were silently allowing because the fixtures themselves are `mktemp` dirs. Source: `rules/subrules/truly-agentic-git-workflow/main-branch-guard.sh`.
