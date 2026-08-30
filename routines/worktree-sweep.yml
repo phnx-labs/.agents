@@ -1,0 +1,70 @@
+# Built-in routine: reclaim PR-bound agent worktrees whose work has landed.
+#
+# Why this exists (PHNX-3503): worktree law puts every tracked change in
+# <repo>/.agents/worktrees/<slug>/, and nothing ever removed one. `gh pr merge
+# --delete-branch` drops the branch and leaves the checkout, so every merged PR
+# leaked a full working tree — usually a few GB of node_modules. Measured
+# 2026-08-30 across the fleet: 581 worktrees / ~263 GB, which took the release
+# home base down to 1.6 GiB free and wedged publishing at phase [5/6]
+# (PHNX-3478). yosemite-m5 was next, holding 71 GB of worktrees against 82 GB
+# free.
+#
+# Design: NO `devices:` restriction — same shape as check-updates.yml, and for
+# the same reason. Per §Scheduling & execution singularity, an unrestricted
+# routine MAY fire on every device when its input is the FIRING DEVICE'S OWN
+# STATE. Worktree cleanup is exactly that: each box sweeps only its own
+# checkouts, so there is no shared queue, no owner pin, and no double-fire. A
+# device-pinned routine would be actively wrong here — it would clean one box
+# and leave the other ten leaking, which is the whole failure being fixed.
+#
+# Runs as a `command:` (plain shell) routine, NOT an LLM agent: the decision is
+# deterministic and already lives in `agents worktree sweep`, so it must not
+# burn tokens or depend on a logged-in account. Fail-soft: one unreadable repo
+# never aborts the rest.
+#
+# Safety is entirely delegated to `agents worktree sweep`, which fails closed —
+# it removes a worktree only when the tree is clean, nothing is missing upstream
+# (judged by patch-id, so squash/rebase merges count as landed), it is not the
+# primary checkout, and it is past the grace window. Unlanded work is reported,
+# never deleted. Requires agents-cli with `agents worktree` (1.22.61+).
+name: worktree-sweep
+schedule: 30 4 * * *        # daily 04:30 (daemon-local time), off the work day
+enabled: true
+timeout: 20m
+command: |
+  set -u
+  # Grace window: a merged worktree survives this long so it is still there for
+  # a follow-up look right after the PR lands.
+  GRACE="${AGENTS_WORKTREE_GRACE_DAYS:-3}"
+
+  command -v agents >/dev/null 2>&1 || { echo "agents CLI not on PATH — skipping"; exit 0; }
+  agents worktree --help >/dev/null 2>&1 || {
+    echo "this agents-cli predates \`agents worktree\` — skipping (upgrade to 1.22.61+)"
+    exit 0
+  }
+
+  total_repos=0
+  total_reclaimed=0
+
+  # Only the roots where checkouts actually live on a fleet box. Bounded depth
+  # so this never walks an entire home directory.
+  for root in "$HOME/src" "$HOME/workspaces" "$HOME/fleet-base" "$HOME/fleet-work"; do
+    [ -d "$root" ] || continue
+    while IFS= read -r wtdir; do
+      repo=$(dirname "$(dirname "$wtdir")")
+      [ -d "$repo/.git" ] || continue
+      total_repos=$((total_repos + 1))
+      out=$(cd "$repo" && agents worktree sweep --older-than "$GRACE" --yes --json 2>/dev/null) || {
+        echo "skip (sweep failed): $repo"
+        continue
+      }
+      n=$(printf '%s' "$out" | grep -o '"reclaimed":\[[^]]*\]' | grep -o '"' | wc -l)
+      n=$((n / 2))
+      if [ "$n" -gt 0 ]; then
+        echo "reclaimed $n worktree(s): $repo"
+        total_reclaimed=$((total_reclaimed + n))
+      fi
+    done < <(find "$root" -maxdepth 6 -type d -path '*/.agents/worktrees' 2>/dev/null)
+  done
+
+  echo "worktree-sweep: $total_reclaimed reclaimed across $total_repos repo(s) on $(hostname -s)"

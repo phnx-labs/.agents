@@ -45,9 +45,25 @@ Multi-agent safety: create worktrees foreground (a backgrounded `worktree add`
 races other agents' index writes); verify the checkout is complete before
 building (`git -C "$WT" status --short | grep '^ D'` must be empty); commit
 with an explicit pathspec (`git commit <path>`, never `add` + bare `commit`) so
-a concurrent agent's staged files aren't swept in. After merge:
-`git -C "$REPO" worktree remove "$WT"` then
-`gh pr merge --rebase --delete-branch`.
+a concurrent agent's staged files aren't swept in.
+
+**Reclaim the worktree after the merge — it is a step, not an afterthought.**
+`gh pr merge --delete-branch` removes the BRANCH and leaves the CHECKOUT on
+disk. Nothing else ever removes it, so every merged PR used to leak a full
+working tree: 581 worktrees / ~263 GB across this fleet, which took the release
+box to 1.6 GiB free and wedged publishing (PHNX-3503, PHNX-3478). Merge first,
+then reclaim:
+
+```bash
+gh pr merge <n> --rebase --delete-branch
+agents worktree done            # from inside the worktree, or `done <slug>`
+```
+
+`agents worktree done` removes the worktree AND its branch in one step, and
+refuses if the tree is dirty or holds commits that never landed — so it is safe
+to run the moment the merge returns. It is the only command that may delete a
+branch (agents hold no `git branch -d/-D`); the authority is the merge, not you.
+`agents worktree list` shows what this box is still holding.
 
 ## Open the PR with evidence attached
 
