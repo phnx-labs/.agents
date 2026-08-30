@@ -152,6 +152,34 @@ check missing "issue comment: don'\''t approve this" \
 check ok "genuine APPROVE that mentions an unrelated negation still clears" \
   '[]' '[{"user":{"login":"reviewer-bot"},"body":"This is not a rubber-stamp; I re-ran the suite. VERDICT: APPROVE"}]'
 
+# PHNX-3118 (#422 review BLOCKER): the negation must attach to the SAME APPROVE
+# token, not match anywhere in the body. A wholesale scan wrongly dropped a real
+# "VERDICT: APPROVE" whenever an incidental "no approval", "without approval",
+# "could not merge", or a resolved past "was not approved" appeared elsewhere —
+# the exact false-negative class the guard must not introduce. Each of these
+# carries a live fresh verdict and MUST clear.
+check ok "APPROVE despite an incidental 'no approval needed' clears" \
+  '[]' '[{"user":{"login":"reviewer-bot"},"body":"No approval needed from anyone else here. VERDICT: APPROVE"}]'
+check ok "APPROVE despite 'without approval issues' clears" \
+  '[]' '[{"user":{"login":"reviewer-bot"},"body":"This ships without approval issues. VERDICT: APPROVE"}]'
+check ok "APPROVE after a resolved 'could not merge' clears" \
+  '[]' '[{"user":{"login":"reviewer-bot"},"body":"Earlier this could not merge due to the null check, but that is fixed now. VERDICT: APPROVE"}]'
+check ok "APPROVE after a resolved past 'was not approved' clears" \
+  '[]' '[{"user":{"login":"reviewer-bot"},"body":"We discussed why this was not approved last round; that is resolved. VERDICT: APPROVE"}]'
+
+# PHNX-3118 (#422 review SHOULD): common refusals that name the APPROVE token
+# directly — the narrow prior regex let these launder into a pass. Each MUST block.
+check missing "issue comment: refuse to APPROVE" \
+  '[]' '[{"user":{"login":"reviewer-bot"},"body":"I refuse to APPROVE until the tests pass."}]'
+check missing "issue comment: decline to APPROVE" \
+  '[]' '[{"user":{"login":"reviewer-bot"},"body":"I decline to APPROVE this."}]'
+check missing "issue comment: holding off on APPROVE" \
+  '[]' '[{"user":{"login":"reviewer-bot"},"body":"Holding off on APPROVE for now."}]'
+check missing "issue comment: not able to APPROVE yet" \
+  '[]' '[{"user":{"login":"reviewer-bot"},"body":"I am not able to APPROVE this yet."}]'
+check missing "issue comment: no APPROVE from me" \
+  '[]' '[{"user":{"login":"reviewer-bot"},"body":"no APPROVE from me."}]'
+
 # PHNX-3118: fenced / inline code. A verdict token that appears ONLY inside a
 # code span/block is being discussed, not cast — it must not clear the guard.
 check missing "issue comment: APPROVE only inside an inline code span" \
