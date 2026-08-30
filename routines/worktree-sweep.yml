@@ -54,6 +54,15 @@ command: |
   total_repos=0
   total_reclaimed=0
 
+  # `command:` routines execute via `/bin/sh -c`, and /bin/sh is dash on the
+  # Linux boxes. Process substitution (`done < <(find ...)`) is a bashism: dash
+  # aborts the whole routine with "Syntax error: redirection unexpected" (exit
+  # 2, zero repos touched). A pipe into `while` is not the fix either — POSIX
+  # runs the loop body in a subshell, so total_repos/total_reclaimed would be
+  # discarded and the summary would always print 0. Materialise the list first.
+  wtlist=$(mktemp) || { echo "could not create temp file — skipping"; exit 0; }
+  trap 'rm -f "$wtlist"' EXIT INT TERM
+
   # DISCOVER the worktree containers on this box; do not guess roots. Measured
   # on yosemite-s1 (2026-08-30), the previous hardcoded list — $HOME/src,
   # $HOME/workspaces, $HOME/fleet-base, $HOME/fleet-work — found 14 containers
@@ -62,11 +71,33 @@ command: |
   # and three of those four roots do not exist anywhere on this fleet. Sweeping
   # 17% of the leak would have read as success while the disk kept filling.
   # Pruning the heavy directories keeps this at ~0.9s across a 3.7T home.
+  find "$HOME" -maxdepth 7 \
+    \( -name node_modules -o -name .cache -o -name .npm -o -name .bun \
+       -o -name Library -o -name .venv -o -name dist -o -name target \) -prune -o \
+    -type d -path '*/.agents/worktrees' -print > "$wtlist" 2>/dev/null
+
   while IFS= read -r wtdir; do
     repo=$(dirname "$(dirname "$wtdir")")
     # `.git` is a directory in a normal checkout but a FILE inside a linked
     # worktree, so test for existence, not for a directory.
     [ -e "$repo/.git" ] || continue
+
+    # Discovery matches directory SHAPE, not "a repo this fleet manages", so a
+    # nightly destructive job would otherwise reach any checkout that happens to
+    # use worktree law — a vendored clone, a fixture, someone else's project.
+    # Two opt-outs, both checked before anything is touched:
+    #   - a `.no-worktree-sweep` marker file at the repo root, and
+    #   - an exact repo path listed in ~/.agents/worktree-sweep.exclude.
+    # This keeps the coverage that discovery bought while leaving a real escape
+    # hatch; the alternative (hardcoded roots) missed 83% of the leak.
+    [ -e "$repo/.no-worktree-sweep" ] && { echo "skip (opted out): $repo"; continue; }
+    if [ -f "$HOME/.agents/worktree-sweep.exclude" ]; then
+      if grep -qxF "$repo" "$HOME/.agents/worktree-sweep.exclude" 2>/dev/null; then
+        echo "skip (excluded): $repo"
+        continue
+      fi
+    fi
+
     total_repos=$((total_repos + 1))
     out=$(cd "$repo" && agents worktree sweep --older-than "$GRACE" --yes --json 2>/dev/null) || {
       echo "skip (sweep failed): $repo"
@@ -87,9 +118,6 @@ command: |
       echo "reclaimed $n worktree(s): $repo"
       total_reclaimed=$((total_reclaimed + n))
     fi
-  done < <(find "$HOME" -maxdepth 7 \
-      \( -name node_modules -o -name .cache -o -name .npm -o -name .bun \
-         -o -name Library -o -name .venv -o -name dist -o -name target \) -prune -o \
-      -type d -path '*/.agents/worktrees' -print 2>/dev/null)
+  done < "$wtlist"
 
   echo "worktree-sweep: $total_reclaimed reclaimed across $total_repos repo(s) on $(hostname -s)"
