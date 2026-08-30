@@ -61,14 +61,14 @@ for t in "$ROOT"/skills/*_test.sh; do
   run_one "$t"
 done
 
-# Guard rules under rules/subrules/*/.
 # Routine helper libs (routines/lib/tests/<name>_test.sh). Not hooks, but the
 # worktree sweep is destructive shell and must carry the same pre-PR gate.
 for t in "$ROOT"/routines/*/tests/*_test.sh; do
   [ -e "$t" ] || continue
-  run_suite "$t"
+  run_one "$t"
 done
 
+# Guard rules under rules/subrules/*/.
 for t in "$ROOT"/rules/subrules/*/*_test.sh; do
   [ -e "$t" ] || continue
   run_one "$t"
