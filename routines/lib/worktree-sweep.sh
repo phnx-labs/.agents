@@ -140,14 +140,28 @@ sweep_repo() {
       continue
     fi
 
-    # No --force: git's own refusal is a second, independent opinion.
+    # No --force, so git refuses a tree with uncommitted changes. That is NOT an
+    # independent check on the thing that matters: worktree removal does not look
+    # at the commit graph, so a branch carrying an unmerged commit is removed
+    # without complaint as long as the tree is clean (verified in review). The
+    # remaining window is an agent COMMITTING between the re-read above and this
+    # call, which leaves a clean tree and would let the deletion below destroy it.
     if git -C "$repo" worktree remove "$wt" >/dev/null 2>&1; then
-      # `-d` refuses a rebase-merged branch (it tests reachability and the SHAs
-      # were rewritten), so fall back to `-D` — only here, where patch-id has
-      # just proven the work landed.
+      # FINAL proof, taken after the worktree is gone so no further commit can
+      # land on it, and read from the BRANCH ref (which survives removal). Only a
+      # branch still provably patch-equivalent upstream is deleted; anything else
+      # is kept as a recoverable ref and reported.
       if [ "$branch" != "HEAD" ]; then
-        git -C "$repo" branch -d "$branch" >/dev/null 2>&1 ||
-          git -C "$repo" branch -D "$branch" >/dev/null 2>&1 || true
+        if final=$(git -C "$repo" cherry "$ref" "$branch" 2>/dev/null) &&
+           { [ -z "$final" ] || [ "$(printf '%s\n' "$final" | grep -c '^+')" -eq 0 ]; }; then
+          # The plain delete refuses a rebase-merged branch (it tests
+          # reachability and the SHAs were rewritten), so fall back to the forced
+          # form — only here, where patch-id has just re-proven the work landed.
+          git -C "$repo" branch -d "$branch" >/dev/null 2>&1 ||
+            git -C "$repo" branch -D "$branch" >/dev/null 2>&1 || true
+        else
+          echo "kept branch (gained unmerged commits during sweep): $branch"
+        fi
       fi
       echo "reclaimed: $name ($repo)"
       swept=$((swept + 1))
@@ -168,9 +182,13 @@ trap 'rm -f "$wtlist" "$allowfile"' EXIT INT TERM
 if [ -f "$HOME/.agents/worktree-sweep.allow" ]; then
   cat "$HOME/.agents/worktree-sweep.allow" > "$allowfile"
 else
+  # ANCHORED to host + exact org. An unanchored '[:/]org/' matches the org as ANY
+  # path segment, so `https://gitlab.example.com/mirror-of/phnx-labs/x.git` — an
+  # unrelated host where phnx-labs is a nested directory — passed the gate and was
+  # swept (demonstrated in review). Match the three real remote spellings only.
   printf '%s\n' \
-    '[:/]phnx-labs/' \
-    '[:/]muqsitnawaz/' > "$allowfile"
+    '^(https://github\.com/|git@github\.com:|ssh://git@github\.com/)phnx-labs/' \
+    '^(https://github\.com/|git@github\.com:|ssh://git@github\.com/)muqsitnawaz/' > "$allowfile"
 fi
 
 # DISCOVER the worktree containers; do not guess roots. Measured on yosemite-s1
