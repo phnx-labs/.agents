@@ -10,11 +10,21 @@
 set -u
 HERE="$(cd "$(dirname "$0")" && pwd)"
 SWEEP="$HERE/../worktree-sweep.sh"
+# Production runs this via `sh` (dash on the Linux boxes), NOT bash. An earlier
+# revision passed this suite under bash while being a syntax error under dash —
+# `done < <(find ...)` — so the routine had never run on any box. Drive it
+# through the real interpreter, and pin that both parse it.
+SH=$(command -v dash 2>/dev/null || command -v sh)
 pass=0; fail=0
 
 ok()   { echo "ok   - $1"; pass=$((pass+1)); }
 bad()  { echo "FAIL - $1"; fail=$((fail+1)); }
 check(){ if [ "$2" = "$3" ]; then ok "$1"; else bad "$1: wanted '$3', got '$2'"; fi; }
+
+# The interpreter gate comes FIRST: a syntax error under the production shell
+# makes every behaviour case below meaningless.
+if "$SH" -n "$SWEEP" 2>/dev/null; then ok "parses under the production shell ($SH)"; else bad "SYNTAX ERROR under $SH — the routine could never run"; fi
+if bash -n "$SWEEP" 2>/dev/null; then ok "parses under bash"; else bad "syntax error under bash"; fi
 
 G=(-c user.email=t@t.dev -c user.name=t -c init.defaultBranch=main)
 git_q() { git "${G[@]}" "$@" >/dev/null 2>&1; }
@@ -87,7 +97,7 @@ age "$REPO/.agents/worktrees/fix-110"
 age "$REPO/.agents/worktrees/fix-1103"
 
 # ---------------------------------------------------------------- dry run ---
-out=$(bash "$SWEEP" --root "$BASE" --grace-days 3 --dry-run 2>&1)
+out=$("$SH" "$SWEEP" --home "$BASE" --grace-days 3 --dry-run 2>&1)
 
 case "$out" in *"would reclaim: merged"*) ok "dry-run reclaims the rebase-merged worktree (patch-id, not ancestry)";;
   *) bad "dry-run missed the rebase-merged worktree: $out";; esac
@@ -102,7 +112,7 @@ case "$out" in *"held (within-grace): fresh"*) ok "dry-run holds a worktree insi
 [ -d "$REPO/.agents/worktrees/merged" ] && ok "dry-run removed nothing" || bad "dry-run deleted a worktree"
 
 # ------------------------------------------------------------- real sweep ---
-out=$(bash "$SWEEP" --root "$BASE" --grace-days 3 2>&1)
+out=$("$SH" "$SWEEP" --home "$BASE" --grace-days 3 2>&1)
 
 [ ! -d "$REPO/.agents/worktrees/merged" ] && ok "merged worktree removed" || bad "merged worktree survived"
 [ -d "$REPO/.agents/worktrees/unpushed" ] && ok "UNPUSHED WORK PRESERVED" || bad "unpushed work was destroyed"
@@ -138,7 +148,7 @@ fi
 new_wt broken feat/broken
 age "$REPO/.agents/worktrees/broken"
 mv "$REPO/.agents/worktrees/broken/.git" "$REPO/.agents/worktrees/broken/.git-hidden"
-out=$(bash "$SWEEP" --root "$BASE" --grace-days 3 2>&1)
+out=$("$SH" "$SWEEP" --home "$BASE" --grace-days 3 2>&1)
 if [ -d "$REPO/.agents/worktrees/broken" ]; then
   ok "unreadable git state HELD, not swept (fails closed)"
 else
@@ -153,7 +163,7 @@ echo x > "$NOREMOTE/f.txt"; git_q -C "$NOREMOTE" add .; git_q -C "$NOREMOTE" com
 mkdir -p "$NOREMOTE/.agents/worktrees"
 git_q -C "$NOREMOTE" worktree add -b feat/x "$NOREMOTE/.agents/worktrees/x"
 age "$NOREMOTE/.agents/worktrees/x"
-out=$(bash "$SWEEP" --root "$BASE" --grace-days 3 2>&1)
+out=$("$SH" "$SWEEP" --home "$BASE" --grace-days 3 2>&1)
 if [ -d "$NOREMOTE/.agents/worktrees/x" ]; then
   ok "repo with no default ref is skipped, not swept"
 else
