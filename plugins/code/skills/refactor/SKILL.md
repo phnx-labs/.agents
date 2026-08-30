@@ -495,7 +495,7 @@ already-wrong doc is the banned stop:
 | Tier | Contents | Action |
 |---|---|---|
 | **Reversible** | doc-drift fixes, dead weight with proven zero callers, a one-caller indirection inlined, finishing an idiom migration already at ~90% | **Land it.** No checkpoint. |
-| **Structural** | every one of the seven architectural moves | **Present the figures, get the pick**, then land. |
+| **Structural** | every one of the eight architectural moves | **Present the figures, get the pick**, then land. |
 
 The structural checkpoint is a genuine scope choice — which parts of the system get restructured
 is the user's call (F1's design-choice exemption), and a package extraction against a

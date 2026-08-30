@@ -25,7 +25,8 @@
 // density is therefore NOT a target to minimize — it is a map to where design prose
 // is mislocated. Reporting the candidates, never auto-cutting, is the whole contract.
 //
-// Languages: Go, TS/TSX, JS/JSX. Others counted in meta.skipped_files.
+// Languages: Go, TS/TSX, JS/JSX (the extensions in CODE_EXT). Other file types
+// are not walked; meta.files is the count actually scanned.
 //
 // Usage: bun comments.ts <run-dir> [--scope <path>] [--depth N] [--min-block N]
 
@@ -74,15 +75,31 @@ function scan(path: string) {
   const lines = text.split("\n");
   lines.forEach((line, idx) => {
     const s = line.trim();
-    let isComment = false;
-    if (inBlock) { isComment = true; comment++; if (s.includes("*/")) inBlock = false; }
-    else if (s === "") { /* blank: neither code nor comment */ }
-    else if (s.startsWith("//") || s.startsWith("#")) { isComment = true; comment++; }
-    else if (s.startsWith("/*")) { isComment = true; comment++; if (!s.slice(2).includes("*/")) inBlock = true; }
-    else if (s.startsWith("*")) { isComment = true; comment++; } // JSDoc continuation
-    else { code++; }
-    if (isComment) { if (run === 0) runStart = idx + 1; run++; }
-    else if (s !== "") { if (run >= minBlock) blocks.push({ start: runStart, lines: run }); run = 0; }
+    // Three-way: "comment" (only-comment line), "code" (any code token), "blank".
+    // A JSDoc continuation (` * foo`) is handled by the inBlock branch — we do NOT
+    // treat a leading `*` as a comment on its own (that is a Go pointer deref), and
+    // a leading `#` is a TS/JS private field, not a comment (Go/TS/JS have no `#`
+    // comments). Code after a block close (`*/ x := 1`) or a fully inline block
+    // (`/* n */ x := 1`) classifies the line as code, not comment.
+    let cls: "comment" | "code" | "blank";
+    if (inBlock) {
+      const close = s.indexOf("*/");
+      if (close >= 0) { inBlock = false; cls = s.slice(close + 2).trim() ? "code" : "comment"; }
+      else cls = "comment";
+    } else if (s === "") {
+      cls = "blank";
+    } else if (s.startsWith("//")) {
+      cls = "comment";
+    } else if (s.startsWith("/*")) {
+      const close = s.indexOf("*/", 2);
+      if (close >= 0) cls = s.slice(close + 2).trim() ? "code" : "comment";
+      else { inBlock = true; cls = "comment"; }
+    } else {
+      cls = "code";
+    }
+    if (cls === "comment") { comment++; if (run === 0) runStart = idx + 1; run++; }
+    else if (cls === "code") { code++; if (run >= minBlock) blocks.push({ start: runStart, lines: run }); run = 0; }
+    // blank: neither counts, and does NOT break an essay run
   });
   if (run >= minBlock) blocks.push({ start: runStart, lines: run });
   return { code, comment, blocks };
