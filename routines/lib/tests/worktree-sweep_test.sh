@@ -96,6 +96,13 @@ new_wt fix-1103 feat/fix-1103
 age "$REPO/.agents/worktrees/fix-110"
 age "$REPO/.agents/worktrees/fix-1103"
 
+# The allowlist matches on remote.origin.url, so the in-scope fixture needs an
+# in-scope URL — but only NOW, after every fixture push is done: rewriting it
+# earlier points `push origin main` at a nonexistent GitHub repo, main never
+# advances, and the "merged" fixture stops being merged. Remote-tracking refs
+# already fetched stay valid, which is all the sweep reads.
+git_q -C "$REPO" remote set-url origin "git@github.com:phnx-labs/fixture-repo.git"
+
 # ---------------------------------------------------------------- dry run ---
 out=$("$SH" "$SWEEP" --home "$BASE" --grace-days 3 --dry-run 2>&1)
 
@@ -124,7 +131,7 @@ out=$("$SH" "$SWEEP" --home "$BASE" --grace-days 3 2>&1)
 if [ -z "$(git "${G[@]}" -C "$REPO" branch --list feat/merged)" ]; then
   ok "merged branch deleted (the -D fallback fired after patch-id proof)"
 else
-  bad "merged branch survived — `-d` refused it and the fallback did not fire"
+  bad 'merged branch survived: -d refused it and the -D fallback did not fire'
 fi
 # The branch holding unpushed work must still exist.
 if [ -n "$(git "${G[@]}" -C "$REPO" branch --list feat/unpushed)" ]; then
@@ -168,6 +175,44 @@ if [ -d "$NOREMOTE/.agents/worktrees/x" ]; then
   ok "repo with no default ref is skipped, not swept"
 else
   bad "swept a repo with no default ref to compare against"
+fi
+
+# --- BLOCKER A: allowlist gates the blast radius --------------------------
+# Discovery matches directory SHAPE, so without an allowlist this reaches any
+# checkout using worktree law — including personal repos. Proven on the real box:
+# $HOME/.agents (muqsitnawaz/.agents) has a clean 48-day-old `blog-engine`
+# worktree. A merged+clean+aged worktree in an OUT-OF-SCOPE repo must survive.
+OUTSIDE="$BASE/personal"
+git_q init --bare -b main "$BASE/personal-origin.git"
+git_q clone "$BASE/personal-origin.git" "$OUTSIDE"
+git_q -C "$OUTSIDE" remote set-url origin "git@github.com:someone-else/personal-blog.git"
+echo hi > "$OUTSIDE/a.txt"; git_q -C "$OUTSIDE" add .; git_q -C "$OUTSIDE" commit -m init
+mkdir -p "$OUTSIDE/.agents/worktrees"
+git_q -C "$OUTSIDE" worktree add -b feat/blog "$OUTSIDE/.agents/worktrees/blog-engine"
+age "$OUTSIDE/.agents/worktrees/blog-engine"
+out=$("$SH" "$SWEEP" --home "$BASE" --grace-days 3 2>&1)
+if [ -d "$OUTSIDE/.agents/worktrees/blog-engine" ]; then
+  ok "OUT-OF-SCOPE repo untouched (allowlist gates blast radius)"
+else
+  bad "swept a repo outside the allowlist — personal work destroyed"
+fi
+case "$out" in *"not in allowlist"*) ok "out-of-scope repo is reported, not silently skipped";;
+  *) bad "no allowlist message for the out-of-scope repo: $out";; esac
+
+# A DotAgents config repo is never swept even when its org IS allowlisted.
+CFG="$BASE/dotagents"
+git_q init --bare -b main "$BASE/dotagents-origin.git"
+git_q clone "$BASE/dotagents-origin.git" "$CFG"
+git_q -C "$CFG" remote set-url origin "git@github.com:muqsitnawaz/.agents.git"
+echo x > "$CFG/f.txt"; git_q -C "$CFG" add .; git_q -C "$CFG" commit -m init
+mkdir -p "$CFG/.agents/worktrees"
+git_q -C "$CFG" worktree add -b feat/cfg "$CFG/.agents/worktrees/cfgwt"
+age "$CFG/.agents/worktrees/cfgwt"
+out=$("$SH" "$SWEEP" --home "$BASE" --grace-days 3 2>&1)
+if [ -d "$CFG/.agents/worktrees/cfgwt" ]; then
+  ok "DotAgents config repo untouched despite allowlisted org"
+else
+  bad "swept a DotAgents config repo"
 fi
 
 echo "---"
