@@ -241,6 +241,57 @@ else
   bad "swept a DotAgents config repo"
 fi
 
+# --- the branch-delete RACE the final re-check exists to close ---------------
+# `git worktree remove` (no --force) refuses only on UNCOMMITTED changes; it never
+# looks at the commit graph. So an agent that COMMITS between the pre-removal
+# re-check and the removal leaves a clean tree, the removal succeeds, and an
+# unconditional delete would then destroy that commit.
+#
+# Reproduced deterministically with a `git` shim on PATH that lands a commit on
+# the branch at the instant the sweep calls `worktree remove`, then forwards to
+# real git. Without this case the guard can be reverted to an unconditional
+# delete and the whole suite still passes (verified in review) — i.e. the fix
+# would have no regression protection at all.
+RACE_REPO="$BASE/racerepo"
+git_q init --bare -b main "$BASE/race-origin.git"
+git_q clone "$BASE/race-origin.git" "$RACE_REPO"
+echo r > "$RACE_REPO/f.txt"; git_q -C "$RACE_REPO" add .; git_q -C "$RACE_REPO" commit -m init
+git_q -C "$RACE_REPO" push -u origin main
+mkdir -p "$RACE_REPO/.agents/worktrees"
+git_q -C "$RACE_REPO" worktree add -b feat/race "$RACE_REPO/.agents/worktrees/racewt" origin/main
+age "$RACE_REPO/.agents/worktrees/racewt"
+git_q -C "$RACE_REPO" remote set-url origin "git@github.com:phnx-labs/race-fixture.git"
+
+SHIMDIR="$BASE/shim"; mkdir -p "$SHIMDIR"
+REALGIT=$(command -v git)
+cat > "$SHIMDIR/git" <<SHIM
+#!/bin/sh
+# On the removal of the race worktree ONLY, land a commit on its branch first —
+# exactly the window the final re-check must catch. Everything else passes through.
+for a in "\$@"; do
+  if [ "\$a" = "$RACE_REPO/.agents/worktrees/racewt" ]; then
+    case " \$* " in
+      *" worktree remove "*)
+        "$REALGIT" -C "$RACE_REPO/.agents/worktrees/racewt" \
+          -c user.email=t@t.dev -c user.name=t commit --allow-empty -q -m "race commit" 2>/dev/null
+        ;;
+    esac
+  fi
+done
+exec "$REALGIT" "\$@"
+SHIM
+chmod +x "$SHIMDIR/git"
+
+out=$(PATH="$SHIMDIR:$PATH" "$SH" "$SWEEP" --home "$BASE" --grace-days 3 2>&1)
+if [ -n "$(git "${G[@]}" -C "$RACE_REPO" branch --list feat/race)" ]; then
+  ok "RACE: branch that gained a commit mid-sweep is KEPT, not deleted"
+else
+  bad "RACE: branch deleted despite gaining an unmerged commit — work destroyed"
+fi
+case "$out" in *"gained unmerged commits during sweep"*)
+    ok "RACE: the kept branch is reported, not silently skipped";;
+  *) bad "RACE: no 'gained unmerged commits' message: $out";; esac
+
 echo "---"
 echo "worktree-sweep: $pass passed, $fail failed"
 [ "$fail" -eq 0 ]
