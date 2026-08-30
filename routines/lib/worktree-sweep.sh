@@ -159,6 +159,20 @@ sweep_repo() {
   git -C "$repo" worktree prune >/dev/null 2>&1 || true
 }
 
+# Which repos this routine may touch, as extended-regex patterns matched against
+# `remote.origin.url`. Defaults to the orgs this fleet manages; override or extend
+# with ~/.agents/worktree-sweep.allow (one pattern per line). Anything unmatched is
+# reported and never swept, so a personal or vendored checkout is safe by default.
+allowfile=$(mktemp) || { echo "could not create temp file — skipping"; exit 0; }
+trap 'rm -f "$wtlist" "$allowfile"' EXIT INT TERM
+if [ -f "$HOME/.agents/worktree-sweep.allow" ]; then
+  cat "$HOME/.agents/worktree-sweep.allow" > "$allowfile"
+else
+  printf '%s\n' \
+    '[:/]phnx-labs/' \
+    '[:/]muqsitnawaz/' > "$allowfile"
+fi
+
 # DISCOVER the worktree containers; do not guess roots. Measured on yosemite-s1
 # (2026-08-30), a hardcoded list of $HOME/{src,workspaces,fleet-base,fleet-work}
 # found 14 containers where discovery finds 82 — and three of those four roots
@@ -177,17 +191,33 @@ while IFS= read -r wtdir; do
   # worktree, so test existence, not directory-ness, or nested cases are skipped.
   [ -e "$repo/.git" ] || continue
 
-  # Discovery matches directory SHAPE, not "a repo this fleet manages", so a
-  # nightly destructive job would otherwise reach any checkout that happens to
-  # use worktree law — a vendored clone, a fixture, someone else's project. Two
-  # opt-outs, both checked before anything is touched. This keeps the coverage
-  # discovery bought while leaving a real escape hatch.
-  [ -e "$repo/.no-worktree-sweep" ] && { echo "skip (opted out): $repo"; continue; }
-  if [ -f "$HOME/.agents/worktree-sweep.exclude" ] &&
-     grep -qxF "$repo" "$HOME/.agents/worktree-sweep.exclude" 2>/dev/null; then
-    echo "skip (excluded): $repo"
-    continue
+  # Discovery matches directory SHAPE, not "a repo this fleet manages", so
+  # without a gate a nightly destructive job reaches ANY checkout using worktree
+  # law — which this repo's own rule makes the universal agent convention, not a
+  # fleet-specific one. Proven on this box: discovery finds
+  # $HOME/.agents (muqsitnawaz/.agents, a personal config repo) and its 48-day-old
+  # `blog-engine` worktree. The old hardcoded roots avoided that by accident, so
+  # widening coverage without this gate would be a REGRESSION in blast radius.
+  #
+  # An opt-out marker is the wrong default for a destructive job: it deletes
+  # first in anything nobody thought to mark. This is an ALLOWLIST — a repo is
+  # swept only if its origin matches, everything else is reported and left alone.
+  origin_url=$(git -C "$repo" config --get remote.origin.url 2>/dev/null || echo '')
+  if [ -z "$origin_url" ]; then
+    echo "skip (no origin): $repo"; continue
   fi
+  # DotAgents config repos are hand-managed and their worktrees are not build
+  # output; never sweep them even though they match the org allowlist.
+  case $origin_url in
+    */.agents|*/.agents.git|*/.agents-system|*/.agents-system.git)
+      echo "skip (DotAgents config repo): $repo"; continue ;;
+  esac
+  if ! printf '%s\n' "$origin_url" | grep -qEf "$allowfile" 2>/dev/null; then
+    echo "skip (origin not in allowlist): $repo"; continue
+  fi
+  # Belt and braces on top of the allowlist, for a repo that is in scope but that
+  # someone wants left alone.
+  [ -e "$repo/.no-worktree-sweep" ] && { echo "skip (opted out): $repo"; continue; }
 
   sweep_repo "$repo"
 done < "$wtlist"
