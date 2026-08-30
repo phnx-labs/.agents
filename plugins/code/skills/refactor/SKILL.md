@@ -114,6 +114,13 @@ already repeated N times with one meaning. Rung 5 without that evidence is specu
 A flag you can remove beats a paragraph explaining it. A command nested under the noun
 that owns it beats a mention in a reference table.
 
+This is about *not writing new docs to excuse a fixable surface* — it does not conflict with
+move 8. Move 8 relocates prose that ALREADY EXISTS (as an inline comment essay) to where it
+is discoverable, and adds no new surface to the code. Writing a doc to explain a removable
+flag is the anti-pattern; giving a subsystem's real design narrative a home in `docs/`
+instead of burying it in a file header is the opposite — it makes the existing knowledge
+findable. Never reach for a doc to paper over a smell you could delete.
+
 ## Phase 0 — Scope, and read the docs as claims
 
 | `$ARGUMENTS` | Effect |
@@ -147,7 +154,7 @@ Write `$RUN_DIR/claims.json`: `{id, claim, source_file, source_line, kind, check
 
 ## Phase 1 — Measure
 
-Four scripts plus one reused skill. Run concurrently.
+Five scripts plus one reused skill. Run concurrently.
 
 ```bash
 # Bind everything the passes need. SCOPE/DEPTH/DAYS come from $ARGUMENTS (Phase 0
@@ -164,6 +171,7 @@ bun "$SKILL_DIR/modules.ts"  "$RUN_DIR" --scope "$SCOPE" --depth "$DEPTH" > "$RU
 bun "$SKILL_DIR/exposure.ts" "$RUN_DIR" --days "$DAYS" --scope "$SCOPE"   > "$RUN_DIR/exposure.json" &
 bun "$SKILL_DIR/surface.ts"  "$RUN_DIR" "${SURFACE_ARGS[@]}"             > "$RUN_DIR/surface.json" &
 bun "$SKILL_DIR/patterns.ts" "$RUN_DIR" --scope "$SCOPE"                 > "$RUN_DIR/patterns.json" &
+bun "$SKILL_DIR/comments.ts" "$RUN_DIR" --scope "$SCOPE" --depth "$DEPTH" > "$RUN_DIR/comments.json" &
 wait
 # then, for the file-level defect passes — reuse, never reimplement:
 #   /code:review <scope>     (Mode C → findings.json)
@@ -293,6 +301,26 @@ Record `{concept, names: [...], sites_per_name, evidence: [file:line], same_deci
 `same_decision: no` means they are genuinely different things that happen to sound alike —
 **drop it**, do not merge.
 
+### 1f. `comments.ts` — architecture prose that is mislocated, not the comment count
+
+The module graph is blind to the 12–30% of non-blank lines that are comments. `comments.ts`
+reports, per module: `comment_pct`, `code_test_ratio`, and — the actual signal —
+`essay_blocks`: contiguous comment runs ≥ `--min-block` (default 15) lines, each with
+`file:line` and size. A file-head or subsystem design narrative written as a comment block
+(data flow, storage model, protocol, isolation model, "why it's built this way") is prose
+that rots next to code and is undiscoverable; it belongs in `docs/`. That is the trigger for
+move 8.
+
+**`comment_pct` is a map, not a target — this is the load-bearing caveat.** Most inline
+comments are load-bearing and STAY: per-symbol API docs (godoc/JSDoc on an exported name),
+and point-of-use gotchas / security invariants / ticket-anchored WHYs on the line they
+explain. Only the multi-line *essays* relocate. A module can sit at 30% comments and be
+correctly documented; another at 5% can be opaque. **Never propose "cut comments to N%"** —
+that deletes the gotchas. The number a docs-relocation move moves is `essay_lines`, and it
+moves it out of code and *into* `docs/`, not out of existence. `code_test_ratio` is
+context, not a grade: a low ratio can hide skipped or dead tests (route real test-quality
+questions to `/code:review`, which reads the test bodies).
+
 ## Phase 2 — Check the code against the claims
 
 Run each claim's check; record the command and its real output.
@@ -316,7 +344,7 @@ an architectural move. Treat it as both.
 
 ## Phase 3 — Classify the moves
 
-Seven architectural classes. Each finding names the move, not the mess.
+Eight architectural classes. Each finding names the move, not the mess.
 
 | # | Move | Trigger in the evidence | What it costs an agent today |
 |---|---|---|---|
@@ -327,6 +355,16 @@ Seven architectural classes. Each finding names the move, not the mess.
 | 5 | **Reorganize the tree to match the architecture** | flat dirs of 100+ siblings, `utils/`-style buckets, tests far from source, kind-based instead of domain grouping | "Where does this go?" has no inferable answer, so every agent guesses differently |
 | 6 | **Shrink the public surface** | `surface.ts`: undocumented, untested, orphan, self-referential paths | "Which command does this?" is a search problem |
 | 7 | **Give the concept a contract** (provider pattern) | `patterns.ts`: a family the code branches on by name, with high arms-per-member, no contract or a contract everything bypasses | To add or change one variant it must find and edit N scattered branches, and nothing tells it which ones it missed |
+| 8 | **Relocate architecture prose into `docs/`** | `comments.ts`: `essay_blocks` — a multi-line design narrative (data flow, storage, protocol, isolation model) living in a comment block, especially at a file head | To learn how the subsystem works it reads the source; the design isn't with the other docs, and the essay silently rots as the code moves |
+
+Move 8 is the cheapest high-clarity win and the lowest-risk (comment + markdown only), but it
+is not a license to strip comments. **Relocate, don't delete:** each essay is lifted into
+`docs/NN-<topic>.md` at staff level — architecture, storage, DB, protocols, boundaries,
+invariants, sourced from real symbols — and the inline block is replaced by a 2–5 line
+pointer plus whatever point-of-use gotchas were interleaved. Augment an existing module doc
+when the topic already has one; add a new `docs/` file only for a genuinely new topic. Keep
+inline: all per-symbol API docs and point-of-use gotchas/invariants (this is bias 3, read
+carefully). A block you cannot confidently call a standalone essay stays inline.
 
 Hygiene tier, only where it blocks a move above or a claim-check surfaced it: lying
 context · dead weight that looks live · a file too big to hold · N idioms for one operation.
@@ -341,7 +379,11 @@ behavior is unchanged. **Drop anything you cannot quote.**
 
 Harm: cycle in the graph 5 · redundant concept 5 · **missing contract 5 · bypassed
 contract 4** · missing layer 4 · undrawn boundary 4 · tree mismatch 3 · surface sprawl 3 ·
-package extraction 3 · hygiene 1-2.
+package extraction 3 · mislocated architecture prose 2 · hygiene 1-2.
+
+Move 8 scores low on harm but is weighted by exposure like any other, so a design essay
+buried in a high-fan-in module (the one every agent reads) can out-rank a structural move in
+a module nothing touches — which is correct: the cost is paid per reader.
 
 A missing contract scores with the worst because it is the defect that makes every
 *future* change to that family expensive, and it is the one an agent is most likely to
@@ -483,6 +525,15 @@ The behavior-preservation contract:
 - **Re-run `modules.ts` after each structural PR merges** and check the graph moved the way
   the AFTER figure said. If it didn't, the figure was wrong — say so, fix it, and correct
   the plan before the next PR builds on a false premise.
+- **A move-8 PR is comment + markdown only — prove it mechanically.** The diff must add/edit
+  `docs/*.md` and the pointer comments and nothing else: every changed line in a source file
+  is a comment line, no code token moves. Verify it (strip trailing comments from each `-`/`+`
+  source line and assert the code prefix is unchanged; a filtered diff of non-comment source
+  lines must be empty) and quote that the code prefix set is identical before/after. Then the
+  canonical test is a compile/typecheck (`go vet ./…`, `tsc --noEmit`) — comments and markdown
+  cannot change behavior, and a green compile plus the empty-non-comment-diff IS the proof.
+  Verify the new doc's claims against real symbols; a wrong architecture doc is lying context,
+  the exact defect this skill removes — worse than the buried comment it replaced.
 
 Drive each PR the way `/code:loop` does: push, non-author review, fix CI, merge on green.
 Refactor PRs conflict with in-flight work more than feature PRs — check `gh pr list` and
@@ -500,12 +551,19 @@ Re-run all three scripts after the merges; write `$RUN_DIR/scorecard.json`:
   "families": 94, "contract_exemplars": 3, "contract_bypassed": 13, "contract_missing": 40,
   "collapsible_arms": 1623,
   "claims_checked": 34, "claims_drifted": 9,
-  "files_over_1500_loc": 41, "top_file_loc": 6142 }
+  "files_over_1500_loc": 41, "top_file_loc": 6142,
+  "essay_blocks": 59, "essay_lines": 1229, "comment_pct_p50": 14 }
 ```
 
 Diff against the newest prior `scorecard.json` under `.agents/artifacts/*/refactor-*/` and
 report the delta in one line: `cycles 1→0 · largest cycle 38→0 · max fan-in 1095→420 ·
-collapsible arms 1623→410 · surface 337→266 · drifted claims 9→2`.
+collapsible arms 1623→410 · surface 337→266 · essay lines 4554→1229 · drifted claims 9→2`.
+
+For a run that landed a move 8, also carry a **per-module before/after** of `comments.json`
+(module · `comment_pct` before→after · `essay_lines` before→after · new `docs/` files) — the
+same three-places-one-value discipline as the figures. Note plainly when `comment_pct` barely
+moved while `essay_lines` fell: that is the correct outcome (the essays left, the per-symbol
+docs stayed), not underperformance — do not report it as a density miss.
 
 **The trend is the product.** One run tells you what is wrong; the series tells you whether
 the structure is outrunning the decay as the product grows — which is the only measure of
