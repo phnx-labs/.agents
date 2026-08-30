@@ -102,8 +102,11 @@ def main() -> int:
     # A non-zero exit, an explicit error flag, or failure wording all mean the
     # merge did not happen — stay quiet rather than nudging about a tree the
     # agent still needs.
+    # Normalise before comparing. `isinstance(exit_code, int)` silently SKIPPED
+    # the check for any other type, so a harness serialising it as the string "1"
+    # bypassed this gate entirely and the nudge fired on a failed merge.
     exit_code = response.get("exit_code", response.get("exitCode"))
-    if isinstance(exit_code, int) and exit_code != 0:
+    if exit_code is not None and str(exit_code).strip() not in ("0", ""):
         return 0
     if response.get("is_error") or response.get("isError"):
         return 0

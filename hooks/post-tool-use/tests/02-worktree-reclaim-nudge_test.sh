@@ -71,6 +71,22 @@ expect "grep of a file mentioning gh pr merge" silent \
 expect "cat of a changelog naming the merge" silent \
   "cat CHANGELOG.md" "- fires after gh pr merge; the PR was merged" 0
 
+# --- a STRING exit code must still gate ------------------------------------
+# `isinstance(exit_code, int)` skipped the check for any other type, so a harness
+# serialising exit_code as "1" fired the nudge on a FAILED merge (found in review).
+out=$(python3 -c '
+import json
+print(json.dumps({"tool_name":"Bash","session_id":"wt-strexit-'"$$"'",
+  "tool_input":{"command":"gh pr merge 9 --rebase"},
+  "tool_response":{"stdout":"merged","stderr":"","exit_code":"1"}}))' | python3 "$HOOK" 2>/dev/null)
+if [ -z "$out" ]; then echo "ok   - string non-zero exit code still gates"; pass=$((pass+1)); else echo "FAIL - string exit code bypassed the gate"; fail=$((fail+1)); fi
+out=$(python3 -c '
+import json
+print(json.dumps({"tool_name":"Bash","session_id":"wt-strexit0-'"$$"'",
+  "tool_input":{"command":"gh pr merge 9 --rebase"},
+  "tool_response":{"stdout":"Merged pull request #9","stderr":"","exit_code":"0"}}))' | python3 "$HOOK" 2>/dev/null)
+if [ -n "$out" ]; then echo "ok   - string zero exit code still fires"; pass=$((pass+1)); else echo "FAIL - string 0 wrongly suppressed the nudge"; fail=$((fail+1)); fi
+
 # --- once per session ------------------------------------------------------
 sid="wt-nudge-once-$$"
 one=$(python3 -c '

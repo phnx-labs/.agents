@@ -56,14 +56,13 @@ then reclaim:
 
 ```bash
 gh pr merge <n> --rebase --delete-branch
-agents worktree done            # from inside the worktree, or `done <slug>`
+git -C "$REPO" worktree remove "$WT"
 ```
 
-`agents worktree done` removes the worktree AND its branch in one step, and
-refuses if the tree is dirty or holds commits that never landed — so it is safe
-to run the moment the merge returns. It is the only command that may delete a
-branch (agents hold no `git branch -d/-D`); the authority is the merge, not you.
-`agents worktree list` shows what this box is still holding.
+`git worktree remove` without `--force` refuses a tree with uncommitted changes,
+so it is safe to run the moment the merge returns. Leave the local branch ref
+alone — you have no `git branch -d/-D` permission, by design, and the nightly
+`worktree-sweep` routine reclaims stragglers and branch refs on every device.
 
 ## Open the PR with evidence attached
 

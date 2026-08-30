@@ -185,11 +185,17 @@ fi
 OUTSIDE="$BASE/personal"
 git_q init --bare -b main "$BASE/personal-origin.git"
 git_q clone "$BASE/personal-origin.git" "$OUTSIDE"
-git_q -C "$OUTSIDE" remote set-url origin "git@github.com:someone-else/personal-blog.git"
 echo hi > "$OUTSIDE/a.txt"; git_q -C "$OUTSIDE" add .; git_q -C "$OUTSIDE" commit -m init
+# PUSH FIRST, so origin/main exists and default_ref() succeeds. Without this the
+# repo is skipped as "no default ref" before the allowlist is ever consulted, and
+# the assertion below passes even with the allowlist disabled — it would be
+# testing nothing (caught in review).
+git_q -C "$OUTSIDE" push -u origin main
 mkdir -p "$OUTSIDE/.agents/worktrees"
 git_q -C "$OUTSIDE" worktree add -b feat/blog "$OUTSIDE/.agents/worktrees/blog-engine"
 age "$OUTSIDE/.agents/worktrees/blog-engine"
+# Only NOW make it out-of-scope, so the allowlist is the sole reason it survives.
+git_q -C "$OUTSIDE" remote set-url origin "git@github.com:someone-else/personal-blog.git"
 out=$("$SH" "$SWEEP" --home "$BASE" --grace-days 3 2>&1)
 if [ -d "$OUTSIDE/.agents/worktrees/blog-engine" ]; then
   ok "OUT-OF-SCOPE repo untouched (allowlist gates blast radius)"
@@ -198,6 +204,26 @@ else
 fi
 case "$out" in *"not in allowlist"*) ok "out-of-scope repo is reported, not silently skipped";;
   *) bad "no allowlist message for the out-of-scope repo: $out";; esac
+
+# An allowlisted org appearing as a NESTED path segment on an unrelated host must
+# NOT match. An unanchored '[:/]phnx-labs/' let
+# https://gitlab.example.com/mirror-of/phnx-labs/x.git through, and the worktree
+# was destructively swept (demonstrated in review).
+NESTED="$BASE/nested"
+git_q init --bare -b main "$BASE/nested-origin.git"
+git_q clone "$BASE/nested-origin.git" "$NESTED"
+echo n > "$NESTED/f.txt"; git_q -C "$NESTED" add .; git_q -C "$NESTED" commit -m init
+git_q -C "$NESTED" push -u origin main
+mkdir -p "$NESTED/.agents/worktrees"
+git_q -C "$NESTED" worktree add -b feat/n "$NESTED/.agents/worktrees/nested-victim"
+age "$NESTED/.agents/worktrees/nested-victim"
+git_q -C "$NESTED" remote set-url origin "https://gitlab.example.com/mirror-of/phnx-labs/x.git"
+out=$("$SH" "$SWEEP" --home "$BASE" --grace-days 3 2>&1)
+if [ -d "$NESTED/.agents/worktrees/nested-victim" ]; then
+  ok "org as a NESTED path segment on another host is denied (anchored allowlist)"
+else
+  bad "allowlist bypassed by a nested org path — repo swept"
+fi
 
 # A DotAgents config repo is never swept even when its org IS allowlisted.
 CFG="$BASE/dotagents"

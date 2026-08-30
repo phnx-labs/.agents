@@ -24,34 +24,28 @@
 # shared queue, no owner pin, and no double-fire. Pinning it to one device would
 # clean that box and leave the other ten leaking — the failure being fixed.
 #
-<<<<<<< HEAD
-# First run is NOT unattended: before this routine was enabled, the sweep was
-# driven by hand across the fleet — `--dry-run` first, output inspected, then
-# the real pass — so the nightly fire operates on an already-reconciled fleet
-# rather than making its first 800-worktree decision alone at 04:30.
+# First run is NOT unattended: the sweep is driven by hand across the fleet
+# (`--dry-run` first, output inspected, then the real pass) before this routine is
+# enabled, so the nightly fire operates on an already-reconciled fleet rather than
+# making its first several-hundred-worktree decision alone at 04:30.
 #
-# Safety is entirely delegated to `agents worktree sweep`, which fails closed —
-# it removes a worktree only when the tree is clean, nothing is missing upstream
-# (judged by patch-id, so squash/rebase merges count as landed), it is not the
-# primary checkout, and it is past the grace window. Unlanded work is reported,
-# never deleted. Requires agents-cli with `agents worktree` (1.22.61+).
-=======
-# SAFETY. Four ways this can destroy the work it protects were found by review of
-# the abandoned CLI version; each is closed below and none may be relaxed:
+# SAFETY. Five ways this can destroy the work it protects were found by review;
+# each is closed in routines/lib/worktree-sweep.sh and none may be relaxed:
 #   1. Facts are re-read immediately before every mutation, never from a snapshot
-#      taken at the top of the sweep. A box with 136 worktrees takes minutes, and
-#      an agent that COMMITS mid-sweep leaves a clean tree — a stale "0 unmerged"
-#      would then authorise `branch -D` and destroy that commit.
+#      taken at the top of the sweep, and the merge proof is re-checked once more
+#      against the BRANCH after the worktree is gone — `git worktree remove` only
+#      refuses on uncommitted changes, never on unpushed commits, so it is not
+#      the independent second opinion it looks like.
 #   2. An unreadable `git status` is INDETERMINATE, never "clean". An index.lock
 #      held by a live agent lands exactly there, on the tree most likely to be
 #      holding work.
 #   3. Merge is judged by patch-id (`git cherry`), not ancestry: this fleet
 #      rebase-merges, so a landed branch's SHAs are rewritten and
 #      `merge-base --is-ancestor` reports NOT merged for work that fully landed.
-#      Patch-id also subsumes the unpushed check — an unpushed commit has no
-#      upstream equivalent.
-#   4. Paths are compared on boundaries, so `fix-110` can never match `fix-1103`.
->>>>>>> 74383fd (refactor(worktree-sweep): carry the logic in shell, no CLI command (PHNX-3503))
+#      Patch-id also subsumes the unpushed check.
+#   4. Paths are compared exactly, so `fix-110` can never match `fix-1103`.
+#   5. Discovery matches directory SHAPE, so an ALLOWLIST on remote.origin.url —
+#      anchored to host and exact org — gates which repos may be touched at all.
 name: worktree-sweep
 schedule: 30 4 * * *        # daily 04:30 (daemon-local time), off the work day
 enabled: true
