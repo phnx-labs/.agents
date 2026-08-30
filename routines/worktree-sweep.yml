@@ -2,26 +2,29 @@
 #
 # Why this exists (PHNX-3503): worktree law puts every tracked change in
 # <repo>/.agents/worktrees/<slug>/, and nothing ever removed one. `gh pr merge
-# --delete-branch` drops the branch and leaves the checkout, so every merged PR
-# leaked a full working tree — usually a few GB of node_modules. Measured
-# 2026-08-30 across the fleet: 581 worktrees / ~263 GB, which took the release
-# home base down to 1.6 GiB free and wedged publishing at phase [5/6]
-# (PHNX-3478). yosemite-m5 was next, holding 71 GB of worktrees against 82 GB
-# free.
+# --delete-branch` drops the BRANCH and leaves the CHECKOUT, so every merged PR
+# leaked a working tree — usually a few GB of node_modules. Measured 2026-08-30:
+# 581 worktrees / ~263 GB across the fleet, which took the release home base to
+# 1.6 GiB free and wedged publishing at phase [5/6] (PHNX-3478). yosemite-m5 was
+# next, holding 71 GB of worktrees against 82 GB free.
 #
-# Design: NO `devices:` restriction — same shape as check-updates.yml, and for
-# the same reason. Per §Scheduling & execution singularity, an unrestricted
-# routine MAY fire on every device when its input is the FIRING DEVICE'S OWN
-# STATE. Worktree cleanup is exactly that: each box sweeps only its own
-# checkouts, so there is no shared queue, no owner pin, and no double-fire. A
-# device-pinned routine would be actively wrong here — it would clean one box
-# and leave the other ten leaking, which is the whole failure being fixed.
+# WHY THIS IS A ROUTINE AND NOT A CLI COMMAND. The agents surface is already 79
+# top-level / 549 total commands; this is maintenance, not a user-facing verb, so
+# it must not add an 80th. It can live here because a command routine is run by
+# the daemon as `/bin/sh -c` with "no agent binary, no rotation, no sandbox"
+# (cli/src/lib/daemon/runner.ts:881) — it never passes a PreToolUse hook, so
+# git-guard's `git branch -d/-D` deny does not apply to it. That deny exists to
+# stop an AGENT choosing branches to delete; here the branch is chosen by the
+# merge. Agents keep zero branch-delete permission and gain no new command.
 #
-# Runs as a `command:` (plain shell) routine, NOT an LLM agent: the decision is
-# deterministic and already lives in `agents worktree sweep`, so it must not
-# burn tokens or depend on a logged-in account. Fail-soft: one unreadable repo
-# never aborts the rest.
+# NO `devices:` RESTRICTION — same shape as check-updates.yml, for the same
+# reason. Per §Scheduling & execution singularity an unrestricted routine MAY
+# fire on every device when its input is the FIRING DEVICE'S OWN STATE. Worktree
+# cleanup is exactly that: each box sweeps only its own checkouts, so there is no
+# shared queue, no owner pin, and no double-fire. Pinning it to one device would
+# clean that box and leave the other ten leaking — the failure being fixed.
 #
+<<<<<<< HEAD
 # First run is NOT unattended: before this routine was enabled, the sweep was
 # driven by hand across the fleet — `--dry-run` first, output inspected, then
 # the real pass — so the nightly fire operates on an already-reconciled fleet
@@ -32,92 +35,37 @@
 # (judged by patch-id, so squash/rebase merges count as landed), it is not the
 # primary checkout, and it is past the grace window. Unlanded work is reported,
 # never deleted. Requires agents-cli with `agents worktree` (1.22.61+).
+=======
+# SAFETY. Four ways this can destroy the work it protects were found by review of
+# the abandoned CLI version; each is closed below and none may be relaxed:
+#   1. Facts are re-read immediately before every mutation, never from a snapshot
+#      taken at the top of the sweep. A box with 136 worktrees takes minutes, and
+#      an agent that COMMITS mid-sweep leaves a clean tree — a stale "0 unmerged"
+#      would then authorise `branch -D` and destroy that commit.
+#   2. An unreadable `git status` is INDETERMINATE, never "clean". An index.lock
+#      held by a live agent lands exactly there, on the tree most likely to be
+#      holding work.
+#   3. Merge is judged by patch-id (`git cherry`), not ancestry: this fleet
+#      rebase-merges, so a landed branch's SHAs are rewritten and
+#      `merge-base --is-ancestor` reports NOT merged for work that fully landed.
+#      Patch-id also subsumes the unpushed check — an unpushed commit has no
+#      upstream equivalent.
+#   4. Paths are compared on boundaries, so `fix-110` can never match `fix-1103`.
+>>>>>>> 74383fd (refactor(worktree-sweep): carry the logic in shell, no CLI command (PHNX-3503))
 name: worktree-sweep
 schedule: 30 4 * * *        # daily 04:30 (daemon-local time), off the work day
 enabled: true
 timeout: 20m
 command: |
-  set -u
-  # Grace window: a merged worktree survives this long so it is still there for
-  # a follow-up look right after the PR lands. To change it on one box, copy
-  # this routine to ~/.agents/routines/worktree-sweep.yml and edit it there —
-  # that is the repo's per-device override, so this deliberately reads no
-  # bespoke env var of its own.
-  GRACE=3
-
-  command -v agents >/dev/null 2>&1 || { echo "agents CLI not on PATH — skipping"; exit 0; }
-  agents worktree --help >/dev/null 2>&1 || {
-    echo "this agents-cli predates \`agents worktree\` — skipping (upgrade to 1.22.61+)"
-    exit 0
-  }
-
-  total_repos=0
-  total_reclaimed=0
-
-  # `command:` routines execute via `/bin/sh -c`, and /bin/sh is dash on the
-  # Linux boxes. Process substitution (`done < <(find ...)`) is a bashism: dash
-  # aborts the whole routine with "Syntax error: redirection unexpected" (exit
-  # 2, zero repos touched). A pipe into `while` is not the fix either — POSIX
-  # runs the loop body in a subshell, so total_repos/total_reclaimed would be
-  # discarded and the summary would always print 0. Materialise the list first.
-  wtlist=$(mktemp) || { echo "could not create temp file — skipping"; exit 0; }
-  trap 'rm -f "$wtlist"' EXIT INT TERM
-
-  # DISCOVER the worktree containers on this box; do not guess roots. Measured
-  # on yosemite-s1 (2026-08-30), the previous hardcoded list — $HOME/src,
-  # $HOME/workspaces, $HOME/fleet-base, $HOME/fleet-work — found 14 containers
-  # where discovery finds 82. The remainder live under $HOME/.agents/repos,
-  # $HOME/.agents/.system, $HOME/agents-cli, $HOME/svatlas and $HOME itself,
-  # and three of those four roots do not exist anywhere on this fleet. Sweeping
-  # 17% of the leak would have read as success while the disk kept filling.
-  # Pruning the heavy directories keeps this at ~0.9s across a 3.7T home.
-  find "$HOME" -maxdepth 7 \
-    \( -name node_modules -o -name .cache -o -name .npm -o -name .bun \
-       -o -name Library -o -name .venv -o -name dist -o -name target \) -prune -o \
-    -type d -path '*/.agents/worktrees' -print > "$wtlist" 2>/dev/null
-
-  while IFS= read -r wtdir; do
-    repo=$(dirname "$(dirname "$wtdir")")
-    # `.git` is a directory in a normal checkout but a FILE inside a linked
-    # worktree, so test for existence, not for a directory.
-    [ -e "$repo/.git" ] || continue
-
-    # Discovery matches directory SHAPE, not "a repo this fleet manages", so a
-    # nightly destructive job would otherwise reach any checkout that happens to
-    # use worktree law — a vendored clone, a fixture, someone else's project.
-    # Two opt-outs, both checked before anything is touched:
-    #   - a `.no-worktree-sweep` marker file at the repo root, and
-    #   - an exact repo path listed in ~/.agents/worktree-sweep.exclude.
-    # This keeps the coverage that discovery bought while leaving a real escape
-    # hatch; the alternative (hardcoded roots) missed 83% of the leak.
-    [ -e "$repo/.no-worktree-sweep" ] && { echo "skip (opted out): $repo"; continue; }
-    if [ -f "$HOME/.agents/worktree-sweep.exclude" ]; then
-      if grep -qxF "$repo" "$HOME/.agents/worktree-sweep.exclude" 2>/dev/null; then
-        echo "skip (excluded): $repo"
-        continue
-      fi
-    fi
-
-    total_repos=$((total_repos + 1))
-    out=$(cd "$repo" && agents worktree sweep --older-than "$GRACE" --yes --json 2>/dev/null) || {
-      echo "skip (sweep failed): $repo"
-      continue
-    }
-    # `agents worktree sweep --json` pretty-prints (JSON.stringify(x, null, 2)),
-    # so "reclaimed": [ and its entries land on SEPARATE lines. grep is
-    # line-based, so matching '"reclaimed":\[' against it never fired and this
-    # counter reported 0 on every box every night while genuinely deleting
-    # worktrees — masking both the real activity and any future regression in
-    # the CLI's fail-closed logic. Flatten first, then count. tr/sed/grep only:
-    # no jq or python3 dependency, so this behaves the same on macOS and Linux.
-    n=$(printf '%s' "$out" | tr -d '\n' \
-      | sed -n 's/.*"reclaimed"[[:space:]]*:[[:space:]]*\[\([^]]*\)\].*/\1/p' \
-      | grep -o '"' | wc -l)
-    n=$(( ${n:-0} / 2 ))
-    if [ "$n" -gt 0 ]; then
-      echo "reclaimed $n worktree(s): $repo"
-      total_reclaimed=$((total_reclaimed + n))
-    fi
-  done < "$wtlist"
-
-  echo "worktree-sweep: $total_reclaimed reclaimed across $total_repos repo(s) on $(hostname -s)"
+  # The logic lives in routines/lib/worktree-sweep.sh so it can be TESTED. This
+  # job is destructive, and review found five ways earlier revisions could delete
+  # work they existed to protect or silently do nothing at all; untestable inline
+  # shell is how that recurs. Tests: routines/lib/tests/worktree-sweep_test.sh,
+  # which drives the script under dash AND bash — the production interpreter is
+  # /bin/sh (dash on the Linux boxes), and an earlier revision passed its suite
+  # under bash while being a syntax error under the one that actually runs it.
+  #
+  # Grace window: to change it on one box, copy this routine to
+  # ~/.agents/routines/worktree-sweep.yml and edit it there — that is the repo's
+  # per-device override, so this reads no bespoke env var of its own.
+  sh "$HOME/.agents/.system/routines/lib/worktree-sweep.sh" --grace-days 3

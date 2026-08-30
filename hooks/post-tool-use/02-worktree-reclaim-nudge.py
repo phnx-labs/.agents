@@ -125,11 +125,13 @@ def main() -> int:
                         "`gh pr merge --delete-branch` removes the branch but never the checkout, "
                         "which is how this fleet accumulated 581 worktrees / ~263 GB and wedged a "
                         "release box at 1.6 GiB free (PHNX-3478).\n\n"
-                        "Reclaim it now, from inside that worktree or by name:\n"
-                        "  agents worktree done [<slug>]\n\n"
-                        "It refuses if the tree is dirty or holds commits that never landed, so it "
-                        "is safe to run immediately after the merge. `agents worktree list` shows "
-                        "everything else this box is holding."
+                        "Remove it now, from the repo root:\n"
+                        "  git -C <repo> worktree remove <repo>/.agents/worktrees/<slug>\n\n"
+                        "That is allowed without --force once the tree is clean and pushed, which "
+                        "it is after a merge. It refuses on uncommitted changes or unpushed "
+                        "commits, so it is safe to run immediately. Leave the local branch ref "
+                        "alone — the nightly worktree-sweep routine reclaims stragglers and "
+                        "branch refs on every device."
                     ),
                 }
             }
