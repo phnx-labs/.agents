@@ -244,6 +244,12 @@ check missing "COMMENTED review body: APPROVE only inside a fenced code block" \
 # stripping code removes the quoted token, the real one outside code remains.
 check ok "genuine APPROVE alongside a code span mentioning the token still clears" \
   '[]' '[{"user":{"login":"reviewer-bot"},"body":"The matcher is `APPROVE.search(body)`. I re-verified both findings. VERDICT: APPROVE"}]'
+# PHNX-3118 review 4: a STRAY unclosed backtick earlier plus an ordinary balanced
+# code span later must NOT swallow a real out-of-code verdict between them. The
+# old `+[^`]*`+ paired the stray with the span's opening backtick and stripped
+# the VERDICT: APPROVE in between; the balanced same-line span (`+...\1) does not.
+check ok "stray backtick on one line does not swallow a real APPROVE on the next" \
+  '[]' '[{"user":{"login":"reviewer-bot"},"body":"Note the ` in the shell snippet above.\n\nVERDICT: APPROVE\n\nNits are in `pr-verdict.py` only."}]'
 
 printf -- '---\npr-verdict: %s passed, %s failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]

@@ -132,8 +132,16 @@ def _token_negated(body: str, start: int) -> bool:
 # reads as "no verdict" rather than clearing the guard (same false-positive shape
 # as the footer-guard). Fenced blocks are removed first so their inner backticks
 # can't confuse the inline pass.
+#
+# The inline span must be BALANCED and SINGLE-LINE: an opening run of N backticks
+# closed by a run of the same length (\1) on the same line. The earlier
+# `+[^`]*`+ paired ANY backtick with the next one anywhere later in the body, so
+# one stray unclosed backtick plus an ordinary code span further down silently
+# swallowed everything between them — including a real out-of-code VERDICT:
+# APPROVE (PHNX-3118 review 4). Requiring a same-length close and forbidding
+# newlines inside bounds the strip to a genuine span and stops the swallow.
 FENCED_CODE = re.compile(r"```.*?```|~~~.*?~~~", re.S)
-INLINE_CODE = re.compile(r"`+[^`]*`+")
+INLINE_CODE = re.compile(r"(`+)[^\n]*?\1")
 
 
 def _strip_code(body: str) -> str:
