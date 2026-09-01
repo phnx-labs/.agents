@@ -413,7 +413,7 @@ try:
             name = p.get('name') or 'unnamed'
             pct = pct_str(p.get('progress')) or '?'
             state = p.get('state') or ''
-            # `focus and` keeps the no-focus case on the full listing, matching
+            # \`focus and\` keeps the no-focus case on the full listing, matching
             # the cycle section below — one rule, both sections.
             if focus and not is_cwd_match(p):
                 # One-line roll-up: enough to know the project exists and roughly
@@ -548,8 +548,14 @@ try:
             # In-project view: project name is redundant on every row. Unscoped:
             # keep it, since the rows span projects.
             print(fmt_issue_line(n, with_desc=True, with_project=not scoped))
-        if len(mine_here) > MY_CAP or my_truncated:
-            more = len(mine_here) - MY_CAP
+        # Remainder past the display cap. clamp to 0: once mine_here is the
+        # page filtered client-side to one project, it can be far below MY_CAP
+        # even while the SOURCE query was truncated (an agent with 100+ open
+        # issues team-wide, few in this project) — an unclamped subtraction then
+        # injected a garbled '_+-6+ more_'. When there is no real remainder the
+        # header's own '+' already signals the truncation, so drop the line.
+        more = max(0, len(mine_here) - MY_CAP)
+        if more:
             suffix = f'{more}+' if my_truncated else str(more)
             print(f'- _+{suffix} more delegated to you (see: linear tasks --agent {SELF})_')
         if elsewhere_hint:

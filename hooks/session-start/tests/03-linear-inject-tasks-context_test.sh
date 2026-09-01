@@ -384,6 +384,35 @@ check_contains "unbound cwd: cross-project issue kept"     "$yourtasks" "RUSH-70
 check_absent   "unbound cwd: no elsewhere hint"            "$yourtasks" "in other projects"
 export CURL_PAYLOAD="$CLAUDE_PAYLOAD"
 
+# --- 5h. a truncated source page filtered below MY_CAP must not print a
+# negative remainder. Regression: mine_here (the page filtered client-side to
+# the focus project) can sit far under MY_CAP even when myOpenIssues.hasNextPage
+# is true (an agent with 100+ open issues team-wide, only a few in this
+# project), so the '+N more' math must clamp — otherwise a garbled '_+-N+ more_'
+# lands in every affected session's brief.
+export CURL_PAYLOAD="$SANDBOX/payload-trunc-scoped.json"
+python3 - "$CLAUDE_PAYLOAD" "$CURL_PAYLOAD" <<'PY'
+import json, sys
+d = json.load(open(sys.argv[1]))
+def issue(ident, project):
+    return {"identifier": ident, "title": f"{ident} work", "description": "",
+            "priority": 1, "state": {"name": "Todo", "type": "unstarted"},
+            "assignee": {"name": "Muqsit"}, "delegate": {"name": "Claude"},
+            "labels": {"nodes": []}, "project": {"name": project}}
+# 4 issues in the focus project (< MY_CAP of 10), but the source page is marked
+# truncated (delegate has 100+ open items across the whole team).
+mine = [issue(f"RUSH-8{i:02d}", "Agents CLI") for i in range(4)]
+d["data"]["team"]["myOpenIssues"] = {"nodes": mine, "pageInfo": {"hasNextPage": True}}
+json.dump(d, open(sys.argv[2], "w"))
+PY
+out=$(LINEAR_CLI_CONFIG="$SANDBOX/config.json" env -u LINEAR_API_KEY -u LINEAR_TEAM_ID AGENT_SELF=claude \
+  bash "$HOOK" 2>/dev/null)
+yourtasks=$(printf '%s' "$out" | sed -n '/### Your Tasks/,/^### /p')
+check_contains "trunc+scoped: header keeps the + marker"     "$out"       "Your Tasks (delegated to Claude in Agents CLI) — 4+"
+check_absent   "trunc+scoped: no garbled negative remainder" "$yourtasks" "+-"
+check_absent   "trunc+scoped: no spurious remainder line"    "$yourtasks" "more delegated to you (see:"
+export CURL_PAYLOAD="$CLAUDE_PAYLOAD"
+
 # --- 5e. a truncated cycle page must not print exact-looking lane counts ------
 rm -f "$CURL_ARGS"
 export CURL_PAYLOAD="$SANDBOX/payload-truncated-cycle.json"
