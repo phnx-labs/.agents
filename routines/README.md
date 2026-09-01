@@ -10,12 +10,16 @@ If you want something to fire on a **change** instead of a clock, that is a
 
 | Routine | Schedule | What it does |
 |---|---|---|
-| [`check-updates`](./check-updates.yml) | Mondays 09:00 | Keeps the box current — upgrades `agents-cli` when npm is ahead, fast-forwards `~/.agents/.system` to `origin/main`, and notifies only if something actually changed |
 | [`worktree-sweep`](./worktree-sweep.yml) | daily 04:30 | Reclaims PR-bound worktrees whose work has landed, on every device — `routines/lib/worktree-sweep.sh` (plain git, no CLI command) removes a merged worktree **and** its branch, and fails closed on anything dirty, unlanded or undeterminable (PHNX-3503). Deliberately unpinned: its input is the firing box's own checkouts. Scope is an **allowlist** on `remote.origin.url` (override via `~/.agents/worktree-sweep.allow`); opt one in-scope repo out with a `.no-worktree-sweep` file at its root |
 | `backfill-check-outcomes` | weekly Mon 07:00 | Derive stop-hook check outcomes from this box's transcripts into state.db (`check-outcome-backfill.py --write`) so gate changes have a false-positive denominator (RUSH-3032) |
 
-`check-updates` runs on **every** box independently — no designated primary, no
-SSH fan-out. It fails soft: a failing step never aborts the rest.
+**`check-updates` was removed (PHNX-3695) — the agents-cli daemon now owns
+update+restart natively**, via a supervised `self-update` service
+(`cli/src/lib/daemon/self-update-service.ts` in `phnx-labs/agi-cli`) that
+checks npm on its own schedule, installs + verifies a newer version with the
+same primitives `agents upgrade` uses, best-effort pulls this `.system` repo
+and reconciles with `agents sync --local`, then exits so the OS supervisor
+relaunches it onto the new code — fail-closed, no cron routine required.
 
 The 8 daemon-housekeeping routines that used to live here (watchdog, device-probe,
 tmux-reconcile, launch-health, fleet-cache-warm, session-cache-warm, usage-refresh,
@@ -31,8 +35,8 @@ plain daemon-core timers inside the daemon, not routines every install pulls.
 
 ```bash
 agents routines list
-agents routines pause check-updates      # turn it off on this machine
-agents routines run check-updates        # fire it now
+agents routines pause worktree-sweep      # turn it off on this machine
+agents routines run worktree-sweep        # fire it now
 ```
 
 To change what a shipped routine does on your machine, put a same-named file in

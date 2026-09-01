@@ -40,8 +40,10 @@ agents repo pull system    # fast-forward ~/.agents/.system to origin
 agents sync                # re-materialize hooks/rules/skills into agent homes
 ```
 
-`agents setup`, SessionStart autosync, and the optional `check-updates` routine also keep
-the layer current. Pin or inspect with `git -C ~/.agents/.system describe --tags`.
+`agents setup`, SessionStart autosync, and the agents-cli daemon's `self-update` service
+(PHNX-3695 — it pulls this repo as part of keeping itself current, replacing the old
+`check-updates` routine) also keep the layer current. Pin or inspect with
+`git -C ~/.agents/.system describe --tags`.
 
 You rarely edit it. `agents-cli` stacks four repos of the same shape and merges them, so your
 own tweaks sit above the shipped defaults:

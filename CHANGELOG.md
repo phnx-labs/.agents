@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Removed
+
+- **`routines/check-updates.yml` — the agents-cli daemon now owns update+restart natively (PHNX-3695).** The routine's job (upgrade `agents-cli` when npm is ahead, fast-forward `~/.agents/.system`, reconcile with `agents sync --local`, notify only on change) is now a supervised daemon service (`self-update`, `cli/src/lib/daemon/self-update-service.ts` in `phnx-labs/agi-cli`) that runs the same steps on its own schedule and, unlike the routine, fails **closed**: a bad install/verify leaves the daemon on its current code instead of leaving a box on a half-applied upgrade. It also runs on demand when a version-skewed browser-IPC client asks for it, not only on a Monday cron fire. `routines/README.md`, `routines/AGENTS.md`, and the root `README.md` no longer reference it.
+
 ### Added
 
 - **Worktrees are reclaimed after merge, on every device (PHNX-3503).** Worktree law created a checkout per change and nothing ever removed it — `gh pr merge --delete-branch` drops the branch and leaves the tree — so merged worktrees accumulated until a box ran out of disk. Measured with discovery across the fleet: **3,157 worktrees, ~2.6 TB** (yosemite-s0 1.03 TB, yosemite-s1 679 GB, zion 658 GB); the release home base had already wedged at 1.6 GiB free (PHNX-3478). Two layers, both plain git — **no CLI command and no new permission**, because a `command:` routine runs from the daemon as `/bin/sh -c` and never passes a PreToolUse hook, so git-guard's `git branch -d/-D` deny (which exists to stop an *agent* picking branches to delete) does not apply to it:
