@@ -283,8 +283,9 @@ paragraph — so a recommendation carried by prose alone mostly does not land.
 - **Show it, do not just tell it.** Every recommendation gets a mockup, a before/after,
   or a working demo — not a prose bullet. A suggestion with no picture hides whether it
   is feasible or even understood; the idea lands when the reader can see it. This is the
-  same discipline `kind: plan` enforces with its current/proposed behavior figure —
-  apply it to each proposal a visual or report makes.
+  same show-don't-tell discipline `kind: plan` enforces with its current/proposed
+  behavior figure on user-visible surfaces — apply it to each proposal a visual or
+  report makes.
 - **Digestible, not a landing page.** The goal is accessible and quickly scannable — not
   marketing copy, not a slide deck, not a hero-section pitch. Lead with the visual, keep
   the words concrete and few, and never let "make it visual" turn into slop (see Voice).
