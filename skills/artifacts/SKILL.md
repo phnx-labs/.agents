@@ -274,6 +274,18 @@ Quantitative charts must use honest scales, units, source labels, and accessible
 color choices. Use inline SVG for bespoke explanatory graphics; use the
 project's established chart system when one exists.
 
+Tell a story; let what you already know about visualization guide the piece. Name
+the *Big Idea* in one sentence and the reader's *"so what"* before you chart, and
+give the piece a narrative arc — beginning, tension, resolution or call to action.
+Pick each visual by its job from the effective set — simple text or one big number,
+table or heatmap, scatterplot, line, slopegraph, bar, stacked bar, waterfall — and
+avoid pie, donut, 3D, and dual-axis. *Declutter*: cut chartjunk, reduce cognitive
+load, group with Gestalt proximity and alignment. Then steer the eye with
+*preattentive attributes* (size, color, position) — gray the context and highlight
+the one thing that matters in a single accent color, and label directly instead of
+with a legend. Use the `dataviz` skill for the chart mechanics (palette, marks,
+accessibility); this is the storytelling layer on top of it.
+
 ## When the artifact recommends
 
 A `visual` or `report` that proposes changes is judged on whether a human grasps each
@@ -286,6 +298,11 @@ paragraph — so a recommendation carried by prose alone mostly does not land.
   same show-don't-tell discipline `kind: plan` enforces with its current/proposed
   behavior figure on user-visible surfaces — apply it to each proposal a visual or
   report makes.
+- **A structured text block is a visual in disguise.** A paragraph that carries a
+  comparison, a sequence, a set of options, or a cause and effect is faster to grasp as a
+  table, a small diagram, a timeline, or a callout with the one takeaway pulled out. When
+  you catch yourself writing several sentences of structure, render the structure instead
+  and keep the prose to the point it makes.
 - **Digestible, not a landing page.** The goal is accessible and quickly scannable — not
   marketing copy, not a slide deck, not a hero-section pitch. Lead with the visual, keep
   the words concrete and few, and never let "make it visual" turn into slop (see Voice).
