@@ -260,7 +260,8 @@ content: infographic, explainer, status dashboard, data story, or comparison.
 Make one hero figure the visual spine of the page. A table alone does not count.
 Use `## Story`, optional `## Data`, and `## Figure`, with the hero figure under
 `## Figure`. Give it a clear reading order, labeled connectors or axes, a
-caption, and a legend whenever color or line style carries meaning.
+caption, and — when color or line style carries meaning — direct labels on the
+marks where the figure stays clean, or a legend when direct labels would clutter.
 
 Use motion or interaction only when it improves comprehension: SVG/CSS hover,
 SMIL, tabs, or progressive disclosure. Prevent automated capture from freezing
@@ -282,8 +283,8 @@ table or heatmap, scatterplot, line, slopegraph, bar, stacked bar, waterfall —
 avoid pie, donut, 3D, and dual-axis. *Declutter*: cut chartjunk, reduce cognitive
 load, group with Gestalt proximity and alignment. Then steer the eye with
 *preattentive attributes* (size, color, position) — gray the context and highlight
-the one thing that matters in a single accent color, and label directly instead of
-with a legend. Use the `dataviz` skill for the chart mechanics (palette, marks,
+the one thing that matters in a single accent color, keeping labels next to the
+marks they name. Use the `dataviz` skill for the chart mechanics (palette, marks,
 accessibility); this is the storytelling layer on top of it.
 
 ## When the artifact recommends
