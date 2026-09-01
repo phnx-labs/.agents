@@ -41,10 +41,10 @@
   Data* as the reference and asked to seed its terms so a model's own latent knowledge of
   visualization activates — a nudge, not a transcribed textbook. `kind: visual` now names the
   Big Idea / "so what", the narrative arc, the book's effective chart set (simple text, table,
-  heatmap, scatterplot, line, slopegraph, bar, stacked bar, waterfall) and what to avoid (pie,
-  donut, 3D, dual-axis), declutter / cognitive-load / Gestalt, and preattentive attributes
-  (gray the context, highlight one thing, label directly) — explicitly pointing at the bundled
-  `dataviz` skill for the chart *mechanics* so the two do not duplicate. `## When the artifact
+  heatmap, scatterplot, line, slopegraph, bar, stacked bar, waterfall) and what to avoid (donut, 3D,
+  dual-axis; pie only up to ~3 slices), declutter / cognitive-load / Gestalt, and preattentive attributes
+  (gray the context, highlight one thing, label directly) — explicitly pointing at the `design` skill's
+  `dataviz` mode for the chart *mechanics* so the two do not duplicate. `## When the artifact
   recommends` gains a bullet: a paragraph carrying a comparison, sequence, options, or cause
   and effect is rendered as a table / diagram / timeline / callout, not prose. Source:
   `skills/artifacts/SKILL.md`.
