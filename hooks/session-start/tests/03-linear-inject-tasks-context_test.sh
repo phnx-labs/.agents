@@ -243,7 +243,7 @@ rm -f "$CURL_ARGS"
 out=$(LINEAR_CLI_CONFIG="$SANDBOX/config.json" env -u LINEAR_API_KEY -u LINEAR_TEAM_ID AGENT_SELF=claude \
   bash "$HOOK" 2>/dev/null)
 check_contains "claude lane: Your Tasks lists RUSH-10"     "$out" "RUSH-10"
-check_contains "claude lane: header names the delegate"    "$out" "Your Tasks (delegated to Claude)"
+check_contains "claude lane: header names the delegate"    "$out" "Your Tasks (delegated to Claude in Agents CLI)"
 check_absent   "no agent:* label header survives"          "$out" "Your Tasks (agent:"
 # The other agent's delegated work stays visible in the cycle section.
 check_contains "claude lane: codex issue still in cycle"   "$out" "RUSH-11"
@@ -280,7 +280,7 @@ json.dump(d, open(sys.argv[2], "w"))
 PY
 out=$(LINEAR_CLI_CONFIG="$SANDBOX/config.json" env -u LINEAR_API_KEY -u LINEAR_TEAM_ID AGENT_SELF=codex \
   bash "$HOOK" 2>/dev/null)
-check_contains "codex lane: header names the delegate"     "$out" "Your Tasks (delegated to Codex)"
+check_contains "codex lane: header names the delegate"     "$out" "Your Tasks (delegated to Codex in Agents CLI)"
 check_contains "codex lane: Your Tasks lists RUSH-11"      "$out" "RUSH-11"
 check_contains "codex lane: claude counted as other"       "$out" "Claude=1"
 check_contains "codex identity reaches the query"          "$(cat "$CURL_ARGS" 2>/dev/null)" 'eqIgnoreCase: \"codex\"'
@@ -338,9 +338,50 @@ json.dump(d, open(sys.argv[2], "w"))
 PY
 out=$(LINEAR_CLI_CONFIG="$SANDBOX/config.json" env -u LINEAR_API_KEY -u LINEAR_TEAM_ID AGENT_SELF=claude \
   bash "$HOOK" 2>/dev/null)
-check_contains "overflow: count marked as truncated"       "$out" "Your Tasks (delegated to Claude) — 12+"
+check_contains "overflow: count marked as truncated"       "$out" "Your Tasks (delegated to Claude in Agents CLI) — 12+"
 check_contains "overflow: names the remainder"             "$out" "more delegated to you (see: linear tasks --agent claude)"
 check_contains "overflow: uncapped issue still in brief"   "$out" "RUSH-9011"
+export CURL_PAYLOAD="$CLAUDE_PAYLOAD"
+
+# --- 5f. the cwd's project scopes Your Tasks; other projects demote to a hint --
+# Two delegated issues, one in the focus project (Agents CLI, via the basename
+# fuzz) and one elsewhere (Rush App). An agent in the agents-cli folder must see
+# only the focus issue in Your Tasks, with the rest rolled into a cross-project
+# pointer — the fix for agents picking up another project's work.
+export CURL_PAYLOAD="$SANDBOX/payload-crossproj.json"
+python3 - "$CLAUDE_PAYLOAD" "$CURL_PAYLOAD" <<'PY'
+import json, sys
+d = json.load(open(sys.argv[1]))
+def issue(ident, project):
+    return {"identifier": ident, "title": f"{ident} work", "description": "",
+            "priority": 1, "state": {"name": "Todo", "type": "unstarted"},
+            "assignee": {"name": "Muqsit"}, "delegate": {"name": "Claude"},
+            "labels": {"nodes": []}, "project": {"name": project}}
+mine = [issue("RUSH-700", "Agents CLI"), issue("RUSH-701", "Rush App")]
+d["data"]["team"]["myOpenIssues"] = {"nodes": mine, "pageInfo": {"hasNextPage": False}}
+json.dump(d, open(sys.argv[2], "w"))
+PY
+out=$(LINEAR_CLI_CONFIG="$SANDBOX/config.json" env -u LINEAR_API_KEY -u LINEAR_TEAM_ID AGENT_SELF=claude \
+  bash "$HOOK" 2>/dev/null)
+yourtasks=$(printf '%s' "$out" | sed -n '/### Your Tasks/,/^### /p')
+check_contains "cross-proj: header scoped to focus"        "$out"       "Your Tasks (delegated to Claude in Agents CLI) — 1"
+check_contains "cross-proj: focus issue listed"            "$yourtasks" "RUSH-700"
+check_absent   "cross-proj: other-project issue demoted"   "$yourtasks" "RUSH-701"
+check_contains "cross-proj: elsewhere hint shown"          "$yourtasks" "1 more delegated to you in other projects"
+export CURL_PAYLOAD="$CLAUDE_PAYLOAD"
+
+# --- 5g. an unbound cwd (matches no live project) keeps the full cross-project
+# queue. Fail-open: a session that is NOT in a project directory must still see
+# everything delegated to it, with no "in <project>" scoping and no hint.
+export CURL_PAYLOAD="$SANDBOX/payload-crossproj.json"
+mkdir -p "$SANDBOX/work/nomatch-dir"
+out=$(cd "$SANDBOX/work/nomatch-dir" && LINEAR_CLI_CONFIG="$SANDBOX/config.json" \
+  env -u LINEAR_API_KEY -u LINEAR_TEAM_ID AGENT_SELF=claude bash "$HOOK" 2>/dev/null)
+yourtasks=$(printf '%s' "$out" | sed -n '/### Your Tasks/,/^### /p')
+check_contains "unbound cwd: header is unscoped"           "$out"       "Your Tasks (delegated to Claude) — 2"
+check_contains "unbound cwd: focus-side issue listed"      "$yourtasks" "RUSH-700"
+check_contains "unbound cwd: cross-project issue kept"     "$yourtasks" "RUSH-701"
+check_absent   "unbound cwd: no elsewhere hint"            "$yourtasks" "in other projects"
 export CURL_PAYLOAD="$CLAUDE_PAYLOAD"
 
 # --- 5e. a truncated cycle page must not print exact-looking lane counts ------

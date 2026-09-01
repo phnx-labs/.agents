@@ -14,7 +14,9 @@
 #   1. Team & Agents
 #   2. Projects — every non-canceled/completed project, cwd-matched first,
 #      each with milestones + top open tickets (priority-sorted)
-#   3. Active cycle — Your Tasks first, then open work grouped by project
+#   3. Active cycle — Your Tasks first (scoped to the cwd's project when one is
+#      matched, with a cross-project pointer for the rest), then open work
+#      grouped by project
 
 # Which agent/harness is running this hook (for the "Your Tasks" bucket). The
 # script's own path names the agent on every launch path; AGENT_SELF overrides.
@@ -507,19 +509,57 @@ try:
         n['_other_labels'] = [l['name'] for l in (n.get('labels') or {}).get('nodes', [])]
     my_truncated = (my_conn.get('pageInfo') or {}).get('hasNextPage')
 
+    # When this cwd belongs to a project, promote that project's delegated work
+    # to \"Your Tasks\" and demote the rest to a one-line cross-project hint. The
+    # bug this fixes: an agent launched in one project's folder saw OTHER
+    # projects' tasks in its own queue and picked them up. No focus (cwd matched
+    # no live project) keeps the full cross-project queue, so nothing is hidden
+    # from a session that isn't in a project directory.
+    focus_norms = {norm(p.get('name')) for p in focus}
+    if focus_norms:
+        here_ids = set()
+        mine_here = []
+        for n in mine:
+            if norm((n.get('project') or {}).get('name')) in focus_norms:
+                mine_here.append(n)
+                here_ids.add(n.get('identifier'))
+        mine_elsewhere = [n for n in mine if n.get('identifier') not in here_ids]
+    else:
+        mine_here = mine
+        mine_elsewhere = []
+
+    # The '+' truncation marker tracks whether the SOURCE query was truncated
+    # (my_truncated), not the client-side project filter: a filtered page can
+    # still have focus-project issues on later pages, so keep '+' when the query
+    # was capped rather than claim a false-exact count.
+    scoped = bool(focus_norms)
+    where = f' in {focus[0].get(\"name\")}' if scoped else ''
+    elsewhere_hint = (f'- _+{len(mine_elsewhere)} more delegated to you in other '
+                      f'projects (see: linear tasks --all --agent {SELF})_') if mine_elsewhere else None
+
     MY_CAP = 10
     printed_ids = set()
-    if mine:
-        owner = (mine[0].get('delegate') or {}).get('name') or SELF
-        total = f'{len(mine)}+' if my_truncated else str(len(mine))
-        print(f'### Your Tasks (delegated to {owner}) — {total}')
-        for n in mine[:MY_CAP]:
+    if mine_here:
+        owner = (mine_here[0].get('delegate') or {}).get('name') or SELF
+        total = f'{len(mine_here)}+' if my_truncated else str(len(mine_here))
+        print(f'### Your Tasks (delegated to {owner}{where}) — {total}')
+        for n in mine_here[:MY_CAP]:
             printed_ids.add(n.get('identifier'))
-            print(fmt_issue_line(n, with_desc=True, with_project=True))
-        if len(mine) > MY_CAP or my_truncated:
-            more = len(mine) - MY_CAP
+            # In-project view: project name is redundant on every row. Unscoped:
+            # keep it, since the rows span projects.
+            print(fmt_issue_line(n, with_desc=True, with_project=not scoped))
+        if len(mine_here) > MY_CAP or my_truncated:
+            more = len(mine_here) - MY_CAP
             suffix = f'{more}+' if my_truncated else str(more)
             print(f'- _+{suffix} more delegated to you (see: linear tasks --agent {SELF})_')
+        if elsewhere_hint:
+            print(elsewhere_hint)
+        print()
+    elif mine_elsewhere:
+        # Nothing in this project, but you do own work elsewhere — say so, rather
+        # than \"none assigned\", which reads as an empty queue.
+        print(f'### Your Tasks (delegated to {SELF}{where}) — none here')
+        print(elsewhere_hint)
         print()
     else:
         print(f'### Your Tasks (delegated to {SELF}) — none assigned')
