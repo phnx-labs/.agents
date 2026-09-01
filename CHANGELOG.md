@@ -20,6 +20,29 @@
 
 ### Changed
 
+- **`skills/artifacts/SKILL.md` + `commands/visualize.md` now make evidence-grounding and
+  show-don't-tell the default, not something the user has to demand.** Audited from a real
+  `/visualize` session (Belinda portfolio report, `7fa39334`) where the user had to correct
+  the same failures repeatedly: a mid-animation screenshot of a live site shipped **into**
+  the report because the agent checked a proxy ("7/7 images loaded", empty console, exit 0)
+  instead of looking at the pixels; a "dead link" claim asserted from a single `<a>`-tag DOM
+  scan that missed Framer's JS click handlers (wrong twice); recommendations delivered as
+  prose with no mockup; and numbers first cited to "the news said" rather than primary
+  records with dates. Three additive edits, nothing removed:
+  - **Shared pipeline Step 6** — a render is verified only when you have *looked at the
+    actual pixels*; a clean check / exit-0 / empty console / "complete" loader is a proxy,
+    not proof. Scroll the target into view, let it settle, and confirm it is in the frame.
+  - **New `## Evidence: captures and claims`** — settle a live page (network idle, lazy
+    content triggered, animations finished) before capturing it, because a load count is not
+    "fully rendered"; and a claim about how a live surface *behaves* is confirmed by
+    performing the action (click/hover/navigate and observe), not one static DOM read.
+  - **New `## When the artifact recommends`** (for `kind: visual` + `kind: report`) — show
+    each recommendation as a mockup / before-after / demo rather than describing it; keep it
+    digestible, **not** a landing page or marketing copy; say why each matters and the cost
+    of not doing it; cite every quantitative claim to a primary source with an as-of date and
+    a raw-records appendix. The completion contract and the `/visualize` command echo the
+    same rules. Source: `skills/artifacts/SKILL.md`, `commands/visualize.md`.
+
 - **Fleet guidance now teaches `agents feed post --level important` instead of the
   deprecated `agents notify`.** The commands, skills, rules, and CLI manifest that
   previously presented `agents notify` as the owner-delivery path now point agents
