@@ -1,5 +1,5 @@
 ---
-description: Plan like a staff engineer — live research, system diagrams, alternatives considered, render HTML
+description: Plan like a staff engineer — live research, system diagrams, alternatives considered, rendered as a visual HTML artifact and opened on your screen (no separate /visualize needed)
 ---
 
 You are planning: $ARGUMENTS
@@ -339,6 +339,19 @@ A plan buried in terminal scrollback is hard to review. Once the plan is drafted
 HTML file** with `artifacts-cli`, and open it on the machine the user is actually
 sitting at. This is the canonical recipe — other plan verbs (e.g. `/swarm:plan`)
 reference this step.
+
+**A `/plan` artifact is a visual deliverable — it already does what a separate
+`/visualize` would, so do not make the user ask for it.** Apply the `artifacts`
+skill's `kind: visual` bar to the plan's evidence: present quantitative findings
+(benchmarks, counts, cost or latency, before/after numbers) as charts, render a
+comparison or set of options as a table or diagram rather than paragraphs, and keep
+the prose digestible — lead with the figure, never a wall of text (follow that
+skill's "When the artifact recommends" and storytelling guidance). Then **look at
+the rendered result before you present it**: screenshot the HTML headlessly and
+`view_image` it, fix anything mis-rendered (a mid-paint or mid-scroll capture, an
+overflowing SVG, a cramped chart, an unreadable dark-mode pass), and only then open
+it for the user. A plan presented without being looked at is the exact miss the
+visual-read-back check catches.
 
 1. **Render — in the `artifacts` house style.** Load the **`artifacts`** skill: it
    owns both the house LOOK and the CLI mechanics. Resolve the repo root and write
