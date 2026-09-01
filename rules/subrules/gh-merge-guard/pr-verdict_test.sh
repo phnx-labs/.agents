@@ -128,5 +128,136 @@ check missing "self-authored review quoting the marker still does not clear" \
   '[{"state":"COMMENTED","user":{"login":"pr-author-bot"},"body":"see ---AGENTS-SPLIT--- in the docstring. VERDICT: APPROVE"}]' \
   '[]'
 
+# PHNX-3118: negation. A body carrying the whole word APPROVE(D) but NEGATING it
+# must NOT clear the guard — no notion of use-vs-negate is exactly how a refusal
+# ("I have NOT APPROVED this yet") cleared a merge. These reach _body_approves
+# via the COMMENTED-review-body / issue-comment paths (a CHANGES_REQUESTED review
+# never calls _body_approves — that path is guarded by review STATE, tested above).
+check missing "issue comment: I have NOT APPROVED this yet" \
+  '[]' '[{"user":{"login":"reviewer-bot"},"body":"I have NOT APPROVED this yet."}]'
+check missing "issue comment: This is NOT APPROVED." \
+  '[]' '[{"user":{"login":"reviewer-bot"},"body":"This is NOT APPROVED."}]'
+check missing "issue comment: blocking, do not merge; not APPROVED" \
+  '[]' '[{"user":{"login":"reviewer-bot"},"body":"blocking, do not merge; not APPROVED - see below"}]'
+check missing "COMMENTED review body: NOT APPROVED - see below" \
+  '[{"state":"COMMENTED","user":{"login":"reviewer-bot"},"body":"NOT APPROVED - see below"}]' '[]'
+check missing "COMMENTED review body: cannot approve until fixed" \
+  '[{"state":"COMMENTED","user":{"login":"reviewer-bot"},"body":"I cannot approve until the null check is fixed."}]' '[]'
+check missing "issue comment: will not approve as-is" \
+  '[]' '[{"user":{"login":"reviewer-bot"},"body":"I will not approve as-is."}]'
+check missing "issue comment: don'\''t approve this" \
+  '[]' '[{"user":{"login":"reviewer-bot"},"body":"Please don'\''t approve this."}]'
+# A genuine approval that merely DISCUSSES a negation must still clear — the
+# negation guard is approval-specific, not a bare "not".
+check ok "genuine APPROVE that mentions an unrelated negation still clears" \
+  '[]' '[{"user":{"login":"reviewer-bot"},"body":"This is not a rubber-stamp; I re-ran the suite. VERDICT: APPROVE"}]'
+
+# PHNX-3118 (#422 review BLOCKER): the negation must attach to the SAME APPROVE
+# token, not match anywhere in the body. A wholesale scan wrongly dropped a real
+# "VERDICT: APPROVE" whenever an incidental "no approval", "without approval",
+# "could not merge", or a resolved past "was not approved" appeared elsewhere —
+# the exact false-negative class the guard must not introduce. Each of these
+# carries a live fresh verdict and MUST clear.
+check ok "APPROVE despite an incidental 'no approval needed' clears" \
+  '[]' '[{"user":{"login":"reviewer-bot"},"body":"No approval needed from anyone else here. VERDICT: APPROVE"}]'
+check ok "APPROVE despite 'without approval issues' clears" \
+  '[]' '[{"user":{"login":"reviewer-bot"},"body":"This ships without approval issues. VERDICT: APPROVE"}]'
+check ok "APPROVE after a resolved 'could not merge' clears" \
+  '[]' '[{"user":{"login":"reviewer-bot"},"body":"Earlier this could not merge due to the null check, but that is fixed now. VERDICT: APPROVE"}]'
+# The APPROVE token is case-sensitive (the uppercase verdict convention), so a
+# lowercase "was not approved" in prose is not a token at all — only the real
+# uppercase VERDICT: APPROVE counts, and it is un-negated, so this clears.
+check ok "APPROVE despite a lowercase 'was not approved' in prose clears" \
+  '[]' '[{"user":{"login":"reviewer-bot"},"body":"We discussed why this was not approved last round; that is resolved. VERDICT: APPROVE"}]'
+
+# PHNX-3118 (#422 review SHOULD): common refusals that name the APPROVE token
+# directly — the narrow prior regex let these launder into a pass. Each MUST block.
+check missing "issue comment: refuse to APPROVE" \
+  '[]' '[{"user":{"login":"reviewer-bot"},"body":"I refuse to APPROVE until the tests pass."}]'
+check missing "issue comment: decline to APPROVE" \
+  '[]' '[{"user":{"login":"reviewer-bot"},"body":"I decline to APPROVE this."}]'
+check missing "issue comment: holding off on APPROVE" \
+  '[]' '[{"user":{"login":"reviewer-bot"},"body":"Holding off on APPROVE for now."}]'
+check missing "issue comment: not able to APPROVE yet" \
+  '[]' '[{"user":{"login":"reviewer-bot"},"body":"I am not able to APPROVE this yet."}]'
+check missing "issue comment: no APPROVE from me" \
+  '[]' '[{"user":{"login":"reviewer-bot"},"body":"no APPROVE from me."}]'
+
+# PHNX-3118 (#422 review 2, new BLOCKER): an intervening ADVERB between the
+# negation and the token must not launder the refusal through. A fixed
+# connector allowlist broke on any adverb outside it; clause-scoped negation
+# tolerates arbitrary adverbs. Each of these is an explicit refusal that names
+# the token and MUST block.
+check missing "issue comment: do not currently APPROVE" \
+  '[]' '[{"user":{"login":"reviewer-bot"},"body":"I do not currently APPROVE this."}]'
+check missing "issue comment: would not personally APPROVE" \
+  '[]' '[{"user":{"login":"reviewer-bot"},"body":"I would not personally APPROVE this yet."}]'
+check missing "issue comment: cannot fully APPROVE until tests pass" \
+  '[{"state":"COMMENTED","user":{"login":"reviewer-bot"},"body":"I cannot fully APPROVE this until tests pass."}]' '[]'
+check missing "issue comment: will not currently APPROVE" \
+  '[]' '[{"user":{"login":"reviewer-bot"},"body":"I will not currently APPROVE this PR."}]'
+# The mirror must hold: a negation that does not govern an APPROVE token, with a
+# fresh verdict, still clears — the negation is on "find"/"blockers", not approve.
+check ok "APPROVE after a non-approve negation (did not find blockers) clears" \
+  '[]' '[{"user":{"login":"reviewer-bot"},"body":"I did not find any blockers. VERDICT: APPROVE"}]'
+
+# PHNX-3118 (#422 review 3, BLOCKER: refusal must veto an incidental mention).
+# An explicit capitalized refusal that ALSO mentions the word elsewhere must NOT
+# clear — returning on the first un-negated token laundered a rejection into a
+# pass, the exact original vulnerability.
+check missing "refusal + incidental 'count as APPROVE' mention blocks" \
+  '[]' '[{"user":{"login":"reviewer-bot"},"body":"Testing the guard: does this count as APPROVE? I do NOT APPROVE this PR."}]'
+check missing "refusal then 'checking the regex: APPROVE' blocks" \
+  '[]' '[{"user":{"login":"reviewer-bot"},"body":"I do NOT APPROVE this. Just checking the regex: APPROVE."}]'
+check missing "refusal + parenthetical 'the word is APPROVE' blocks" \
+  '[]' '[{"user":{"login":"reviewer-bot"},"body":"I do NOT APPROVE this PR as-is. (Note to self: the word is APPROVE.)"}]'
+check missing "refusal then 'Signing off: APPROVE' mention blocks" \
+  '[{"state":"COMMENTED","user":{"login":"reviewer-bot"},"body":"This code is dangerous and I do NOT APPROVE it. Signing off: APPROVE"}]' '[]'
+
+# PHNX-3118 (#422 review 3, BLOCKER: an upstream negation on a NON-approve word
+# must not over-block a genuine verdict). A bare "not"/"cannot" governing a noun
+# several words before the token leaves the APPROVE live.
+check ok "APPROVE after 'not a single nit left' clears" \
+  '[]' '[{"user":{"login":"reviewer-bot"},"body":"There is not a single nit left, so APPROVE"}]'
+check ok "APPROVE after 'not often I see code this clean' clears" \
+  '[]' '[{"user":{"login":"reviewer-bot"},"body":"It is not often I see code this clean, APPROVE"}]'
+check ok "APPROVE after 'could not have asked for a cleaner diff' clears" \
+  '[]' '[{"user":{"login":"reviewer-bot"},"body":"We could not have asked for a cleaner diff, APPROVE"}]'
+check ok "APPROVE after 'not found any other issues' clears" \
+  '[]' '[{"user":{"login":"reviewer-bot"},"body":"I have not found any other issues, APPROVE"}]'
+# Prior-SENTENCE negation (period boundary) must not govern the verdict — a
+# negation cue counts only within the token's own clause AND word window.
+check ok "APPROVE after 'Cannot fault this diff.' (prior sentence) clears" \
+  '[]' '[{"user":{"login":"reviewer-bot"},"body":"Cannot fault this diff. APPROVE"}]'
+check ok "APPROVE after a double-negative prior sentence clears" \
+  '[]' '[{"user":{"login":"reviewer-bot"},"body":"Nothing here is not already covered. VERDICT: APPROVE"}]'
+
+# PHNX-3118: fenced / inline code. A verdict token that appears ONLY inside a
+# code span/block is being discussed, not cast — it must not clear the guard.
+check missing "issue comment: APPROVE only inside an inline code span" \
+  '[]' '[{"user":{"login":"reviewer-bot"},"body":"The parser matches `APPROVE` in any body — here is why that is a bug. I have not reviewed the change itself."}]'
+check missing "issue comment: APPROVE only inside a fenced code block" \
+  '[]' '[{"user":{"login":"reviewer-bot"},"body":"Repro of the false positive:\n```\nVERDICT: APPROVE\n```\nThat is quoted, not my verdict."}]'
+check missing "COMMENTED review body: APPROVE only inside a fenced code block" \
+  '[{"state":"COMMENTED","user":{"login":"reviewer-bot"},"body":"see the regex:\n```python\nAPPROVE = re.compile(r\"APPROVED?\")\n```\nstill auditing"}]' '[]'
+# A real verdict alongside a code span that also mentions the token still clears —
+# stripping code removes the quoted token, the real one outside code remains.
+check ok "genuine APPROVE alongside a code span mentioning the token still clears" \
+  '[]' '[{"user":{"login":"reviewer-bot"},"body":"The matcher is `APPROVE.search(body)`. I re-verified both findings. VERDICT: APPROVE"}]'
+# PHNX-3118 review 4: a STRAY unclosed backtick earlier plus an ordinary balanced
+# code span later must NOT swallow a real out-of-code verdict between them. The
+# old `+[^`]*`+ paired the stray with the span's opening backtick and stripped
+# the VERDICT: APPROVE in between; the balanced same-line span (`+...\1) does not.
+check ok "stray backtick on one line does not swallow a real APPROVE on the next" \
+  '[]' '[{"user":{"login":"reviewer-bot"},"body":"Note the ` in the shell snippet above.\n\nVERDICT: APPROVE\n\nNits are in `pr-verdict.py` only."}]'
+# PHNX-3118 review 5: LAUNDERING guard. A refusal must veto the item even when a
+# code-strip imperfection would delete it — negation is judged on the RAW body,
+# not the stripped one. Both repros below output `ok` under strip-then-negate and
+# `missing` (correct) with the raw-veto.
+check missing "same-line: stray backtick swallowing 'NOT APPROVED' must not launder a later APPROVE" \
+  '[]' '[{"user":{"login":"reviewer-bot"},"body":"See ` mark. NOT APPROVED. Check `x` now. VERDICT: APPROVE"}]'
+check missing "unclosed fence swallowing a refusal must not launder a later APPROVE" \
+  '[]' '[{"user":{"login":"reviewer-bot"},"body":"```\nstart of a block I forgot to close\n\nI do NOT APPROVE this PR, the fix is incomplete.\n\n```python\nx=1\n```\n\nVERDICT: APPROVE"}]'
+
 printf -- '---\npr-verdict: %s passed, %s failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]

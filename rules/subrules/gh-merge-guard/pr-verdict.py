@@ -4,7 +4,10 @@
 A PR is merge-clearing when EITHER:
   - a GitHub review has state APPROVED, OR
   - a whole-word APPROVE or APPROVED that is not a carried-from citation (the #2736
-    laundering pattern) appears in the body of a COMMENTED review
+    laundering pattern), does not have a refusal attached to THAT token
+    (PHNX-3118 — "NOT APPROVED", "do not approve", "refuse to APPROVE"), and is
+    not merely QUOTED inside fenced/inline code (PHNX-3118)
+    appears in the body of a COMMENTED review
     (`gh pr review --comment` — the fleet convention when self-approval is
     blocked) or an issue comment, POSTED BY SOMEONE OTHER THAN THE PR's AUTHOR.
     A CHANGES_REQUESTED or DISMISSED review body never clears the guard even if
@@ -53,6 +56,99 @@ CARRIED = re.compile(
     re.I,
 )
 APPROVE = re.compile(r"\bAPPROVED?\b")
+
+# PHNX-3118: matching a bare APPROVE anywhere in the body has no notion of
+# whether the body is USING the word as a verdict or NEGATING it. An explicit
+# refusal — "I have NOT APPROVED this yet", "do not approve; not APPROVED", a
+# COMMENTED review reading "NOT APPROVED - see below" — contains the whole word
+# APPROVE(D) and cleared the guard.
+#
+# Negation is judged per APPROVE token by WORD-COUNT proximity, and a refusal on
+# ANY token vetoes the whole item. Two failure modes shaped this:
+#
+#   * A fixed connector allowlist ("not <yet|be|to> approve") let any other
+#     adverb through — "do not CURRENTLY approve", "would not PERSONALLY approve"
+#     cleared the gate. So a cue counts when it sits within NEGATION_MAX_WORDS
+#     words of the token, whatever those words are — "not <=3 words> approve".
+#     That still lets an incidental negation many words upstream go by:
+#     "I have not found any other issues, APPROVE" keeps clearing.
+#   * Returning True on the FIRST un-negated token let a bare mention outvote an
+#     explicit refusal in the same body — "I do NOT APPROVE this. ... APPROVE"
+#     laundered a rejection into a pass, the exact PHNX-3118 vulnerability. So if
+#     ANY token in an item is negated, the whole item is vetoed to "no verdict".
+#
+# Bare "no" attaches to nouns ("no issues, APPROVE"), so it only counts when it
+# sits IMMEDIATELY before the token ("no APPROVE from me"); the verb-governing
+# cues ("not", "cannot", "do not", "refuse to", …) get the full word window.
+#
+# Proximity is measured within the token's own CLAUSE (bounded by . ; : ! ?
+# newline —): a negation in a PRIOR sentence does not govern the verdict, so
+# "Cannot fault this diff. APPROVE" and "…is not already covered. VERDICT:
+# APPROVE" clear. Word-count and clause scope compose — the cue must be both in
+# the same clause AND within the word window — so neither an upstream noun-
+# negation ("not a single nit left, so APPROVE") nor a prior-sentence one blocks.
+#
+# The guard's documented bias is false-negatives over false-positives — it only
+# ever blocks a merge, never launders a rejection — so an ambiguous body that
+# pairs a refusal with a bare mention resolves to "missing", never "ok".
+NEGATION_LOOKBACK = 96
+CLAUSE_BOUNDARY = re.compile(r"[.;:!?\n\r—]")
+NEGATED_NEAR = re.compile(
+    r"\b(?:"
+    r"not|never|cannot|can\s*not|"
+    r"can'?t|wo\s*n'?t|won'?t|do\s*n'?t|does\s*n'?t|did\s*n'?t|"
+    r"should\s*n'?t|would\s*n'?t|could\s*n'?t|"
+    r"is\s*n'?t|are\s*n'?t|was\s*n'?t|were\s*n'?t|"
+    r"has\s*n'?t|have\s*n'?t|had\s*n'?t|"
+    r"(?:do|does|did|will|would|shall|should|could|can|is|are|was|were|"
+    r"has|have|had)\s+not|"
+    r"refuse[sd]?\s+to|refusing\s+to|declin(?:e|es|ed|ing)\s+to|"
+    r"unable\s+to|unwilling\s+to|holding\s+off\s+(?:on|from)"
+    r")\b(?:\W+\w+){0,3}\W*$",
+    re.I,
+)
+NEGATED_ADJACENT = re.compile(r"\bno\W*$", re.I)
+
+
+def _token_negated(body: str, start: int) -> bool:
+    """True if a refusal governs the APPROVE token at ``start`` — a verb-shaped
+    negation cue within NEGATED_NEAR's word window, or a bare "no" immediately
+    before the token, AND within the token's own clause. The clause runs from the
+    nearest boundary char left of the token (or NEGATION_LOOKBACK back, whichever
+    is closer), so a negation in a prior sentence ("Cannot fault this diff.
+    APPROVE") or many words upstream ("…any other issues, APPROVE") never
+    suppresses a live verdict."""
+    seg_start = max(0, start - NEGATION_LOOKBACK)
+    for b in CLAUSE_BOUNDARY.finditer(body, 0, start):
+        if b.end() > seg_start:
+            seg_start = b.end()
+    left = body[seg_start:start]
+    return bool(NEGATED_NEAR.search(left) or NEGATED_ADJACENT.search(left))
+
+# PHNX-3118: a verdict token that is only being DISCUSSED — quoted inside a
+# fenced code block (``` … ```) or an inline code span (` … `), which is exactly
+# how a review of THIS parser talks about the word APPROVE — is not a real
+# verdict. Strip both before matching so a body whose ONLY APPROVE is inside code
+# reads as "no verdict" rather than clearing the guard (same false-positive shape
+# as the footer-guard). Fenced blocks are removed first so their inner backticks
+# can't confuse the inline pass.
+#
+# The inline span must be BALANCED and SINGLE-LINE: an opening run of N backticks
+# closed by a run of the same length (\1) on the same line. The earlier
+# `+[^`]*`+ paired ANY backtick with the next one anywhere later in the body, so
+# one stray unclosed backtick plus an ordinary code span further down silently
+# swallowed everything between them — including a real out-of-code VERDICT:
+# APPROVE (PHNX-3118 review 4). Requiring a same-length close and forbidding
+# newlines inside bounds the strip to a genuine span and stops the swallow.
+FENCED_CODE = re.compile(r"```.*?```|~~~.*?~~~", re.S)
+INLINE_CODE = re.compile(r"(`+)[^\n]*?\1")
+
+
+def _strip_code(body: str) -> str:
+    """Blank fenced code blocks and inline code spans (replaced by a space so
+    surrounding word boundaries are preserved) so a quoted/discussed verdict
+    token is not read as a live verdict."""
+    return INLINE_CODE.sub(" ", FENCED_CODE.sub(" ", body))
 
 
 def _b64_decode_text(segment: str) -> str:
@@ -108,15 +204,45 @@ def _exclude_self_authored(items, pr_author: str):
 
 
 def _body_approves(items) -> bool:
-    """True if any item has a whole-word APPROVE body that is not a carried-from
-    citation. Applies to both review bodies and issue-comment bodies."""
+    """True if any item carries a live APPROVE verdict. Applies to both review
+    bodies and issue-comment bodies.
+
+    The check is DELIBERATELY ASYMMETRIC between the raw and code-stripped body,
+    and that asymmetry is what makes code-stripping unable to launder a rejection
+    (PHNX-3118 review 5):
+
+      * The VETO signals — a "carried from #NNNN" citation (RUSH-3099) and a
+        negated APPROVE token (_token_negated) — are checked on the RAW body. A
+        refusal like "I do NOT APPROVE this" vetoes the item even if _strip_code
+        would have swallowed it between a stray backtick and an unrelated code
+        span. _strip_code cannot perfectly tell a real code delimiter from an
+        accidental one, so if it could delete a refusal the guard would clear a
+        rejection — the one thing the charter forbids. Checking the veto on raw
+        removes that path by construction.
+      * The POSITIVE signal — the presence of a live APPROVE token — is checked
+        on the code-STRIPPED body, so a token merely quoted inside code (exactly
+        how a review of THIS parser discusses the word) never clears the guard.
+
+    Net: the worst a _strip_code imperfection can now do is drop a real approve
+    from the positive pass (wrongly BLOCK — the safe, documented-bias direction),
+    never hide a refusal (launder — forbidden). An item clears only when its raw
+    body carries neither a carried-citation nor any negated APPROVE token, AND
+    its code-stripped body still has at least one un-negated APPROVE token."""
     if not isinstance(items, list):
         return False
     for it in items:
-        body = it.get("body") or ""
-        if not APPROVE.search(body):
+        raw = it.get("body") or ""
+        # VETO on raw — immune to code-stripping.
+        if CARRIED.search(raw):
             continue
-        if CARRIED.search(body):
+        if any(_token_negated(raw, m.start()) for m in APPROVE.finditer(raw)):
+            continue
+        # POSITIVE on the code-stripped body — a quoted token does not clear.
+        stripped = _strip_code(raw)
+        tokens = list(APPROVE.finditer(stripped))
+        if not tokens:
+            continue
+        if any(_token_negated(stripped, m.start()) for m in tokens):
             continue
         return True
     return False
