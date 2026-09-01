@@ -100,6 +100,15 @@ The kind changes the content contract, not the rendering pipeline.
    widths, image loading, SVG bounds, overflow, interactive behavior, and browser
    console errors. Do not open the user's browser unless explicitly requested.
 
+   **A render is verified only when you have looked at the actual pixels.** A clean
+   `artifacts check`, an exit-0 render, an empty console, or a loader that reports
+   "complete" are proxies, not proof — screenshot the output and read the image
+   before you call any section done. A capture that lands mid-paint, mid-scroll, or
+   on the wrong section looks authoritative while being wrong, and describing a
+   section from a shot you never confirmed shows it is how a broken figure ships. On
+   a tall page with a sticky nav, scroll the target into view, let it settle, and
+   confirm the intended element is in the frame before trusting the shot.
+
 7. When the user asks to view it, reuse one browser tab on their interactive
    machine. If the artifact was rendered elsewhere, copy it there first:
 
@@ -128,6 +137,25 @@ The kind changes the content contract, not the rendering pipeline.
 
    Shared links are public and unlisted, not private. Never put credentials or
    confidential material in the source, `DESIGN.md`, or a public share.
+
+## Evidence: captures and claims
+
+A figure that carries evidence — a screenshot of a live page, a capture of a real
+product — is the part a reader trusts most, so it is held above "the command
+exited 0."
+
+- **Settle a live page before capturing it.** Lazy-loaded images and scroll-reveal
+  animations make the visible pixels lag the DOM, so a load count ("7/7 images
+  loaded") is not "fully rendered." Scroll through to trigger lazy content, wait for
+  the network to go idle and animations to finish, then look at the capture. Scrolling
+  back to the top can re-trigger an entrance animation — capture in place, and read the
+  image before embedding it. A mid-animation screenshot embedded as proof of a problem
+  undercuts the very point it illustrates.
+- **A claim about how a live surface behaves is confirmed by performing the action,
+  not by reading the DOM once.** Whether a card, icon, or link navigates — click or
+  hover it and observe the result. A single `<a>`-tag scan misses JS click handlers and
+  mispositioned hit targets, and asserting "dead link" from one static probe puts a
+  wrong claim in a deliverable. State in the figure how the behavior was verified.
 
 ## `kind: plan`
 
@@ -246,6 +274,28 @@ Quantitative charts must use honest scales, units, source labels, and accessible
 color choices. Use inline SVG for bespoke explanatory graphics; use the
 project's established chart system when one exists.
 
+## When the artifact recommends
+
+A `visual` or `report` that proposes changes is judged on whether a human grasps each
+recommendation fast. Humans are visual — they read a diagram in a glance and skim past a
+paragraph — so a recommendation carried by prose alone mostly does not land.
+
+- **Show it, do not just tell it.** Every recommendation gets a mockup, a before/after,
+  or a working demo — not a prose bullet. A suggestion with no picture hides whether it
+  is feasible or even understood; the idea lands when the reader can see it. This is the
+  same discipline `kind: plan` enforces with its current/proposed behavior figure —
+  apply it to each proposal a visual or report makes.
+- **Digestible, not a landing page.** The goal is accessible and quickly scannable — not
+  marketing copy, not a slide deck, not a hero-section pitch. Lead with the visual, keep
+  the words concrete and few, and never let "make it visual" turn into slop (see Voice).
+- **Say why it matters.** Beside each recommendation, state the payoff and the cost of
+  not doing it — the importance, not just the instruction.
+- **Cite the record and stamp the date.** Every quantitative claim links to its primary
+  source (the actual record, not a secondary summary or "the news said"), every dataset
+  carries an as-of date or time-window, and a raw-records appendix ties each number back
+  to its source. A number nobody can trace reads as invented — traceability is what lets
+  the reader trust it was not.
+
 ## Voice
 
 - State what the artifact shows; do not write a slogan for a plan.
@@ -262,6 +312,11 @@ project's established chart system when one exists.
 - `artifacts check` and `artifacts render` exit successfully.
 - A plan satisfies its declared surface contract exactly.
 - A visual contains one hero figure that carries the explanation.
+- Every embedded capture was viewed at the pixel level before shipping, and any live
+  page was fully settled before it was captured.
+- When the artifact recommends, each recommendation is shown (mockup / before-after /
+  demo) with its rationale, and every quantitative claim cites a primary source with a
+  timeframe.
 - The rendered HTML is self-contained and branded in light and dark themes.
 - The output has been inspected headlessly at desktop and mobile widths.
 - No user browser was opened unless requested.
