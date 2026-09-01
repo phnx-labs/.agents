@@ -342,11 +342,13 @@ reference this step.
 
 **A `/plan` artifact is a visual deliverable — it already does what a separate
 `/visualize` would, so do not make the user ask for it.** Apply the `artifacts`
-skill's `kind: visual` bar to the plan's evidence: present quantitative findings
-(benchmarks, counts, cost or latency, before/after numbers) as charts, render a
-comparison or set of options as a table or diagram rather than paragraphs, and keep
-the prose digestible — lead with the figure, never a wall of text (follow that
-skill's "When the artifact recommends" and storytelling guidance). Then **look at
+skill's `kind: visual` presentation bar (the plan's frontmatter stays `kind: plan`
+— this is the visual quality of the evidence, not the artifact kind): present
+quantitative findings (benchmarks, counts, cost or latency, before/after numbers)
+as charts, render a comparison or set of options as a table or diagram rather than
+paragraphs, and keep the prose digestible — lead with the figure, never a wall of
+text (follow that skill's `kind: visual` and "When the artifact recommends"
+guidance). Then **look at
 the rendered result before you present it**: screenshot the HTML headlessly and
 `view_image` it, fix anything mis-rendered (a mid-paint or mid-scroll capture, an
 overflowing SVG, a cramped chart, an unreadable dark-mode pass), and only then open

@@ -29,9 +29,10 @@
   again, bro"*) plus that session's own `visual-read-back` Stop-hook fire show the two
   missing behaviors: the visual quality bar and actually looking at the render. Step 9 now
   states a plan artifact is a visual deliverable that already does `/visualize`'s job —
-  apply the `artifacts` `kind: visual` bar (quantitative findings as charts, comparisons/
-  options as tables or diagrams, digestible prose, the storytelling guidance) — and
-  **look at the rendered result** (headless screenshot + `view_image`, fix mis-renders)
+  apply the `artifacts` `kind: visual` presentation bar — frontmatter stays `kind: plan`
+  — (quantitative findings as charts, comparisons/options as tables or diagrams,
+  digestible prose) and **look at the rendered result** (headless screenshot +
+  `view_image`, fix mis-renders)
   before opening it for the user. The frontmatter `description` says so too. Source:
   `commands/plan.md`.
 

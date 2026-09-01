@@ -20,7 +20,7 @@ commands are often thin wrappers that only invoke a skill (harness-friendly).
 
 | Command | What it does |
 |---|---|
-| [`/plan`](./plan.md) | Plan like a staff engineer — live research, system diagrams, alternatives considered, render HTML |
+| [`/plan`](./plan.md) | Plan like a staff engineer — live research, system diagrams, alternatives considered, rendered as a visual HTML artifact opened on your screen (subsumes `/visualize`) |
 | [`/swarm`](./swarm.md) | Front door to the `swarm` plugin — fan work across parallel agents (`run` by default; or `plan` / `spec` / `debug`) |
 | [`/debug`](./debug.md) | Trace the data path, attribute regressions to the responsible agent/session and explain how they slipped, then have independent agents confirm the root cause (routes to `swarm:debug`) |
 | [`/blame`](./blame.md) | Trace a regression — a feature that worked and silently broke — to the culprit change, the removed/skipped test that let it through, and the agent/session behind it. Read-only forensics, no fix |
