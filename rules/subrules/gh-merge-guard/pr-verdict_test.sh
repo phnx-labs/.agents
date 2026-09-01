@@ -250,6 +250,14 @@ check ok "genuine APPROVE alongside a code span mentioning the token still clear
 # the VERDICT: APPROVE in between; the balanced same-line span (`+...\1) does not.
 check ok "stray backtick on one line does not swallow a real APPROVE on the next" \
   '[]' '[{"user":{"login":"reviewer-bot"},"body":"Note the ` in the shell snippet above.\n\nVERDICT: APPROVE\n\nNits are in `pr-verdict.py` only."}]'
+# PHNX-3118 review 5: LAUNDERING guard. A refusal must veto the item even when a
+# code-strip imperfection would delete it — negation is judged on the RAW body,
+# not the stripped one. Both repros below output `ok` under strip-then-negate and
+# `missing` (correct) with the raw-veto.
+check missing "same-line: stray backtick swallowing 'NOT APPROVED' must not launder a later APPROVE" \
+  '[]' '[{"user":{"login":"reviewer-bot"},"body":"See ` mark. NOT APPROVED. Check `x` now. VERDICT: APPROVE"}]'
+check missing "unclosed fence swallowing a refusal must not launder a later APPROVE" \
+  '[]' '[{"user":{"login":"reviewer-bot"},"body":"```\nstart of a block I forgot to close\n\nI do NOT APPROVE this PR, the fix is incomplete.\n\n```python\nx=1\n```\n\nVERDICT: APPROVE"}]'
 
 printf -- '---\npr-verdict: %s passed, %s failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]

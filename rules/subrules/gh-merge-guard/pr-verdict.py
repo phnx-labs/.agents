@@ -205,24 +205,44 @@ def _exclude_self_authored(items, pr_author: str):
 
 def _body_approves(items) -> bool:
     """True if any item carries a live APPROVE verdict. Applies to both review
-    bodies and issue-comment bodies. Fenced/inline code is stripped first
-    (PHNX-3118) so a verdict token merely quoted in code never counts. A
-    "carried from #NNNN" citation launders a prior PR's approval, so the whole
-    item is dropped wholesale (RUSH-3099). An item clears only when it has at
-    least one APPROVE token and NONE of its tokens is negated (_token_negated) —
-    a refusal on any token vetoes an incidental clean mention in the same body,
-    so "I do NOT APPROVE this. … APPROVE" cannot launder a rejection into a
-    pass."""
+    bodies and issue-comment bodies.
+
+    The check is DELIBERATELY ASYMMETRIC between the raw and code-stripped body,
+    and that asymmetry is what makes code-stripping unable to launder a rejection
+    (PHNX-3118 review 5):
+
+      * The VETO signals — a "carried from #NNNN" citation (RUSH-3099) and a
+        negated APPROVE token (_token_negated) — are checked on the RAW body. A
+        refusal like "I do NOT APPROVE this" vetoes the item even if _strip_code
+        would have swallowed it between a stray backtick and an unrelated code
+        span. _strip_code cannot perfectly tell a real code delimiter from an
+        accidental one, so if it could delete a refusal the guard would clear a
+        rejection — the one thing the charter forbids. Checking the veto on raw
+        removes that path by construction.
+      * The POSITIVE signal — the presence of a live APPROVE token — is checked
+        on the code-STRIPPED body, so a token merely quoted inside code (exactly
+        how a review of THIS parser discusses the word) never clears the guard.
+
+    Net: the worst a _strip_code imperfection can now do is drop a real approve
+    from the positive pass (wrongly BLOCK — the safe, documented-bias direction),
+    never hide a refusal (launder — forbidden). An item clears only when its raw
+    body carries neither a carried-citation nor any negated APPROVE token, AND
+    its code-stripped body still has at least one un-negated APPROVE token."""
     if not isinstance(items, list):
         return False
     for it in items:
-        body = _strip_code(it.get("body") or "")
-        if CARRIED.search(body):
+        raw = it.get("body") or ""
+        # VETO on raw — immune to code-stripping.
+        if CARRIED.search(raw):
             continue
-        tokens = list(APPROVE.finditer(body))
+        if any(_token_negated(raw, m.start()) for m in APPROVE.finditer(raw)):
+            continue
+        # POSITIVE on the code-stripped body — a quoted token does not clear.
+        stripped = _strip_code(raw)
+        tokens = list(APPROVE.finditer(stripped))
         if not tokens:
             continue
-        if any(_token_negated(body, m.start()) for m in tokens):
+        if any(_token_negated(stripped, m.start()) for m in tokens):
             continue
         return True
     return False
