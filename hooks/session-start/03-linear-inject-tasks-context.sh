@@ -77,45 +77,30 @@ except subprocess.TimeoutExpired:
 # Which Linear project is this cwd? `agents projects` owns that mapping — a def
 # under ~/.agents/projects/<name>.yaml binds a root, its repos[].path entries,
 # and a `linear.projectId`/`linear.name`. Ask the CLI rather than re-deriving it:
-# `for-cwd` does longest-match over every bound root and monorepo subpath, so a
-# worktree, a subdir, and two projects sharing one monorepo root all resolve
-# correctly — none of which a basename comparison can do.
+# `projects view <dir>` does longest-match over every bound root and monorepo
+# subpath, so a worktree, a subdir, and two projects sharing one monorepo root
+# all resolve correctly — none of which a basename comparison can do.
 #
-# Cost: two CLI calls, measured 0.28-0.31s each on an idle box. The brief below
+# Cost: one CLI call, measured 0.28-0.31s on an idle box. The brief below
 # already budgets 8s of curl and the lane sweep up to 3s against a `timeout: 15`
-# manifest cap, so ~0.6s here stays inside the remaining headroom. Both are
-# bounded and fail open — no `agents` on PATH, no def for this cwd, or a slow
+# manifest cap, so ~0.3s here stays inside the remaining headroom. It is
+# bounded and fails open — no `agents` on PATH, no def for this cwd, or a slow
 # call just leaves the fields empty and the basename fallback takes over.
-CWD_PROJECT_DEF=""
 CWD_PROJECT_NAME=""
 OTHER_PROJECT_NAMES=""
 if command -v agents >/dev/null 2>&1; then
-  CWD_PROJECT_DEF=$(_to 3 agents projects for-cwd --json 2>/dev/null | python3 -c '
+  # One call: `projects view . --json` longest-matches the cwd to a def and
+  # returns {name, linear:{name, projectId}, root}. We want linear.name — the
+  # board label ("AGI"), what the project rows below match on. Several defs may
+  # point at one Linear project, so the board name is the right key.
+  CWD_PROJECT_NAME=$(_to 3 agents projects view . --json 2>/dev/null | python3 -c '
 import json, sys
 try:
-    print((json.load(sys.stdin) or {}).get("name") or "")
+    d = json.load(sys.stdin) or {}
+    print(((d.get("linear") or {}).get("name")) or "")
 except Exception:
     pass
 ' 2>/dev/null || true)
-  if [ -n "$CWD_PROJECT_DEF" ]; then
-    # The def name is the LOCAL id ("agents-cli"); linear.name is what the board
-    # calls the work ("AGI"). Several defs may point at one Linear project, so
-    # the board name is the right key for matching the project rows below.
-    CWD_PROJECT_NAME=$(_to 3 agents projects list --json 2>/dev/null | CWD_PROJECT_DEF="$CWD_PROJECT_DEF" python3 -c '
-import json, os, sys
-want = os.environ.get("CWD_PROJECT_DEF") or ""
-try:
-    defs = json.load(sys.stdin)
-except Exception:
-    raise SystemExit
-if not isinstance(defs, list):
-    raise SystemExit
-for d in defs:
-    if (d or {}).get("name") == want:
-        print(((d.get("linear") or {}).get("name")) or "")
-        break
-' 2>/dev/null || true)
-  fi
 fi
 export CWD_PROJECT_NAME
 

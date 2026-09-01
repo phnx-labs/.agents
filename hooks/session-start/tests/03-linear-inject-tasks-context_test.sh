@@ -33,20 +33,16 @@ mkdir -p "$SANDBOX/bin"
 # (08-inject-repo-inflight.sh already shells `agents sessions --active` from
 # SessionStart on the same budget, so calling the CLI here is established.)
 #
-# `for-cwd` deliberately answers with no match: these fixtures set the cwd by
-# basename, which is what exercises the fallback fuzz. The project-def path gets
-# its own case below.
+# `view` deliberately answers with no match by default: these fixtures set the
+# cwd by basename, which is what exercises the fallback fuzz. The project-def
+# path gets its own case below (AGENTS_VIEW_JSON).
 cat > "$SANDBOX/bin/agents" <<'STUB'
 #!/usr/bin/env bash
 case "$1" in
   secrets) echo "agents-secrets-invoked: $*" >> "$AGENTS_CALLS"; exit 1 ;;
 esac
-if [ "$1" = "projects" ] && [ "$2" = "for-cwd" ]; then
-  printf '%s\n' "${AGENTS_FOR_CWD_JSON:-{\"name\":null\}}"
-  exit 0
-fi
-if [ "$1" = "projects" ] && [ "$2" = "list" ]; then
-  printf '%s\n' "${AGENTS_PROJECTS_JSON:-[]}"
+if [ "$1" = "projects" ] && [ "$2" = "view" ]; then
+  printf '%s\n' "${AGENTS_VIEW_JSON:-{\"name\":null\}}"
   exit 0
 fi
 exit 1
@@ -543,8 +539,7 @@ fi
 # with an empty-team payload, so point at the pristine copy taken at setup.
 export CURL_PAYLOAD="$SANDBOX/payload-rich.json"
 out=$(LINEAR_CLI_CONFIG="$SANDBOX/config.json" env -u LINEAR_API_KEY -u LINEAR_TEAM_ID \
-  AGENTS_FOR_CWD_JSON='{"name":"agents-cli"}' \
-  AGENTS_PROJECTS_JSON='[{"name":"agents-cli","linear":{"projectId":"lin_1","name":"Agents CLI"}}]' \
+  AGENTS_VIEW_JSON='{"name":"agents-cli","linear":{"projectId":"lin_1","name":"Agents CLI"},"root":"~/src/agents-cli"}' \
   bash "$HOOK" 2>/dev/null)
 check_contains "project def picks the focus project"  "$out" "★ this directory"
 check_contains "focus project keeps its milestones"   "$out" "**Milestones:**"
@@ -555,8 +550,7 @@ check_contains "focus project keeps its milestones"   "$out" "**Milestones:**"
 # renamed away from — treating "present" as "authoritative" collapsed every
 # project to one line and claimed no def existed.
 out=$(LINEAR_CLI_CONFIG="$SANDBOX/config.json" env -u LINEAR_API_KEY -u LINEAR_TEAM_ID \
-  AGENTS_FOR_CWD_JSON='{"name":"agents-cli"}' \
-  AGENTS_PROJECTS_JSON='[{"name":"agents-cli","linear":{"projectId":"lin_x","name":"Nothing Named This"}}]' \
+  AGENTS_VIEW_JSON='{"name":"agents-cli","linear":{"projectId":"lin_x","name":"Nothing Named This"},"root":"~/src/agents-cli"}' \
   bash "$HOOK" 2>/dev/null)
 check_contains "stale def falls back to the fuzz"     "$out" "### Agents CLI ★ this directory"
 check_contains "stale def still gets full depth"      "$out" "**Milestones:**"
