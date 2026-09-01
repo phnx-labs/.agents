@@ -40,14 +40,19 @@ stopping at the first confident match. `$ARGUMENTS` naming a project short-circu
 1. **Git anchor.** `git rev-parse --show-toplevel` (repo root) + `git remote get-url origin`
    → `owner/repo`; `git rev-parse --show-prefix` → the subdirectory (a monorepo/nested dir
    narrows which project).
-2. **Existing binding (fast path).** `agents projects for-cwd` already resolves the cwd to a
-   defined project by repo-root or a `repos[].path`/subpath match, and that project carries
-   its Linear binding. Reuse it — it *is* the repo+subdir→project resolver.
-3. **Raw Linear match (fallback)** for an unregistered or deeply nested dir:
-   `linear projects --json` → best-effort match `owner/repo` + subdir against project
-   name/key (`rush`→`Rush` matches by name; a repo whose name differs from its project, e.g.
-   `agents-cli`→`AGI`, needs the binding, so step 2 wins when present). Fuzzy and best-effort —
-   never assume a hard 1:1.
+2. **Defined-project fast path.** `agents projects status --path --json` (bare `--path`
+   uses the cwd) auto-detects the project *containing* the cwd — repo-root or a bound
+   subpath — and prints `{name, linear:{name,projectId}, root}`, so it hands you the project
+   **and** its Linear binding in one call. Use it when `.name` is non-null; if it is `null`
+   the cwd is in no defined project — fall through to step 3. (The session-start hooks
+   resolve the same way via `agents projects for-cwd`; prefer `status --path` here because it
+   ships in the current CLI and returns the binding inline. Both are best-effort — always
+   tolerate a non-zero exit or a `null` name and fall through, never hard-depend on either.)
+3. **Raw Linear match (fallback)** for an unregistered or deeply nested dir, or when step 2
+   returned `null`: `linear projects --json` → best-effort match `owner/repo` + subdir against
+   project name/key (`rush`→`Rush` matches by name; a repo whose name differs from its
+   project, e.g. `agents-cli`→`AGI`, needs the binding, so step 2 wins when present). Fuzzy
+   and best-effort — never assume a hard 1:1.
 4. **Self-heal (optional).** When step 3 resolves a repo that had no binding, offer
    `agents projects add` / `agents projects link --linear` so the next resume hits the fast
    path.
@@ -74,9 +79,9 @@ sessions just to see what they were doing):
 ## 3. Present — not-progressing-first
 
 One short table: **item · source · state · last touched · recommended next action**, ranked
-**not-progressing-first** (idle-but-unfinished is the highest-risk state — the repo's own
-"rank by progress, not liveness" doctrine), with the healthy running set collapsed. This is
-the read-only synthesis; no compute has been spawned yet.
+**not-progressing-first** — idle-but-unfinished work is the highest-risk state (most likely
+to be silently abandoned), so it ranks above the healthy running set, which collapses. This
+is the read-only synthesis; no compute has been spawned yet.
 
 ## 4. Resume the work — on workers, never here
 
