@@ -33,20 +33,16 @@ mkdir -p "$SANDBOX/bin"
 # (08-inject-repo-inflight.sh already shells `agents sessions --active` from
 # SessionStart on the same budget, so calling the CLI here is established.)
 #
-# `for-cwd` deliberately answers with no match: these fixtures set the cwd by
-# basename, which is what exercises the fallback fuzz. The project-def path gets
-# its own case below.
+# `view` deliberately answers with no match by default: these fixtures set the
+# cwd by basename, which is what exercises the fallback fuzz. The project-def
+# path gets its own case below (AGENTS_VIEW_JSON).
 cat > "$SANDBOX/bin/agents" <<'STUB'
 #!/usr/bin/env bash
 case "$1" in
   secrets) echo "agents-secrets-invoked: $*" >> "$AGENTS_CALLS"; exit 1 ;;
 esac
-if [ "$1" = "projects" ] && [ "$2" = "for-cwd" ]; then
-  printf '%s\n' "${AGENTS_FOR_CWD_JSON:-{\"name\":null\}}"
-  exit 0
-fi
-if [ "$1" = "projects" ] && [ "$2" = "list" ]; then
-  printf '%s\n' "${AGENTS_PROJECTS_JSON:-[]}"
+if [ "$1" = "projects" ] && [ "$2" = "view" ]; then
+  printf '%s\n' "${AGENTS_VIEW_JSON:-{\"name\":null\}}"
   exit 0
 fi
 exit 1
@@ -243,7 +239,7 @@ rm -f "$CURL_ARGS"
 out=$(LINEAR_CLI_CONFIG="$SANDBOX/config.json" env -u LINEAR_API_KEY -u LINEAR_TEAM_ID AGENT_SELF=claude \
   bash "$HOOK" 2>/dev/null)
 check_contains "claude lane: Your Tasks lists RUSH-10"     "$out" "RUSH-10"
-check_contains "claude lane: header names the delegate"    "$out" "Your Tasks (delegated to Claude)"
+check_contains "claude lane: header names the delegate"    "$out" "Your Tasks (delegated to Claude in Agents CLI)"
 check_absent   "no agent:* label header survives"          "$out" "Your Tasks (agent:"
 # The other agent's delegated work stays visible in the cycle section.
 check_contains "claude lane: codex issue still in cycle"   "$out" "RUSH-11"
@@ -280,7 +276,7 @@ json.dump(d, open(sys.argv[2], "w"))
 PY
 out=$(LINEAR_CLI_CONFIG="$SANDBOX/config.json" env -u LINEAR_API_KEY -u LINEAR_TEAM_ID AGENT_SELF=codex \
   bash "$HOOK" 2>/dev/null)
-check_contains "codex lane: header names the delegate"     "$out" "Your Tasks (delegated to Codex)"
+check_contains "codex lane: header names the delegate"     "$out" "Your Tasks (delegated to Codex in Agents CLI)"
 check_contains "codex lane: Your Tasks lists RUSH-11"      "$out" "RUSH-11"
 check_contains "codex lane: claude counted as other"       "$out" "Claude=1"
 check_contains "codex identity reaches the query"          "$(cat "$CURL_ARGS" 2>/dev/null)" 'eqIgnoreCase: \"codex\"'
@@ -338,9 +334,79 @@ json.dump(d, open(sys.argv[2], "w"))
 PY
 out=$(LINEAR_CLI_CONFIG="$SANDBOX/config.json" env -u LINEAR_API_KEY -u LINEAR_TEAM_ID AGENT_SELF=claude \
   bash "$HOOK" 2>/dev/null)
-check_contains "overflow: count marked as truncated"       "$out" "Your Tasks (delegated to Claude) — 12+"
+check_contains "overflow: count marked as truncated"       "$out" "Your Tasks (delegated to Claude in Agents CLI) — 12+"
 check_contains "overflow: names the remainder"             "$out" "more delegated to you (see: linear tasks --agent claude)"
 check_contains "overflow: uncapped issue still in brief"   "$out" "RUSH-9011"
+export CURL_PAYLOAD="$CLAUDE_PAYLOAD"
+
+# --- 5f. the cwd's project scopes Your Tasks; other projects demote to a hint --
+# Two delegated issues, one in the focus project (Agents CLI, via the basename
+# fuzz) and one elsewhere (Rush App). An agent in the agents-cli folder must see
+# only the focus issue in Your Tasks, with the rest rolled into a cross-project
+# pointer — the fix for agents picking up another project's work.
+export CURL_PAYLOAD="$SANDBOX/payload-crossproj.json"
+python3 - "$CLAUDE_PAYLOAD" "$CURL_PAYLOAD" <<'PY'
+import json, sys
+d = json.load(open(sys.argv[1]))
+def issue(ident, project):
+    return {"identifier": ident, "title": f"{ident} work", "description": "",
+            "priority": 1, "state": {"name": "Todo", "type": "unstarted"},
+            "assignee": {"name": "Muqsit"}, "delegate": {"name": "Claude"},
+            "labels": {"nodes": []}, "project": {"name": project}}
+mine = [issue("RUSH-700", "Agents CLI"), issue("RUSH-701", "Rush App")]
+d["data"]["team"]["myOpenIssues"] = {"nodes": mine, "pageInfo": {"hasNextPage": False}}
+json.dump(d, open(sys.argv[2], "w"))
+PY
+out=$(LINEAR_CLI_CONFIG="$SANDBOX/config.json" env -u LINEAR_API_KEY -u LINEAR_TEAM_ID AGENT_SELF=claude \
+  bash "$HOOK" 2>/dev/null)
+yourtasks=$(printf '%s' "$out" | sed -n '/### Your Tasks/,/^### /p')
+check_contains "cross-proj: header scoped to focus"        "$out"       "Your Tasks (delegated to Claude in Agents CLI) — 1"
+check_contains "cross-proj: focus issue listed"            "$yourtasks" "RUSH-700"
+check_absent   "cross-proj: other-project issue demoted"   "$yourtasks" "RUSH-701"
+check_contains "cross-proj: elsewhere hint shown"          "$yourtasks" "1 more delegated to you in other projects"
+export CURL_PAYLOAD="$CLAUDE_PAYLOAD"
+
+# --- 5g. an unbound cwd (matches no live project) keeps the full cross-project
+# queue. Fail-open: a session that is NOT in a project directory must still see
+# everything delegated to it, with no "in <project>" scoping and no hint.
+export CURL_PAYLOAD="$SANDBOX/payload-crossproj.json"
+mkdir -p "$SANDBOX/work/nomatch-dir"
+out=$(cd "$SANDBOX/work/nomatch-dir" && LINEAR_CLI_CONFIG="$SANDBOX/config.json" \
+  env -u LINEAR_API_KEY -u LINEAR_TEAM_ID AGENT_SELF=claude bash "$HOOK" 2>/dev/null)
+yourtasks=$(printf '%s' "$out" | sed -n '/### Your Tasks/,/^### /p')
+check_contains "unbound cwd: header is unscoped"           "$out"       "Your Tasks (delegated to Claude) — 2"
+check_contains "unbound cwd: focus-side issue listed"      "$yourtasks" "RUSH-700"
+check_contains "unbound cwd: cross-project issue kept"     "$yourtasks" "RUSH-701"
+check_absent   "unbound cwd: no elsewhere hint"            "$yourtasks" "in other projects"
+export CURL_PAYLOAD="$CLAUDE_PAYLOAD"
+
+# --- 5h. a truncated source page filtered below MY_CAP must not print a
+# negative remainder. Regression: mine_here (the page filtered client-side to
+# the focus project) can sit far under MY_CAP even when myOpenIssues.hasNextPage
+# is true (an agent with 100+ open issues team-wide, only a few in this
+# project), so the '+N more' math must clamp — otherwise a garbled '_+-N+ more_'
+# lands in every affected session's brief.
+export CURL_PAYLOAD="$SANDBOX/payload-trunc-scoped.json"
+python3 - "$CLAUDE_PAYLOAD" "$CURL_PAYLOAD" <<'PY'
+import json, sys
+d = json.load(open(sys.argv[1]))
+def issue(ident, project):
+    return {"identifier": ident, "title": f"{ident} work", "description": "",
+            "priority": 1, "state": {"name": "Todo", "type": "unstarted"},
+            "assignee": {"name": "Muqsit"}, "delegate": {"name": "Claude"},
+            "labels": {"nodes": []}, "project": {"name": project}}
+# 4 issues in the focus project (< MY_CAP of 10), but the source page is marked
+# truncated (delegate has 100+ open items across the whole team).
+mine = [issue(f"RUSH-8{i:02d}", "Agents CLI") for i in range(4)]
+d["data"]["team"]["myOpenIssues"] = {"nodes": mine, "pageInfo": {"hasNextPage": True}}
+json.dump(d, open(sys.argv[2], "w"))
+PY
+out=$(LINEAR_CLI_CONFIG="$SANDBOX/config.json" env -u LINEAR_API_KEY -u LINEAR_TEAM_ID AGENT_SELF=claude \
+  bash "$HOOK" 2>/dev/null)
+yourtasks=$(printf '%s' "$out" | sed -n '/### Your Tasks/,/^### /p')
+check_contains "trunc+scoped: header keeps the + marker"     "$out"       "Your Tasks (delegated to Claude in Agents CLI) — 4+"
+check_absent   "trunc+scoped: no garbled negative remainder" "$yourtasks" "+-"
+check_absent   "trunc+scoped: no spurious remainder line"    "$yourtasks" "more delegated to you (see:"
 export CURL_PAYLOAD="$CLAUDE_PAYLOAD"
 
 # --- 5e. a truncated cycle page must not print exact-looking lane counts ------
@@ -473,8 +539,7 @@ fi
 # with an empty-team payload, so point at the pristine copy taken at setup.
 export CURL_PAYLOAD="$SANDBOX/payload-rich.json"
 out=$(LINEAR_CLI_CONFIG="$SANDBOX/config.json" env -u LINEAR_API_KEY -u LINEAR_TEAM_ID \
-  AGENTS_FOR_CWD_JSON='{"name":"agents-cli"}' \
-  AGENTS_PROJECTS_JSON='[{"name":"agents-cli","linear":{"projectId":"lin_1","name":"Agents CLI"}}]' \
+  AGENTS_VIEW_JSON='{"name":"agents-cli","linear":{"projectId":"lin_1","name":"Agents CLI"},"root":"~/src/agents-cli"}' \
   bash "$HOOK" 2>/dev/null)
 check_contains "project def picks the focus project"  "$out" "★ this directory"
 check_contains "focus project keeps its milestones"   "$out" "**Milestones:**"
@@ -485,8 +550,7 @@ check_contains "focus project keeps its milestones"   "$out" "**Milestones:**"
 # renamed away from — treating "present" as "authoritative" collapsed every
 # project to one line and claimed no def existed.
 out=$(LINEAR_CLI_CONFIG="$SANDBOX/config.json" env -u LINEAR_API_KEY -u LINEAR_TEAM_ID \
-  AGENTS_FOR_CWD_JSON='{"name":"agents-cli"}' \
-  AGENTS_PROJECTS_JSON='[{"name":"agents-cli","linear":{"projectId":"lin_x","name":"Nothing Named This"}}]' \
+  AGENTS_VIEW_JSON='{"name":"agents-cli","linear":{"projectId":"lin_x","name":"Nothing Named This"},"root":"~/src/agents-cli"}' \
   bash "$HOOK" 2>/dev/null)
 check_contains "stale def falls back to the fuzz"     "$out" "### Agents CLI ★ this directory"
 check_contains "stale def still gets full depth"      "$out" "**Milestones:**"

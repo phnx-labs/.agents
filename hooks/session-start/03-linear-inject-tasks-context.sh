@@ -14,7 +14,9 @@
 #   1. Team & Agents
 #   2. Projects — every non-canceled/completed project, cwd-matched first,
 #      each with milestones + top open tickets (priority-sorted)
-#   3. Active cycle — Your Tasks first, then open work grouped by project
+#   3. Active cycle — Your Tasks first (scoped to the cwd's project when one is
+#      matched, with a cross-project pointer for the rest), then open work
+#      grouped by project
 
 # Which agent/harness is running this hook (for the "Your Tasks" bucket). The
 # script's own path names the agent on every launch path; AGENT_SELF overrides.
@@ -75,45 +77,30 @@ except subprocess.TimeoutExpired:
 # Which Linear project is this cwd? `agents projects` owns that mapping — a def
 # under ~/.agents/projects/<name>.yaml binds a root, its repos[].path entries,
 # and a `linear.projectId`/`linear.name`. Ask the CLI rather than re-deriving it:
-# `for-cwd` does longest-match over every bound root and monorepo subpath, so a
-# worktree, a subdir, and two projects sharing one monorepo root all resolve
-# correctly — none of which a basename comparison can do.
+# `projects view <dir>` does longest-match over every bound root and monorepo
+# subpath, so a worktree, a subdir, and two projects sharing one monorepo root
+# all resolve correctly — none of which a basename comparison can do.
 #
-# Cost: two CLI calls, measured 0.28-0.31s each on an idle box. The brief below
+# Cost: one CLI call, measured 0.28-0.31s on an idle box. The brief below
 # already budgets 8s of curl and the lane sweep up to 3s against a `timeout: 15`
-# manifest cap, so ~0.6s here stays inside the remaining headroom. Both are
-# bounded and fail open — no `agents` on PATH, no def for this cwd, or a slow
+# manifest cap, so ~0.3s here stays inside the remaining headroom. It is
+# bounded and fails open — no `agents` on PATH, no def for this cwd, or a slow
 # call just leaves the fields empty and the basename fallback takes over.
-CWD_PROJECT_DEF=""
 CWD_PROJECT_NAME=""
 OTHER_PROJECT_NAMES=""
 if command -v agents >/dev/null 2>&1; then
-  CWD_PROJECT_DEF=$(_to 3 agents projects for-cwd --json 2>/dev/null | python3 -c '
+  # One call: `projects view . --json` longest-matches the cwd to a def and
+  # returns {name, linear:{name, projectId}, root}. We want linear.name — the
+  # board label ("AGI"), what the project rows below match on. Several defs may
+  # point at one Linear project, so the board name is the right key.
+  CWD_PROJECT_NAME=$(_to 3 agents projects view . --json 2>/dev/null | python3 -c '
 import json, sys
 try:
-    print((json.load(sys.stdin) or {}).get("name") or "")
+    d = json.load(sys.stdin) or {}
+    print(((d.get("linear") or {}).get("name")) or "")
 except Exception:
     pass
 ' 2>/dev/null || true)
-  if [ -n "$CWD_PROJECT_DEF" ]; then
-    # The def name is the LOCAL id ("agents-cli"); linear.name is what the board
-    # calls the work ("AGI"). Several defs may point at one Linear project, so
-    # the board name is the right key for matching the project rows below.
-    CWD_PROJECT_NAME=$(_to 3 agents projects list --json 2>/dev/null | CWD_PROJECT_DEF="$CWD_PROJECT_DEF" python3 -c '
-import json, os, sys
-want = os.environ.get("CWD_PROJECT_DEF") or ""
-try:
-    defs = json.load(sys.stdin)
-except Exception:
-    raise SystemExit
-if not isinstance(defs, list):
-    raise SystemExit
-for d in defs:
-    if (d or {}).get("name") == want:
-        print(((d.get("linear") or {}).get("name")) or "")
-        break
-' 2>/dev/null || true)
-  fi
 fi
 export CWD_PROJECT_NAME
 
@@ -411,7 +398,7 @@ try:
             name = p.get('name') or 'unnamed'
             pct = pct_str(p.get('progress')) or '?'
             state = p.get('state') or ''
-            # `focus and` keeps the no-focus case on the full listing, matching
+            # \`focus and\` keeps the no-focus case on the full listing, matching
             # the cycle section below — one rule, both sections.
             if focus and not is_cwd_match(p):
                 # One-line roll-up: enough to know the project exists and roughly
@@ -507,19 +494,63 @@ try:
         n['_other_labels'] = [l['name'] for l in (n.get('labels') or {}).get('nodes', [])]
     my_truncated = (my_conn.get('pageInfo') or {}).get('hasNextPage')
 
+    # When this cwd belongs to a project, promote that project's delegated work
+    # to \"Your Tasks\" and demote the rest to a one-line cross-project hint. The
+    # bug this fixes: an agent launched in one project's folder saw OTHER
+    # projects' tasks in its own queue and picked them up. No focus (cwd matched
+    # no live project) keeps the full cross-project queue, so nothing is hidden
+    # from a session that isn't in a project directory.
+    focus_norms = {norm(p.get('name')) for p in focus}
+    if focus_norms:
+        here_ids = set()
+        mine_here = []
+        for n in mine:
+            if norm((n.get('project') or {}).get('name')) in focus_norms:
+                mine_here.append(n)
+                here_ids.add(n.get('identifier'))
+        mine_elsewhere = [n for n in mine if n.get('identifier') not in here_ids]
+    else:
+        mine_here = mine
+        mine_elsewhere = []
+
+    # The '+' truncation marker tracks whether the SOURCE query was truncated
+    # (my_truncated), not the client-side project filter: a filtered page can
+    # still have focus-project issues on later pages, so keep '+' when the query
+    # was capped rather than claim a false-exact count.
+    scoped = bool(focus_norms)
+    where = f' in {focus[0].get(\"name\")}' if scoped else ''
+    elsewhere_hint = (f'- _+{len(mine_elsewhere)} more delegated to you in other '
+                      f'projects (see: linear tasks --all --agent {SELF})_') if mine_elsewhere else None
+
     MY_CAP = 10
     printed_ids = set()
-    if mine:
-        owner = (mine[0].get('delegate') or {}).get('name') or SELF
-        total = f'{len(mine)}+' if my_truncated else str(len(mine))
-        print(f'### Your Tasks (delegated to {owner}) — {total}')
-        for n in mine[:MY_CAP]:
+    if mine_here:
+        owner = (mine_here[0].get('delegate') or {}).get('name') or SELF
+        total = f'{len(mine_here)}+' if my_truncated else str(len(mine_here))
+        print(f'### Your Tasks (delegated to {owner}{where}) — {total}')
+        for n in mine_here[:MY_CAP]:
             printed_ids.add(n.get('identifier'))
-            print(fmt_issue_line(n, with_desc=True, with_project=True))
-        if len(mine) > MY_CAP or my_truncated:
-            more = len(mine) - MY_CAP
+            # In-project view: project name is redundant on every row. Unscoped:
+            # keep it, since the rows span projects.
+            print(fmt_issue_line(n, with_desc=True, with_project=not scoped))
+        # Remainder past the display cap. clamp to 0: once mine_here is the
+        # page filtered client-side to one project, it can be far below MY_CAP
+        # even while the SOURCE query was truncated (an agent with 100+ open
+        # issues team-wide, few in this project) — an unclamped subtraction then
+        # injected a garbled '_+-6+ more_'. When there is no real remainder the
+        # header's own '+' already signals the truncation, so drop the line.
+        more = max(0, len(mine_here) - MY_CAP)
+        if more:
             suffix = f'{more}+' if my_truncated else str(more)
             print(f'- _+{suffix} more delegated to you (see: linear tasks --agent {SELF})_')
+        if elsewhere_hint:
+            print(elsewhere_hint)
+        print()
+    elif mine_elsewhere:
+        # Nothing in this project, but you do own work elsewhere — say so, rather
+        # than \"none assigned\", which reads as an empty queue.
+        print(f'### Your Tasks (delegated to {SELF}{where}) — none here')
+        print(elsewhere_hint)
         print()
     else:
         print(f'### Your Tasks (delegated to {SELF}) — none assigned')
