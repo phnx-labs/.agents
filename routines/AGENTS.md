@@ -10,8 +10,9 @@ nobody is watching.
 
 A routine can run a shell `command:` or an LLM agent. **Use `command:` for anything
 deterministic.** An agent-mode routine depends on a logged-in account, burns tokens, and
-gambles on account rotation — `check-updates` was originally agent-mode and failed on a
-logged-out version with `Not logged in · /login`. Version compare, git fast-forward, install,
+gambles on account rotation — the now-removed `check-updates` routine (PHNX-3695: replaced
+by the agents-cli daemon's own `self-update` service) was originally agent-mode and failed on
+a logged-out version with `Not logged in · /login`. Version compare, git fast-forward, install,
 notify: all deterministic, all `command:`.
 
 Reach for an agent only when the work genuinely needs judgment.
@@ -19,8 +20,8 @@ Reach for an agent only when the work genuinely needs judgment.
 ## Shape
 
 ```yaml
-name: check-updates          # must equal the filename
-schedule: 0 9 * * 1          # cron, in the daemon's local time
+name: worktree-sweep         # must equal the filename
+schedule: 30 4 * * *         # cron, in the daemon's local time
 enabled: true
 timeout: 15m
 command: |
@@ -33,8 +34,8 @@ command: |
   explicit branch, and print what happened.
 - **Notify only when something changed.** A routine that reports "nothing to do" every week
   trains the user to ignore it.
-- Never assume a tool is a real binary — `npm` is a lazy shell function in some setups. Use
-  `command -v npm` with a fallback to the absolute path, as `check-updates` does.
+- Never assume a tool is a real binary — a shell tool can be a lazy shell function in some
+  setups. Use `command -v <tool>` with a fallback to the absolute path.
 
 ## Every box self-updates independently
 

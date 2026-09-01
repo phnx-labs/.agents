@@ -17,8 +17,9 @@
 # stop an AGENT choosing branches to delete; here the branch is chosen by the
 # merge. Agents keep zero branch-delete permission and gain no new command.
 #
-# NO `devices:` RESTRICTION — same shape as check-updates.yml, for the same
-# reason. Per §Scheduling & execution singularity an unrestricted routine MAY
+# NO `devices:` RESTRICTION, for the same reason the now-removed
+# check-updates.yml (PHNX-3695) was also unpinned. Per §Scheduling & execution
+# singularity an unrestricted routine MAY
 # fire on every device when its input is the FIRING DEVICE'S OWN STATE. Worktree
 # cleanup is exactly that: each box sweeps only its own checkouts, so there is no
 # shared queue, no owner pin, and no double-fire. Pinning it to one device would
