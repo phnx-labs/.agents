@@ -92,7 +92,7 @@ to type.
 | Durable **source-of-truth spec** of a capability | `/swarm spec …` | So others do not invent wrong behavior |
 | Debug a non-obvious bug | `/debug` → `swarm:debug` | Blind multi-provider root cause |
 | Resume prior work in **this** window | `/continue` | [`sessions`](plugins/sessions/README.md) |
-| Re-open crash sessions as **windows** | `/sessions:restore` | Not the same as `/continue` |
+| Pick a whole **project's** work back up | `/work:resume` (`/resume`) | Reconstructs its in-flight work, resumes it on workers — [`work`](plugins/work/README.md) |
 | Finish many interrupted sessions **headlessly** | `/continue recover` | Mode of sessions continue |
 | How we have been working (analytics) | `/insights` | insights + trends + perf + stats |
 | Pull ranked, **snippet-level** context from past sessions on a topic | `/recall` | [`sessions`](plugins/sessions/README.md) — layered CLI discovery + a bundled fallback that recovers assistant answers the index never stores |
@@ -115,7 +115,7 @@ to type.
 | "One ticket, not sure if code or web" | `/work:dispatch RUSH-1234` — classifies and routes. |
 | "Board is a mess of maybe-later items" | `/work:loop triage` first, then `/work:loop` or `/code:loop` on what remains. |
 | "Agents keep hitting rate limits / logouts" | Use `/work:loop` (forced load-spread) or `/swarm` with mixed harnesses and `--strategy balanced` — never one long single-account session. |
-| "Machine crashed; windows are gone" | `/sessions:restore` for Ghostty/terminal relaunch; `/continue recover` to finish work headlessly. |
+| "Machine crashed; pick the work back up" | `/continue recover` finishes the interrupted work **headlessly** (windows are not reopened); `/work:resume` re-enters a whole project and resumes it on workers. |
 | "Pick up where that session left off" | `/continue <id-or-topic>`. |
 | "Did we already solve this / what did you tell me about X" | `/recall <topic>` — ranked snippets, not a whole-session dump. |
 | "Is this bug real / where is the root cause?" | `/debug`. |
@@ -128,7 +128,7 @@ to type.
 | **[`work`](plugins/work/README.md)** | Multi-project, multi-kind, unattended drain; one mixed task | Pure engineering merge queue only → use `code` |
 | **[`code`](plugins/code/README.md)** | Engineering loop, PR review, commit split, project AGENTS.md learn | Browser outreach / overnight mixed board → use `work` |
 | **[`swarm`](plugins/swarm/README.md)** | You need parallel independent tracks or blind verification | Single small edit |
-| **[`sessions`](plugins/sessions/README.md)** | Resume, restore windows, session analytics | Starting brand-new work |
+| **[`sessions`](plugins/sessions/README.md)** | Resume prior work here, crash-recover headlessly, session analytics | Starting brand-new work |
 | **[`fleet`](plugins/fleet/README.md)** | Many machines must stay in sync / onboard a box | Single-machine day-to-day |
 | **[`share`](plugins/share/README.md)** / **[`design`](plugins/design/README.md)** | Publish HTML or render design offline | Shipping app code |
 
@@ -186,9 +186,9 @@ agents routines run drain-s0    # foreground test
 ### 5. After a crash
 
 ```text
-/sessions:restore    # put windows back
 /continue recover    # finish interrupted work headlessly
 /continue <id>       # resume one thread here
+/work:resume         # re-enter the whole project, resume its work on workers
 ```
 
 ### Skill-first note
