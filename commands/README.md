@@ -46,16 +46,18 @@ recap-and-leave, run `/recap` then [`/self:close`](../plugins/self/README.md).
 |---|---|
 | [`/recap`](./recap.md) | Recap the current session, or transfer concise context from a prior session selected by ID, prefix, or keywords |
 | [`/continue`](./continue.md) | Alias of `/sessions:continue` — resume prior work **in this session** (reattach only if genuinely live); group-capable. Also finishes crashed sessions headlessly (`/continue recover`). |
+| [`/resume`](./resume.md) | Alias of `/work:resume` — pick a whole **project's** work back up: best-effort detect the project from the CWD (git repo + subdir → Linear), reconstruct its in-flight work (sessions, PRs, worktrees, tickets), then **offload** each item to a `role=worker` device — never the personal box. One project (vs `/work:loop`'s whole board). |
 | [`/insights`](./insights.md) | Alias of `/sessions:insights` — orchestrate `agents insights` + trends + perf + sessions stats into evidence-backed actions |
 | [`/recall`](./recall.md) | Alias of `/sessions:search` — pull ranked, snippet-level context from prior sessions on a topic, without loading full transcripts. Falls back to the bundled `recall.py` when the CLI is thin — it's the only path that recovers assistant answers, since the index never stores them. |
 | [`/fork`](./fork.md) | Alias of `/sessions:fork` — fork this conversation into a NEW, independent session in a fresh terminal; the original is untouched. |
 | [`/learn`](./learn.md) | Post-session reflection that writes durable improvements forward — distill the lessons that generalize and route them to the right skill/rule/memory; `/learn <target>` audits one skill or command across all past sessions |
 
 The procedures for `/continue`, `/insights`, `/recall`, and `/fork` live in the
-[`sessions` plugin](../plugins/sessions/README.md) skills. Top-level files only invoke
-those skills (same pattern as `/continue` → `/sessions:continue`). Re-opening crashed
-sessions as windows is [`/sessions:restore`](../plugins/sessions/README.md) (no top-level
-alias).
+[`sessions` plugin](../plugins/sessions/README.md) skills; `/resume` lives in the
+[`work` plugin](../plugins/work/README.md). Top-level files only invoke those skills (same
+pattern as `/continue` → `/sessions:continue`). Recovering after a crash finishes the work
+headlessly via [`/continue recover`](../plugins/sessions/README.md) — the old
+window-reopening `sessions:restore` was removed.
 
 `/hibernate` and `/reflect` moved to the [`self` plugin](../plugins/self/README.md) as `/self:hibernate` and `/self:reflect`.
 

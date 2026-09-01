@@ -15,8 +15,9 @@ Typically invoked as `/continue <session-id>` (UUID or short prefix) — the for
 name, a topic, several ids, empty, or a recover-style crash sweep. A generated
 cross-device handoff may append `--device <machine>`.
 
-**Not** `sessions:restore` (that re-opens *other* sessions as Ghostty windows). This skill
-keeps you in the current harness and drives the unfinished work to done.
+This skill keeps you in the current harness and drives the unfinished work to done. To
+re-enter a whole **project** (its sessions, PRs, worktrees, tickets) and resume that work on
+the fleet, use [`/work:resume`](../../../work/README.md) instead.
 
 ## Modes
 
@@ -151,7 +152,8 @@ When `$ARGUMENTS` lists several sessions (ids, a shared topic, a team) and the i
 ## Recover mode (`/continue recover`)
 
 A crash, reboot, or pile of mid-task sessions left work in limbo. Finish what an agent can
-finish; hand back only what truly needs the user. **Not** `sessions:restore` (windows).
+finish **headlessly**; hand back only what truly needs the user. Recovery finishes the
+*work* — it does not reopen terminal windows.
 
 Mindset (mechanics are yours):
 
@@ -172,9 +174,6 @@ Mindset (mechanics are yours):
 - **One easy handoff.** Clipboard a version-pinned resume command, or point at the resume
   picker — fewest keystrokes. Honor anything the user wants kept manual.
 
-If the user wanted **windows back**, hand off to `sessions:restore` instead of finishing
-here.
-
 ---
 
 ## Anti-patterns
@@ -186,4 +185,4 @@ here.
 - Do not spawn a new copy when the session is still live in tmux/Ghostty — reattach instead
 - Do not drop a supplied `--device` locator then claim the remote transcript is missing
 - Do not hand-traverse `~/.agents/versions/.../projects/` — use `agents sessions`
-- Do not reopen a swarm of Ghostty windows under this skill — that is `sessions:restore`
+- Do not reopen a swarm of Ghostty windows to "recover" — finish the work headlessly instead

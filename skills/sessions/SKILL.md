@@ -30,8 +30,7 @@ agents sessions --project agents-cli --all
 
 `agents sessions resume` and `agents sessions fork` are the canonical lifecycle path —
 the `sessions` plugin skills drive them: `/continue` and `/recover` → `sessions:continue`,
-`/sessions:restore` re-opens crash windows, `/fork` → `sessions:fork`. Prefer those skills
-over hand-rolling resume flags.
+`/fork` → `sessions:fork`. Prefer those skills over hand-rolling resume flags.
 
 ```bash
 # Resume — reopen the SAME conversation by canonical id (from any device)

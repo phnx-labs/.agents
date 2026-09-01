@@ -11,6 +11,7 @@ the fleet holds browser + computer + secrets.
 | --- | --- |
 | `/work:loop` | **Unattended drain** of many items across projects. Spreads load (`agents teams` + balanced accounts + worker hosts). Uses browser/computer when the task needs it. **Drives each item to landed** — engineering merges on green behind a non-author review; you are asked only for a real product/credential decision. Its **`triage` mode** (`/work:loop triage`) instead forces every open board item to keep-and-schedule-this-cycle or cancel — never a hedge state. |
 | `/work:dispatch` | **ONE** unit of work — ticket, described task, or "next on `<project>`". Classify coding vs non-coding, file clean if needed, route to the right executor, drive to done. Single-target; not a board sweep. |
+| `/work:resume` | **Pick a whole PROJECT's work back up** (top-level alias `/resume`). Best-effort auto-detect the project from the CWD (git repo + subdir → Linear), reconstruct its in-flight work (live + interrupted sessions, open PRs, worktrees, open/doing tickets), present it not-progressing-first, then **offload each item to a `role=worker` device** — never the interactive/personal box. One project (vs `work:loop`'s whole board); reconstructs full state (vs `work:dispatch`'s one item). |
 | `/work:demo` | **Prove landed work, don't just claim it shipped.** The post-ship capstone: recover the ORIGINAL intent (not the diff), exercise the shipped thing in its **real** environment (installed/deployed, never the dev build) on **real representative inputs** signed in as the owner via `agents browser`/`agents computer`, put before/after side by side with a **measured** delta, then deliver an analyzed report on the owner's screen + attach it to the PR. Top-level alias: **`/demo`**. The answer to "show me a demo..". |
 
 ## Skills
@@ -18,18 +19,25 @@ the fleet holds browser + computer + secrets.
 | Skill | Role |
 | --- | --- |
 | `work:loop` | Orchestrator for overnight / multi-item drain. Composes engineering patterns from `code:loop`, including its merge-on-green completion. Its `triage` mode is the board-wide keep-and-schedule-or-cancel decision pass. |
+| `work:resume` | Re-enter a project: identify it from the CWD, reconstruct its in-flight work read-only, then offload each not-progressing item to a worker (composes `work:loop`'s worker-spawn path, scoped to the one project). The orchestrating session only reconstructs + monitors — it never becomes the compute node, since it may be on the personal laptop. Reached via `/work:resume` or the top-level `/resume` alias. |
 | `work:demo` | The post-ship demonstration ritual — seven steps from recovering intent to delivering an analyzed report. Reached via `/work:demo` or the top-level `/demo` alias. |
 | (dispatch is command-first today) | One-item path in `commands/dispatch.md`. |
 
 ## How the pieces fit
 
 ```
+/work:resume      → re-enter ONE project: reconstruct its in-flight work, resume on workers
 /work:loop triage → decide keep/cancel/priority on the whole board
 /work:loop        → drain everything clear, unattended, spread load
 /work:dispatch    → one item, any kind
 /work:demo        → after it lands, PROVE it — real env, before/after, report
 /code:loop        → engineering-only queue (worktrees, merge-oriented)
 ```
+
+- **`/work:resume` vs `/work:loop`** — resume is scoped to the **one project** you're in and
+  reconstructs its *full* state (sessions, PRs, worktrees, tickets) before resuming; loop is
+  the whole board across every project. Both **offload execution to workers** — resume reuses
+  loop's worker-spawn path, scoped. Neither runs compute on a `role=personal` box.
 
 - **`/work:loop triage`** — board decisions. A plain `work:loop` drain skips items that need cancel/taste; `triage` mode is where those calls get made.
 - **`/code:loop`** — engineering drain with merge-oriented "done". `work:loop` reuses its
