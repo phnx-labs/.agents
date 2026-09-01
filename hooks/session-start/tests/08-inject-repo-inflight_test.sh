@@ -69,8 +69,8 @@ cat > "$SANDBOX/bin/agents" <<'STUB'
 #!/usr/bin/env bash
 # `projects` is the project-resolution path; AGENTS_* env vars drive it, and the
 # default (empty) leaves every pre-existing case on the git-repo fallback.
-if [ "$1" = "projects" ] && [ "$2" = "for-cwd" ]; then
-  printf '%s\n' "${AGENTS_FOR_CWD_JSON:-{\"name\":null\}}"; exit 0
+if [ "$1" = "projects" ] && [ "$2" = "view" ]; then
+  printf '%s\n' "${AGENTS_VIEW_JSON:-{\"name\":null\}}"; exit 0
 fi
 if [ "$1" = "projects" ] && [ "$2" = "list" ]; then
   printf '%s\n' "${AGENTS_PROJECTS_JSON:-[]}"; exit 0
@@ -192,7 +192,7 @@ SECOND="$(cd "$SECOND" && pwd)"
 
 cat > "$SANDBOX/bin/agents" <<STUB
 #!/usr/bin/env bash
-if [ "\$1" = "projects" ] && [ "\$2" = "for-cwd" ]; then echo '{"name":"proj"}'; exit 0; fi
+if [ "\$1" = "projects" ] && [ "\$2" = "view" ]; then echo '{"name":"proj"}'; exit 0; fi
 if [ "\$1" = "projects" ] && [ "\$2" = "list" ]; then
   echo '[{"name":"proj","root":"$REPO","linear":{"projectId":"lin_1","name":"Wide Project"},"repos":[{"slug":"o/a","path":"$REPO"},{"slug":"o/b","path":"$SECOND"}]}]'
   exit 0
