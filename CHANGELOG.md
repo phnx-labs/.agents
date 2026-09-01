@@ -20,6 +20,22 @@
 
 ### Changed
 
+- **`commands/plan.md` — `/plan` now produces a visual, read-back artifact by default, so
+  the user no longer stacks `/plan /visualize`.** Grounded in the same session's usage
+  mining: across the last ~10 days, **every** `/plan` invocation was followed by
+  `/visualize`, always typed as one stacked input (`stackedOriginalInput` /
+  `stackedExpansion` in the raw transcripts), for code plans and research alike — and one
+  session's frustration (*"Did you open an artifact for me? This should never happen
+  again, bro"*) plus that session's own `visual-read-back` Stop-hook fire show the two
+  missing behaviors: the visual quality bar and actually looking at the render. Step 9 now
+  states a plan artifact is a visual deliverable that already does `/visualize`'s job —
+  apply the `artifacts` `kind: visual` presentation bar — frontmatter stays `kind: plan`
+  — (quantitative findings as charts, comparisons/options as tables or diagrams,
+  digestible prose) and **look at the rendered result** (headless screenshot +
+  `view_image`, fix mis-renders)
+  before opening it for the user. The frontmatter `description` says so too. Source:
+  `commands/plan.md`.
+
 - **`skills/artifacts/SKILL.md` + `commands/visualize.md` now make evidence-grounding and
   show-don't-tell the default, not something the user has to demand.** Audited from a real
   `/visualize` session (Belinda portfolio report, `7fa39334`) where the user had to correct
