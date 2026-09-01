@@ -9,9 +9,9 @@
 #   08-inject-repo-inflight.sh         — which repos to survey for in-flight work
 #
 # so it lives here rather than being re-derived in each. Do NOT reimplement the
-# resolution: `agents projects for-cwd` does longest-match over every bound root
-# and monorepo subpath, which is what makes a worktree, a subdirectory, and two
-# projects sharing one monorepo root all resolve correctly. A basename
+# resolution: `agents projects view <dir>` does longest-match over every bound
+# root and monorepo subpath, which is what makes a worktree, a subdirectory, and
+# two projects sharing one monorepo root all resolve correctly. A basename
 # comparison cannot do any of those, and it breaks silently when a project is
 # renamed on the board (the checkout stays `agents-cli` while Linear says
 # "AGI") — the bug this replaced.
@@ -86,7 +86,10 @@ resolve_project_context() {
   command -v agents >/dev/null 2>&1 || return 0
   command -v python3 >/dev/null 2>&1 || return 0
 
-  PROJECT_DEF_NAME=$(_to 3 agents projects for-cwd "$at" --json 2>/dev/null | python3 -c '
+  # `view <dir> --json` returns {name, linear:{name,projectId}, root}; .name is
+  # the local def id. (It does not carry every repos[].path, so PROJECT_ROOTS
+  # still comes from the `list` call below — hence two calls, not one.)
+  PROJECT_DEF_NAME=$(_to 3 agents projects view "$at" --json 2>/dev/null | python3 -c '
 import json, sys
 try:
     print((json.load(sys.stdin) or {}).get("name") or "")
