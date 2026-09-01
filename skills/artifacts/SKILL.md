@@ -280,12 +280,13 @@ the *Big Idea* in one sentence and the reader's *"so what"* before you chart, an
 give the piece a narrative arc — beginning, tension, resolution or call to action.
 Pick each visual by its job from the effective set — simple text or one big number,
 table or heatmap, scatterplot, line, slopegraph, bar, stacked bar, waterfall — and
-avoid pie, donut, 3D, and dual-axis. *Declutter*: cut chartjunk, reduce cognitive
+avoid donut, 3D, and dual-axis (pie only up to ~3 slices, matching `dataviz`'s
+mechanics). *Declutter*: cut chartjunk, reduce cognitive
 load, group with Gestalt proximity and alignment. Then steer the eye with
 *preattentive attributes* (size, color, position) — gray the context and highlight
 the one thing that matters in a single accent color, keeping labels next to the
-marks they name. Use the `dataviz` skill for the chart mechanics (palette, marks,
-accessibility); this is the storytelling layer on top of it.
+marks they name. For the chart mechanics (palette, marks, accessibility) load the
+`design` skill's `dataviz` mode; this is the storytelling layer on top of it.
 
 ## When the artifact recommends
 
