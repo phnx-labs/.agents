@@ -39,8 +39,8 @@ decide the output shape up front (a table of companies with funding/investors/cu
 narrative with a claims list? a comparison matrix?). Pick `--depth` if the caller didn't:
 `quick` (one round, ~3 engines), `standard` (default: all engines, one verify pass), `deep`
 (loop-until-dry: keep spawning finders until two rounds add nothing new, then a completeness
-critic pass). Ground once in any local context (`AGENTS.md`, a prior `docs/research/*`) so you
-don't re-derive what's already known.
+critic pass). Ground once in any local context (`AGENTS.md`, a prior research artifact under the
+project's artifacts home) so you don't re-derive what's already known.
 
 ## 2. Fan out across engines — parallel, blind, each to its strength
 
@@ -99,12 +99,16 @@ still single-sourced, what source did nobody actually open?" — its answers are
 
 ## 5. Deliver — one sourced artifact, durable
 
-Synthesize into the target shape from §1, then **write it where it survives the session** (per the
-project's durable-artifacts rule): promote a keepable result to `docs/research/<YYYY-MM-DD>-<slug>/`
-(tracked), rendering an `index.html` via the `artifacts` skill when it's worth showing visually,
-with the raw per-engine outputs beside it. Every claim cites its source; a confidence column marks
-single- vs multi-sourced. Put the rendered result on the owner's screen
-(`agents browser navigate --url file://<path>`), and `share` it if it's meant to leave the machine.
+Synthesize into the target shape from §1, then **write it where it survives the session**, following
+the **current project's** durable-artifacts convention — never a hardcoded path. The fleet default
+(and this repo's own rule) is `.agents/artifacts/<YYYY-MM-DD>/research-<slug>.md` with any rendered
+HTML beside it — **one dated layout, no kind-named subdirs**. A project that keeps **tracked**
+research in its tree instead — e.g. a product repo whose convention is `docs/research/<date>-<slug>/` —
+is where you promote a keepable result; `--out <path>` overrides the destination explicitly. Render an
+`index.html` via the `artifacts` skill when it's worth showing visually, with the raw per-engine
+outputs beside it. Every claim cites its source; a confidence column marks single- vs multi-sourced.
+Put the rendered result on the owner's screen (`agents browser navigate --url file://<path>`), and
+`share` it if it's meant to leave the machine.
 
 ## Anti-patterns
 
@@ -117,7 +121,8 @@ single- vs multi-sourced. Put the rendered result on the owner's screen
 - **Declaring a browser Deep Research done while it's still running**, or silently dropping it when
   it's blocked on credits. Monitor to completion; park a real blocker on the feed.
 - **Leaving the answer in `/tmp` or scrollback.** A research result worth having is worth promoting
-  to `docs/research/` where the next agent finds it.
+  to the project's durable-artifacts home (`.agents/artifacts/<date>/` by default) where the next
+  agent finds it.
 - **Serial engines.** Fan out in one message; a research sweep that runs engines one-at-a-time
   wastes the fleet.
 
@@ -125,6 +130,6 @@ single- vs multi-sourced. Put the rendered result on the owner's screen
 
 - Engines → the `run` skill (`agents run codex|grok|antigravity|claude`) and `teams` for a wider fan-out.
 - Browser Deep Research → the `browser` skill; signed-in profiles + `secrets` for gated sources.
-- Deep single-lead reading → the `rabbit-hole` subagent (via `Task`) or a Claude `agents run`.
+- Deep single-lead reading → a Claude `agents run "<deep-read brief>"` (or a repo-local research subagent where the project defines one).
 - Render + publish → the `artifacts` skill (HTML) and `share` (shareable link).
 - A blocker only the owner can clear (credits, a login) → `agents feed post "<ask>" --blocked`.
