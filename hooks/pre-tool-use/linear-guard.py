@@ -91,11 +91,14 @@ DENY = (
 )
 
 NUDGE = (
-    "[linear-restraint] Can this be fixed now — by you or a dispatched agent "
-    "(`agents run` / `agents teams`)? Then do that instead of filing it; a "
-    "fixable-now problem on the board is bloat, not tracking. Only file work that "
-    "must wait and that no one's doing this session, and enrich an existing ticket "
-    "before opening a near-duplicate. (advisory — the command still runs.)"
+    "[linear-restraint] Remember you're an agent — your job is to help the user "
+    "finish work and get closer to their goals, not to create more of it. So "
+    "before you file: if this can be fixed now, fix it now; if it's small but out "
+    "of your lane here, dispatch an agent to fix it (worktree + full context, then "
+    "monitor — see the `dispatch` skill) instead of filing. Open an issue ONLY "
+    "when it genuinely needs deep investigation, the scope is unclear, or it's "
+    "multi-day work. A small, clear, fixable thing filed as a ticket is bloat. "
+    "(advisory — the command still runs.)"
 )
 
 # Flags on `linear update` that mark a delivery/state change (proof of work,

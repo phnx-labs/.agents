@@ -24,11 +24,16 @@
   inflating — a single AGI-project pass found 95 open with **48 opened in the
   last three days**, most never started by anyone. Consolidating what exists is
   the work; minting another Todo is not.
-- **Fix-now beats file-later; never create a project.** Before you run `linear
-  create`, stop and reflect: can this be fixed *right now* — by you, or by
-  dispatching an agent (`agents run` / `agents teams`)? If yes, do that. A
-  problem you could fix now, filed as a ticket, is not tracking — it is bloat
-  that buries the real work and manufactures follow-up churn. This is the
+- **Fix-now beats file-later; never create a project.** You are an agent — your
+  job is to help the user *finish* work and get closer to their goals, not to
+  manufacture more of it. So before you run `linear create`, decide honestly:
+  (1) if it can be fixed **now**, fix it now; (2) if it's small but out of your
+  lane in this session, **dispatch an agent** to fix it — with a worktree and
+  full context, then monitor it (see the `dispatch` skill / `parallel-teams` for
+  the how) — rather than filing; (3) open an issue **only** when it genuinely
+  needs deep investigation, the scope is unclear, or it is multi-day work. A
+  small, clear, fixable thing filed as a ticket is not tracking — it is bloat
+  that buries the real work and manufactures follow-up churn, the
   smallest-thing-you-should-have-just-fixed failure the board keeps drowning in.
   And **agents never create Linear projects** — project structure is the owner's
   call, not something an agent invents mid-task (a stray auto-created "FastWispr
