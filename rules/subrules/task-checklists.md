@@ -7,8 +7,10 @@ the acceptance rubric (done = every item completed) and it makes the session
 legible (`agents sessions` shows `✓6/8 · <current item>`). Skip it for
 single-step or trivial tasks — a checklist for a one-liner is noise.
 
-Bind it to the task: pair a ticket when a tracker is connected (create or claim
-one once the work is real and scoped; move it to In Progress); stamp items with
+Bind it to the task: pair a ticket when a tracker is connected — claim or enrich
+an existing one that covers the work and move it to In Progress; creating a ticket
+just to have something to pair a checklist to is not required (default to NOT
+creating — see `conventions`). Stamp items with
 the ticket via `TaskCreate` `metadata` (e.g. `metadata.ticket: "RUSH-1234"`);
 reflect milestones on the ticket as items complete, and close it on delivery
 with proof (see `conventions`).

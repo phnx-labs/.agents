@@ -1,6 +1,6 @@
 {
   "name": "swarm",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "swarm — fan a task out across parallel coding agents via `agents teams`. Top-level `/swarm` (and `/swarm:run`) is the generic fan-out. Specialized modes: `/swarm:plan` (change proposal + mandatory mock-ups + blind verification), `/swarm:spec` (durable source-of-truth contract so others do not invent wrong behavior — requirements, scenarios, mock-ups, drift-check), `/swarm:debug` (blind multi-provider root-cause). Shared engine: internal `swarm:orchestrate` skill. Commands only invoke skills. `/swarm:test` and `/swarm:qa` removed.",
   "author": {
     "name": "Muqsit Nawaz",

@@ -24,7 +24,7 @@ The *kind* of work decides the executor:
 
 ## Step 3: Spec it clean — file nothing messy
 
-A tight spec: what, why, acceptance criteria. A **specific title** that names the concrete thing (no filler / generic "typical words"), the right label + priority (never default-High). For a bug, route the root cause through `/debug` first and dispatch the **confirmed** cause, not a guess. If no ticket exists yet, file **one clean, deduped** ticket before dispatching so the work has an owner of record. A messy or duplicate ticket is a defect, not progress.
+A tight spec: what, why, acceptance criteria. A **specific title** that names the concrete thing (no filler / generic "typical words"), the right label + priority (never default-High). For a bug, route the root cause through `/debug` first and dispatch the **confirmed** cause, not a guess. To give the work an owner of record, **search the board first** (the `tickets` skill's check-first step): claim and enrich an existing ticket if one covers this — same subsystem, file, or bug class — and **create a new one only when nothing on the board covers it**, defaulting to NOT creating (see `conventions`; a fixable-now bug's PR is often the record). A messy or duplicate ticket is a defect, not progress.
 
 ## Step 4: Route to the executor — self-refer to the plugin that owns it
 

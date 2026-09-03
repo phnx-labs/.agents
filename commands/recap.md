@@ -58,12 +58,14 @@ a thing the user would otherwise have to do themselves after reading you.
    changed with the PR link and the screenshot or recording of the outcome, then move
    it to Done — the `tickets` skill, or the tracker's CLI directly. A shipped ticket
    left open reads as still in flight to everyone looking at the board.
-2. **File every follow-up as a real ticket, under the project it belongs to.**
-   Anything you were about to write as "we should also…", "worth revisiting…", or a
-   deferred-scope bullet becomes an issue: a scoped title plus a short description
-   naming the file, PR, or error that motivated it. One ticket per unit of delivery,
-   not one per file. The summary then links the ids. If a follow-up doesn't earn a
-   ticket, it doesn't earn a bullet either — drop it.
+2. **Record follow-ups as lines in the one owner update — not as a pile of new tickets.**
+   Anything you were about to write as "we should also…" or "worth revisiting…" is a
+   line in the summary, not a Todo minted on the board: default to NOT creating (see
+   `conventions`). Something you merely *noticed* never earns a ticket. Open one only
+   for genuinely deliverable, non-duplicate work — and even then, first check the board
+   for a ticket that already covers it and enrich that instead of a near-duplicate. One
+   ticket per unit of delivery, not one per file; the summary links whatever ids exist.
+   If a follow-up doesn't earn a line, drop it.
 3. **Make sure one owner update went out — exactly one.** There is a single path:
    `agents feed post --title "<short outcome>" "<what you delivered + the one next
    step>" --level important`. The `feed.broadcast.owner` sink in `agents.yaml`
