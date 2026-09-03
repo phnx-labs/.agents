@@ -46,10 +46,10 @@ because you started with `/dispatch`.
 The point of this step is that `/work:loop triage` can later see the work — **not** to mint a
 ticket. So track it, and default to NOT creating (see the `conventions` rule):
 
-- **First, search the board** through the `tickets` skill (Step 1 tracker detection, Step 3
-  check-first) for an open ticket that already covers this — same subsystem, file, or bug
-  class. If one exists, **claim it and enrich it** (sharpen the description with your Step 2
-  spec, link related tickets) rather than opening a near-duplicate.
+- **First, search the board** through the `tickets` skill (Step 1 tracker detection, then its
+  "When you're starting a task" check-first step) for an open ticket that already covers this
+  — same subsystem, file, or bug class. If one exists, **claim it and enrich it** (sharpen the
+  description with your Step 2 spec, link related tickets) rather than opening a near-duplicate.
 - **Create a new ticket only when nothing on the board covers it** — via the `tickets`
   skill's Step 2 "create" mapping (title + the Step 2 spec as description, linked to related
   tickets). And note: a bug you can fix now and are about to dispatch does not automatically
