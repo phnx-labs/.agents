@@ -65,7 +65,7 @@ window-reopening `sessions:restore` was removed.
 
 | Command | What it does |
 |---|---|
-| [`/dispatch`](./dispatch.md) | Take one task from idea to a working agent — understand the repo, spec fast, debug-skill for bugs, quick plan, file the ticket, dispatch |
+| [`/dispatch`](./dispatch.md) | Take one task from idea to a working agent — understand the repo, spec fast, debug-skill for bugs, quick plan, track the task (claim first, create if missing), dispatch |
 | [`/teams`](./teams.md) | Spawn parallel agents to work on a task together |
 
 The `tickets` skill is the general-purpose primitive (list, claim, comment, close).

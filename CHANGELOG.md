@@ -32,6 +32,21 @@
 
 ### Changed
 
+- **`commands/dispatch.md` — Step 4 is now "Track the task" (track-first, create-last), not
+  the unconditional "File the ticket".** The old Step 4 told the agent to `linear create` a
+  new ticket *before* dispatching every time, with no check-first — so every `/dispatch`
+  minted a fresh ticket by construction, directly contradicting the `conventions` rule
+  ("default to NOT creating; claim first; consolidate before you create") and undercutting
+  the `linear-guard` create-nudge added in this same change. Step 4 now searches the board
+  for an open ticket that already covers the work (same subsystem / file / bug class, per the
+  `tickets` skill check-first step) and **claims + enriches** it if found, creating a new one
+  **only** when nothing covers it — and notes that a fixable-now bug about to be dispatched
+  does not automatically need its own ticket (the PR is often the record). The step's real
+  purpose (tracked work `/work:loop triage` can later see) is preserved; only *create* stops
+  being the default action. Step 5's back-reference ("the ticket you claimed or created") and
+  the "Skipping Step 4" anti-pattern ("claim or track it") are reconciled to match, the
+  frontmatter `description` and the `commands/README.md` row too. Source:
+  `commands/dispatch.md`, `commands/README.md`.
 - **`commands/plan.md` — `/plan` now produces a visual, read-back artifact by default, so
   the user no longer stacks `/plan /visualize`.** Grounded in the same session's usage
   mining: across the last ~10 days, **every** `/plan` invocation was followed by
