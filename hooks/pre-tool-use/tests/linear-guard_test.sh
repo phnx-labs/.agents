@@ -22,6 +22,17 @@ json_escape() {
     | sed -e ':a' -e 'N' -e '$!ba' -e 's/\n/\\n/g'
 }
 
+# run_raw <raw-stdin> — feed arbitrary bytes (not necessarily valid JSON) to the
+# guard. Sets RC, OUT, ERR. Used for the fail-closed / fast-path payload cases.
+run_raw() {
+  local raw="$1" errfile
+  errfile="$SANDBOX/err.$$.$RANDOM"
+  OUT=$(printf '%s' "$raw" | "$PY_BIN" "$HOOK" 2>"$errfile")
+  RC=$?
+  ERR=$(cat "$errfile")
+  rm -f "$errfile"
+}
+
 # run_guard <command-string> — sets RC, OUT, ERR.
 run_guard() {
   local cmdstr="$1" json esc_cmd errfile
@@ -99,6 +110,32 @@ check_allow "allow linear update"               "linear update PHNX-1 --done"
 check_allow "allow linear projects archive"     "linear projects archive Foo"
 check_allow "allow non-linear command"          "git commit -m wip"
 check_allow "allow unrelated word 'linear' free" "echo done"
+
+# --- Over-match false positives: the denied phrase inside quoted argument text
+# must NOT trip DENY/NUDGE (regression for the substring-scan bug) -------------
+check_allow "phrase in a linear update --description, not a real project-create" \
+  'linear update ABC-1 --description "we should never do linear projects create again"'
+check_allow "grep for the guard's own denied phrase is not a project-create" \
+  'grep -rn "linear projects create" hooks/'
+check_allow "unrelated tool with 'projects create' substring" \
+  "nonlinear-migrate projects create-user"
+check_allow "git commit message mentioning linear create is not a create" \
+  'git commit -m "note: do not run linear create"'
+
+# --- Fail-closed contract (hooks/AGENTS.md): a deny-capable guard refuses on an
+# unparseable payload that mentions linear; the raw fast path allows everything
+# with no linear substring at all --------------------------------------------
+run_raw 'not json at all but mentions linear projects create'
+if [ "$RC" -eq 2 ] && [ -n "$ERR" ]; then echo "ok   - fail-closed on unparseable linear payload"; pass=$((pass+1));
+else echo "FAIL - fail-closed on unparseable linear payload: rc=$RC err=[$ERR]"; fail=$((fail+1)); fi
+
+run_raw 'not json at all, and nothing to police here'
+if [ "$RC" -eq 0 ] && [ -z "$OUT" ]; then echo "ok   - fast-path allow on non-linear unparseable payload"; pass=$((pass+1));
+else echo "FAIL - fast-path allow on non-linear payload: rc=$RC out=[$OUT]"; fail=$((fail+1)); fi
+
+run_raw ''
+if [ "$RC" -eq 0 ]; then echo "ok   - empty stdin allows (no linear substring)"; pass=$((pass+1));
+else echo "FAIL - empty stdin: rc=$RC"; fail=$((fail+1)); fi
 
 # ReDoS regression (py/redos): a pathological flag-like input must return fast
 # (the old nested-quantifier regex backtracked exponentially on `-- -` repeats).
