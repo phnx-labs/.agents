@@ -105,9 +105,14 @@ not `AskUserQuestion` to confirm a release the session's goal already authorizes
 re-ask is the banned stop.
 
 **Tracker.** Update the issue tracker only with proof (commit, PR, deploy URL, test output,
-health-check response). For a deliberately deferred slice (with a complete shippable slice
-already delivered), file a follow-up ticket via the `tickets` skill with a clear title,
-context, and acceptance criteria — don't silently drop it.
+health-check response). A follow-up ticket is **not** a way to call a small thing done: if
+what remains is a few lines, a portability bug you hit, or a non-blocking review nit you
+could address in the same branch, **fix it now** — filing it is bloat, not tracking (see
+`conventions`, enforced by `linear-guard`). Open a follow-up ticket **only** when the
+deferred slice is genuinely large or separately schedulable, out of this change's scope, and
+nobody is delivering it in this session — and first search the board for an existing ticket
+to enrich instead of a near-duplicate. When that bar is met, file via the `tickets` skill
+with a clear title, context, and acceptance criteria — don't silently drop it.
 
 ## 6 — No stalling
 
@@ -128,5 +133,7 @@ a "stop" option.
 
 The current task is delivered only when Remaining is **None**, or what remains is one of: a
 proven external blocker with three quoted attempts; a user-only action (payment, credentials,
-destructive/production approval, public posting, strategic judgment); or a deliberately
-created follow-up ticket whose current shippable slice is already delivered.
+destructive/production approval, public posting, strategic judgment); or a follow-up ticket
+for a slice that clears the bar above — genuinely large or separately schedulable and out of
+this change's scope, with the shippable slice already delivered. A follow-up ticket for
+something you could have just fixed is not "done" — it is the stall this rule exists to stop.
