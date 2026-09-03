@@ -78,7 +78,7 @@ Once the cause is verified, propose fixes — minimal, defensive, architectural 
 A confirmed root cause is the middle of the task, not the end. When this is a real problem you'll act on (not a throwaway diagnosis):
 
 - **Render a viewable artifact.** Turn the finding (intent/observed/delta → evidence chain → root cause → spec gap → recommended fix) into a self-contained HTML doc and open it on the machine the user sits at — follow the `artifacts` skill for the LOOK and the `/plan` open-on-Mac transport. This is the surface the user reviews and reacts to.
-- **Cut a ticket.** Use the `tickets` skill to open one scoped to the fix: the delta, the root-cause file:line, the regression test to add, and the spec gap. Link the artifact.
+- **Track the fix — don't reflexively cut a ticket.** If it's fixable now, fix it (or dispatch the fix — see below); otherwise check the board first and consolidate into an existing ticket, opening a new one only if the work is genuinely missing (see `conventions`). When you do open or enrich one, scope it to the fix: the delta, the root-cause file:line, the regression test to add, and the spec gap. Link the artifact.
 - **Dispatch the build.** Once the fix is approved, dispatch it to the worker boxes — `agents run <profile> --device yosemite-s0` for a single fix, or `agents teams` for multi-surface work (see `swarm:orchestrate`). Don't hand-build it on the interactive machine.
 
 For a quick throwaway diagnosis, stop at the confirmed root cause and say so.
@@ -113,4 +113,4 @@ Recommended fix first. For each: what changes, how it addresses the root cause, 
 The tests to run to confirm the fix, and the regression test to add (from Spec & gap) so this can't recur.
 
 ### Ticket & dispatch
-The artifact path/link, the ticket id/URL, and where the fix was dispatched — or "throwaway diagnosis, not filed."
+The artifact path/link, the ticket id/URL (existing one enriched, or a new one only if genuinely missing), and where the fix was dispatched — or "throwaway diagnosis, not filed."

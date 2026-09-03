@@ -32,6 +32,30 @@
 
 ### Changed
 
+- **Ticket-creation wording made consistent across every command/skill surface — track-first,
+  fix-now-first, create-last — to match `conventions` and the `linear-guard` nudge.** Multiple
+  surfaces still issued an unconditional "file a ticket" imperative that out-numbered the
+  restraint rule, so agents kept minting small, low-value Linear tickets. Each is now softened
+  to the same shape (fix-now if you can → else check the board and consolidate into an existing
+  ticket → open a NEW one only for genuinely-missing work you're delivering now): **`commands/recap.md`**
+  (the strongest offender — "File **every** follow-up as a real ticket" → record follow-ups as
+  lines in the one owner update; a ticket only for deliverable, non-duplicate work, never for
+  something merely noticed), **`plugins/swarm/skills/debug/SKILL.md`** + **`commands/debug.md`**
+  ("Cut a ticket." → track-first, keeping the "throwaway diagnosis, not filed" escape),
+  **`plugins/work/skills/demo/SKILL.md`** (a gap you can close now doesn't need a ticket),
+  **`plugins/work/commands/dispatch.md`** Step 3 (the parity twin of the already-merged
+  `commands/dispatch.md` Step 4 — search-first, claim/enrich, create only if missing),
+  **`plugins/sessions/skills/finish/SKILL.md`** (follow-up ticket only for a slice you're
+  committing to deliver; otherwise it goes in the owner update),
+  **`rules/subrules/plan-presentation/plan-html-reminder.sh`** ("create or pair one" → pair an
+  existing ticket, create only if genuinely missing), and **`rules/subrules/task-checklists.md`**
+  (bias to claim/pair; creating a ticket just to pair a checklist is not required —
+  `rules/AGENTS.md` regenerated to match). Also **`skills/tickets/SKILL.md`** gains a **Ticket
+  shape** block so a new ticket is scannable at a glance: title ≤ ~10 words, body = what/why/
+  done-when, one closing delivery comment, default priority Medium with the repro attached.
+  Wording only — no command behavior or steps changed beyond the ticket-creation framing.
+  Plugin content changes bump `swarm` 0.5.0 → 0.5.1, `work` 0.6.0 → 0.6.1, and `sessions`
+  0.4.0 → 0.4.1 (plugin manifests + `.claude-plugin/marketplace.json`) so installed copies pick up the new wording.
 - **`commands/dispatch.md` — Step 4 is now "Track the task" (track-first, create-last), not
   the unconditional "File the ticket".** The old Step 4 told the agent to `linear create` a
   new ticket *before* dispatching every time, with no check-first — so every `/dispatch`

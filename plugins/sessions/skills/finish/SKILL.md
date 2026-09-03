@@ -108,11 +108,12 @@ re-ask is the banned stop.
 health-check response). A follow-up ticket is **not** a way to call a small thing done: if
 what remains is a few lines, a portability bug you hit, or a non-blocking review nit you
 could address in the same branch, **fix it now** — filing it is bloat, not tracking (see
-`conventions`, enforced by `linear-guard`). Open a follow-up ticket **only** when the
-deferred slice is genuinely large or separately schedulable, out of this change's scope, and
-nobody is delivering it in this session — and first search the board for an existing ticket
+`conventions`, enforced by `linear-guard`). Open a follow-up ticket **only** for a deferred
+slice you are committing to deliver — genuinely large or separately schedulable, out of this
+change's scope, and nobody else is on it — and first search the board for an existing ticket
 to enrich instead of a near-duplicate. When that bar is met, file via the `tickets` skill
-with a clear title, context, and acceptance criteria — don't silently drop it.
+with a clear title, context, and acceptance criteria — don't silently drop it. A slice you
+are *not* committing to deliver goes in your one owner update as a line, not a fresh Todo.
 
 ## 6 — No stalling
 

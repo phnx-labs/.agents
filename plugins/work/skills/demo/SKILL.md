@@ -128,9 +128,11 @@ Go back to the paragraph from Step 1 and check the work against it, not against 
 - **Did it deliver EVERY part of the ask?** This is the owner's recurring *"did we ship
   ALL the UI changes??"* check. Enumerate each acceptance criterion → delivered / partial
   / missing, each with its evidence (a capture, a quote).
-- **What's still a gap?** Name it plainly and **file it as a ticket** (`linear issue
-  create`) rather than burying it in prose. A demo's honesty is measured by whether it
-  surfaces what's *not* done.
+- **What's still a gap?** Name it plainly rather than burying it in prose — a demo's
+  honesty is measured by whether it surfaces what's *not* done. A gap you can close now
+  doesn't need a ticket: fix it (or dispatch the fix). For one you can't, check the board
+  and enrich an existing ticket, opening a new one only if the work is genuinely missing
+  (see `conventions`); a gap you merely noticed goes in the owner update, not a fresh Todo.
 
 ## Step 6 — Build the report
 

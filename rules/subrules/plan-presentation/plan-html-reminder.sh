@@ -253,7 +253,8 @@ fi
     echo "* Create a task checklist for this plan — it has multiple steps."
     echo "  Call TaskCreate for each step (subject + description); the checklist becomes the"
     echo "  acceptance rubric and shows up in \`agents sessions\`. If a tracker is connected"
-    echo "  and no ticket is paired with this work, create or pair one and note it."
+    echo "  and no ticket is paired with this work, pair an existing ticket if one covers it;"
+    echo "  create only if genuinely missing and you're delivering it (see conventions)."
   fi
   echo
   echo "Then present/stop again — this passes once the render exists and (for a"

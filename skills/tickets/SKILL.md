@@ -61,6 +61,19 @@ Map the user's intent onto the tracker's primitives:
 
 If the skill (Step 1) gives you specific commands for these, **use them verbatim** — don't paraphrase the skill's CLI invocations.
 
+### Ticket shape — a new ticket must be scannable at a glance
+
+Once you've decided a new ticket is genuinely warranted (Step 1's "open only if missing"),
+keep it small and legible — a board dies from unreadable tickets as fast as from too many:
+
+- **Title** ≤ ~10 words, naming the concrete thing — no filler, no generic "typical words".
+- **Body** = three bullets: **what** (the change), **why** (the motivating file/PR/error),
+  **done-when** (the acceptance check). Not a running RCA wall.
+- **One** closing comment on delivery — the PR link plus a single line — not a multi-paragraph
+  log. (Amend the description for context, per `conventions`; comments are for delivery proof.)
+- Default **priority Medium** unless told otherwise; **attach the repro/screenshot** so it's
+  actionable without a back-and-forth.
+
 ## Step 3: Report concisely
 
 After doing the action, report:
