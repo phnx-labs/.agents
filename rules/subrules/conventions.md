@@ -24,5 +24,18 @@
   inflating — a single AGI-project pass found 95 open with **48 opened in the
   last three days**, most never started by anyone. Consolidating what exists is
   the work; minting another Todo is not.
+- **Fix-now beats file-later; never create a project.** Before you run `linear
+  create`, stop and reflect: can this be fixed *right now* — by you, or by
+  dispatching an agent (`agents run` / `agents teams`)? If yes, do that. A
+  problem you could fix now, filed as a ticket, is not tracking — it is bloat
+  that buries the real work and manufactures follow-up churn. This is the
+  smallest-thing-you-should-have-just-fixed failure the board keeps drowning in.
+  And **agents never create Linear projects** — project structure is the owner's
+  call, not something an agent invents mid-task (a stray auto-created "FastWispr
+  Growth" project is exactly the failure). Organize work with an existing
+  project + milestone or an epic issue with a checklist; if a new project is
+  genuinely warranted, suggest it in your owner update and let the owner decide.
+  Both are enforced at the point of action by the `linear-guard` PreToolUse hook
+  (denies `linear projects create`; nudges on `linear create`).
 - **Parallel work:** multi-surface changes use `agents teams` — see
   `parallel-teams`.

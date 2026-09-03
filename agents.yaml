@@ -148,6 +148,12 @@ hooks:
     matcher: Bash
     script: pre-tool-use/01-git-require-clean-tree.sh
     timeout: 5
+  linear-guard:
+    events:
+      - PreToolUse
+    matcher: Bash
+    script: pre-tool-use/linear-guard.py
+    timeout: 5
   # Public feature name: promptcuts. The manifest key stays expand-promptcuts.
   # On by default (it always has been). To turn it off, put
   #   expand-promptcuts: {enabled: false, override: true}
