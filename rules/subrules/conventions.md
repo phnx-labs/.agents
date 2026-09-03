@@ -32,11 +32,11 @@
   smallest-thing-you-should-have-just-fixed failure the board keeps drowning in.
   And **agents never create Linear projects** — project structure is the owner's
   call, not something an agent invents mid-task (a stray auto-created "FastWispr
-  Growth" project is exactly the failure). Organize work with an existing
-  project + milestone or an epic issue with a checklist; if a new project is
-  genuinely warranted, suggest it in your owner update and let the owner decide.
-  Both are enforced at the point of action by the `linear-guard` PreToolUse hook
-  (denies `linear projects create`; nudges on `linear create`).
+  Growth" project is exactly the failure). If a new project is genuinely
+  warranted, suggest it in your owner update and let the owner decide; organize
+  work now with an existing project + milestone or a tracking issue with a
+  checklist. Both are enforced at the point of action by the `linear-guard`
+  PreToolUse hook (denies `linear projects create`; nudges on `linear create`).
 - **Amend the description, don't pile comments.** When a ticket needs more or
   corrected context, edit its **description** so it stays one source of truth —
   don't append another comment that makes the next reader reconcile the first

@@ -83,26 +83,19 @@ def _is_linear(tok):
 
 DENY = (
     "blocked_op: linear.projects-create\n"
-    "reason: Agents do not create Linear projects. Project structure is the "
-    "owner's call — an agent minting a project (e.g. an unasked 'FastWispr "
-    "Growth') fragments the board and buries real work. There is no agent path "
-    "to a new project.\n"
-    "do_this_instead: If a new project is genuinely warranted, put it in your "
-    "owner update as a one-line suggestion for the owner to decide. To organize "
-    "work now, use an existing project + milestone, or an epic issue with a "
-    "checklist. To clean up a stray project, `linear projects archive` is allowed."
+    "reason: Agents don't create Linear projects — that's the owner's call. "
+    "(One agent auto-created a 'FastWispr Growth' project unasked; this prevents that.)\n"
+    "do_this_instead: Suggest it in your owner update and let the owner decide. "
+    "Organize work now with an existing project + milestone or a tracking issue "
+    "with a checklist. Cleaning up a stray project (`linear projects archive`) is allowed."
 )
 
 NUDGE = (
-    "[linear-restraint] You're about to file a Linear issue. Stop and reflect "
-    "first: can this be fixed RIGHT NOW — by you, or by dispatching an agent "
-    "(`agents run` / `agents teams`)? If yes, do that instead of filing it. A "
-    "problem you could fix now, filed as a ticket, is bloat: it makes the board "
-    "harder to review, hides the real work, and manufactures follow-up churn. "
-    "File an issue only for work that genuinely must be scheduled for later and "
-    "that nobody is delivering in this session — and first search the board for "
-    "an existing ticket to enrich instead of a near-duplicate. This is advisory; "
-    "the command will still run."
+    "[linear-restraint] Can this be fixed now — by you or a dispatched agent "
+    "(`agents run` / `agents teams`)? Then do that instead of filing it; a "
+    "fixable-now problem on the board is bloat, not tracking. Only file work that "
+    "must wait and that no one's doing this session, and enrich an existing ticket "
+    "before opening a near-duplicate. (advisory — the command still runs.)"
 )
 
 # Flags on `linear update` that mark a delivery/state change (proof of work,
@@ -111,13 +104,10 @@ NUDGE = (
 DELIVERY_FLAGS = {"--proof", "--done", "--todo", "--pickup", "--status"}
 
 COMMENT_NUDGE = (
-    "[linear-restraint] Amending or adding context to a ticket? Update its "
-    "description instead — rewrite it so the ticket stays the single source of "
-    "truth. Piling on another comment forces the next reader to reconcile the "
-    "first message against the last and guess which is current; a stale comment "
-    "on an old ticket is worse than none. (Comments are fine for delivery proof "
-    "— a PR link, a screenshot, a decision — just not for restating the ticket.) "
-    "This is advisory; the command will still run."
+    "[linear-restraint] Amending a ticket? Edit its description instead so it "
+    "stays one source of truth — don't stack another comment the next reader has "
+    "to reconcile. Comments are for delivery proof (a PR link, a screenshot), not "
+    "for restating the ticket. (advisory — the command still runs.)"
 )
 
 
