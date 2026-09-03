@@ -31,20 +31,38 @@ can't read its input must not wedge every Bash call.
 Exits 0 (allow, optionally with a nudge) or 2 (deny, message on stderr).
 """
 import json
-import re
+import shlex
 import sys
 
-# `linear projects create` (subcommand adjacency). The `archive`/`delete` alias
-# is intentionally NOT blocked — cleaning up a stray project is allowed.
-PROJECT_CREATE = re.compile(r"\bprojects\s+create\b")
+# Global flags that take a following value — skipped (flag + value) when scanning
+# for the `linear` subcommand, so `linear --team ENG create` reads `create`, not
+# the flag value, as the subcommand.
+VALUE_FLAGS = {"--team", "--project", "--milestone"}
 
-# `linear [--global-flag val ...] create` — the issue-creation subcommand as the
-# first non-flag token after `linear`. Matches `linear create`,
-# `linear --team ENG create`, etc. Does not match `linear projects create`
-# (handled above) or `linear tasks`/`update`/etc.
-ISSUE_CREATE = re.compile(r"\blinear\b(?:\s+--?[\w-]+(?:\s+[^\s-][^\s]*)?)*\s+create\b")
 
-HELP = re.compile(r"(?:^|\s)(?:-h|--help)(?:\s|$)")
+def _tokens(command):
+    """Shell-tokenize, tolerant of unbalanced quotes (fall back to whitespace)."""
+    try:
+        return shlex.split(command)
+    except ValueError:
+        return command.split()
+
+
+def _linear_subcommand(tokens, i):
+    """Given tokens[i] == a `linear` invocation, return (subcommand, rest) where
+    `rest` is the token list after the subcommand — skipping global flags. A
+    token scan, NOT a regex: no backtracking, so no ReDoS (py/redos)."""
+    j = i + 1
+    while j < len(tokens) and tokens[j].startswith("-"):
+        j += 2 if tokens[j] in VALUE_FLAGS else 1
+    if j >= len(tokens):
+        return "", []
+    return tokens[j], tokens[j + 1:]
+
+
+def _is_linear(tok):
+    # bare `linear` or an absolute/relative path ending in `/linear`
+    return tok == "linear" or tok.endswith("/linear")
 
 DENY = (
     "blocked_op: linear.projects-create\n"
@@ -80,14 +98,26 @@ def main():
         return  # fail-open: unreadable payload must not wedge Bash
     if "linear" not in command:
         return
-    if HELP.search(command):
-        return  # `linear create --help` is not a create
 
-    if PROJECT_CREATE.search(command):
-        sys.stderr.write(DENY + "\n")
-        sys.exit(2)
+    tokens = _tokens(command)
+    nudge = False
+    for i, tok in enumerate(tokens):
+        if not _is_linear(tok):
+            continue
+        sub, rest = _linear_subcommand(tokens, i)
+        if sub == "projects":
+            # DENY `linear projects create` — but `--help`/`-h` on it is not a create.
+            after = [t for t in rest if not t.startswith("-")]
+            has_help = any(t in ("-h", "--help") for t in rest)
+            if after and after[0] == "create" and not has_help:
+                sys.stderr.write(DENY + "\n")
+                sys.exit(2)
+        elif sub == "create":
+            # NUDGE on issue creation, unless it's `linear create --help`.
+            if not any(t in ("-h", "--help") for t in rest):
+                nudge = True
 
-    if ISSUE_CREATE.search(command):
+    if nudge:
         print(json.dumps({"hookSpecificOutput": {
             "hookEventName": "PreToolUse", "additionalContext": NUDGE}}))
 

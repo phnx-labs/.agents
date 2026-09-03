@@ -100,6 +100,13 @@ check_allow "allow linear projects archive"     "linear projects archive Foo"
 check_allow "allow non-linear command"          "git commit -m wip"
 check_allow "allow unrelated word 'linear' free" "echo done"
 
+# ReDoS regression (py/redos): a pathological flag-like input must return fast
+# (the old nested-quantifier regex backtracked exponentially on `-- -` repeats).
+# Reaching a verdict at all proves there is no catastrophic backtracking; a hang
+# would wedge the whole test run.
+REDOS_INPUT="linear $(yes '\-\- \-' 2>/dev/null | head -400 | tr -d '\n') create"
+check_nudge "redos-safe on pathological flag input" "$REDOS_INPUT"
+
 # Grok camelCase deny path
 KEY_STYLE=camel run_guard "linear projects create --name Zap"; :
 KEY_STYLE=camel check_deny_structured "deny under Grok camelCase payload" \
