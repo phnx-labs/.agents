@@ -56,6 +56,12 @@
   Wording only — no command behavior or steps changed beyond the ticket-creation framing.
   Plugin content changes bump `swarm` 0.5.0 → 0.5.1, `work` 0.6.0 → 0.6.1, and `sessions`
   0.4.0 → 0.4.1 (plugin manifests + `.claude-plugin/marketplace.json`) so installed copies pick up the new wording.
+  Follow-up: reconciled two downstream output-contract lines the sweep left contradicting their
+  own edited upstream sections — `commands/recap.md`'s "What did not land" (demanded "a ticket id
+  you filed", but Step 2 now records most follow-ups as owner-update lines) and
+  `plugins/work/skills/demo/SKILL.md`'s "Honest gaps" (demanded "the ticket ids you filed", but
+  Step 5 now allows fix-now / owner-update resolutions) both now carry each item's disposition —
+  fixed-now, an owner-update line, or a ticket id if one was genuinely warranted.
 - **`commands/dispatch.md` — Step 4 is now "Track the task" (track-first, create-last), not
   the unconditional "File the ticket".** The old Step 4 told the agent to `linear create` a
   new ticket *before* dispatching every time, with no check-first — so every `/dispatch`
