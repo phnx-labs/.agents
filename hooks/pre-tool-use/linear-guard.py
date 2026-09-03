@@ -22,11 +22,21 @@ Why a hook and not just a rule: the rule has been in `conventions.md` for a
 while and the board still inflated to 60+ AGI tickets, most never started. A
 guard fires at the exact moment of the action, where the reflex forms.
 
-Detection is deliberately simple (token adjacency, not a full shell parser) —
-this is a restraint nudge + a block on one specific subcommand, not a security
-sandbox. A determined evasion (eval, xargs, a computed string) walks past it;
-ordinary `linear` usage does not. Fail-OPEN on any parse error: a guard that
-can't read its input must not wedge every Bash call.
+Detection tokenizes the command with `shlex` and scans for an actual `linear`
+invocation, then reads the subcommand position — it does NOT substring-match the
+raw string, so a `linear projects create` sitting inside a quoted description /
+grep pattern / commit message is not mistaken for a real invocation. It is a
+restraint nudge + a block on one specific subcommand, not a security sandbox: a
+determined evasion (eval, xargs, a computed string) walks past it; ordinary
+`linear` usage does not.
+
+Fail-CLOSED, blast-radius limited — the same shape as `git-guard.sh`: a raw
+fast-path exits 0 for any command with no `linear` substring at all, so this
+guard never touches the >99% of Bash calls that are not linear-related; but once
+`linear` IS present and the payload cannot be parsed, it refuses (exit 2) rather
+than waving a possible `linear projects create` through unchecked. This is the
+`hooks/AGENTS.md` contract for a deny-capable guard (only advisory-only hooks may
+fail open).
 
 Exits 0 (allow, optionally with a nudge) or 2 (deny, message on stderr).
 """
@@ -90,12 +100,28 @@ NUDGE = (
 
 
 def main():
+    raw = sys.stdin.read()
+    # Fast path (mirrors git-guard.sh:82): a command with no `linear` substring at
+    # all is nothing for this hook — never parse, never fail closed on it. This is
+    # what keeps the fail-closed policy below from touching the >99% of Bash calls
+    # that are not linear-related.
+    if "linear" not in raw:
+        return
+    # `linear` IS present. A deny-capable guard that cannot parse its input must
+    # refuse, not wave a possible `linear projects create` through unchecked
+    # (hooks/AGENTS.md contract; same as git-guard.sh:115-117).
     try:
-        payload = json.load(sys.stdin)
+        payload = json.loads(raw)
         inputs = payload.get("tool_input") or payload.get("toolInput") or {}
         command = str(inputs.get("command") or inputs.get("cmd") or "")
     except Exception:
-        return  # fail-open: unreadable payload must not wedge Bash
+        sys.stderr.write(
+            "linear-guard: 'linear' present but the PreToolUse payload could not "
+            "be parsed — refusing to run unchecked (fail-closed). If this is not a "
+            "linear command, it will retry cleanly.\n")
+        sys.exit(2)
+    # Parsed cleanly but this event carries no shell command, or the command has
+    # no `linear` token once extracted — genuinely nothing to police, allow.
     if "linear" not in command:
         return
 
