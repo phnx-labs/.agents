@@ -1,5 +1,5 @@
 ---
-description: Take a task in this project from idea to a working agent — understand the repo once, spec fast without re-deriving what's already known, root-cause bugs with the debug skill, show a quick plan, file the ticket, then dispatch an agent to build it.
+description: Take a task in this project from idea to a working agent — understand the repo once, spec fast without re-deriving what's already known, root-cause bugs with the debug skill, show a quick plan, track the task (claim an existing ticket, create only if missing), then dispatch an agent to build it.
 ---
 
 You're being asked to dispatch work in this project: $ARGUMENTS
@@ -41,12 +41,20 @@ several independent surfaces, a real design decision), escalate to the full `/pl
 command instead of forcing it through this shortcut — don't under-plan a big task just
 because you started with `/dispatch`.
 
-## Step 4: File the ticket
+## Step 4: Track the task
 
-Route through the `tickets` skill (Step 1 tracker detection) and its Step 2 "create" mapping — title +
-the Step 2 spec as the description, linked to any related tickets. File it **before**
-dispatching so the work is tracked and has an owner of record, even though you're about
-to dispatch it yourself.
+The point of this step is that `/work:loop triage` can later see the work — **not** to mint a
+ticket. So track it, and default to NOT creating (see the `conventions` rule):
+
+- **First, search the board** through the `tickets` skill (Step 1 tracker detection, Step 3
+  check-first) for an open ticket that already covers this — same subsystem, file, or bug
+  class. If one exists, **claim it and enrich it** (sharpen the description with your Step 2
+  spec, link related tickets) rather than opening a near-duplicate.
+- **Create a new ticket only when nothing on the board covers it** — via the `tickets`
+  skill's Step 2 "create" mapping (title + the Step 2 spec as description, linked to related
+  tickets). And note: a bug you can fix now and are about to dispatch does not automatically
+  need its own ticket — the PR is often the record. Reserve a fresh ticket for genuinely
+  missing work worth tracking.
 
 ## Step 5: Dispatch
 
@@ -58,8 +66,8 @@ Hand it to an agent to build, scaled to the task:
 | A ticket needing independent verification or parallel surfaces | `agents teams` (see the `teams` skill) |
 | A queue of several tickets | the `code:loop` skill — drains one ticket or many |
 
-Reference the ticket filed in Step 4 in the agent's brief so it updates the same ticket,
-not a duplicate.
+Reference the ticket you claimed or created in Step 4 in the agent's brief so it updates
+the same ticket, not a duplicate.
 
 ## Step 6: Don't stop at "filed and dispatched"
 
@@ -87,8 +95,9 @@ alone. Three concrete obligations:
 - **Re-reading the same repo docs for every task in one sitting.** Ground once, reuse.
 - **Guessing a bug's root cause instead of routing through `/debug`.** A spec built on an
   unconfirmed hypothesis wastes the dispatched agent's run on the wrong fix.
-- **Skipping Step 4 and dispatching untracked work.** Even solo, file it — that's what
-  makes `/work:loop triage` later able to see it.
+- **Skipping Step 4 and dispatching untracked work.** Even solo, claim or track it — that's
+  what makes `/work:loop triage` later able to see it. (Track ≠ always create: claim what
+  exists first, and a fixable-now bug's PR can be the record.)
 - **Treating "ticket filed + agent dispatched" as done.** It's in flight, not shipped.
 - **Claiming a watch you never verified.** "I'll be notified when it settles" after
   backgrounding a loop that already died is worse than saying nothing — the user stops
