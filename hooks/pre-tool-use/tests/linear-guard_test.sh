@@ -103,6 +103,19 @@ check_nudge "nudge issue created inside a project (not a project-create)" \
   "linear create issue-in-a-project --project AGI"
 check_nudge "nudge under Grok camelCase payload" "linear create grok-shaped-issue"
 
+# --- NUDGE: amending via a comment -> prefer updating the description ---------
+check_nudge "nudge on a bare update --comment (context-piling)" \
+  'linear update ABC-1 --comment "some more context about the bug"'
+run_guard 'linear update ABC-1 --comment "more context"'
+if [ "${OUT#*description instead}" = "$OUT" ]; then
+  echo "FAIL - comment nudge should steer to the description"; fail=$((fail+1))
+else echo "ok   - comment nudge steers to the description"; pass=$((pass+1)); fi
+# Delivery-proof / status-change comments are legitimate — stay quiet.
+check_allow "allow update --done --proof --comment (delivery evidence)" \
+  'linear update ABC-1 --done --proof "PR #5" --comment "shipped"'
+check_allow "allow update --status ... --comment (status move)" \
+  'linear update ABC-1 --status Done --comment "closed via PR"'
+
 # --- ALLOW: everything else, silently ---------------------------------------
 check_allow "allow linear create --help"        "linear create --help"
 check_allow "allow linear tasks"                "linear tasks --project AGI"
