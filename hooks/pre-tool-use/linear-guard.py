@@ -18,6 +18,13 @@ Two behaviors, both keyed on a `linear` CLI invocation in the command string:
    busywork. The conventions rule already says "default to NOT creating"; this
    is the enforcement at the point of action.
 
+3. NUDGE (exit 0 + additionalContext) — adding a comment to amend a ticket
+   (`linear update … --comment …`, without delivery-proof/status flags). Prefer
+   updating the DESCRIPTION so the ticket stays one source of truth; a pile of
+   context comments forces the next reader to reconcile first-vs-last and guess
+   what's current. Stays quiet when the comment rides with `--proof`/`--done`/
+   `--status` (legitimate closing evidence, not context-piling).
+
 Why a hook and not just a rule: the rule has been in `conventions.md` for a
 while and the board still inflated to 60+ AGI tickets, most never started. A
 guard fires at the exact moment of the action, where the reflex forms.
@@ -98,6 +105,21 @@ NUDGE = (
     "the command will still run."
 )
 
+# Flags on `linear update` that mark a delivery/state change (proof of work,
+# a status move) — a comment alongside these is legitimate closing evidence, not
+# context-piling, so the comment nudge stays quiet for them.
+DELIVERY_FLAGS = {"--proof", "--done", "--todo", "--pickup", "--status"}
+
+COMMENT_NUDGE = (
+    "[linear-restraint] Amending or adding context to a ticket? Update its "
+    "description instead — rewrite it so the ticket stays the single source of "
+    "truth. Piling on another comment forces the next reader to reconcile the "
+    "first message against the last and guess which is current; a stale comment "
+    "on an old ticket is worse than none. (Comments are fine for delivery proof "
+    "— a PR link, a screenshot, a decision — just not for restating the ticket.) "
+    "This is advisory; the command will still run."
+)
+
 
 def main():
     raw = sys.stdin.read()
@@ -126,7 +148,7 @@ def main():
         return
 
     tokens = _tokens(command)
-    nudge = False
+    nudge_text = None
     for i, tok in enumerate(tokens):
         if not _is_linear(tok):
             continue
@@ -141,11 +163,17 @@ def main():
         elif sub == "create":
             # NUDGE on issue creation, unless it's `linear create --help`.
             if not any(t in ("-h", "--help") for t in rest):
-                nudge = True
+                nudge_text = nudge_text or NUDGE
+        elif sub == "update":
+            # NUDGE when a comment is being added to amend/add context — but NOT
+            # when it rides alongside delivery proof or a status change (that
+            # comment is legitimate closing evidence, not context-piling).
+            if "--comment" in rest and not any(f in rest for f in DELIVERY_FLAGS):
+                nudge_text = nudge_text or COMMENT_NUDGE
 
-    if nudge:
+    if nudge_text:
         print(json.dumps({"hookSpecificOutput": {
-            "hookEventName": "PreToolUse", "additionalContext": NUDGE}}))
+            "hookEventName": "PreToolUse", "additionalContext": nudge_text}}))
 
 
 if __name__ == "__main__":

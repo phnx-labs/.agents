@@ -37,5 +37,13 @@
   genuinely warranted, suggest it in your owner update and let the owner decide.
   Both are enforced at the point of action by the `linear-guard` PreToolUse hook
   (denies `linear projects create`; nudges on `linear create`).
+- **Amend the description, don't pile comments.** When a ticket needs more or
+  corrected context, edit its **description** so it stays one source of truth —
+  don't append another comment that makes the next reader reconcile the first
+  message against the last and guess which is current. Don't cite an old ticket
+  by ID either: its context may be stale — read what it held, then fold the
+  current truth into the description. Comments are for delivery proof (a PR link,
+  a screenshot, a decision), not for restating the ticket. The `linear-guard`
+  hook nudges on a bare `linear update --comment`.
 - **Parallel work:** multi-surface changes use `agents teams` — see
   `parallel-teams`.
