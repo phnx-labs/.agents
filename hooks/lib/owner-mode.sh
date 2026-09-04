@@ -30,22 +30,34 @@
 # id. Any resolution failure (gh error, timeout, unauth) also yields "0" — the
 # strict, block-by-default direction, never a fail-open to self-merge.
 #
-# _resolve_owner_mode <trusted_ids_file>  -> prints "1" (owner) or "0" (not).
+# _resolve_owner_login <trusted_ids_file>  -> prints the authenticated GitHub
+# LOGIN if the authenticated numeric id is a trusted owner, else prints nothing.
+#
+# owner-mode engages ONLY for a PR whose OWN AUTHOR equals this login — the
+# caller compares `pr_author` against it. That distinction is load-bearing: a
+# trusted owner merging a THIRD PARTY's PR must NOT get that party's own
+# self-approval counted as a verdict (doing so would reopen the PHNX-3236
+# self-merge laundering for third-party PRs). "A trusted identity is running the
+# merge" is NOT the same as "this PR was opened by the trusted owner"; only the
+# latter is the shared-identity self-review case owner-mode exists for. Empty
+# output => owner-mode never engages.
 
 # Portable 3s timeout around the single `gh api user` call (macOS ships neither
 # `timeout` nor `gtimeout` by default; fall back to unbounded, same posture the
-# merge-guard verdict probe already accepts for gh calls).
-_om_gh_user_id() {
+# merge-guard verdict probe already accepts for gh calls). Prints "<id> <login>"
+# (a GitHub login never contains a space, so a single space separator is
+# unambiguous).
+_om_gh_user() {
   if command -v timeout >/dev/null 2>&1; then
-    timeout 3 gh api user --jq '.id' --cache 3600s 2>/dev/null
+    timeout 3 gh api user --jq '"\(.id) \(.login)"' --cache 3600s 2>/dev/null
   elif command -v gtimeout >/dev/null 2>&1; then
-    gtimeout 3 gh api user --jq '.id' --cache 3600s 2>/dev/null
+    gtimeout 3 gh api user --jq '"\(.id) \(.login)"' --cache 3600s 2>/dev/null
   else
-    gh api user --jq '.id' --cache 3600s 2>/dev/null
+    gh api user --jq '"\(.id) \(.login)"' --cache 3600s 2>/dev/null
   fi
 }
 
-_resolve_owner_mode() {
+_resolve_owner_login() {
   _om_sys_file=$1
   _om_ids=""
   # env first
@@ -59,21 +71,26 @@ _resolve_owner_mode() {
       _om_ids="$_om_ids $_om_file_ids"
     fi
   done
-  # No trusted id configured anywhere -> owner-mode off, no network call.
+  # No trusted id configured anywhere -> no owner, no network call.
   case "$_om_ids" in
     *[0-9]*) ;;
-    *) printf '0'; return 0 ;;
+    *) return 0 ;;
   esac
-  _om_me=$(_om_gh_user_id)
-  # Only a purely-numeric, non-empty id can match; anything else -> off.
-  case "$_om_me" in
-    ''|*[!0-9]*) printf '0'; return 0 ;;
-  esac
-  for _om_id in $_om_ids; do
-    if [ "$_om_id" = "$_om_me" ]; then
-      printf '1'
+  # Guard the substitution so a gh failure (auth refresh, rate limit, network)
+  # degrades to "no owner" instead of aborting a `set -e` caller
+  # (pr-merge-on-green.sh runs under `set -eu`) mid-poll.
+  _om_user=$(_om_gh_user) || _om_user=""
+  [ -n "$_om_user" ] || return 0
+  _om_id=${_om_user%% *}
+  _om_login=${_om_user#* }
+  # id must be purely numeric; login must be a real GitHub login (alnum + '-').
+  case "$_om_id" in ''|*[!0-9]*) return 0 ;; esac
+  case "$_om_login" in ''|*[!A-Za-z0-9-]*) return 0 ;; esac
+  for _om_id_t in $_om_ids; do
+    if [ "$_om_id_t" = "$_om_id" ]; then
+      printf '%s' "$_om_login"
       return 0
     fi
   done
-  printf '0'
+  return 0
 }

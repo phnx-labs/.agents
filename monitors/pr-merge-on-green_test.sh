@@ -41,32 +41,40 @@ check "" carried-from-green.json \
 check "" self-authored-approve-green.json \
   "self-authored APPROVE comment (PHNX-3236) is rejected even with green CI"
 
-# PHNX-3950 owner-mode: when the daemon's identity is a trusted owner, its own
-# APPROVE clears the verdict so the auto-merger stops deadlocking every PR onto
-# the human. Hermetic: stub `gh api user --jq .id` to a fixed id and opt that id
-# in via AGENTS_MERGE_TRUSTED_OWNER_IDS. OWNER_MODE is recomputed per `--select`
-# subprocess, so per-invocation env + PATH fully control it.
+# PHNX-3950 owner-mode: owner-mode engages only when a PR's OWN AUTHOR is the
+# trusted owner (authed id in the allowlist AND authed login == PR author), so
+# the daemon auto-merges the fleet's own self-reviewed PRs but never a third
+# party's self-approval. Hermetic: stub `gh api user` to "<id> <login>" and opt
+# the id in via AGENTS_MERGE_TRUSTED_OWNER_IDS. The trusted login is resolved per
+# `--select` subprocess, so per-invocation env + PATH fully control it. The
+# self-authored testdata's PR author is `fleet-bot`.
 OWNER_STUB=$(mktemp -d)
 trap 'rm -rf "$OWNER_STUB"' EXIT
 mkdir -p "$OWNER_STUB/bin"
 cat > "$OWNER_STUB/bin/gh" <<'STUB'
 #!/usr/bin/env bash
-case "$*" in *"api user"*) printf '13007401' ;; *) echo "" ;; esac
+case "$*" in *"api user"*) printf '%s %s' "${STUB_ID:-}" "${STUB_LOGIN:-}" ;; *) echo "" ;; esac
 STUB
 chmod +x "$OWNER_STUB/bin/gh"
 
+# checko <want> <file> <ids> <stub-id> <stub-login> <desc>
 checko() {
-  want=$1; file=$2; ids=$3; desc=$4
+  want=$1; file=$2; ids=$3; sid=$4; slogin=$5; desc=$6
   got=$(PATH="$OWNER_STUB/bin:$PATH" AGENTS_MERGE_TRUSTED_OWNER_IDS="$ids" \
+        STUB_ID="$sid" STUB_LOGIN="$slogin" \
         sh "$SEL" --select < "$DATA/$file" | tr -d '\n')
   if [ "$got" = "$want" ]; then pass=$((pass + 1)); else
     fail=$((fail + 1)); printf 'FAIL: %s\n  want: %s\n  got:  %s\n' "$desc" "$want" "$got"; fi
 }
-checko "acme/widgets#12" self-authored-approve-green.json '13007401' \
-  "owner-mode: self-authored APPROVE + green CI is selected for a trusted owner"
-checko "" self-authored-approve-green.json '99999999' \
-  "owner-mode: a non-trusted identity leaves the self-authored PR rejected"
-checko "" unapproved-green.json '13007401' \
+checko "acme/widgets#12" self-authored-approve-green.json '13007401' '13007401' 'fleet-bot' \
+  "owner-mode: self-authored APPROVE + green CI is selected when the PR author is the trusted owner"
+# SECURITY (reviewer BLOCKER): trusted id but authed login != PR author ->
+# owner-mode OFF -> the self-approval stays excluded -> rejected.
+checko "" self-authored-approve-green.json '13007401' '13007401' 'someone-else' \
+  "owner-mode: a trusted owner does NOT clear a PR authored by a different login"
+checko "" self-authored-approve-green.json '13007401' '99999999' 'fleet-bot' \
+  "owner-mode: a non-trusted authed id (not in the allowlist) leaves the self-authored PR rejected"
+checko "" unapproved-green.json '13007401' '13007401' 'pr-owner' \
   "owner-mode: green CI without any verdict is still rejected"
 
 # The YAML must not regress to a cwd-relative gh pr list / reviewDecision filter.
