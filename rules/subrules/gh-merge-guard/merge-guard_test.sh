@@ -36,6 +36,11 @@ case "$*" in
   *"/comments"*)
     if [ -n "${FAKE_MG_COMMENTS+x}" ]; then printf '%s' "$FAKE_MG_COMMENTS"
     else printf '%s' '[{"body":"Non-author review: APPROVE - verified the diff."}]'; fi ;;
+  *"api user"*)
+    # merge-guard.sh's owner-mode probe: `gh api user --jq .id` (PHNX-3950).
+    # Only reached when a trusted-owner id is configured (env/file). Print the
+    # bare numeric id the real gh would emit after --jq.
+    printf '%s' "${FAKE_MG_USER_ID:-}" ;;
   *"/pulls/"*)
     # merge-guard.sh's `gh api repos/.../pulls/$num --jq .user.login` PR-author
     # fetch (PHNX-3236). --jq is applied by the real `gh` binary, not this
@@ -91,6 +96,12 @@ check() {
     fail=$((fail + 1))
     printf 'FAIL: %s (want exit %s, got %s)\n  cmd: %s\n' "$desc" "$want" "$got" "$cmd"
   fi
+  # A `VAR=val check ...` prefix assignment on a SHELL FUNCTION persists after
+  # the call returns (unlike an external command), so `FAKE_MG_GH_FAIL=1 check`
+  # leaked into every later case and fail-opened them — three block-expecting
+  # cases silently passed the wrong way. Clear the per-case fixtures here.
+  unset FAKE_MG_GH_FAIL FAKE_MG_REVIEWS FAKE_MG_COMMENTS FAKE_MG_AUTHOR \
+        FAKE_MG_USER_ID AGENTS_MERGE_TRUSTED_OWNER_IDS
 }
 
 # checkc — same as check, but wraps the command in a Grok CLI camelCase payload
@@ -109,6 +120,12 @@ checkc() {
     fail=$((fail + 1))
     printf 'FAIL: %s (want exit %s, got %s)\n  cmd: %s\n' "$desc" "$want" "$got" "$cmd"
   fi
+  # A `VAR=val check ...` prefix assignment on a SHELL FUNCTION persists after
+  # the call returns (unlike an external command), so `FAKE_MG_GH_FAIL=1 check`
+  # leaked into every later case and fail-opened them — three block-expecting
+  # cases silently passed the wrong way. Clear the per-case fixtures here.
+  unset FAKE_MG_GH_FAIL FAKE_MG_REVIEWS FAKE_MG_COMMENTS FAKE_MG_AUTHOR \
+        FAKE_MG_USER_ID AGENTS_MERGE_TRUSTED_OWNER_IDS
 }
 
 # --- Should BLOCK (exit 2): a genuine --admin bypass merge ---
@@ -229,6 +246,33 @@ FAKE_MG_AUTHOR='fleet-bot' \
 FAKE_MG_AUTHOR='fleet-bot' \
   FAKE_MG_COMMENTS='[{"user":{"login":"reviewer-bot"},"body":"VERDICT: APPROVE"}]' \
   check 0 "non-author APPROVE still satisfies the review once author is resolved" "gh pr $M 42"
+
+# --- PHNX-3950: owner-mode -------------------------------------------------
+# When the authenticated identity (FAKE_MG_USER_ID here) is in the trusted-owner
+# allowlist (AGENTS_MERGE_TRUSTED_OWNER_IDS env), a self-authored APPROVE clears
+# the guard so an owner agent stops handing every merge to the human. Any other
+# identity keeps the strict self-author exclusion, and --admin stays blocked.
+FAKE_MG_AUTHOR='fleet-bot' FAKE_MG_USER_ID='13007401' AGENTS_MERGE_TRUSTED_OWNER_IDS='13007401' \
+  FAKE_MG_COMMENTS='[{"user":{"login":"fleet-bot"},"body":"VERDICT: APPROVE"}]' \
+  check 0 "owner-mode: self-authored APPROVE clears for a trusted owner" "gh pr $M 42"
+# A DIFFERENT authenticated id (not in the allowlist) -> owner-mode OFF -> the
+# self-authored APPROVE is excluded and the merge is blocked. "no one else."
+FAKE_MG_AUTHOR='fleet-bot' FAKE_MG_USER_ID='99999999' AGENTS_MERGE_TRUSTED_OWNER_IDS='13007401' \
+  FAKE_MG_COMMENTS='[{"user":{"login":"fleet-bot"},"body":"VERDICT: APPROVE"}]' \
+  check 2 "owner-mode: a non-trusted identity is still blocked on a self-authored APPROVE" "gh pr $M 42"
+# No allowlist configured -> owner-mode never engages even if a user id resolves.
+FAKE_MG_AUTHOR='fleet-bot' FAKE_MG_USER_ID='13007401' \
+  FAKE_MG_COMMENTS='[{"user":{"login":"fleet-bot"},"body":"VERDICT: APPROVE"}]' \
+  check 2 "owner-mode: no allowlist means a self-authored APPROVE stays blocked" "gh pr $M 42"
+# Owner-mode never merges UNREVIEWED code: no verdict at all still blocks.
+FAKE_MG_AUTHOR='fleet-bot' FAKE_MG_USER_ID='13007401' AGENTS_MERGE_TRUSTED_OWNER_IDS='13007401' \
+  FAKE_MG_COMMENTS='[{"user":{"login":"fleet-bot"},"body":"no verdict here"}]' \
+  check 2 "owner-mode: still blocks when there is no verdict at all" "gh pr $M 42"
+# --admin is blocked for a trusted owner too (owner merges plainly; the ruleset
+# exemption + GitHub-enforced CI still apply). Trigger word assembled to dodge
+# the installed guard on the test runner itself.
+FAKE_MG_USER_ID='13007401' AGENTS_MERGE_TRUSTED_OWNER_IDS='13007401' \
+  check 2 "owner-mode: --admin bypass is still blocked for a trusted owner" "gh pr $M 42 $A"
 
 printf -- '---\nmerge-guard: %s passed, %s failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]

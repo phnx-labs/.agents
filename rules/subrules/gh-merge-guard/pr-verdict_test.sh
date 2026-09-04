@@ -259,5 +259,52 @@ check missing "same-line: stray backtick swallowing 'NOT APPROVED' must not laun
 check missing "unclosed fence swallowing a refusal must not launder a later APPROVE" \
   '[]' '[{"user":{"login":"reviewer-bot"},"body":"```\nstart of a block I forgot to close\n\nI do NOT APPROVE this PR, the fix is incomplete.\n\n```python\nx=1\n```\n\nVERDICT: APPROVE"}]'
 
+# PHNX-3950: owner-mode (optional 4th segment). Under the shared fleet identity
+# the self-author exclusion is unsatisfiable, so owner-mode ("1") stops dropping
+# same-login verdicts — but KEEPS every other gate. checko passes the 4th
+# segment; author defaults to the SAME login as the fixtures (pr-author-bot) so
+# these all exercise the self-authored path that owner-mode is about.
+checko() {
+  want=$1; desc=$2; reviews=$3; comments=$4; owner=$5; author=${6:-$AUTHOR}
+  got=$(printf '%s\n---AGENTS-SPLIT---\n%s\n---AGENTS-SPLIT---\n%s\n---AGENTS-SPLIT---\n%s' \
+      "$(b64 "$reviews")" "$(b64 "$comments")" "$(b64 "$author")" "$(b64 "$owner")" \
+    | python3 "$PY" | tr -d '\n')
+  if [ "$got" = "$want" ]; then pass=$((pass + 1)); else
+    fail=$((fail + 1)); printf 'FAIL: %s (want %s, got %s)\n' "$desc" "$want" "$got"; fi
+}
+
+# The core unblock: a self-authored APPROVE that is "missing" by default clears
+# in owner-mode.
+checko missing "owner-mode OFF (0): self-authored APPROVE still excluded" \
+  '[]' '[{"user":{"login":"pr-author-bot"},"body":"VERDICT: APPROVE"}]' '0'
+checko ok "owner-mode ON (1): self-authored APPROVE comment now clears" \
+  '[]' '[{"user":{"login":"pr-author-bot"},"body":"VERDICT: APPROVE"}]' '1'
+checko ok "owner-mode ON: self-authored COMMENTED review body clears" \
+  '[{"state":"COMMENTED","user":{"login":"pr-author-bot"},"body":"VERDICT: APPROVE"}]' '[]' '1'
+checko ok "owner-mode ON: self-authored formal APPROVED review clears" \
+  '[{"state":"APPROVED","user":{"login":"pr-author-bot"}}]' '[]' '1'
+checko ok "owner-mode ON: GraphQL author.login self-authored APPROVE clears" \
+  '[]' '[{"author":{"login":"pr-author-bot"},"body":"VERDICT: APPROVE"}]' '1'
+
+# Every OTHER gate must still hold in owner-mode — owner-mode only lifts the
+# self-author exclusion, never the laundering/negation/code-fence protections.
+checko missing "owner-mode ON: still no merge without ANY verdict" \
+  '[]' '[{"user":{"login":"pr-author-bot"},"body":"looks big, did not review"}]' '1'
+checko missing "owner-mode ON: negated self-authored APPROVE still blocks" \
+  '[]' '[{"user":{"login":"pr-author-bot"},"body":"I do NOT APPROVE this yet."}]' '1'
+checko missing "owner-mode ON: carried-from self-authored APPROVE still blocks" \
+  '[]' '[{"user":{"login":"pr-author-bot"},"body":"APPROVE carried from #2731."}]' '1'
+checko missing "owner-mode ON: code-quoted self-authored APPROVE still blocks" \
+  '[]' '[{"user":{"login":"pr-author-bot"},"body":"the parser matches `APPROVE` — still auditing."}]' '1'
+checko missing "owner-mode ON: CHANGES_REQUESTED self-review saying APPROVE still blocks" \
+  '[{"state":"CHANGES_REQUESTED","user":{"login":"pr-author-bot"},"body":"cannot APPROVE until fixed"}]' '[]' '1'
+
+# An unrecognized 4th segment is treated as OFF (strict), and a 3-segment
+# payload from an older caller is unchanged (backward compatibility).
+checko missing "owner-mode garbage value ('yes') is treated as OFF" \
+  '[]' '[{"user":{"login":"pr-author-bot"},"body":"VERDICT: APPROVE"}]' 'yes'
+check missing "3-segment payload (no owner segment) still excludes self-author" \
+  '[{"state":"COMMENTED","user":{"login":"pr-author-bot"},"body":"VERDICT: APPROVE"}]' '[]'
+
 printf -- '---\npr-verdict: %s passed, %s failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]
