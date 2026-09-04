@@ -40,9 +40,11 @@ sed -i '2i {"type":"assistant","message":{"content":[{"type":"tool_use","id":"c1
 out=$(inspect "$disciplined")
 check "disciplined session records paired image read-back" "$(printf '%s' "$out" | python3 -c 'import json,sys; print(json.load(sys.stdin)["visual_read_back"])')" "True"
 
-# `agents browser navigate --url file://<artifact>` is now the recommended way to
-# show the user a rendered plan/visual (one reused tab, not a raw `open`). It must
-# count as delivery, or the read-back gate silently stops firing for that path.
+# `agents browser navigate --url file://<artifact>` is one valid way to put a rendered
+# plan/visual in front of the user — the optional tab-reuse refinement; opening it in the
+# user's DEFAULT browser (`open`/`xdg-open`, covered by the blind case above) is the
+# primary path. The navigate path must still count as delivery, or the read-back gate
+# silently stops firing for it.
 navigate_blind="$SANDBOX/navigate_blind.jsonl"
 cat > "$navigate_blind" <<'EOF'
 {"type":"assistant","message":{"content":[{"type":"tool_use","id":"w1","name":"Write","input":{"file_path":"/tmp/plan.html"}}]}}

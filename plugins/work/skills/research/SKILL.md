@@ -107,8 +107,9 @@ research in its tree instead — e.g. a product repo whose convention is `docs/r
 is where you promote a keepable result; `--out <path>` overrides the destination explicitly. Render an
 `index.html` via the `artifacts` skill when it's worth showing visually, with the raw per-engine
 outputs beside it. Every claim cites its source; a confidence column marks single- vs multi-sourced.
-Put the rendered result on the owner's screen (`agents browser navigate --url file://<path>`), and
-`share` it if it's meant to leave the machine.
+Open the rendered result in the owner's DEFAULT browser — `open <path>` / `xdg-open <path>` locally,
+or `scp` it over and `agents ssh <host> 'open /tmp/<file>'` when remote (the browser they actually use;
+no fleet browser profile needed) — and `share` it if it's meant to leave the machine.
 
 ## Anti-patterns
 

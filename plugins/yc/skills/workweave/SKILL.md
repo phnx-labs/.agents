@@ -155,10 +155,12 @@ Fix the Markdown and re-render; never edit generated HTML. Capture real proof in
 and mobile overview. Use screenshots of the rendered report itself, not mockups. Keep account,
 machine, and session identity out of every capture.
 
-Unless `--no-open` was passed, reuse one browser tab:
+Unless `--no-open` was passed, open the report in the user's DEFAULT browser (the one
+they actually use; no fleet browser profile needed):
 
 ```bash
-agents browser navigate --url "file://$OUT/workweave-$PROJECT.html"
+open "$OUT/workweave-$PROJECT.html"       # macOS
+xdg-open "$OUT/workweave-$PROJECT.html"   # Linux
 ```
 
 Finish with the exact window/project, 3–5 decision-useful findings grounded in quoted
