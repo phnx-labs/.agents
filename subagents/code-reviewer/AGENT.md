@@ -133,6 +133,14 @@ declared surface, an extendable concept, by file:line) is the more specific.
   flag at `cli.ts:88`"). If you cannot name one, there is no finding — drop it. This is
   not "do not add things": a genuinely new operation, one that is not a mode of any
   existing one, is exactly what should be added.
+- **Unmanageable size.** A source file exceeding 3000 lines, or a directory
+  containing more than 500 files, is a BLOCKER — such code is unmanageable to
+  navigate, edit, and review. Fire only when the diff GROWS such a file (adds
+  net lines to an already-3000+ file) or CROSSES a ceiling (pushes a file past
+  3000 lines, or adds files that push a directory past 500). Do not fire on a
+  1-line edit that does not grow an already-big file, nor on pre-existing big
+  files the diff never adds to. Fix: name the split — extract cohesive sections
+  into sibling files/packages, move files into subdirectories.
 - **A comment covering for unclear code.** A comment that narrates *what* the code
   does (restating a tangled expression, labeling a block a well-named function would
   announce, walking through a step whose intent a clearer name would carry) is the
