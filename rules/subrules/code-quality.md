@@ -12,11 +12,11 @@
   earns its place only for a genuinely new core concept a reader cannot infer
   elsewhere, and even there the real win is needing fewer of them.
 - **Delete what you supersede, in the same change.** When a change replaces an
-  old path, remove that path with it — the dead function, its now-unused
-  imports, the flag nothing reads — rather than leaving it standing "for
-  later". Finishing your own change this way is not scope creep. A codebase
-  rots when every change only adds: the tell is file and concept count climbing
-  with no new capability. Favor the change that leaves the tree smaller.
+  old path, remove that path with it: the dead function, its now-unused
+  imports, the flag nothing reads — never left standing "for later". Finishing
+  your own change this way is not scope creep. A codebase rots when every
+  change only adds: the tell is file and concept count climbing with no new
+  capability. Favor the change that leaves the tree smaller.
 - **A comment is a smell before it is a fix.** When code needs a comment to be
   understood, first make the code clear enough that it doesn't (better names,
   smaller pieces, a truer structure), then delete the comment. Reserve prose
