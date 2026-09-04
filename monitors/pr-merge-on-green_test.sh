@@ -41,6 +41,34 @@ check "" carried-from-green.json \
 check "" self-authored-approve-green.json \
   "self-authored APPROVE comment (PHNX-3236) is rejected even with green CI"
 
+# PHNX-3950 owner-mode: when the daemon's identity is a trusted owner, its own
+# APPROVE clears the verdict so the auto-merger stops deadlocking every PR onto
+# the human. Hermetic: stub `gh api user --jq .id` to a fixed id and opt that id
+# in via AGENTS_MERGE_TRUSTED_OWNER_IDS. OWNER_MODE is recomputed per `--select`
+# subprocess, so per-invocation env + PATH fully control it.
+OWNER_STUB=$(mktemp -d)
+trap 'rm -rf "$OWNER_STUB"' EXIT
+mkdir -p "$OWNER_STUB/bin"
+cat > "$OWNER_STUB/bin/gh" <<'STUB'
+#!/usr/bin/env bash
+case "$*" in *"api user"*) printf '13007401' ;; *) echo "" ;; esac
+STUB
+chmod +x "$OWNER_STUB/bin/gh"
+
+checko() {
+  want=$1; file=$2; ids=$3; desc=$4
+  got=$(PATH="$OWNER_STUB/bin:$PATH" AGENTS_MERGE_TRUSTED_OWNER_IDS="$ids" \
+        sh "$SEL" --select < "$DATA/$file" | tr -d '\n')
+  if [ "$got" = "$want" ]; then pass=$((pass + 1)); else
+    fail=$((fail + 1)); printf 'FAIL: %s\n  want: %s\n  got:  %s\n' "$desc" "$want" "$got"; fi
+}
+checko "acme/widgets#12" self-authored-approve-green.json '13007401' \
+  "owner-mode: self-authored APPROVE + green CI is selected for a trusted owner"
+checko "" self-authored-approve-green.json '99999999' \
+  "owner-mode: a non-trusted identity leaves the self-authored PR rejected"
+checko "" unapproved-green.json '13007401' \
+  "owner-mode: green CI without any verdict is still rejected"
+
 # The YAML must not regress to a cwd-relative gh pr list / reviewDecision filter.
 yml="$DIR/pr-merge-on-green.yml"
 if grep -q 'pr-merge-on-green.sh' "$yml" \

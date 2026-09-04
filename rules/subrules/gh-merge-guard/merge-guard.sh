@@ -64,6 +64,20 @@ if ! command -v _json_field >/dev/null 2>&1; then
   exit 2
 fi
 
+# Owner-mode resolver (PHNX-3950). Best-effort — UNLIKE json-field, a missing
+# owner-mode.sh must NOT fail closed: without it _resolve_owner_mode stays
+# undefined, owner-mode defaults OFF, and the guard is simply MORE strict (the
+# safe direction). Never blocks a merge by its absence.
+_LIB_DIR=$(CDPATH= cd "${0%/*}" 2>/dev/null && pwd) || _LIB_DIR=""
+for _cand in "$_LIB_DIR/../../../hooks/lib/owner-mode.sh" "${HOME}/.agents/.system/hooks/lib/owner-mode.sh"; do
+  if [ -f "$_cand" ]; then
+    # shellcheck source=../../../hooks/lib/owner-mode.sh
+    . "$_cand"
+    if command -v _resolve_owner_mode >/dev/null 2>&1; then break; fi
+  fi
+done
+unset _LIB_DIR _cand
+
 _hook_skip_plan_mode "$input" && exit 0
 
 # Fast path: a command that never mentions "merge" can't be a bypass merge.
@@ -188,12 +202,24 @@ case "$norm" in
       # gtimeout) _to runs gh unbounded — same harness-level fail-open
       # applies; acceptable for a review probe, never relied on for the admin
       # block above (which needs no network).
+      # Guard dir + owner-mode allowlist file, needed both by the concurrent
+      # owner-mode probe below and the pr-verdict.py call further down.
+      _GUARD_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+      _OWNER_FILE="$_GUARD_DIR/trusted-owner-ids"
+      _owner_mode=0
       _pr_tmp=$(mktemp -d 2>/dev/null) || _pr_tmp=""
       if [ -n "$_pr_tmp" ]; then
         ( _to 3 gh api "repos/$_pr_repo/pulls/$_pr_num/reviews" --cache 60s \
             >"$_pr_tmp/reviews.out" 2>/dev/null; echo $? >"$_pr_tmp/reviews.rc" ) &
         ( _to 3 gh api "repos/$_pr_repo/issues/$_pr_num/comments" --cache 60s \
             >"$_pr_tmp/comments.out" 2>/dev/null; echo $? >"$_pr_tmp/comments.rc" ) &
+        # owner-mode (PHNX-3950): concurrent so it adds no wall-clock (bounded by
+        # the slowest sibling call). Off unless the lib resolved AND this fleet
+        # opted its identity in; any failure -> "0" (strict). No trusted id
+        # configured -> the resolver returns "0" WITHOUT a network call.
+        ( if command -v _resolve_owner_mode >/dev/null 2>&1; then
+            _resolve_owner_mode "$_OWNER_FILE" >"$_pr_tmp/owner.out" 2>/dev/null
+          else printf '0' >"$_pr_tmp/owner.out"; fi ) &
         # PHNX-3236: the PR's own author, so pr-verdict.py can exclude any
         # review/comment authored by them (a self-merge bypass — every fleet
         # agent shares one GitHub identity, and nothing but this check stops
@@ -219,13 +245,14 @@ case "$norm" in
         else
           _pr_author="__API_ERR__"
         fi
+        _owner_mode=$(cat "$_pr_tmp/owner.out" 2>/dev/null)
+        case "$_owner_mode" in 1) ;; *) _owner_mode=0 ;; esac
         rm -rf "$_pr_tmp"
       else
         _reviews="__API_ERR__"; _comments="__API_ERR__"; _pr_author="__API_ERR__"
       fi
       if [ "$_reviews" != "__API_ERR__" ] && [ "$_comments" != "__API_ERR__" ] && [ "$_pr_author" != "__API_ERR__" ] && [ -n "$_pr_author" ]; then
         # Same verdict as pr-merge-on-green: reuse pr-verdict.py, do not re-inline.
-        _GUARD_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
         # base64-encode each segment: a review/comment discussing THIS file
         # (as one did, live, reviewing PHNX-3236 itself) can quote the plain
         # marker text verbatim in its own body, and a plain-text split has no
@@ -233,11 +260,12 @@ case "$norm" in
         # quoted copy corrupted the JSON on both sides and a genuine approval
         # read as "missing". Base64's alphabet has no hyphen, so an encoded
         # segment can never contain "---AGENTS-SPLIT---" — see pr-verdict.py's
-        # module docstring.
-        _verdict=$(printf '%s\n---AGENTS-SPLIT---\n%s\n---AGENTS-SPLIT---\n%s' \
+        # module docstring. The 4th segment is owner-mode (PHNX-3950).
+        _verdict=$(printf '%s\n---AGENTS-SPLIT---\n%s\n---AGENTS-SPLIT---\n%s\n---AGENTS-SPLIT---\n%s' \
             "$(printf '%s' "$_reviews" | base64 | tr -d '\n')" \
             "$(printf '%s' "$_comments" | base64 | tr -d '\n')" \
             "$(printf '%s' "$_pr_author" | base64 | tr -d '\n')" \
+            "$(printf '%s' "$_owner_mode" | base64 | tr -d '\n')" \
           | python3 "$_GUARD_DIR/pr-verdict.py" 2>/dev/null) || _verdict="ok"
         if [ "$_verdict" = "missing" ]; then
           printf '%s\n' "Blocked: no non-author review verdict found ON this PR ($_pr_repo#$_pr_num). Post a GitHub APPROVED review, or an APPROVE/APPROVED verdict in a COMMENTED review body (gh pr review --comment) or an issue comment (gh pr comment), ON the PR being merged — a verdict 'carried from' another PR satisfies nothing (the #2736 laundering pattern). Get the automated reviewer's verdict or spawn a non-author subagent review on THIS PR, then retry." >&2

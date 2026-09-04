@@ -1,0 +1,18 @@
+# trusted-owner-ids — owner-mode allowlist for the merge path (PHNX-3950).
+#
+# One numeric GitHub USER id per line ('#' starts a comment). An agent whose
+# authenticated `gh api user` id is listed here gets "owner-mode": its own
+# code-reviewer APPROVE clears pr-verdict.py even though the whole fleet shares
+# one GitHub login (see hooks/lib/owner-mode.sh and pr-verdict.py). Every other
+# gate — real-word APPROVE, no carried-from laundering, no negated/quoted
+# approvals, CI-green (enforced by GitHub) — still applies, and --admin stays
+# blocked; owner-mode only stops the guard/auto-merger from false-blocking the
+# ONE identity the repo ruleset already exempts server-side.
+#
+# THIS FILE SHIPS EMPTY. The upstream mirror grants no fleet by default. Opt
+# YOUR fleet in WITHOUT editing this shared file (the system layer is a pull-only
+# mirror — local edits here are overwritten on the next `agents repo pull
+# system`). Instead use either:
+#   * ${HOME}/.agents/trusted-owner-ids  (user layer; survives mirror pulls), or
+#   * export AGENTS_MERGE_TRUSTED_OWNER_IDS="<id> <id>"  in the fleet env.
+# Find your id with:  gh api user --jq .id

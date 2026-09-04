@@ -22,7 +22,12 @@ review/comment authored by that same login from the body-approve check before
 looking for the verdict text.
 
 Stdin contract: three base64-encoded segments joined by the line
-`---AGENTS-SPLIT---` — reviews JSON, comments JSON, PR author login. Encoding
+`---AGENTS-SPLIT---` — reviews JSON, comments JSON, PR author login — plus an
+OPTIONAL 4th segment owner_mode ("1"/"0", default "0"; PHNX-3950). When
+owner_mode is "1" the self-author exclusion is skipped (a same-login APPROVE
+counts) but every other gate — carried-from, negation, code-fence — still
+applies; the CALLER sets it only for a trusted fleet-owner identity. A
+3-segment payload behaves exactly as before. Encoding
 each segment (rather than piping raw JSON with plain-text markers, the
 original design) is load-bearing: a review or comment discussing this very
 file — which happened live reviewing PHNX-3236 itself — can quote the marker
@@ -248,7 +253,7 @@ def _body_approves(items) -> bool:
     return False
 
 
-def has_verdict(reviews, comments, pr_author: str) -> bool:
+def has_verdict(reviews, comments, pr_author: str, owner_mode: bool = False) -> bool:
     # PHNX-3236: exclude anything authored by the PR's own author FIRST, from
     # both reviews and comments, before checking state or body text. GitHub's
     # API does reject an attempt to submit a formal APPROVED review on your
@@ -259,12 +264,30 @@ def has_verdict(reviews, comments, pr_author: str) -> bool:
     # than only comments) is defense-in-depth against any path — an admin
     # override, a different bot with write access on the same PR — that could
     # otherwise produce a self-authored APPROVED review too.
-    non_author_reviews = _exclude_self_authored(
-        reviews if isinstance(reviews, list) else [], pr_author
-    )
-    non_author_comments = _exclude_self_authored(
-        comments if isinstance(comments, list) else [], pr_author
-    )
+    #
+    # OWNER-MODE (PHNX-3950): the self-author exclusion is the RIGHT check when
+    # a distinct reviewer identity is available. But the entire fleet shares one
+    # GitHub login, so under that login the exclusion is unsatisfiable — the
+    # code-reviewer's verdict is always "self-authored" and every PR deadlocks
+    # onto the human owner. owner_mode is set by the CALLER only when the
+    # authenticated identity is a trusted fleet owner (an id in trusted-owner-ids
+    # — the same identity the repo's ruleset lists as an exempt bypass actor, so
+    # GitHub already restricts unreviewed merges to exactly this identity). In
+    # that case we KEEP every laundering/negation/code-fence gate below but do
+    # NOT drop same-login verdicts: a real APPROVE must still be posted (no
+    # merging of unreviewed code), it may just share the owner's login. Any
+    # non-owner identity keeps the strict exclusion AND is rejected server-side
+    # by the ruleset regardless.
+    if owner_mode:
+        non_author_reviews = reviews if isinstance(reviews, list) else []
+        non_author_comments = comments if isinstance(comments, list) else []
+    else:
+        non_author_reviews = _exclude_self_authored(
+            reviews if isinstance(reviews, list) else [], pr_author
+        )
+        non_author_comments = _exclude_self_authored(
+            comments if isinstance(comments, list) else [], pr_author
+        )
     # A GitHub review with state APPROVED clears it outright.
     if any(r.get("state") == "APPROVED" for r in non_author_reviews):
         return True
@@ -281,16 +304,22 @@ def has_verdict(reviews, comments, pr_author: str) -> bool:
 
 
 def verdict_from_stdin(raw: str) -> str:
-    # Three base64 segments joined by the plain-text marker. None of the
-    # three can themselves contain "---AGENTS-SPLIT---" post-encoding (see
-    # the module docstring), so an unbounded split on the marker always
-    # yields exactly the three segments merge-guard.sh/pr-merge-on-green.sh
-    # wrote, regardless of what any review or comment body quotes.
+    # Base64 segments joined by the plain-text marker. None of the segments can
+    # themselves contain "---AGENTS-SPLIT---" post-encoding (see the module
+    # docstring), so an unbounded split on the marker always yields exactly the
+    # segments merge-guard.sh/pr-merge-on-green.sh wrote, regardless of what any
+    # review or comment body quotes.
+    #
+    # The 4th segment (owner_mode, "1"/"0") is OPTIONAL and defaults to off: a
+    # 3-segment payload from an older caller behaves exactly as before, so the
+    # rollout is order-independent (a synced pr-verdict.py never breaks a not-yet
+    # -synced caller, and vice versa).
     parts = raw.split(SPLIT)
     reviews = _b64_decode_json(parts[0]) if len(parts) > 0 else None
     comments = _b64_decode_json(parts[1]) if len(parts) > 1 else None
     pr_author = _b64_decode_text(parts[2]).strip() if len(parts) > 2 else ""
-    if has_verdict(reviews, comments, pr_author):
+    owner_mode = _b64_decode_text(parts[3]).strip() == "1" if len(parts) > 3 else False
+    if has_verdict(reviews, comments, pr_author, owner_mode):
         return "ok"
     return "missing"
 
