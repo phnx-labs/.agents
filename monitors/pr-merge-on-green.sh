@@ -31,24 +31,25 @@ VERDICT="$DIR/../rules/subrules/gh-merge-guard/pr-verdict.py"
 OWNER_FILE="$DIR/../rules/subrules/gh-merge-guard/trusted-owner-ids"
 
 # owner-mode resolver (PHNX-3950). Best-effort source; absent -> owner-mode OFF
-# (strict), same posture as merge-guard.sh. Resolve ONCE here: this daemon lists
-# only `--author @me`, so the authenticated identity is constant across every PR
-# in a tick. gh api user is cached, so even the fresh `--select` subprocess per
-# PR pays it at most once an hour.
+# (strict), same posture as merge-guard.sh. Resolve the trusted LOGIN ONCE here:
+# the authenticated identity is constant across a tick (gh api user is cached).
+# owner-mode then engages per-PR only when that PR's own author equals this
+# login (see verdict_ok) — a trusted owner does NOT clear a THIRD PARTY's
+# self-approval (PHNX-3236). Empty OWNER_LOGIN => owner-mode never engages.
 for _cand in "$DIR/../hooks/lib/owner-mode.sh" "${HOME}/.agents/.system/hooks/lib/owner-mode.sh"; do
   if [ -f "$_cand" ]; then
     # shellcheck source=../hooks/lib/owner-mode.sh
     . "$_cand"
-    if command -v _resolve_owner_mode >/dev/null 2>&1; then break; fi
+    if command -v _resolve_owner_login >/dev/null 2>&1; then break; fi
   fi
 done
 unset _cand || true
-if command -v _resolve_owner_mode >/dev/null 2>&1; then
-  OWNER_MODE=$(_resolve_owner_mode "$OWNER_FILE" 2>/dev/null)
-else
-  OWNER_MODE=0
+OWNER_LOGIN=""
+if command -v _resolve_owner_login >/dev/null 2>&1; then
+  # `|| OWNER_LOGIN=""` so a gh failure degrades to owner-mode-off instead of
+  # aborting this `set -eu` script mid-poll.
+  OWNER_LOGIN=$(_resolve_owner_login "$OWNER_FILE" 2>/dev/null) || OWNER_LOGIN=""
 fi
-case "$OWNER_MODE" in 1) ;; *) OWNER_MODE=0 ;; esac
 
 ci_green() {
   # Same rollup predicate the built-in YAML used to inline. Vacuous-true on an
@@ -82,18 +83,26 @@ verdict_ok() {
   # excludes anything authored by that identity before looking for a verdict.
   author=$(printf '%s' "$1" | jq -r '.author.login // empty')
   [ -n "$author" ] || return 1
+  # owner-mode (PHNX-3950): engage ONLY when THIS PR's own author is the trusted
+  # owner (author == OWNER_LOGIN, case-insensitively) — a trusted owner must not
+  # clear a THIRD PARTY's self-approval (PHNX-3236). Then its own code-reviewer
+  # APPROVE clears the verdict while every other gate (carried/negation/
+  # code-fence) still applies, so the auto-merger stops deadlocking every PR onto
+  # the human owner. Off by default.
+  owner_mode=0
+  if [ -n "$OWNER_LOGIN" ]; then
+    a_lc=$(printf '%s' "$author" | tr 'A-Z' 'a-z')
+    o_lc=$(printf '%s' "$OWNER_LOGIN" | tr 'A-Z' 'a-z')
+    [ "$a_lc" = "$o_lc" ] && owner_mode=1
+  fi
   # base64-encode each segment: a review/comment body quoting this file's own
   # marker text would otherwise corrupt a plain-text split — see
   # pr-verdict.py's module docstring.
-  # 4th segment is owner-mode (PHNX-3950): when this fleet's identity is a
-  # trusted owner, its own code-reviewer APPROVE clears the verdict (all other
-  # gates — carried/negation/code-fence — still apply) so the auto-merger stops
-  # deadlocking every PR onto the human owner. Off by default.
   result=$(printf '%s\n---AGENTS-SPLIT---\n%s\n---AGENTS-SPLIT---\n%s\n---AGENTS-SPLIT---\n%s' \
       "$(printf '%s' "$reviews" | base64 | tr -d '\n')" \
       "$(printf '%s' "$comments" | base64 | tr -d '\n')" \
       "$(printf '%s' "$author" | base64 | tr -d '\n')" \
-      "$(printf '%s' "$OWNER_MODE" | base64 | tr -d '\n')" \
+      "$(printf '%s' "$owner_mode" | base64 | tr -d '\n')" \
     | python3 "$VERDICT" 2>/dev/null) || return 1
   [ "$result" = "ok" ]
 }

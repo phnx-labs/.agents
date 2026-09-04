@@ -269,15 +269,16 @@ def has_verdict(reviews, comments, pr_author: str, owner_mode: bool = False) -> 
     # a distinct reviewer identity is available. But the entire fleet shares one
     # GitHub login, so under that login the exclusion is unsatisfiable — the
     # code-reviewer's verdict is always "self-authored" and every PR deadlocks
-    # onto the human owner. owner_mode is set by the CALLER only when the
-    # authenticated identity is a trusted fleet owner (an id in trusted-owner-ids
-    # — the same identity the repo's ruleset lists as an exempt bypass actor, so
-    # GitHub already restricts unreviewed merges to exactly this identity). In
-    # that case we KEEP every laundering/negation/code-fence gate below but do
-    # NOT drop same-login verdicts: a real APPROVE must still be posted (no
-    # merging of unreviewed code), it may just share the owner's login. Any
-    # non-owner identity keeps the strict exclusion AND is rejected server-side
-    # by the ruleset regardless.
+    # onto the human owner. The CALLER sets owner_mode ONLY when THIS PR's own
+    # author (pr_author) IS the trusted fleet owner — i.e. the shared-identity
+    # self-review case — NOT merely when a trusted identity happens to be running
+    # the merge (that would let a trusted owner clear a THIRD PARTY's own
+    # self-approval, reopening this very bypass — see owner-mode.sh's
+    # _resolve_owner_login and its callers). Under that caller-enforced
+    # invariant, skipping the exclusion only ever un-excludes the trusted owner's
+    # OWN items, and every laundering/negation/code-fence gate below still runs:
+    # a real APPROVE must still be posted (no merging of unreviewed code), it may
+    # just share the owner's login. Any other author keeps the strict exclusion.
     if owner_mode:
         non_author_reviews = reviews if isinstance(reviews, list) else []
         non_author_comments = comments if isinstance(comments, list) else []

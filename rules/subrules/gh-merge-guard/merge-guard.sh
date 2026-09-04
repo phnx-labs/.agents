@@ -65,7 +65,7 @@ if ! command -v _json_field >/dev/null 2>&1; then
 fi
 
 # Owner-mode resolver (PHNX-3950). Best-effort — UNLIKE json-field, a missing
-# owner-mode.sh must NOT fail closed: without it _resolve_owner_mode stays
+# owner-mode.sh must NOT fail closed: without it _resolve_owner_login stays
 # undefined, owner-mode defaults OFF, and the guard is simply MORE strict (the
 # safe direction). Never blocks a merge by its absence.
 _LIB_DIR=$(CDPATH= cd "${0%/*}" 2>/dev/null && pwd) || _LIB_DIR=""
@@ -73,7 +73,7 @@ for _cand in "$_LIB_DIR/../../../hooks/lib/owner-mode.sh" "${HOME}/.agents/.syst
   if [ -f "$_cand" ]; then
     # shellcheck source=../../../hooks/lib/owner-mode.sh
     . "$_cand"
-    if command -v _resolve_owner_mode >/dev/null 2>&1; then break; fi
+    if command -v _resolve_owner_login >/dev/null 2>&1; then break; fi
   fi
 done
 unset _LIB_DIR _cand
@@ -202,8 +202,8 @@ case "$norm" in
       # gtimeout) _to runs gh unbounded — same harness-level fail-open
       # applies; acceptable for a review probe, never relied on for the admin
       # block above (which needs no network).
-      # Guard dir + owner-mode allowlist file, needed both by the concurrent
-      # owner-mode probe below and the pr-verdict.py call further down.
+      # Guard dir + owner-mode allowlist file, needed by the pr-verdict.py call
+      # and the owner-mode resolution below.
       _GUARD_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
       _OWNER_FILE="$_GUARD_DIR/trusted-owner-ids"
       _owner_mode=0
@@ -213,13 +213,6 @@ case "$norm" in
             >"$_pr_tmp/reviews.out" 2>/dev/null; echo $? >"$_pr_tmp/reviews.rc" ) &
         ( _to 3 gh api "repos/$_pr_repo/issues/$_pr_num/comments" --cache 60s \
             >"$_pr_tmp/comments.out" 2>/dev/null; echo $? >"$_pr_tmp/comments.rc" ) &
-        # owner-mode (PHNX-3950): concurrent so it adds no wall-clock (bounded by
-        # the slowest sibling call). Off unless the lib resolved AND this fleet
-        # opted its identity in; any failure -> "0" (strict). No trusted id
-        # configured -> the resolver returns "0" WITHOUT a network call.
-        ( if command -v _resolve_owner_mode >/dev/null 2>&1; then
-            _resolve_owner_mode "$_OWNER_FILE" >"$_pr_tmp/owner.out" 2>/dev/null
-          else printf '0' >"$_pr_tmp/owner.out"; fi ) &
         # PHNX-3236: the PR's own author, so pr-verdict.py can exclude any
         # review/comment authored by them (a self-merge bypass — every fleet
         # agent shares one GitHub identity, and nothing but this check stops
@@ -245,13 +238,24 @@ case "$norm" in
         else
           _pr_author="__API_ERR__"
         fi
-        _owner_mode=$(cat "$_pr_tmp/owner.out" 2>/dev/null)
-        case "$_owner_mode" in 1) ;; *) _owner_mode=0 ;; esac
         rm -rf "$_pr_tmp"
       else
         _reviews="__API_ERR__"; _comments="__API_ERR__"; _pr_author="__API_ERR__"
       fi
       if [ "$_reviews" != "__API_ERR__" ] && [ "$_comments" != "__API_ERR__" ] && [ "$_pr_author" != "__API_ERR__" ] && [ -n "$_pr_author" ]; then
+        # owner-mode (PHNX-3950): engage ONLY when THIS PR's author is the trusted
+        # owner (not merely when a trusted identity runs the merge — that would
+        # let a trusted owner clear a THIRD PARTY's self-approval, reopening
+        # PHNX-3236). Resolve the trusted login (empty unless the authed id is in
+        # the allowlist) and require it to equal the PR author, case-insensitively.
+        if command -v _resolve_owner_login >/dev/null 2>&1; then
+          _owner_login=$(_resolve_owner_login "$_OWNER_FILE" 2>/dev/null) || _owner_login=""
+          if [ -n "$_owner_login" ]; then
+            _pa_lc=$(printf '%s' "$_pr_author" | tr 'A-Z' 'a-z')
+            _ol_lc=$(printf '%s' "$_owner_login" | tr 'A-Z' 'a-z')
+            [ "$_pa_lc" = "$_ol_lc" ] && _owner_mode=1
+          fi
+        fi
         # Same verdict as pr-merge-on-green: reuse pr-verdict.py, do not re-inline.
         # base64-encode each segment: a review/comment discussing THIS file
         # (as one did, live, reviewing PHNX-3236 itself) can quote the plain
