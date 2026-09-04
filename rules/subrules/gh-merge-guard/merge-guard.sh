@@ -248,6 +248,11 @@ case "$norm" in
         # let a trusted owner clear a THIRD PARTY's self-approval, reopening
         # PHNX-3236). Resolve the trusted login (empty unless the authed id is in
         # the allowlist) and require it to equal the PR author, case-insensitively.
+        # This runs AFTER the concurrent block (it needs pr_author, so it can't
+        # be resolved independently — that independence WAS the bug), adding one
+        # `gh api user` call only for fleets that configured a trusted id;
+        # --cache 3600s amortizes it to ~once/hour, and any failure -> owner-mode
+        # off (the resolver never blocks a merge by failing).
         if command -v _resolve_owner_login >/dev/null 2>&1; then
           _owner_login=$(_resolve_owner_login "$_OWNER_FILE" 2>/dev/null) || _owner_login=""
           if [ -n "$_owner_login" ]; then
