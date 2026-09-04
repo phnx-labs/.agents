@@ -21,7 +21,9 @@ Every fleet agent authenticates as one shared GitHub identity, so the
 "non-author verdict" check can never be satisfied by a distinct GitHub login —
 the code-reviewer's APPROVE always reads as self-authored and every PR
 deadlocks onto the human owner. **Owner-mode** fixes that without weakening the
-gate: when the authenticated identity is a **trusted owner**, its own
+gate: when a PR's **own author** is a **trusted owner** (not merely when a
+trusted identity happens to be running the merge — keying on the merger would
+let a trusted owner clear a *third party's* self-approval), its own
 code-reviewer APPROVE counts, while every other protection (real-word APPROVE,
 no carried-from laundering, no negated/quoted approvals, and GitHub-enforced
 CI-green) still applies, and `--admin` stays blocked — the owner merges plainly

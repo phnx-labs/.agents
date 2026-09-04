@@ -1,8 +1,10 @@
 # trusted-owner-ids — owner-mode allowlist for the merge path (PHNX-3950).
 #
-# One numeric GitHub USER id per line ('#' starts a comment). An agent whose
-# authenticated `gh api user` id is listed here gets "owner-mode": its own
-# code-reviewer APPROVE clears pr-verdict.py even though the whole fleet shares
+# One numeric GitHub USER id per line ('#' starts a comment). When a PR's OWN
+# AUTHOR is a listed id (matched via the authenticated `gh api user` login — NOT
+# merely whoever runs the merge; keying on the merger would let a trusted owner
+# clear a third party's self-approval), owner-mode lets that author's own
+# code-reviewer APPROVE clear pr-verdict.py even though the whole fleet shares
 # one GitHub login (see hooks/lib/owner-mode.sh and pr-verdict.py). Every other
 # gate — real-word APPROVE, no carried-from laundering, no negated/quoted
 # approvals, CI-green (enforced by GitHub) — still applies, and --admin stays
