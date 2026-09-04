@@ -371,25 +371,28 @@ visual-read-back check catches.
    house palette (with the in-page toggle) only when the product declares no brand.
    The output must open offline by double-click.
 
-2. **Open it on the user's browser host.** Use the **Host & Fleet** context injected
-   at session start (the online macOS device is where the user sits — pick the one
-   marked online + direct if there are several Macs; if genuinely ambiguous, ask
-   once). Then:
-   Show it in **one reused browser tab** with `agents browser navigate` — re-presenting
-   an updated plan refreshes the SAME tab in place instead of piling up a duplicate tab
-   every call (a raw `open` opens a fresh tab per call).
+2. **Open it in the user's default browser.** Use the **Host & Fleet** context injected
+   at session start (the online device is where the user sits — pick the one marked
+   online + direct if there are several; if genuinely ambiguous, ask once). Open the
+   rendered plan in the browser they **actually use** — every user has one, and it needs
+   no fleet browser profile:
    - **If you are already on that host** (its name == your `hostname`):
-     `agents browser navigate --url "file://$PWD/.agents/artifacts/yyyy-mm-dd/plan-<slug>.html"`.
+     `open ".agents/artifacts/yyyy-mm-dd/plan-<slug>.html"` (macOS) /
+     `xdg-open ...` (Linux).
    - **If you are on a different host** (e.g. a remote Linux node): copy the file
-     over, then navigate on that host, reusing the same SSH path the fleet uses —
+     over, then open it there —
      ```bash
      scp .agents/artifacts/yyyy-mm-dd/plan-<slug>.html <browser-host>:/tmp/ \
-       && agents ssh <browser-host> 'agents browser navigate --url file:///tmp/plan-<slug>.html'
+       && agents ssh <browser-host> 'open /tmp/plan-<slug>.html'   # xdg-open on Linux
      ```
      (`agents ssh` resolves the device and auth from `agents devices`; plain
      `ssh <browser-host>` also works if the registry was rendered to ssh_config.)
-     Fall back to a single `open`/`xdg-open` only when that host has no drivable
-     browser profile.
+
+   `agents browser` is the agent's own automation profile — it drove the headless
+   read-back in step 1, it is **not** how you present the plan to the user. (Optional
+   refinement, only when a browser profile is configured on that host and you re-present
+   an updated plan repeatedly: `agents browser navigate --url file://<path>` reuses the
+   SAME tab in place instead of opening a fresh tab per `open`.)
 
 3. **Tell the user** the plan opened in their browser, with a 2-3 line spoken summary
    and the source path. Then proceed to the design questions / `ExitPlanMode` as usual.

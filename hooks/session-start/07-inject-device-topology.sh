@@ -177,34 +177,35 @@ if devices:
     if interactive and interactive != self_host:
         lines.append(
             f"The user sits at **{interactive}** (interactive host). To show them anything "
-            f"visual (an HTML plan, a screenshot, a dashboard), deliver it THERE: "
-            f"`scp <file> {interactive}:/tmp/` then show it in ONE reused browser tab — "
-            f"`agents browser navigate --device {interactive} --url file:///tmp/<file>`. "
-            f"Re-run that to refresh the SAME tab in place; a raw `open` spawns a new "
-            f"duplicate tab every call. Use `--device`, NOT "
-            f"`agents ssh {interactive} '"'"'agents browser ...'"'"'` — the ssh form skips the "
-            f"fleet dispatch path, so the target never sees the remote-control consent "
-            f"marker. That box also holds the logged-in browser profile for this fleet: "
-            f"`agents browser profiles logins --device {interactive}` shows which "
-            f"services it is signed in to, so you can act as the user rather than "
-            f"launching a logged-out browser here. "
-            f"Fall back to `agents ssh {interactive} '"'"'open /tmp/<file>'"'"'` only if "
-            f"that host has no drivable browser profile. "
-            f"Do not open it locally — the user is not watching this machine."
+            f"visual (an HTML plan, a screenshot, a dashboard), deliver it THERE and open it "
+            f"in their DEFAULT browser — the one they actually use, no fleet browser setup "
+            f"required: `scp <file> {interactive}:/tmp/` then "
+            f"`agents ssh {interactive} '"'"'open /tmp/<file>'"'"'` (`open` on macOS, "
+            f"`xdg-open` on Linux). Do NOT open it in the agent'"'"'s automation browser — "
+            f"`agents browser` drives a headless/Comet profile for the agent'"'"'s own "
+            f"read-back, not the surface the user is looking at. Do not open it locally — the "
+            f"user is not watching this machine. (Optional refinement, ONLY if a browser "
+            f"profile is configured on {interactive} and you are re-rendering the SAME file "
+            f"repeatedly: `agents browser navigate --device {interactive} --url "
+            f"file:///tmp/<file>` reuses ONE tab in place instead of a fresh tab per `open`.)"
         )
     elif interactive:
         lines.append(
-            "The user sits at THIS machine (interactive host) — show visual artifacts in "
-            "ONE reused browser tab with `agents browser navigate --url file://<file>` "
-            "(re-run to refresh in place, no tab pile-up), falling back to `open <file>` "
-            "only if no drivable browser profile exists."
+            "The user sits at THIS machine (interactive host) — open visual artifacts in "
+            "their DEFAULT browser with `open <file>` (macOS) / `xdg-open <file>` (Linux), "
+            "the browser they actually use. `agents browser` is the agent'"'"'s own "
+            "automation profile for headless read-back, not how you show the user. (Optional: "
+            "if a browser profile is configured here and you re-render the SAME file "
+            "repeatedly, `agents browser navigate --url file://<file>` reuses ONE tab instead "
+            "of a fresh tab per `open`.)"
         )
     else:
         lines.append(
             "To show the user something visual (an HTML plan, a screenshot), display it on "
-            "the online macOS device (where they sit) — SSH the file over, then "
-            "`agents browser navigate --url file://<file>` on that host so it reuses one "
-            "tab (fall back to `open <file>` only if it has no drivable browser profile)."
+            "the online device where they sit — `scp` the file over, then "
+            "`agents ssh <host> '"'"'open /tmp/<file>'"'"'` to open it in their default "
+            "browser (`xdg-open` on Linux). That is the browser they use, and it needs no "
+            "fleet browser profile."
         )
 
     # Operator config for this machine (newer CLIs only): caps and notes set via

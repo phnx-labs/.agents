@@ -157,11 +157,13 @@ Concrete, not a slogan. Name real files, flags, numbers, error strings.
 ## Step 7 — Deliver it where the owner will see it
 
 - **Inspect headlessly first** — both themes, desktop + mobile widths, no console errors.
-- **Show it on the owner's interactive box** in one reused browser tab (the SessionStart
-  host context names that box):
+  (That headless read-back is what `agents browser` is for; it is not how you show the owner.)
+- **Open it in the owner's DEFAULT browser on their interactive box** — the browser they
+  actually use, which needs no fleet browser profile (the SessionStart host context names
+  that box):
   ```bash
   scp "$DIR/demo-<slug>.html" <interactive-box>:/tmp/demo-<slug>.html
-  agents browser navigate --device <interactive-box> --url file:///tmp/demo-<slug>.html
+  agents ssh <interactive-box> 'open /tmp/demo-<slug>.html'   # xdg-open on a Linux box
   ```
 - **Attach the report + captures to the PR** (`gh pr comment <pr> --body-file` with the
   images, or a secret gist link) so the demonstration rides with the change.

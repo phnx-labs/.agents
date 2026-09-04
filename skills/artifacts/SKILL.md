@@ -109,13 +109,24 @@ The kind changes the content contract, not the rendering pipeline.
    a tall page with a sticky nav, scroll the target into view, let it settle, and
    confirm the intended element is in the frame before trusting the shot.
 
-7. When the user asks to view it, reuse one browser tab on their interactive
-   machine. If the artifact was rendered elsewhere, copy it there first:
+7. When the user asks to view it, open it in their DEFAULT browser on the
+   interactive machine — the browser they actually use, which every user has and
+   which needs no fleet browser profile. On the machine the user sits at, that is
+   just `open "$SOURCE_HTML"` (macOS) / `xdg-open "$SOURCE_HTML"` (Linux). If the
+   artifact was rendered on a different host, copy it over first, then open it
+   there:
 
    ```bash
    scp "$SOURCE_HTML" <host>:/tmp/<slug>.html
-   agents ssh <host> 'agents browser navigate --url file:///tmp/<slug>.html'
+   agents ssh <host> 'open /tmp/<slug>.html'   # xdg-open on a Linux host
    ```
+
+   `agents browser` is the agent's own automation profile — use it for the
+   headless render-and-inspect in step 6, never as the way you present the finished
+   artifact to the user. (Optional refinement, only when a browser profile is
+   configured on that host and you are re-rendering the SAME file repeatedly:
+   `agents browser navigate --device <host> --url file:///tmp/<slug>.html` reuses
+   ONE tab in place instead of spawning a fresh tab per `open`.)
 
    `/tmp` is the only correct destination for this copy. Never `scp` an artifact
    into a checkout on the target machine — that is a write into someone's
