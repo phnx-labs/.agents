@@ -121,11 +121,28 @@ agents browser tab focus <tabId>    # switch to tab (by ID, prefix, or URL subst
 agents browser tab close [tabId]    # close specific tab, or all if omitted
 ```
 
-### Showing a document: navigate, never a fresh `open`
+### Showing a document to the user
 
-To put a plan, report, or review doc in front of the user, use `navigate` — once the
-task owns a tab it refreshes that SAME tab in place. A raw `open <file>`, or a
-`tab add` per render, spawns a duplicate every single call.
+To put a plan, report, or review doc in front of the user, open it in their DEFAULT
+browser — the browser they actually use, which every user has and which needs no
+browser profile configured. `agents browser` is for driving pages and your own headless
+read-back; it is not how you present a finished document.
+
+```bash
+open report.html          # macOS
+xdg-open report.html      # Linux
+# remote interactive host: copy it over, then open it there
+scp report.html <host>:/tmp/report.html
+agents ssh <host> 'open /tmp/report.html'   # xdg-open on a Linux host
+```
+
+The one cost of `open`: it launches a fresh tab each call. That is fine for a doc you
+show once or twice.
+
+**Optional refinement — reuse ONE tab.** Only when a drivable browser profile is
+configured AND you re-render the SAME doc repeatedly (iterating on a plan, say), drive it
+with `agents browser navigate` instead — once the task owns a tab it refreshes that SAME
+tab in place, so re-rendering never spawns a duplicate:
 
 ```bash
 agents browser start --profile <name>
@@ -135,6 +152,12 @@ agents browser navigate --url "file:///abs/path/report.html" --task <handle>
 agents browser navigate --url "file:///abs/path/report.html" --task <handle>
 # same tab both times — the doc refreshes, no second tab
 ```
+
+Why this refinement exists: measured on one machine after a day of agent activity, 58
+tabs in a single window, 16 of them agent-opened `file://` docs, with the same document
+open three times. In the profile-configured, re-rendering case, `navigate` avoids that
+pile-up; for a one-shot show, plain `open` in the default browser is simpler and works
+for everyone.
 
 `navigate` reuses `task.currentTabId`, so the FIRST navigate into a task that owns no
 tab yet has to obtain one. On Chrome, Comet, Chromium and Brave it simply opens one.
@@ -152,17 +175,12 @@ throws on Arc too, so a freshly-launched Arc with no window open fails at `start
 
 If Arc has no blank tab and the doc is not already open, the agent cannot fix this
 itself: `tab add` throws on Arc as well, so opening a tab is a HUMAN action in the Arc
-window. The agent-executable option is a Comet/Chrome profile — prefer that for
-agent-driven work, and keep Arc for what you are reading yourself.
+window. The agent-executable option is a Comet/Chrome profile — prefer that for the
+tab-reuse case, and keep Arc for what you are reading yourself.
 
-This is not a style preference. Measured on one machine after a day of agent
-activity: 58 tabs in a single window, 16 of them agent-opened `file://` docs,
-with the same document open three times. Reach for `tab add` only when you
-genuinely need two pages side by side.
-
-On a remote interactive host, copy the file over and drive that host with
-`--device` — not `agents ssh`, which reaches the same machine but skips the fleet
-dispatch path, so the target never sees the remote-control consent marker:
+For the tab-reuse refinement on a remote interactive host, copy the file over and drive
+that host with `--device` — not `agents ssh`, which reaches the same machine but skips
+the fleet dispatch path, so the target never sees the remote-control consent marker:
 
 ```bash
 scp report.html <host>:/tmp/report.html
@@ -172,11 +190,6 @@ agents browser navigate --device <host> --url file:///tmp/report.html
 Pass no `--profile` on a `--device` run: the flag rides to the remote box and is
 interpreted there, where the same name means a different browser. The target
 machine picks its own.
-
-Fall back to a one-shot `open` ONLY when the host has no drivable browser profile
-(`agents browser profiles list` is empty and `agents browser start` cannot
-auto-pick one) — showing something beats showing nothing, but it is the tab-spam
-path.
 
 ## DOM Interaction
 

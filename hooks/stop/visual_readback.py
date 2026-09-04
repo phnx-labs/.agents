@@ -19,10 +19,12 @@ SHIP_RE = re.compile(
     r"\b(?:scp|rsync|agents\s+share|open|xdg-open)\b"
     r"|agents\s+ssh\b[^\n]*\bopen\b"
     # `agents browser navigate --url file://<artifact>` (and `browser start --url`)
-    # is now the recommended way to show the user a rendered plan/visual in one
-    # reused tab instead of a raw `open`. Delivery is still only registered when
-    # the command references a visual path (see `_derived_paths` below), so this
-    # never false-positives on a bare `browser start` that shows no artifact.
+    # is one valid delivery signal — the optional tab-reuse refinement; opening the
+    # artifact in the user's default browser (`open`/`xdg-open`, matched above) is the
+    # primary path. Both count so the read-back gate fires for either. Delivery is
+    # still only registered when the command references a visual path (see
+    # `_derived_paths` below), so this never false-positives on a bare `browser start`
+    # that shows no artifact.
     r"|agents\s+browser\s+(?:navigate|start)\b",
     re.I,
 )
