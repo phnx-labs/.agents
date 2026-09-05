@@ -70,6 +70,33 @@ Delete and recreate for those.
 
 Supported browsers: `chrome`, `comet`, `chromium`, `brave`, `edge`
 
+### Attach-only profiles — one canonical browser, no duplicate windows (PHNX-3967)
+
+A profile carries a `launchPolicy`: `launch` (default — spawn an isolated instance
+if none is serving CDP on the port) or `attach-only` (NEVER spawn — attach to a
+browser the user already started, else fail loud). Use **attach-only for the
+fleet's one canonical, signed-in Comet** so agents never spawn a second,
+logged-out Comet that shows as a duplicate dock tile:
+
+```bash
+# One-time: create the canonical agent Comet, attach-only, on a durable data dir
+agents browser profiles create comet-agents -b comet --attach-only
+# It prints the exact one-time launch to run and sign into ONCE — the data dir is
+# durable, so the login survives quit+relaunch:
+#   open -a Comet --args --remote-debugging-port=<port> --user-data-dir=<durable>
+agents browser use comet-agents          # make it this box's default
+agents browser profiles doctor comet-agents   # verifies the port + that the running
+                                              # instance is THIS profile's browser
+```
+
+Why attach-only for the canonical browser: an attach-only profile refuses to
+launch a rival, and before adopting the endpoint it checks the running instance's
+`--user-data-dir` really is this profile's durable dir — so a stray logged-out
+`/tmp` Comet squatting the port is rejected, not driven. Keep the human's personal
+browser (e.g. Arc) separate; agents drive the canonical Comet. Do **not**
+`profiles create` a throwaway logged-out Comet per task — that is the proliferation
+this replaces.
+
 ### `--fleet` is for a profile that means the same thing on every machine
 
 `agents browser profiles create --fleet` stores a profile in the synced
