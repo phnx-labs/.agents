@@ -30,6 +30,12 @@ Multi-agent plan/spec/debug live under `/swarm …` and `/swarm:plan` / `/swarm:
 debt moved into the code plugin, and became architectural restructuring there:
 [`/code:refactor`](../plugins/code/README.md).
 
+## Research
+
+| Command | What it does |
+|---|---|
+| [`/research`](./research.md) | Alias of `/research:research` — answer a hard research question across DISTINCT engines blind to each other (Codex/web, Grok/X, Antigravity/Google, Perplexity/broad Deep Research, Claude/deep-read + reconcile), cross-check every claim (single-sourced = a lead, not a fact), and promote the cited result to the project's durable-artifacts home. For a hands-on PRODUCT exploration — drive it, screenshot each journey, prove claims visually — use `/research:product` (see [`plugins/research`](../plugins/research/README.md)). |
+
 ## Ship and review
 
 | Command | What it does |

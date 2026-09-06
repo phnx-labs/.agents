@@ -86,9 +86,12 @@ This is the step the weak report skipped. For **each journey** from §1:
   the empty state, the input, the mid-action, the result. Not one capture: a **strip** that
   reads as a filmstrip of the flow. Zoom / crop to the decisive interaction so a reader sees
   *what happened*, not a full-window thumbnail.
-- **Record a short screen clip** (`--record on` for the 1–2 headline journeys; compose the
-  `create:edit` / `animator` skills to trim + caption). A 10–20s clip of the core loop is worth
-  more than any paragraph. `--record off` to skip for a fast pass.
+- **Record a short screen clip** of the 1–2 headline journeys (`--record on`, default for
+  `standard`/`deep`). Capture it with the always-available surface — `agents browser`'s screen
+  capture, or `ffmpeg` on the recorded frames — and trim to 10–20s; that clip of the core loop
+  is worth more than any paragraph. If the extras `create` plugin is installed, polish it with
+  `create:edit`/`animator` (trim, caption, speed) — **optional, never required**: with no extras,
+  ship the raw trimmed clip or an animated GIF from the step frames. `--record off` skips it.
 - **Feed real, representative input** — a real repo, a real document, a real prompt of the shape
   the product is *for*. Toy "hello world" input hides exactly the behavior you're evaluating.
 - **Capture the limits** — hit the pricing/quota/error wall on purpose and screenshot it; that's
@@ -164,6 +167,7 @@ back through §4.
 - Public intel (claims + sentiment) → `research:research` (`agents run codex|grok|antigravity`).
 - Get in + drive the surface → the `browser` skill (web) / `computer` skill (native) + `secrets`.
 - Real-surface discipline (signed in, real inputs, capture every step) → the `demo` skill.
-- Clip the headline flow → `create:edit` / `animator` (trim, caption, speed).
+- Clip the headline flow → `agents browser` screen capture / `ffmpeg` (always available); polish
+  with `create:edit`/`animator` only if the extras `create` plugin is installed.
 - Render the visual artifact + diagrams → the `artifacts` skill; publish → `share`.
 - A wall only the owner can clear (paid signup, an enterprise gate) → `agents feed post "<ask>" --blocked`.
