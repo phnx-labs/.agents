@@ -62,9 +62,35 @@ The kind changes the content contract, not the rendering pipeline.
    pass it back via `--slug` on the next publish — that is what keeps a
    long-running artifact on one stable link.
 
-3. Author Markdown directly under that directory. Require `kind` and `title`;
-   require `surface` for plans. Provenance auto-fills from the Git checkout and
-   agent environment. Declare values only when they need overriding.
+3. Capture the subject project before authoring in that directory. Run
+   `agents projects list --json` and match the project the artifact is about,
+   using its repository and bound directories. `name` is the stable project ID;
+   `linear.name`, when present, is its readable name. Keep IDs unchanged,
+   including dots, dashes and underscores; do not guess a display name by
+   title-casing a repository slug. A shared monorepo alone may not identify
+   which project the artifact concerns.
+
+   From the subject project's checkout or linked worktree, scaffold into the
+   absolute durable output path, then edit that Markdown:
+
+   ```bash
+   artifacts new visual --project <registered-project-id> --out "$SOURCE"
+   ```
+
+   Choose `plan`, `report`, or `visual` for the task. Require `kind` and `title`;
+   require `surface` for plans. Verify `project`, `repository`, `harness`, and
+   `agent` in the written frontmatter before rendering. For hand-authored
+   Markdown, supply these explicitly from the same subject context. Rendering
+   a file in `~/.agents/artifacts/` cannot infer its subject checkout from its
+   storage location. If no registered project matches, use the known project
+   name and actual repository; leave unknown metadata unknown.
+
+   Preserve the creating harness when another agent merely re-renders the file.
+   The renderer owns its creator logo, cover and favicon; do not hand-build
+   those in the body. Use a concise artifact title without repeating the project
+   prefix. If recording `created` and `updated`, use real ISO timestamps with a
+   timezone, preserve `created`, and change `updated` only when the source
+   changes. Never reset either timestamp when the page is opened.
 
    Put every related ticket, PR, issue, or design URL in `links`. Mirror those
    URLs under `## Tracking` in plans. Use `tracking` for a short primary id.

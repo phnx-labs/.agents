@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Artifact authoring captures the subject through `agents projects` and scaffolds from its checkout into durable storage. It preserves stable project IDs, explicit creator metadata and truthful timestamps instead of relying on the output directory to identify the project (PHNX-3978).
+
 ### Removed
 
 - **`routines/check-updates.yml` — the agents-cli daemon now owns update+restart natively (PHNX-3695).** The routine's job (upgrade `agents-cli` when npm is ahead, fast-forward `~/.agents/.system`, reconcile with `agents sync --local`, notify only on change) is now a supervised daemon service (`self-update`, `cli/src/lib/daemon/self-update-service.ts` in `phnx-labs/agi-cli`) that runs the same steps on its own schedule and, unlike the routine, fails **closed**: a bad install/verify leaves the daemon on its current code instead of leaving a box on a half-applied upgrade. It also runs on demand when a version-skewed browser-IPC client asks for it, not only on a Monday cron fire. `routines/README.md`, `routines/AGENTS.md`, and the root `README.md` no longer reference it.
