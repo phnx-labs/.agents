@@ -134,12 +134,14 @@ Emit a line per gap, so the user can run each one:
 
 ```
 ACCOUNT GAPS (run each to remediate):
-  agents accounts sync claude-muqsit yosemite-m3
-  agents accounts sync claude-muqsit yosemite-m4
+  agents accounts sync claude-work <worker-a>
+  agents accounts sync claude-work <worker-b>
 ```
 
-Sync does not run these automatically — account provisioning is an explicit,
-per-account act, not a side-effect of repo sync.
+Native worker credentials (the reserved `__<harness>__` keys minted by
+`accounts add`) propagate on the daemon tick — do not re-sync those by hand
+unless a worker is stuck `missing`. Named provider bundles still need this
+explicit `accounts sync`; it is not a side-effect of repo sync.
 
 ### 5. Report — a repo × device matrix
 
