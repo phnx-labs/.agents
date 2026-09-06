@@ -1,6 +1,6 @@
 ---
 name: loop
-description: "Engineering loop. One verb for taking a queue of work (one ticket, many tickets, a label, a markdown checklist, repo TODOs) and landing it — plan, code, test, review, rebase, fix CI, merge. Triggers on: 'work the queue', 'close all the bugs', 'land PROJ-123', 'ship the backlog', 'drain my tickets', 'autopilot this list'."
+description: "Take a ticket, branch, PR, or queue through implementation, verification, independent review, merge, and the repository release process. Use for landing work or draining a backlog."
 argument-hint: "[PROJ-123 | --label=… | --query=… | path/to/list.md | --todos | (empty = resume)]"
 allowed-tools: Bash(agents *), Bash(gh *), Bash(git *), Bash(rg *), Bash(fd *), Bash(ls *), Bash(cat *), Bash(jq *), Read(*), Write(*), Edit(*), Task(*), WebFetch(*), WebSearch(*)
 user-invocable: true
@@ -8,148 +8,69 @@ user-invocable: true
 
 # code:loop
 
-You are a senior engineer who drains queues. The work in front of you is a list of items — tickets, bugs, TODOs, improvement notes, a markdown checklist. Your job is to land all of them.
+Own the requested queue through delivery. Use `$ARGUMENTS` to select a ticket, branch,
+PR, tracker filter (`--label`, `--query`), Markdown checklist, or repo `--todos`.
+With no argument, resume from the last `_meta/queue.json` or current PR/session state.
+A branch or PR is a queue of one; it needs no multi-item planning ceremony.
 
-## Who you are
+## Scope and ownership
 
-You think in worktrees. Every item is its own branch off the latest default branch (`origin/$BASE`, resolved dynamically). You never disturb the user's primary checkout. You never push to the default branch directly.
+Understand each item's intended result and acceptance evidence. Before adopting it,
+check relevant tickets, open PRs, and active sessions for existing work. Continue work
+you own; coordinate with another active owner rather than racing or taking over.
+Reuse the existing ticket. Create one only when committing to execute work that has no
+suitable ticket, not while exploring a plan or merely noticing a follow-up.
 
-You think in evidence. Before you spawn parallel work, you know what files each item will touch — because you read the ticket, read the repo, and asked the planner. You build the conflict graph in your head before you build it in `agents teams`.
+Claim work when execution starts and keep meaningful scope changes, blockers, and
+handoffs on its ticket. Link the ticket in the PR so other workers can find it.
+Queue state must distinguish active, delivered, and parked items and be recoverable by
+another session. Tracker claims are best-effort deduplication, not an atomic lock;
+recheck ownership before starting when another worker could have claimed the same item.
 
-You think like the reviewer. Before you push, you read your own diff the way the reviewer will read it. Before you mark a ticket merged, you check that CI is actually green on the default branch, not just that the merge button clicked.
+## Execution
 
-You think like the user's future self. The worktree gets cleaned up. The branch gets deleted. The ticket gets closed with a link to the merged PR. The queue state is durable enough that another loop, or a human, can pick up where you left off.
+Use linked worktrees under `<repo>/.agents/worktrees/`, based on the current default
+branch. Preserve the user's primary checkout and unrelated work. Read the repository's
+instructions and canonical build, test, and release entry points.
 
-## What stopping means
+Choose direct work, `agents run`, or `agents teams` according to the work's boundaries.
+Use the `run` and `teams` skills for dispatch mechanics. Parallel tracks need independent
+ownership or explicit dependencies, enough available capacity, and success evidence.
+Do not place implementation workers on the user's interactive machine without authorization.
 
-Conflicts are normal. CI failures are normal. Reviewer pushback is normal. None of these are reasons to stop — they are parts of the work.
+Keep owned PR branches current using the repository's supported rebase workflow.
+Resolve conflicts to preserve both intents; inspect generated changes before staging.
+Use `code:commit` for cohesive commits and `code:review` for independent review.
+Investigate failed checks at their actual failing step: fix code defects in scope,
+and address infrastructure failures through the appropriate operational path.
 
-When a rebase conflicts, you read both sides and write the resolution that preserves both intents. You do not bail to the user because git printed a scary message.
+## Verification and delivery
 
-When CI fails, you read the logs and fix the actual cause in your branch. You do not park the ticket because "tests are flaky" — if they are flaky, that is the next ticket.
+Verify the changed behavior with the repository's appropriate checks and real flow.
+Reuse valid evidence for unchanged code; rerun what new changes or failures invalidate.
+A worker's exit status is not delivery evidence: inspect its output and actual result.
+For changed UI behavior, drive the real surface with `browser` or `computer`, inspect
+captures, and show the relevant result to the user.
 
-When a reviewer flags a regression or a missed case, you fix it, push, and re-request review. You do not declare done on a PR that has open change requests.
+Carry owned work through findings, CI, and merge under the repository's merge policy.
+For distributables, follow the canonical release process and verify the installed or
+deployed artifact before closing the ticket. Close with the PR/release link, delivery
+result, and concise verification evidence. Do not upload raw session transcripts;
+keep sensitive context in its authorized private location.
 
-You stop only when one of these is true:
+Clean up only your own completed worktrees and branches when safe. Report the actual
+stage of each item: delivered, merged but not shipped, or parked with the missing condition.
 
-- A design choice belongs to the user. You can describe the tradeoff but not pick the answer.
-- A third-party blocker outside your reach (credentials you do not have, a service that is down, an external party who needs to respond).
-- A queue-wide signal that something is globally broken — three consecutive items fail the same test, force-push protection trips, the budget cap hits, the user's deploy pipeline is red.
+## Blockers and unattended runs
 
-When you stop on a single item, you park it with a clear note and move to the next. You do not sit idle.
+Conflicts, reviewer feedback, and ordinary CI failures are work to resolve. Stop an item
+for a genuine user-owned choice or an exhausted external blocker, record what is needed,
+and continue independent items. Halt the queue for a shared failure, exhausted budget,
+or a user instruction that makes continuing inappropriate.
 
-When you stop on a queue-wide signal, you halt the loop and surface the signal. The user decides whether to resume.
-
-## Unattended mode
-
-When the loop runs with no interactive user — a headless `-p` run, a cron routine, a fleet drain — the stop conditions above still hold, but their surface changes: there is no one to ask, so you never call `AskUserQuestion` and never wait for input.
-
-The notify command, when there is one, is a shell one-liner given verbatim in the invocation prompt (e.g. a messaging-CLI send). Run it exactly as given, substituting the item ID and blocker into its message. If the invocation defines none, skip notification silently — the ticket comment is the durable record.
-
-- A single-item blocker (design choice, missing credential, BLOCKED review verdict): move the ticket to your tracker's parked state (Blocked if the workspace has one, else Backlog) with a comment stating exactly what is needed and why you could not decide it yourself, run the notify command, and continue with the next item.
-- A queue-wide halt signal: run the notify command, then exit with the summary. Never idle waiting for a human.
-- **Work you dispatched elsewhere is not done because it exited 0.** A teammate or `--device` run that hit a sandbox, a logged-out harness, or a missing credential explains the problem in its own transcript and still exits 0. Check what it produced — the PR, the commit, the file — before crediting it, and read a detached run's status through `agents devices ps`, never a cache file (see `unattended-verification`, `remote-fleet-dispatch`). Probe a box with the operation the item needs: a read-only ping says nothing about whether it can write.
-- **Budget the tracker API.** A long drain shares one token with every other agent; Linear (2500 req/hr) and the GitHub GraphQL budget have both been exhausted in practice, which breaks every agent, not just yours. Fetch the queue once per pass and work from that response, write only real changes, and on a rate-limit error stop touching that API for the pass rather than retrying. For GitHub, check `gh api rate_limit` first — REST and GraphQL are separate budgets that drain independently.
-- Label queues: fetch with your tracker CLI filtered to the label plus the Todo state — and verify the label filter actually applies; some tracker CLIs silently drop a label filter when an assignee/agent filter is also present. (`linear` composes the two as of 0.16.0.)
-- Agent queues: an issue is owned by whoever it is **delegated** to, never by a label. `linear tasks --agent <name>` is the queue; `linear update <ID> --delegate <name>` claims it. An unknown agent name exits non-zero rather than returning an empty queue, so an unattended drain cannot read a typo as "nothing to do".
-
-## How parallelism works
-
-Parallelism is a tool, not a goal.
-
-For each item, you run a lightweight planner pass first — enough to know which files this item will touch and what subsystems it depends on. You do this for every item before you spawn any implementer.
-
-Then you build the conflict graph. Items that touch disjoint file sets are safe to run in parallel. Items that overlap get sequenced — the older or higher-priority one merges first, the next rebases on top.
-
-You fan out via `agents teams`. Default cap is three parallel teammates; you raise it only when the conflict graph is genuinely wide and the user's machine has the budget. Each teammate is briefed with: the ticket, the boundary contract (files owned, files not to touch), the success criterion, and the evidence requirement.
-
-If you cannot find disjoint work, you run sequentially. Sequential is not a failure mode — it is the right answer when the queue is narrow.
-
-## Working the tree
-
-A few mechanics bite often enough to name. These are grain, not law — read them as defaults you'd need a reason to break.
-
-**Keep a branch current by rebasing, not merging.** When a branch falls behind — the default branch moved, or it was stacked on another branch that just merged — rebase it onto fresh `origin/$BASE` rather than merging the default branch into it. Rebase keeps the branch a clean line of *your* commits on top of current `origin/$BASE`; a merge commit muddies the diff the reviewer reads and drags in a "Merge origin/$BASE" commit that isn't your work. You do this inside the worktree, then `git push --force-with-lease` the feature branch — force-with-lease is safe on a branch only your PR uses (and git-guard allows rebase + force-with-lease inside `.agents/worktrees/`, denies them in the primary checkout). If a stacked branch's commit duplicates something the default branch already absorbed via squash-merge, the rebase surfaces it as an empty or conflicting patch — drop it or resolve to the default branch's version.
-
-**Verify steps can dirty the tree.** Some checks write as a side effect — a build or codegen step regenerating lockfiles, a manifest, or generated assets. Those aren't your change, and left in place they'll block a later rebase ("local changes would be overwritten") and a clean worktree removal. Look at what's actually dirty before you stage: commit only what you meant to change, and restore the incidental build artifacts rather than committing them. If you're sitting on *real* uncommitted work when you need to move, that's what `/code:commit` is for — split it into clean logical commits first, then rebase.
-
-**A red check isn't always your code.** Self-hosted runners flake — a job reports "fail" when only its `checkout`/`setup`/cache step died on a stale workspace, not your tests. Read the step-level conclusions before you touch your diff: if the failing step is checkout or cache and not the actual test step, it's infra — fix the runner or re-run, don't "fix" code that isn't broken.
-
-## What done means
-
-Done means merged. Not "PR open." Not "tests green locally." Not "approved but not yet clicked." Merged, CI green on the default branch, worktree removed, branch deleted, ticket closed **with an audit comment** (below).
-
-**Close with an audit trail — not a bare status flip.** Moving a ticket to Done without recording *how* is a silent close: when a merge or release later goes bad, whoever digs in has nothing but the diff. Every close posts a comment carrying:
-- **PR link + merge SHA** — the durable anchor. The PR holds the diff, the review verdict, and CI forever; the SHA proves it reached the default branch. Map ticket→PR→SHA with `git log origin/$BASE --oneline | grep <TICKET>` (check *every* repo the change could land in — squash titles sometimes drop the ticket tag; fall back to `gh pr list --search`).
-- **A readable transcript of the session that did the work**, so the reasoning is recoverable. Render it with `agents sessions <id> --markdown` (for a host/worker run, run that on the worker, or `agents logs <name>`), then `gh gist create --secret <file>.md` and link the returned URL. **Secret gist, never inline and never public** — transcripts carry secrets, tokens, and internal paths, and the tracker is private.
-- For an **already-fixed** close with no new PR, cite the prior PR that shipped it **and verify that PR exists and is actually relevant** before trusting the close — an unverified "already done" is how a real gap gets buried. Self-corrections (marked Done early, re-opened, rebased) belong on the ticket too.
-
-For a **distributable, merged is the middle, not the end.** If the item ships a VS Code extension, a published CLI, or a deployed web app, users don't run the default branch — merge alone reaches nobody. Publishing is outside the code plugin's scope; follow the repository's canonical release process and verify the installed or deployed artifact before calling it shipped.
-
-When the queue is empty (every item merged — and shipped, where it's a distributable — or parked with a note), you summarize. What landed, what shipped, what parked, what blocked. The summary is short and lets the user pick the next move.
-
-## What the queue looks like
-
-The argument tells you where the work comes from:
-
-- A single ticket ID (`PROJ-123`, `#412`) → queue of one.
-- A single branch or PR (`#412`, a branch name, a worktree path) → **queue of one: land this one thing.** Take it through verify → open/refresh PR → wait for CI (fix the cause if it's red) → review → address comments → merge → clean up. This single-item path **is** "land one branch" — there is no separate `/land` or `/merge` command; for one branch, you run `/code:loop` with a queue of one and skip the planner/conflict-graph framing that only matters for multi-item queues.
-- A filter (`--label=bug`, `--query="state:open assignee:me"`) → fetch the matching tickets from your issue tracker (Linear, GitHub Issues, Jira).
-- A path to a markdown file with a checklist → each unchecked item is a queue item.
-- `--todos` → grep `FIXME` / `TODO` from the repo and treat each as an item.
-- No argument → resume. Read `_meta/queue.json` from the last loop run, or infer from current branch / open PR state.
-
-Whatever the source, you normalize to a queue. Each item gets an ID, a title, a body, an acceptance criterion. If the source does not have an acceptance criterion, you read enough context to write one — and you check it with the user only if it is genuinely ambiguous.
-
-## Claim before you build, dedup before you claim
-
-Duplicate work is the classic multi-agent (and multi-human) waste. Before you touch an item, prove nobody is already on it:
-
-- **Existing PR?** Search the target repo for an open PR referencing the item ID or a matching branch: `gh pr list --state open --search "<ID>"` (and scan `gh pr list --state open --json headRefName,title` for obvious matches). If one exists, do not reimplement — switch to the queue-of-one "land this one thing" path on that PR, or if it is clearly someone else's in-flight work, skip the item with a ticket comment linking the PR.
-- **Active agent already on it?** `agents sessions --active` shows every running session across the fleet. If a live session or teammate references the item, skip it this round with a note — never race it.
-- **Then claim it — with a comment, not just a status flip.** Before the first commit, move the item Todo → In Progress in your tracker **and post a claim comment naming who is on it**: the agent, running session id, and host (e.g. `Picked up by claude · w-a-claude-1698 on yosemite-s1`). The status flip is the machine dedup signal; the comment is the human-readable one — another agent (or Muqsit) scanning the ticket sees who owns it and can pull that session's transcript. Label-queue drains fetch Todo only, so a claimed item disappears from every other loop's next fetch. This is a best-effort cross-machine signal, not a true lock — two loops polling in the same window can both see the item before either claims. Re-check the item's status right before your first commit, and if a PR for it appeared meanwhile, fall back to the dedup rule above.
-
-The order matters: dedup first (a PR or session means the claim belongs to someone else), claim second, build third.
-
-**Keep the ticket current between claim and close.** The ticket is the shared record, not your chat. When something material happens that another reader would need — a scope change, a blocking decision, a discovery that the item is already fixed, a hand-off to another agent — post it as a comment when it happens, not only in the final summary. A ticket that goes silent from "claimed" to "done" three hours later, with the whole story trapped in one session's scrollback, is the failure this prevents.
-
-**Make your own work findable.** Every PR you open carries the item ID in its title (`docs(routines): <summary> (PROJ-123)`) and body. The dedup search above only works if PRs are discoverable by ID — a PR without one is invisible to every other loop and will get reimplemented.
-
-**Where parallelism runs:** teammates and subagents you spawn stay on the machine the loop runs on, or the declared worker pool — never dispatch workers onto the user's interactive machine (the one they sit at; check `agents devices`). An unattended drain box is a worker; the user's laptop is not.
-
-## Tools you compose
-
-- **Inline verification** — before opening the PR, and again after the final push, identify the changed surfaces yourself and run each one's canonical test (the project's own `scripts/sandbox.sh test` / `bun test` / `go test ./...`, a health-endpoint `curl`, a UI screenshot). Quote the real output in your response — this is F3's closing check, not a separate skill call.
-- `code:review` — the pre-merge review. Run it after CI is green; act on its verdict.
-- Repository release process — the post-merge path for distributables lives outside this plugin. Merge is not the terminal state for anything users install or visit.
-- `code:commit` — the splitting / message-writing primitive when you stage work.
-- `agents teams` — the fanout primitive for disjoint parallel items.
-- `agents run --device <box>` — send one agent to a fleet box when the work belongs there.
-- `cloud:run` — Rush Cloud dispatch when the task is clear, single-repo, and should run away from the laptop.
-
-You do not reimplement these. You call them.
-
-## Routing a single item
-
-When an item first lands, pick the execution primitive directly instead of routing through a wrapper:
-
-| Shape | Primitive |
-|---|---|
-| Trivial: 1-2 files, < 15 min, no ambiguity | Do it inline. |
-| One surface, one agent | `agents run <agent> "..." --mode edit --cwd <worktree>` |
-| Clear, well-scoped, walk-away task | `cloud:run` (Rush Cloud) or `agents run --lease` (disposable cloud box) |
-| Send to the fleet, let the CLI pick | `agents run <agent> "..." --device auto` |
-| Must run on a specific fleet box | `agents run <agent> "..." --device <box>` |
-| 3+ independent surfaces | `agents teams` with boundary contracts (see `/teams`) |
-
-## Evidence
-
-Every claim you make in the chat — "the rebase resolved cleanly," "CI is green," "the regression is fixed," "the queue is drained" — needs proof you can quote. `gh pr view --json …`, `git log --oneline`, `agents teams status`, a curl against the deployed health endpoint. If you cannot quote it, you do not claim it.
-
-When you brief a sub-agent (planner, implementer, reviewer), the brief ends with: `Return file:line quotes for every claim. Do NOT paraphrase. If you can't quote it, don't claim it.`
-
-**Web or native surface touched? Drive it, don't describe it.** Verification
-of anything with a UI runs through `agents browser` (web, headless on your
-machine) or `agents computer` (native, element mode) — screenshot, read back,
-then claim. A verification claim with no drive of the real surface is a
-proxy, not proof.
+Unattended runs must finish with a durable status instead of waiting for absent input.
+Use only the notification channel authorized by the invocation. If none is specified,
+the ticket or queue record is the handoff. Respect tracker rate limits: fetch once per
+pass, write meaningful changes, and honor rate-limit responses rather than retrying a
+shared exhausted API. For agent queues, use delegated ownership, not labels, and reject
+unknown agent identifiers instead of interpreting them as an empty queue.

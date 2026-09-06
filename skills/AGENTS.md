@@ -32,9 +32,8 @@ reference skills by name, and a stale reference routes to nothing.
 
 ## One capability per skill
 
-A skill that does everything is loaded for everything and helps with nothing. Split it. If
-the thing is a single one-shot prompt with no scripts or reference files, it belongs in
-[`commands/`](../commands/AGENTS.md) instead.
+A skill that does everything is loaded for everything and helps with nothing. Split it. Keep behavior in a portable skill, including a small one-shot workflow; a slash
+command is a thin entry point. Use on-demand references for platform mechanics.
 
 ## Never hardcode machine-specific values
 
