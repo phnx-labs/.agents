@@ -6,7 +6,8 @@
 #   ~/.linear-cli/config.json  (apiKey + teamId, 0600, written by `linear setup`)
 # or LINEAR_API_KEY + LINEAR_TEAM_ID already in the env.
 #
-# NEVER uses `agents secrets`, the keychain, Touch ID, or any secrets bundle —
+# NEVER uses `agents secrets` or the standalone `secrets` CLI, the keychain,
+# Touch ID, or any secrets bundle —
 # a SessionStart hook must not pop biometry or hang (macOS/Linux/Windows). The
 # LINEAR_CLI_CONFIG env var overrides the config path for tests.
 #

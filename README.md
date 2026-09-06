@@ -104,7 +104,7 @@ to type.
 | Fleet: pull every device to latest | `/fleet:sync` | [`fleet`](plugins/fleet/README.md) |
 | Drive a **website** | skill `browser` (`agents browser`) | Not a slash command — load the skill |
 | Drive a **native Mac app** | skill `computer` | Same |
-| Credentials | skill `secrets` | `agents secrets` |
+| Credentials | skill `secrets` | `secrets` |
 
 ### By situation (quick FAQ)
 

@@ -45,7 +45,7 @@ from `~/.agents/.environment` via the skill's own `env.sh`:
 ```
 
 `.environment` is gitignored and per-machine. This is what makes a skill publishable.
-Credentials go through `agents secrets`, never into a file here.
+Credentials go through `secrets`, never into a file here.
 
 ## Known drift — `user-invocable`
 

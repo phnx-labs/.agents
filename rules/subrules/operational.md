@@ -1,6 +1,6 @@
 # Operational Boundaries
 
-Use `agents secrets` for credentials; do not write secrets into configuration
+Use `secrets` for credentials; do not write secrets into configuration
 or leave ambient credentials behind. Prefer existing configuration mechanisms
 over adding environment variables. Follow the repository's install and release
 process; do not replace a user's working tool with a development build.
