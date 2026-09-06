@@ -173,7 +173,12 @@ attributes; do not try to define `.box` once in `<defs><style>`.
 A plan's architecture figure is a **system diagram**, not a decorative SVG:
 named modules, arrows for calls / data / control, layers kept distinct
 (orchestration ≠ machine ≠ isolation). Current and proposed each get their
-own drawing when the shape changes. Follow this recipe:
+own drawing when the shape changes. **First read [diagram-conventions.md](diagram-conventions.md):
+notation and semantics take precedence over the styling examples below.** Choose
+shapes by role and notation, not a universal rounded rectangle; line styles encode
+relationships, not decoration. Read [product-brief.md](product-brief.md) for a
+plan's product overview, goals, non-goals, and journeys. The palette below is an
+optional comparison example, not a system-design notation:
 
 | Role | Fill | Stroke | Use |
 | --- | --- | --- | --- |
@@ -185,7 +190,7 @@ own drawing when the shape changes. Follow this recipe:
 Text: labels `font-family="JetBrains Mono, monospace" font-size="11"` in the
 concept's stroke color; box titles `font-size="12" fill="#c8c8c8"`; subtitles
 `font-size="10" fill="#8a8a8a"` (both `font-family="Inter, system-ui, sans-serif"`).
-Boxes: `rx="8"`, `stroke-width="1.5"`. Keep columns aligned on a grid
+For nodes whose notation calls for rounded boxes: `rx="8"`, `stroke-width="1.5"`. Keep columns aligned on a grid
 (e.g. x=40 and x=520 with a 100-unit gap) and pair rows across the gap with
 dashed connectors. Figures are dark-first: these tints sit on the
 `artifact-figure-diagram` surface, which stays dark in both themes and in

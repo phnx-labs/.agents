@@ -2,6 +2,19 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Planning now begins with a visual product requirements brief: overview diagram,
+  goals and success checks, non-goals with reasons, journeys and recovery paths.
+  `/plan`, `/swarm:plan`, and the artifacts skill share the brief and diagram
+  references. Technical views use meaningful shapes, icons, labeled arrows,
+  boundaries, and legends; state and sequence examples require rendered figures.
+- Planning searches open PRs and tracker tickets before design. Draft checklists
+  remain local during iteration; new issues and claims wait until execution starts.
+  Ticket/checklist conventions and existing hook guidance now agree on that
+  boundary, without introducing a mandatory user-approval step.
+
+
 ### Removed
 
 - **`routines/check-updates.yml` — the agents-cli daemon now owns update+restart natively (PHNX-3695).** The routine's job (upgrade `agents-cli` when npm is ahead, fast-forward `~/.agents/.system`, reconcile with `agents sync --local`, notify only on change) is now a supervised daemon service (`self-update`, `cli/src/lib/daemon/self-update-service.ts` in `phnx-labs/agi-cli`) that runs the same steps on its own schedule and, unlike the routine, fails **closed**: a bad install/verify leaves the daemon on its current code instead of leaving a box on a half-applied upgrade. It also runs on demand when a version-skewed browser-IPC client asks for it, not only on a Monday cron fire. `routines/README.md`, `routines/AGENTS.md`, and the root `README.md` no longer reference it.

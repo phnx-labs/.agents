@@ -185,7 +185,8 @@ links:
 ```
 
 The plan must begin with behavior the reviewer can judge, then explain the
-implementation. Keep the floor headings below, in this relative order.
+implementation. Read [references/product-brief.md](references/product-brief.md)
+for the product overview, goals, non-goals, journeys, and acceptance checks. Keep the floor headings below, in this relative order.
 `artifacts check` errors if Purpose, Proposed Changes, Public Interface,
 Validation, or Risks are missing.
 
@@ -259,7 +260,8 @@ plan becomes reviewable.
 
 Also include at least one Markdown table, one fenced code block, and one
 `artifact-callout`. Treat warnings about these as work to fix before presenting.
-For multi-step plans, create the harness task checklist before presenting; the
+For multi-step plans, create the local harness task checklist before presenting;
+this does not require creating or claiming tracker tickets during planning. The
 Stop/plan-exit guard checks for it separately from the render.
 
 ## `kind: visual`

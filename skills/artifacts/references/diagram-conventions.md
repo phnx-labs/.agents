@@ -9,8 +9,10 @@ immediately. Add a **legend** whenever color or line-style carries meaning.
 
 | The figure shows | Use | The detail that signals you know it |
 |---|---|---|
+| Product concept / end-to-end value | **Product overview diagram** | labeled actor/client/service/output icons, a named system boundary, and the main path; explicitly conceptual, not deployment proof |
+| User actions / handoffs | **User-flow / swimlane diagram** | named actions, decision branches, outcomes and recovery; lanes identify the responsible actors |
 | System / service architecture | **C4** (Context → Container → Component) | one abstraction level per diagram; a legend is mandatory; every arrow labeled with *what flows* + protocol |
-| Message ordering between parties | **UML sequence** | lifelines (dashed verticals) + activation bars; **filled arrowhead = sync call, dashed open arrowhead = return**; time flows top-down |
+| Message ordering between parties | **UML sequence** | lifelines (dashed verticals) + activation bars; **solid line + filled arrowhead = sync call, solid line + open arrowhead = async message, dashed line + open arrowhead = reply**; time flows top-down |
 | Object / type relationships | **UML class** | inheritance = hollow triangle to the parent; composition = filled diamond (at the whole end); aggregation = hollow diamond (at the whole end); multiplicity at both line ends |
 | Data model / tables | **ER, crow's-foot** | cardinality glyphs at the entity end (bar = one, fork = many, circle = optional); mark PK / FK |
 | Data movement through a system | **DFD** | process = numbered verb; data store = open-ended rectangle; external entity = square; every flow is a **named noun**, never control ("then", "click") |
@@ -19,6 +21,28 @@ immediately. Add a **legend** whenever color or line-style carries meaning.
 | Network / cloud topology | **provider icon set + boundaries** | one provider's official icons (AWS / GCP / Azure), wrapped in VPC / subnet / zone boxes; draw trust boundaries; label ports and protocols on links |
 | Schedule / dependencies over time | **Gantt / swimlane** | bars = duration, diamonds = milestones, dependency arrows, critical path marked; each task sits in its owner's lane |
 | Quantitative data | **the chart that fits the data** (see below) | axes labeled with units; no chartjunk |
+
+## Semantics before styling
+
+C4 is notation-independent: rectangles are valid, and it does not mandate a
+particular icon set or palette. State the element type and technology, label
+relationships, and explain your visual language in a key. Use conventional storage
+cylinders in an informal architecture/deployment view when they clarify persistence;
+retain the chosen notation's own store symbols in a formal DFD or ER view.
+
+Use system-design terms only for roles the design actually contains. A process,
+container, pod, VM, and host are different boundaries; a queue is not a database;
+a mount is not a network request. Distinguish control-plane commands from data-plane
+payloads when relevant. Label arrows accordingly, including protocols where known;
+mark unknowns instead of inventing details.
+
+For multi-cloud topology, each provider's actual services may use that provider's
+icons inside separately labeled boundaries. Do not mix icon styles for the same
+service or imply a vendor-neutral component belongs to a provider. Use consistent
+labeled SVG icons for generic concepts and embed assets for offline rendering.
+
+See [C4 notation](https://c4model.com/diagrams/notation) and
+[UML 2.5.1](https://www.omg.org/spec/UML/2.5.1) (checked September 2026).
 
 ## Non-software fields — use the field's own standard
 
@@ -47,7 +71,7 @@ immediately. Add a **legend** whenever color or line-style carries meaning.
 - A decision drawn as a box instead of a diamond; I/O as a box instead of a parallelogram.
 - Sync call, async call, and return all drawn with the same arrowhead.
 - Cardinality written as free text ("1:N") instead of the crow's-foot glyphs.
-- Two notations mixed in one diagram (IEC + ANSI, AWS + GCP, Chen + crow's-foot), or two
+- Two notations mixed in one diagram (IEC + ANSI, inconsistent provider icons within one provider boundary, Chen + crow's-foot), or two
   abstraction levels in one C4 diagram.
 - Color used to mean something, with no legend.
 
