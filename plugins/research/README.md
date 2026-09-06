@@ -16,7 +16,7 @@ depth from one source.**
 | Skill | Role |
 | --- | --- |
 | `research:research` | Multi-modal research: frame the question into angles, fan out across engines that each see a different slice **blind to each other**, cross-check claims across sources (single-sourced = a lead to verify), and synthesize one cited artifact. Composes `run` + `teams` + `browser` + `artifacts`. |
-| `research:product` | Hands-on product exploration: install/sign up, drive every user journey, capture each step + a clip, verify landing-page claims against real behavior, and render a highly-visual artifact (favicon/logo identity, per-journey flow diagrams, screenshot strips, claims-vs-reality table). Composes `research:research` (intel) + `browser`/`computer` + `secrets` + `demo` (real-surface discipline) + `create:edit`/`animator` (clip) + `artifacts`. |
+| `research:product` | Hands-on product exploration: install/sign up, drive every user journey, capture each step + a clip, verify landing-page claims against real behavior, and render a highly-visual artifact (favicon/logo identity, per-journey flow diagrams, screenshot strips, claims-vs-reality table). Composes `research:research` (intel) + `browser`/`computer` + `secrets` + `demo` (real-surface discipline) + `artifacts` (render); the clip uses `agents browser`/`ffmpeg`, polished with `create:edit`/`animator` only when the extras `create` plugin is installed. |
 
 ## How the pieces fit
 
