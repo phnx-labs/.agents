@@ -1,12 +1,12 @@
 ---
 name: research
-description: "Answer a hard research question by fanning it out across DISTINCT search modalities, each blind to the others, then synthesizing one sourced artifact. Codex agents run aggressive web search; Grok agents mine X/Twitter community chatter (its privileged data); Antigravity works Google; Perplexity runs a broad browser-driven Deep Research report; the Claude fleet deep-reads and synthesizes. Multi-modal because no single engine sees everything — a company's funding is in a press release, its reputation is in X replies, its moat is in a founder's blog. Triggers on: /work:research, 'research X across sources', 'deep research on', 'market/competitive/landscape research', 'what's the real story on <company/topic>', 'pull everything on', 'multi-source research'."
+description: "Answer a hard research question by fanning it out across DISTINCT search modalities, each blind to the others, then synthesizing one sourced artifact. Codex agents run aggressive web search; Grok agents mine X/Twitter community chatter (its privileged data); Antigravity works Google; Perplexity runs a broad browser-driven Deep Research report; the Claude fleet deep-reads and synthesizes. Multi-modal because no single engine sees everything — a company's funding is in a press release, its reputation is in X replies, its moat is in a founder's blog. Triggers on: /research, /research:research, 'research X across sources', 'deep research on', 'market/competitive/landscape research', 'what's the real story on <company/topic>', 'pull everything on', 'multi-source research'. For a hands-on PRODUCT exploration (drive it, screenshot each journey, prove claims visually) use /research:product."
 argument-hint: "<research question or topic> [--depth quick|standard|deep] [--out <path>]"
 allowed-tools: Bash(agents *), Bash(git *), Bash(gh *), Bash(linear *), Bash(rush *), Bash(rg *), Bash(ls *), Bash(cat *), Bash(jq *), Read(*), Write(*), Task(*), WebSearch(*), WebFetch(*)
 user-invocable: true
 ---
 
-# work:research — one question, many engines, one sourced answer
+# research — one question, many engines, one sourced answer
 
 You were handed a research question. Your job is to **get the real, cited answer** — not one
 model's guess. No single search engine sees the whole picture: funding rounds live in press
