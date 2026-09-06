@@ -169,7 +169,7 @@ the durable worker credential. Re-auth is `agents accounts login <harness>#<name
 **Worker:** never run `accounts add` or a native OAuth flow there. Token-bearing
 harnesses (claude/codex/grok/cursor/opencode/droid) are provisioned from the
 headed mint by the daemon. Token-less harnesses (kimi/antigravity) log in per
-box with `agents fleet login <harness> --device <target>`.
+box with `agents devices login --agents <harness> --devices <target> --interactive`.
 
 1. **Create the one managed install on the target if absent:**
    ```
@@ -185,7 +185,7 @@ box with `agents fleet login <harness> --device <target>`.
    ```
    For a token-less harness on the target itself:
    ```
-   agents fleet login kimi --device <target>
+   agents devices login --agents kimi --devices <target> --interactive
    ```
    A leftover interactive login into an existing slot uses a PTY on a headed
    box, never on a worker:
@@ -221,10 +221,10 @@ box with `agents fleet login <harness> --device <target>`.
    ```
    Success means `grok#work` reports live with the expected email. A browser
    success page alone is not proof. Workers pick the durable credential up on
-   the next daemon tick (`agents accounts list grok --device <target>`).
+   the next daemon tick (`agents devices accounts --agents grok --device <target>`).
 
 5. **Do not repeat native OAuth on workers.** Token-bearing accounts propagate
-   from the headed mint; token-less harnesses use `agents fleet login` per box.
+   from the headed mint; token-less harnesses use `agents devices login --agents <harness> --devices <target> --interactive` per box.
    Copying the resulting native credential is forbidden.
 
 ### Recipe — Claude setup-token (syncable alternative)
@@ -313,8 +313,8 @@ pty recipe below only when that mint step needs a hand.
   --api-key` (or a prompt). Workers receive the key from the daemon. A
   separately named provider account is still
   `agents accounts add <name> --provider openai --auth api-key`.
-- **Token-less harnesses** (Kimi, Antigravity): `agents fleet login <harness>
-  --device <target>` per box. Do not copy the native credential file.
+- **Token-less harnesses** (Kimi, Antigravity): `agents devices login --agents <harness>
+  --devices <target> --interactive` per box. Do not copy the native credential file.
 
 For native OAuth report the headed device, account `#name`, verified email, and a redacted
 `agents accounts list --json` result; for named setup-token/API-key accounts report the
