@@ -38,7 +38,8 @@ Hand the work to the plugin/skill built for it, on a machine that makes sense (a
 | A queue of any kind / overnight drain | `/work:loop` — unattended, multi-project, drives each item to landed |
 | Design / images / assets | `design:design` (keyless, offline-first) |
 | Publish an artifact / plan / report | `share` (`--private` for `--no-cover --expire 7d`) |
-| Research / data pull | `/work:research` (multi-engine, cited) — or the `browser` skill + `secrets` for a single authed source |
+| Research question / data pull | `/research` (`research:research` — multi-engine, cited) — or the `browser` skill + `secrets` for a single authed source |
+| Hands-on product / competitor exploration | `/research:product` — drive the product, capture each journey, prove claims visually |
 | A real web task (form, portal, dashboard) | the `browser` skill + `secrets` |
 
 If the right executor isn't obvious, pick the closest plugin and say why in one line — don't stall.

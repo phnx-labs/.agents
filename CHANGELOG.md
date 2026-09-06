@@ -2,8 +2,25 @@
 
 ## [Unreleased]
 
+### Added
+
+- **`research` is now its own plugin** with two skills. The multi-engine research
+  skill moved out of `work` — invoke it as `/research` (top-level alias) or
+  `/research:research`; `/work:research` is retired.
+- **`/research:product`** — a hands-on product-exploration skill. It composes
+  `research:research` for the public intel (claimed features + sentiment), then
+  signs up / installs and **drives** the real product through each user journey
+  with `agents browser`/`computer` + `secrets` — screenshotting every step,
+  recording a short clip of the headline flow, and putting landing-page **claims**
+  next to what the product **actually did**. Output is a favicon/logo-tagged,
+  journey-diagrammed, screenshot-strip visual artifact (`--compare a,b,c` for a
+  set on the same journeys) — never one idle screenshot and a wall of text.
+
 ### Changed
 
+- `work` plugin no longer carries research; its README, `plugin.json`, and the
+  `/work:dispatch` routing table now point research work at the `research` plugin
+  (`/research` for a question, `/research:product` for hands-on exploration).
 - Planning now begins with a visual product requirements brief: overview diagram,
   goals and success checks, non-goals with reasons, journeys and recovery paths.
   `/plan`, `/swarm:plan`, and the artifacts skill share the brief and diagram

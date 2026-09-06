@@ -1,0 +1,9 @@
+{
+  "name": "research",
+  "version": "0.1.0",
+  "description": "research — get the real, evidenced answer, not one model's guess. `/research` (`/research:research`) answers a hard research question across DISTINCT engines blind to each other — Codex on web search, Grok on X/Twitter community chatter (its privileged data), Antigravity on Google, Perplexity on a broad browser-driven Deep Research report (the dedicated Deep-research mode, never Computer/Control-browser), Claude on deep-read + reconciliation — cross-checks every claim (single-sourced = a lead, not a fact) and promotes the cited result to the project's durable-artifacts home. `/research:product` explores a PRODUCT hands-on and proves every claim visually: it composes research:research for the public intel (claimed features + sentiment), then signs up / installs and DRIVES the real product through each user journey with `agents browser`/`computer` + `secrets`, screenshotting every step, recording a short clip of the headline flow, and putting landing-page CLAIMS next to what the product ACTUALLY did — output is a favicon/logo-tagged, journey-diagrammed, screenshot-strip visual artifact, never one idle screenshot and a wall of text.",
+  "author": {
+    "name": "Muqsit Nawaz",
+    "email": "contact@trp.so"
+  }
+}
