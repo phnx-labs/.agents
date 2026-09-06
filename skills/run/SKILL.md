@@ -133,10 +133,11 @@ agents run opencode "..." --strategy balanced
 agents run codex "..." -b                  # shortcut for --strategy balanced
 
 # Select any named provider or native account
-agents run claude "..." --account work
+agents run claude#work "..."               # #name selector (taught form)
+agents run claude "..." --account work     # equivalent flag form
 
-# Attach the account used when --account is omitted
-agents accounts attach work claude
+# Set the account used when --account is omitted (fleet-wide per-harness default)
+agents accounts default claude work
 ```
 
 Strategy is ignored when `@version` is pinned, a profile is used, or `--fallback` is set.
@@ -303,14 +304,16 @@ widens the pool past worker marks while still excluding personal devices.
 
 For everything else, run `agents run --help`.
 
-`--account <name>` selects any named provider or native account and overrides
-an `agents accounts attach` binding. Provider accounts are independent of
+`--account <name>` (or the `<harness>#<name>` selector) selects any named
+provider or native account and overrides the fleet-wide per-harness default set
+by `agents accounts default <harness> [name]`. Provider accounts are independent of
 agent versions and may be used by multiple compatible harnesses; the execution
 device resolves their secret locally and fails before spawn when it is absent.
-Native accounts retain their declared version or device scope and validate the
+Native accounts live in per-account credential slots and validate the
 harness-owned login before spawn without injecting a secret. Copy a provider bundle explicitly with
-`agents accounts sync <name> <device>`. Harness-native signed-in identities may
-be named with `agents accounts name <agent@version> <name>` and bound with
-`agents accounts attach <name> <target>`; their auth material remains in the
-harness home and is never copied.
+`agents accounts sync <name> <device>`. Harness-native signed-in identities are
+added with `agents accounts add <harness> [name]` (which creates the account slot
+and registers it fleet-wide — headed devices only) and selected with
+`agents run <harness>#<name>`; their auth material remains in the harness home and
+is never copied.
 Accounts do not apply to cloud or lease placement.
