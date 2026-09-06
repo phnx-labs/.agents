@@ -4,8 +4,15 @@
   symlinks (or synced copies).
 - **Tickets — claim first; enrich before you create; open one only for work you
   are delivering now.** Linear context is injected at session start; read it
-  before starting. Search the board for a ticket that already covers the work
-  and claim it. **Default to NOT creating.** When you have real, deliverable work
+  before starting. Search open PRs and relevant tickets, read matches and active
+  ownership, and coordinate overlaps. **Planning discovery is read-only:** link
+  existing work and keep draft tasks in the plan/local checklist; do not create
+  issues/subtasks or move work to In Progress just to iterate on a design. When
+  the approach is settled and execution is about to start, refresh that search,
+  then claim/enrich existing work before creating anything missing. Existing
+  authorization to proceed is enough; do not invent a user-approval gate. Respect
+  plan-only requests; explicit ticket-management requests remain allowed.
+  **Default to NOT creating.** When you have real, deliverable work
   worth tracking, first look for an existing ticket that overlaps — same subsystem,
   same bug class, same surface — and **consolidate into it**: add your detail as
   a comment, sharpen its description, attach evidence, link the related ticket.
@@ -31,7 +38,9 @@
   lane in this session, **dispatch an agent** to fix it — with a worktree and
   full context, then monitor it (see the `dispatch` skill / `parallel-teams` for
   the how) — rather than filing; (3) open an issue **only** when it genuinely
-  needs deep investigation, the scope is unclear, or it is multi-day work. A
+  needs deep investigation you are starting now or is substantive execution
+  you are committing to deliver. Unsettled design scope alone is not a reason
+  to file a ticket. A
   small, clear, fixable thing filed as a ticket is not tracking — it is bloat
   that buries the real work and manufactures follow-up churn, the
   smallest-thing-you-should-have-just-fixed failure the board keeps drowning in.

@@ -31,6 +31,18 @@ Check in this order. Stop at the first one that's actually present.
 The `conventions` + `truly-agentic-git-workflow` rules ask every substantive task to run a
 small ticket lifecycle; this skill is the mechanism.
 
+**Planning is discovery, not commitment.** Before designing, search open PRs as
+well as tickets; read matching scope, status, ownership, and links. During plan
+iteration, link existing work and keep proposed tasks in the plan or local harness
+checklist. Do not create issues/subtasks, claim tickets, or move them to In Progress
+just to plan. A local `TaskCreate` checklist does not require a tracker issue.
+
+Enter the lifecycle below **when the approach is settled and execution is about to
+start**, then refresh the search so newly opened work is not duplicated. User
+approval may settle the plan, but existing authorization to proceed is enough;
+no mandatory approval gate. A plan-only request remains planning. An explicit
+request to create or manage tickets is a tracker action, handled by Step 2.
+
 1. **Check first — search wider than the exact title.** Look for an open ticket that already
    covers the task (the injected Linear context, and a real `search` — try the subsystem name,
    the file, the bug class, not just the exact phrase). Found one? Claim it (move to In Progress).

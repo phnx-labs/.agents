@@ -9,6 +9,13 @@ adversarial review. It skips the whole section (which only warns), not the
 figure inside a kept section — omit it or draw it; there is no table-shaped
 middle.
 
+**Discover work first:** search open PRs and relevant tracker tickets; read scope,
+status, linked changes, and active ownership before proposing work. During design
+iteration link existing work but keep tracker state unchanged. Draft checklist
+items are local, not new issues. Only at the settled-plan → execution transition
+refresh discovery, then claim existing work or create genuinely missing work being
+delivered (`conventions`). No mandatory user-approval gate is added.
+
 **Research first:** search what previous agents did on this feature
 (`agents sessions "<keywords>"`) and extend prior work — silently reverting an
 earlier agent's change is the most common regression here. Locate the module's

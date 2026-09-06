@@ -16,6 +16,32 @@ The deliverable is not a paragraph of intentions — it is a **rigorous, behavio
 
 **plan vs spec:** this skill is the *delta* (what we will build). `/swarm:spec` is the durable *is* (what the capability already guarantees) for other agents/humans so they do not invent wrong behavior.
 
+## Existing work and the execution boundary
+
+Before planning, search open PRs and relevant tickets through the configured
+tracker (`tickets` skill), then read matches, linked changes, and active ownership.
+Link and extend prior work; coordinate overlapping work. A failed lookup is an
+unknown. During design iteration keep tracker discovery read-only: no new issues
+or subtasks, claims, or In Progress moves just to plan. Draft steps belong in the
+plan and local harness checklist. Refresh discovery when the plan is settled and
+implementation is about to start; reuse/claim existing work, then create only
+missing substantive work being delivered. Existing authority to implement is
+enough; do not invent a user-approval gate. Respect plan-only requests and explicit
+tracker-management requests. See the `tickets` skill for the full lifecycle.
+
+## Product brief and visual contract
+
+Before file-level design, read `references/product-brief.md` relative to
+the resolved artifacts skill directory (fallback:
+`~/.agents/.system/skills/artifacts/references/product-brief.md`).
+Apply it in this skill even when `/plan` is unavailable: product overview figure,
+problem and audience, goals with success checks, non-goals with reasons, journeys
+including recovery, requirements, and explicit assumptions. Keep it in the proposal.
+Read that skill's `references/diagram-conventions.md` before drawing technical
+views: choose notation by the question, use semantic shapes, labeled icons and
+arrows, consistent color with a legend, and precise system terminology. The
+product overview, architecture, and UI mockups serve distinct purposes.
+
 ## 1. Understand (read, don't guess)
 
 Read `AGENTS.md` / `CLAUDE.md` if present. Grep for keywords related to the task, then **read** the files that own the patterns — trace the data flow end to end, identify every touch point and dependency. Explore with `Agent(subagent_type: "Explore")` for breadth; read the load-bearing files yourself.

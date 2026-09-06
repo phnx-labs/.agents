@@ -269,9 +269,24 @@ Multi-agent safety: create worktrees foreground (a backgrounded `worktree add`
 races other agents' index writes); verify the checkout is complete before
 building (`git -C "$WT" status --short | grep '^ D'` must be empty); commit
 with an explicit pathspec (`git commit <path>`, never `add` + bare `commit`) so
-a concurrent agent's staged files aren't swept in. After merge:
-`git -C "$REPO" worktree remove "$WT"` then
-`gh pr merge --rebase --delete-branch`.
+a concurrent agent's staged files aren't swept in.
+
+**Reclaim the worktree after the merge — it is a step, not an afterthought.**
+`gh pr merge --delete-branch` removes the BRANCH and leaves the CHECKOUT on
+disk. Nothing else ever removes it, so every merged PR used to leak a full
+working tree: 581 worktrees / ~263 GB across this fleet, which took the release
+box to 1.6 GiB free and wedged publishing (PHNX-3503, PHNX-3478). Merge first,
+then reclaim:
+
+```bash
+gh pr merge <n> --rebase --delete-branch
+git -C "$REPO" worktree remove "$WT"
+```
+
+`git worktree remove` without `--force` refuses a tree with uncommitted changes,
+so it is safe to run the moment the merge returns. Leave the local branch ref
+alone — you have no `git branch -d/-D` permission, by design, and the nightly
+`worktree-sweep` routine reclaims stragglers and branch refs on every device.
 
 ## Open the PR with evidence attached
 
@@ -352,6 +367,29 @@ around it. Branch protection that blocks a merge is a problem to resolve, not
 bypass. Never transfer credentials or auth files to another host without
 explicit authorization.
 
+## Owner-mode (shared-identity fleets)
+
+Every fleet agent authenticates as one shared GitHub identity, so the
+"non-author verdict" check can never be satisfied by a distinct GitHub login —
+the code-reviewer's APPROVE always reads as self-authored and every PR
+deadlocks onto the human owner. **Owner-mode** fixes that without weakening the
+gate: when a PR's **own author** is a **trusted owner** (not merely when a
+trusted identity happens to be running the merge — keying on the merger would
+let a trusted owner clear a *third party's* self-approval), its own
+code-reviewer APPROVE counts, while every other protection (real-word APPROVE,
+no carried-from laundering, no negated/quoted approvals, and GitHub-enforced
+CI-green) still applies, and `--admin` stays blocked — the owner merges plainly
+on their ruleset exemption.
+
+A trusted owner is a numeric GitHub user id in the allowlist (see
+`hooks/lib/owner-mode.sh`), sourced from `AGENTS_MERGE_TRUSTED_OWNER_IDS`, the
+user-layer file `~/.agents/trusted-owner-ids`, or the shipped-empty
+`trusted-owner-ids` template. That id is exactly the repo ruleset's exempt
+bypass actor, so owner-mode never grants more than GitHub already allows — it
+only stops the local guard and `monitors/pr-merge-on-green.sh` from
+false-blocking that one identity. Default (no id configured): off, no change.
+Find your id with `gh api user --jq .id`.
+
 # No Claude-Code Footer
 
 Never add the "Generated with Claude Code" promo line — or any
@@ -410,8 +448,15 @@ to PR bodies, GitHub issue bodies, or commit messages. Applies to
   symlinks (or synced copies).
 - **Tickets — claim first; enrich before you create; open one only for work you
   are delivering now.** Linear context is injected at session start; read it
-  before starting. Search the board for a ticket that already covers the work
-  and claim it. **Default to NOT creating.** When you have real, deliverable work
+  before starting. Search open PRs and relevant tickets, read matches and active
+  ownership, and coordinate overlaps. **Planning discovery is read-only:** link
+  existing work and keep draft tasks in the plan/local checklist; do not create
+  issues/subtasks or move work to In Progress just to iterate on a design. When
+  the approach is settled and execution is about to start, refresh that search,
+  then claim/enrich existing work before creating anything missing. Existing
+  authorization to proceed is enough; do not invent a user-approval gate. Respect
+  plan-only requests; explicit ticket-management requests remain allowed.
+  **Default to NOT creating.** When you have real, deliverable work
   worth tracking, first look for an existing ticket that overlaps — same subsystem,
   same bug class, same surface — and **consolidate into it**: add your detail as
   a comment, sharpen its description, attach evidence, link the related ticket.
@@ -437,7 +482,9 @@ to PR bodies, GitHub issue bodies, or commit messages. Applies to
   lane in this session, **dispatch an agent** to fix it — with a worktree and
   full context, then monitor it (see the `dispatch` skill / `parallel-teams` for
   the how) — rather than filing; (3) open an issue **only** when it genuinely
-  needs deep investigation, the scope is unclear, or it is multi-day work. A
+  needs deep investigation you are starting now or is substantive execution
+  you are committing to deliver. Unsettled design scope alone is not a reason
+  to file a ticket. A
   small, clear, fixable thing filed as a ticket is not tracking — it is bloat
   that buries the real work and manufactures follow-up churn, the
   smallest-thing-you-should-have-just-fixed failure the board keeps drowning in.
@@ -641,6 +688,13 @@ adversarial review. It skips the whole section (which only warns), not the
 figure inside a kept section — omit it or draw it; there is no table-shaped
 middle.
 
+**Discover work first:** search open PRs and relevant tracker tickets; read scope,
+status, linked changes, and active ownership before proposing work. During design
+iteration link existing work but keep tracker state unchanged. Draft checklist
+items are local, not new issues. Only at the settled-plan → execution transition
+refresh discovery, then claim existing work or create genuinely missing work being
+delivered (`conventions`). No mandatory user-approval gate is added.
+
 **Research first:** search what previous agents did on this feature
 (`agents sessions "<keywords>"`) and extend prior work — silently reverting an
 earlier agent's change is the most common regression here. Locate the module's
@@ -681,9 +735,16 @@ API/CLI-surface or architecture change (a subagent checks the surface is clean
 and follows existing conventions — **findings land in the HTML**, not only
 chat); and render + inspect the HTML.
 
-**Artifact path:** all durable outputs land in
-`.agents/artifacts/yyyy-mm-dd/<slug>.md` (plans as `plan-<slug>.md`), HTML
-rendered next to the source. One dated layout, no kind subdirs.
+**Artifact path:** durable outputs land in the DURABLE HOME —
+`~/.agents/artifacts/yyyy-mm-dd/<slug>/plan.md`, HTML rendered next to the
+source, plus an `.artifact.json` sidecar so the artifact is findable by slug days
+later. One dated layout, no kind subdirs.
+
+Outside any checkout, deliberately. A repo's `.agents/artifacts/` is tracked, so
+stray files there collide on `git checkout` / `git merge`; it is also a primary
+working tree, so `main-branch-guard` denies the write. The exception is a plan
+deliberately committed WITH its feature — that still belongs in the repo, and
+gets there through a worktree and a PR like any other tracked file.
 
 **Mechanics** (the full look lives in the `artifacts` skill):
 
@@ -711,13 +772,13 @@ the acceptance rubric (done = every item completed) and it makes the session
 legible (`agents sessions` shows `✓6/8 · <current item>`). Skip it for
 single-step or trivial tasks — a checklist for a one-liner is noise.
 
-Bind it to the task: pair a ticket when a tracker is connected — claim or enrich
-an existing one that covers the work and move it to In Progress; creating a ticket
-just to have something to pair a checklist to is not required (default to NOT
-creating — see `conventions`). Stamp items with
-the ticket via `TaskCreate` `metadata` (e.g. `metadata.ticket: "RUSH-1234"`);
-reflect milestones on the ticket as items complete, and close it on delivery
-with proof (see `conventions`).
+A planning checklist is local draft state, not a tracker commitment. Link existing
+tickets when relevant, but do not create one or move it to In Progress to satisfy
+this rule. At the transition to execution, refresh discovery and claim/enrich an
+existing ticket; create only missing substantive work being delivered (see
+`conventions`). Stamp items with `TaskCreate` metadata when a ticket exists
+(e.g. `metadata.ticket: "RUSH-1234"`); reflect execution milestones there and close
+only with delivery proof. The checklist works without a ticket.
 
 # Record Progress and Deliver Only Deliberate Updates
 

@@ -1,8 +1,33 @@
 ---
-description: Plan like a staff engineer — live research, system diagrams, alternatives considered, rendered as a visual HTML artifact and opened on your screen (no separate /visualize needed)
+description: Plan from a visual product brief — goals, non-goals, user journeys, technically accurate diagrams, and an implementation proposal opened for review
 ---
 
 You are planning: $ARGUMENTS
+
+## Step 0: Discover existing work before planning
+
+Search open PRs and the configured issue tracker (Linear, GitHub Issues, Jira,
+etc.) before designing. Search the task, subsystem, affected surface, and related
+terms, not just an exact title. For GitHub use `gh pr list --state open` and read
+matching PRs and their diffs; use the `tickets` skill for the configured tracker.
+Read matching ticket descriptions, status, ownership, linked PRs, and recent
+relevant merges. Check prior sessions too. Record relevant links and scope in the
+plan; coordinate with active owners and extend existing work rather than duplicate
+or overwrite it. A failed search is an unknown, not evidence nothing exists.
+
+**During planning, discovery is read-only.** Link existing tickets; keep draft
+steps in the plan and the harness checklist. Do not create tracker tickets or
+subtasks, claim work, or move it to In Progress merely to explore a design or
+satisfy a checklist. Iterating with the user is not a commitment to build.
+
+**At the transition to execution**, when the approach is settled and you are about
+to implement it, refresh the PR/ticket search. Reuse and claim suitable existing
+work; create only genuinely missing, substantive work you are now committing to
+deliver. This transition can follow explicit user approval or existing authority
+to proceed; do not introduce an approval gate when none is needed. A request to
+plan only stays in planning. Explicit requests to create/manage tickets are
+handled as tracker actions. Follow the `tickets` skill and `conventions` for
+scope and delivery proof; a local `TaskCreate` item is not a Linear issue.
 
 ## CRITICAL: Ground the Plan in Reality
 
@@ -67,6 +92,22 @@ Before reading any code, clarify:
 2. **What is the goal?** — What problem does this solve? Who benefits?
 3. **What is the scope?** — New feature, refactor, bug fix, or integration?
 4. **What are the constraints?** — Time, dependencies, backwards compatibility?
+
+### Product brief first (PRD)
+
+Before implementation detail, write the product requirements brief: what this is,
+who it serves, the problem, and the observable outcome. This applies to a feature,
+CLI, internal workflow, or infrastructure change; it need not be a whole product.
+Read `skills/artifacts/references/product-brief.md` and follow its brief and visual
+contract. Keep the brief in the plan, ahead of the file-level changes; do not make
+an extra PRD document unless the project calls for one.
+
+Lead with one **product overview diagram** (actor → entry point → system → outcome),
+then explicit **Goals**, **Non-goals with reasons**, and **User journeys**. Goals
+name outcomes and how to verify them, not implementation tasks. Cover the happy
+path and important failure/recovery paths. Mark assumptions and open questions;
+do not invent requirements or performance targets to fill a template. A small fix
+can compress these to a short brief and the one relevant flow.
 
 ## Step 2: Research the live world
 
@@ -152,6 +193,27 @@ Only create new primitives when:
 
 After reading code, create concrete artifacts. **No discussion without artifacts.**
 
+Read `skills/artifacts/references/diagram-conventions.md` before drawing. Choose the
+view by the question: product overview for the end-to-end concept; user-flow or
+swimlane for actions and handoffs; C4 for system structure; deployment view for
+hosts and trust boundaries; UML sequence for message ordering; state machine for
+lifecycle; ER for data relationships. Render the chosen notation, not a fenced
+text sketch. Do not force every plan to contain every kind of diagram.
+
+Use recognizable, consistently styled SVG icons **with text labels** for people,
+clients, services, and outputs. Use official provider icons when depicting actual
+provider services; embed them for offline viewing. Shapes and arrows carry meaning:
+decisions have labeled branches, storage is distinct from compute, boundaries name
+their ownership, and links say what flows and how. Color has a consistent role and
+a legend, reinforced by labels or line styles. Rectangles remain correct for many
+components; replacing every box with an icon is not technical accuracy.
+
+Name real roles precisely: client, API service, queue, worker, database, object
+store, process, container, VM, control plane, data plane. Use these only when the
+code supports them. A C4 container is not necessarily a Docker container. Separate
+current evidence from proposed behavior, and never imply isolation, durability,
+ordering, or synchronous execution merely by drawing a shape or arrow.
+
 ### For UI Changes — User Flow + a REAL Mockup REQUIRED
 
 First, show the user flow as a **rendered figure** — a hand-authored inline-SVG
@@ -186,25 +248,22 @@ Errors:
   400: { "error": "weak_password", "message": "Password must be 8+ chars" }
 ```
 
-### For State Changes — State Diagram REQUIRED
+### For State Changes — Rendered State Machine REQUIRED
 
-```
-[Guest] --register--> [Unverified] --verify_email--> [Active]
-                           |                            |
-                           v                            v
-                    [Expired Link]               [Suspended]
-```
+Draw named states and directed transitions labeled with trigger and guard; show
+initial/final states where applicable and recovery from failure. For example,
+registration may transition Unverified → Active on `verify token [valid]` and
+Unverified → Link expired on `timeout`; resending a token returns to Unverified.
+Render these states and transitions with the notation reference, not ASCII.
 
-### For Data Flow — Sequence Diagram REQUIRED
+### For Message Ordering — Rendered Sequence Diagram REQUIRED
 
-```
-User -> Frontend: click submit
-Frontend -> API: POST /register
-API -> DB: insert user
-API -> Email: send verification
-API -> Frontend: 201 Created
-Frontend -> User: show success
-```
+Draw participant lifelines and ordered messages, distinguishing synchronous calls,
+asynchronous messages, and replies. For example: client submits registration to
+API, API inserts the user, API enqueues verification, and a worker sends the email.
+Show the actual order and failure behavior supported by the design; do not imply
+email delivery completed just because an enqueue succeeded. Pure data movement
+without timing uses a data-flow diagram instead.
 
 ### For Multiple Scenarios — Table REQUIRED
 
@@ -321,6 +380,8 @@ bar above go between Intent/Purpose and Proposed Changes.
 
 Inside those sections, the load-bearing content is:
 
+- **Product brief** before implementation: overview figure, goals with verification,
+  non-goals with reasons, journeys and recovery paths, assumptions and open questions.
 - **Code read** as file:line quotes, not paraphrase.
 - **System diagrams** for current and proposed architecture (diagram recipe — modules,
   arrows, layers). Not a decorative SVG.
