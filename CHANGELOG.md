@@ -18,6 +18,32 @@
 
 ### Changed
 
+- **Teach the standalone `secrets` CLI (PHNX-3989).** The credentials engine is
+  extracted from `agents secrets` into its own executable (`secrets`, npm
+  `@phnx-labs/secrets-cli`). Docs and rules now spell every credential verb as
+  `secrets <verb>`: **`skills/secrets/SKILL.md`** (allowed-tools gains
+  `Bash(secrets*)`; remote section rewritten for `--host`/`--hosts` and the new
+  `secrets hosts pin <target>` transfer precondition; state lives under
+  `SECRETS_HOME`, which agents-cli points at `~/.agents` so existing bundles are
+  adopted in place), **`rules/subrules/operational.md`**,
+  **`rules/subrules/tech-stack.md`** (+ regenerated **`rules/AGENTS.md`**),
+  **`README.md`**, **`webhooks/README.md`**, **`skills/routines/SKILL.md`**,
+  **`skills/AGENTS.md`**, **`skills/browser/browser-use.md`** (the denied
+  plaintext-export idiom replaced with `secrets exec … -- …`),
+  **`plugins/fleet/commands/onboard.md`**, **`plugins/fleet/commands/profile.md`**,
+  **`plugins/self/commands/hibernate.md`**, **`plugins/share/skills/share/SKILL.md`**,
+  **`plugins/work/skills/{demo,loop}/SKILL.md`**, and
+  **`plugins/research/skills/product/SKILL.md`**. `agents run … --secrets` and
+  `agents browser profiles create … --secrets` are unchanged.
+- **`hooks/pre-tool-use/secrets-guard.sh`** now denies the plaintext-leak
+  one-liners (`export … --plaintext`, `get <bundle> <KEY>`,
+  `view … --reveal --plaintext`) in **both** spellings — `agents secrets <verb>`
+  and the bare `secrets <verb>` — steering to `secrets exec <bundle> -- <cmd>`
+  (doc + test matrix extended to 59 cases).
+- **`hooks/session-start/03-linear-inject-tasks-context.sh`** and the SessionStart
+  hook guidance (**`hooks/AGENTS.md`**, **`hooks/README.md`**,
+  **`hooks/lib/project-context.sh`**) now forbid the standalone `secrets` CLI as
+  well as `agents secrets`; the hook's test stubs and records both spellings.
 - Refine standing rules and code workflows around authorized outcomes, purposeful visuals,
   and verified delivery. Consolidate `/plan` and `/dispatch` into portable skills; retain
   existing command names and defer tracker commitments until execution. Remove duplicate

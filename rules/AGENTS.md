@@ -144,7 +144,7 @@ Do not add generated-by promotional footers to commits, PRs, or issues.
 
 # Operational Boundaries
 
-Use `agents secrets` for credentials; do not write secrets into configuration
+Use `secrets` for credentials; do not write secrets into configuration
 or leave ambient credentials behind. Prefer existing configuration mechanisms
 over adding environment variables. Follow the repository's install and release
 process; do not replace a user's working tool with a development build.
@@ -205,7 +205,7 @@ before parking (`unattended-verification`). Coordinate owner updates through
 
 Use task-native tools: `tickets` for trackers, `browser` for web interaction,
 `agents computer` for native UI, `agents pty` for interactive terminals,
-`agents teams` for parallel coding, and `agents secrets` for credentials.
+`agents teams` for parallel coding, and `secrets` for credentials.
 Follow the repository's established stack and canonical release process.
 
 Artifacts use the target product's design tokens and self-contained visuals;

@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # Tests for secrets-guard.sh — the PreToolUse guard against the
 # secret-materializing one-liners (RUSH-2774): plaintext bundle export,
-# bundle-key get, and the non-TTY view --reveal --plaintext escape.
+# bundle-key get, and the non-TTY view --reveal --plaintext escape. Covers BOTH
+# spellings during the standalone-CLI transition (PHNX-3989): the embedded
+# `agents secrets <verb>` and the extracted standalone `secrets <verb>`.
 #
 # Hermetic: every case builds its own JSON payload and feeds it to the guard
 # over stdin; the "fail closed" case runs the guard with a sandboxed PATH that
@@ -179,6 +181,55 @@ check_allow "unrelated command containing the word secrets" \
   "grep -rn 'secrets export' docs/"
 check_allow "secrets list" \
   "agents secrets list"
+
+# --- standalone `secrets` CLI spelling (PHNX-3989) --------------------------
+# The engine now ships as the standalone `secrets` executable; the guard must
+# deny the SAME leaks and allow the SAME paved paths for the bare spelling too.
+check_deny "bare-cli plaintext export" \
+  "secrets export npmjs.com --plaintext" \
+  "secrets.export-plaintext"
+check_deny "bare-cli eval-export idiom" \
+  'eval "$(secrets export hetzner.com --plaintext 2>/dev/null)"; crabbox list' \
+  "secrets.export-plaintext"
+check_deny "bare-cli plaintext export piped" \
+  "secrets export npmjs.com --plaintext | grep NPM_TOKEN | cut -d= -f2-" \
+  "secrets.export-plaintext"
+check_deny "bare-cli sh -c wrapped export" \
+  'sh -c "secrets export prod --plaintext"' \
+  "secrets.export-plaintext"
+check_deny "bare-cli absolute-path export" \
+  "/usr/local/bin/secrets export prod --plaintext" \
+  "secrets.export-plaintext"
+check_deny "bare-cli timeout-wrapped export" \
+  "timeout 5 secrets export prod --plaintext" \
+  "secrets.export-plaintext"
+check_deny "bare-cli bundle-key get" \
+  "secrets get npmjs.com NPM_TOKEN" \
+  "secrets.get-bundle-key"
+check_deny "bare-cli bundle-key get in a capture" \
+  'TOKEN="$(secrets get npmjs.com NPM_TOKEN)"' \
+  "secrets.get-bundle-key"
+check_deny "bare-cli view reveal plaintext escape" \
+  "secrets view r2.backups --reveal --plaintext" \
+  "secrets.view-reveal-plaintext"
+check_allow "bare-cli export push to host" \
+  "secrets export apple.com --host mac-mini --remote-backend file"
+check_allow "bare-cli export to encrypted file" \
+  "secrets export prod --to-file prod.enc"
+check_allow "bare-cli paved road: exec injection" \
+  "secrets exec hetzner.com -- crabbox list"
+check_allow "bare-cli exec printenv capture" \
+  'NPM_TOKEN="$(secrets exec npmjs.com -- printenv NPM_TOKEN)"'
+check_allow "bare-cli raw-item get (one arg)" \
+  "secrets get some-raw-item"
+check_allow "bare-cli masked view" \
+  "secrets view prod"
+check_allow "bare-cli view --reveal without the escape" \
+  "secrets view prod --reveal"
+check_allow "bare-cli secrets list" \
+  "secrets list"
+check_allow "bare-cli hosts pin (transfer precondition)" \
+  "secrets hosts pin mac-mini"
 
 # --- fail-closed: no JSON parser available ----------------------------------
 mkdir -p "$SANDBOX/bin"

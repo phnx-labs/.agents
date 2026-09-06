@@ -169,7 +169,7 @@ this for all three consumers.
 
 ## SessionStart specifics
 
-- Never hang, never Touch ID, never `agents secrets`.
+- Never hang, never Touch ID, never `agents secrets` or bare `secrets`.
 - Prefer short timeouts; long work detaches (`setsid` + background) or uses `cache:`.
 - Empty stdout unless you intentionally inject context.
 

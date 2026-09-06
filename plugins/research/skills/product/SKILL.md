@@ -68,7 +68,7 @@ Stage these as the **claim column** for §5. A claim with no source is dropped, 
 
 You are not limited to reading the landing page. Get **inside** the product:
 
-- **Credential exists** in `agents secrets` → sign in and drive the real account.
+- **Credential exists** in `secrets` → sign in and drive the real account.
 - **No credential** → default to a **free/trial signup** only if the owner's run policy allows it
   (this creates a real third-party account — an outward-facing act; honor `--signup ask|auto|creds-only`,
   default **creds-only**: sign in if we have creds, else drive the public surface + docs and **flag the
@@ -76,7 +76,7 @@ You are not limited to reading the landing page. Get **inside** the product:
 - **CLI/installable product** → install it for real on a fleet box and run it end-to-end
   (`agents run` / a worker), quoting actual output — the eve exploration did this part right.
 - Drive with **`agents browser`** (web) or **`agents computer`** (native desktop, element mode),
-  signed in. If a step needs a secret, inject it from `agents secrets` — don't stop.
+  signed in. If a step needs a secret, inject it from `secrets` — don't stop.
 
 ## 4. Drive every journey — screenshot each step, record the headline flow
 

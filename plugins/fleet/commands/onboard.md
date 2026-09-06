@@ -50,7 +50,7 @@ only through the sanctioned paths, and only with the user's explicit OK:
   (safe to hold and sync with `agents accounts sync`). (Confirm the current verb via
   `--help` — there is no bare `agents login`.)
 - **Fleet SSH key** (the one shared Ed25519 that unlocks git + node-to-node mesh) →
-  installed from its `agents secrets` bundle, **with explicit authorization** each time.
+  installed from its `secrets` bundle, **with explicit authorization** each time.
   It is a private key; treat distributing it as the sensitive act it is.
 
 Only after you have genuinely tried to mint it yourself (see **Minting agent auth
@@ -64,7 +64,7 @@ even then, never improvise a credential-file copy.
 
 Run on the machine you're on (a known-good node): `agents view`, `agents inspect user`
 and `agents inspect system`, `agents repos list`, `agents devices list`, `agents
-accounts list`, `agents secrets list`. Note: which agent CLIs are installed, which
+accounts list`, `secrets list`. Note: which agent CLIs are installed, which
 repos are registered (system + user + extras), which accounts and auth model are in
 use, and that the shared fleet SSH key + the non-interactive PATH shim are present.
 That's the parity target.
@@ -87,7 +87,7 @@ so and stop.
    install) for each agent the fleet runs (claude, codex, …).
 4. **Repos** — register + clone the DotAgent repos: `agents repos add` for each (and/or
    `agents repo pull system` for the system repo). Match the reference's repo set.
-5. **Fleet SSH key** — install the shared Ed25519 from its `agents secrets` bundle so
+5. **Fleet SSH key** — install the shared Ed25519 from its `secrets` bundle so
    git and node-to-node SSH work (explicit auth — see the hard line).
 6. **Non-interactive PATH** — ensure agents-cli resolves in a *non-login* shell (fleet
    tooling like `agents sessions`/`fleet:sync` uses `bash -lc` but a bare box may lack
@@ -244,7 +244,7 @@ changing that label.
    ```
 
 4. **Store it as a named provider account** — not in any shared bundle. One account
-   is one `agents secrets` bundle with `policy: never`, so agent launches read it
+   is one `secrets` bundle with `policy: never`, so agent launches read it
    without Touch ID on any OS. Pick a name that identifies the account (e.g. the
    email slug):
    ```
@@ -254,7 +254,7 @@ changing that label.
    ```
    Enter the setup token at the command's secret prompt. Do not put it in an
    environment variable, command argument, or shell history.
-   If you already stored the token in an intermediate bundle with `agents secrets add`,
+   If you already stored the token in an intermediate bundle with `secrets add`,
    import it instead of re-entering:
    ```
    agents accounts add "$ACCOUNT_NAME" \
