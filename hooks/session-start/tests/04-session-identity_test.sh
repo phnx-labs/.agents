@@ -30,6 +30,18 @@ SELF=$$
 REG_FILE="$REG/$SELF.json"
 META_FILE="$SESS/$SELF.json"
 mkdir -p "$REG" "$SESS"
+# The launcher/daemon publishes the kernel namespace before PID-keyed writes.
+# Use the real namespace, never substitute process inspection or hook tools.
+python3 - <<'VIEW'
+import json, os, sys
+if sys.platform == "linux":
+    with open("/proc/sys/kernel/random/boot_id") as f:
+        boot = f.read().strip()
+    with open(os.path.expanduser("~/.agents/.cache/terminals/process-view.json"), "w") as f:
+        with open("/proc/1/stat") as init:
+            init_start_ticks = init.read().rsplit(")", 1)[1].split()[19]
+        json.dump({"bootId": boot, "pidNamespace": os.readlink("/proc/self/ns/pid"), "initStartTicks": init_start_ticks}, f)
+VIEW
 
 run()    { bash "$HOOK"; }   # $HOME is exported, so the hook uses the sandbox
 fail=0
@@ -50,7 +62,7 @@ check "metadata cwd recorded"            "$(metafld cwd)"                     "/
 # --- Job 2: registry enrichment (ported from 08 test) ---------------------
 # T1: stdin session_id enriches the launcher entry; launcher fields WIN.
 # terminalId + launchId must survive — Factory / --active join keys (RUSH-2192).
-seed '{"pid":'"$SELF"',"agent":"codex","cwd":"/orig","tmuxPane":"%9","terminalId":"CX-tab-1","launchId":"LID-spawn-1","actor":"muqsit@example.com","initiatedBy":"human"}'
+seed '{"pid":'"$SELF"',"agent":"codex","cwd":"/orig","tmuxPane":"%9","terminalId":"CX-tab-1","launchId":"LID-spawn-1","actor":"muqsit@example.com","initiatedBy":"human","processIdentity":{"startTicks":"123","bootId":"launch-boot","pidNamespace":"launch-namespace"}}'
 echo '{"session_id":"sid-stdin","cwd":"/ignored"}' | bash "$HOOK" >/dev/null
 check "stdin session_id recorded"         "$(regfld sessionId)" "sid-stdin"
 check "launcher agent preserved on merge" "$(regfld agent)"     "codex"
@@ -59,6 +71,7 @@ check "launcher terminalId preserved"     "$(regfld terminalId)" "CX-tab-1"
 check "launcher launchId preserved"       "$(regfld launchId)"   "LID-spawn-1"
 check "launcher actor preserved"          "$(regfld actor)"      "muqsit@example.com"
 check "launcher initiatedBy preserved"    "$(regfld initiatedBy)" "human"
+check "launcher process identity preserved" "$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1]))["processIdentity"]["startTicks"])' "$REG_FILE")" "123"
 
 # T2: Grok delivers the id only via env.
 seed '{"pid":'"$SELF"',"agent":"grok","terminalId":"GK-tab-9","launchId":"LID-grok"}'
