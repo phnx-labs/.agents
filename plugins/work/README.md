@@ -21,7 +21,7 @@ the fleet holds browser + computer + secrets.
 | `work:loop` | Orchestrator for overnight / multi-item drain. Composes engineering patterns from `code:loop`, including its merge-on-green completion. Its `triage` mode is the board-wide keep-and-schedule-or-cancel decision pass. |
 | `work:resume` | Re-enter a project: identify it from the CWD, reconstruct its in-flight work read-only, then offload each not-progressing item to a worker (composes `work:loop`'s worker-spawn path, scoped to the one project). The orchestrating session only reconstructs + monitors — it never becomes the compute node, since it may be on the personal laptop. Reached via `/work:resume` or the top-level `/resume` alias. |
 | `work:demo` | The post-ship demonstration ritual — seven steps from recovering intent to delivering an analyzed report. Reached via `/work:demo` or the top-level `/demo` alias. |
-| (dispatch is command-first today) | One-item path in `commands/dispatch.md`. |
+| `work:dispatch` | Portable one-task workflow; shared by `/dispatch` and `/work:dispatch`. Discover existing work, commit tracking at execution, choose an executor, and verify delivery. |
 
 ## How the pieces fit
 

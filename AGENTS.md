@@ -138,18 +138,13 @@ reaches for beat a long menu nobody remembers.
   place by being a primitive *across* those domains, not a code-only convenience. Prefer the
   general verb (`tickets` works on any tracker; `loop` drains any kind of work; `blame`
   traces any regression; `work:*` covers any unit of work) over one narrow command per case.
-- **General-purpose, yet concrete enough for a weak model.** Two opposite failure modes.
-  Too narrow → the bloat we trim. Too vague → a prompt only a frontier model can interpret,
-  which silently fails on the cheaper/smaller models the fleet also runs. Aim for the
-  middle: one command per fundamental operation, written as **explicit, ordered steps** with
-  the exact commands to run, the expectation to check, and the failure to avoid named
-  outright. The bar is that an agent on a *weak* model can follow it and still land the
-  result — if it only works because a strong model filled in the unstated, it is
-  underspecified. Write for the weakest model that must run it, not the strongest.
+- **Clear expectations, proportional detail.** State the outcome, scope, evidence,
+  and boundaries an agent must satisfy. Reserve exact commands and ordered procedures
+  for non-obvious platform mechanics and place them in on-demand references. Refine the
+  nearest existing instruction instead of repeating it or adding a narrow variant.
 
-Before you add anything here, answer three questions: **Is this a fundamental operation, or a
-variant of one that exists? Does it generalize past code? Could a weak model execute it from
-the text alone?** If any answer is no, extend, generalize, or rewrite — don't add.
+Before adding a capability, establish that it is a distinct fundamental operation
+and that existing commands or skills cannot express it clearly.
 
 ## Common mistakes in this repo — check yourself against these first
 

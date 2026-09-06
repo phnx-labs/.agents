@@ -57,8 +57,8 @@ Rules to follow when writing one:
 - **State each thing once.** `core-hard-lines` and `workflow-proactive` were removed for
   restating the same seven themes (one of them written eight separate times), which trains
   skimming and buries the load-bearing rule. Cite `F1`–`F5` instead of re-deriving them.
-- **Ground it.** A rule earns its place with the concrete failure it prevents, quoted. Cost
-  in hours, a verbatim bad output, a real incident.
+- **Ground the change.** Record motivating evidence in the PR. Keep the standing rule
+  focused on the outcome and boundary, without repeating incident histories.
 - **A rule with a guard hook ships the guard, its `hooks.yaml`, and its test together.** A
   rule that only asks nicely is a suggestion.
 - **Every line costs context on every agent, on every machine, forever.** Deleting a

@@ -1,8 +1,6 @@
 # Strict Testing
 
-- Test file = source file, 1:1 (`parser.ts` → `parser.test.ts`). Tests live in
-  the codebase, fixtures in `testdata/` near source — never `/tmp`.
-- **No mocking.** Real services only; exercise the actual critical path.
-- Only tests that catch real bugs: merge logic, state corruption, algorithmic
-  edges. If a test would pass with a broken implementation, it's ceremony.
-- Unit tests are necessary, not sufficient — verify end-to-end (F3).
+Keep meaningful tests beside their source and fixtures in nearby `testdata/`.
+No mocking: exercise real services and the actual critical path. Keep tests
+that catch distinct bugs or protect behavior; scale verification to the change.
+Unit coverage alone is not delivery proof: verify the real flow (F3).

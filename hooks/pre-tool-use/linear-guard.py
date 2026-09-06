@@ -96,12 +96,9 @@ NUDGE = (
     "before you file: during planning, search existing PRs/tickets and keep draft "
     "tasks local. Create missing tracker work only once the approach is settled "
     "and execution is starting, unless the user explicitly requested a ticket. "
-    "If this can be fixed now, fix it now; if it's small but out "
-    "of your lane here, dispatch an agent to fix it (worktree + full context, then "
-    "monitor — see the `dispatch` skill) instead of filing. Open an issue ONLY "
-    "when it genuinely needs deep investigation you are starting now or substantive "
-    "execution you are committing to deliver. Unsettled design scope alone is not "
-    "a reason to file. A small, clear, fixable thing filed as a ticket is bloat. "
+    "Reuse existing tracking and stay within authorized scope. Record incidental "
+    "findings in the owner update; do not automatically file or dispatch them. "
+    "Create only missing substantive work you are committing to deliver. "
     "(advisory — the command still runs.)"
 )
 

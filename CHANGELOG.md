@@ -18,8 +18,14 @@
 
 ### Changed
 
+- Refine standing rules and code workflows around authorized outcomes, purposeful visuals,
+  and verified delivery. Consolidate `/plan` and `/dispatch` into portable skills; retain
+  existing command names and defer tracker commitments until execution. Remove duplicate
+  review policy, incidental-ticket mandates, and whole-transcript upload obligations.
+  Preserve Git, credential, review, and focus protections.
+
 - `work` plugin no longer carries research; its README, `plugin.json`, and the
-  `/work:dispatch` routing table now point research work at the `research` plugin
+  `work:dispatch` skill routing table now point research work at the `research` plugin
   (`/research` for a question, `/research:product` for hands-on exploration).
 - Planning now begins with a visual product requirements brief: overview diagram,
   goals and success checks, non-goals with reasons, journeys and recovery paths.

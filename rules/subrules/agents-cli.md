@@ -1,8 +1,7 @@
 # agents-cli
 
-- **Agent home dirs are symlinks.** `~/.claude/`, `~/.codex/`, etc. point into
-  `~/.agents/versions/{agent}/{version}/home/`. Source of truth for shared
-  config is `~/.agents/` — go there to inspect or modify.
-- **Recall prior work with `agents sessions`** — search by topic/repo before
-  starting.
-- **Check active agents before spawning new ones:** `agents sessions --active`.
+Agent homes such as `~/.claude/` and `~/.codex/` are managed links into version
+homes. Shared configuration belongs in `~/.agents/`, not a generated home.
+
+Use `agents sessions` to recover relevant prior work and check active ownership
+before spawning or taking over an existing task.

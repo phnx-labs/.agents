@@ -1,44 +1,20 @@
-# Operational Guardrails
+# Operational Boundaries
 
-- **Ask about scope; decide about implementation.** Unclear what the user wants
-  → ask. Unclear how to build it → decide, state the reason in one line, keep
-  going.
-- **Direction received = execute.** When the user gives a direction, the next
-  output is the action, not a rebuttal. Disagree in one line while doing it
-  ("doing X; note: Y risks Z") — or, only for an irreversible step, one
-  question with concrete options. Multi-paragraph pushback, restated
-  justifications, and "I will not …" essays are defects. If the direction is
-  impossible, prove it with one quoted probe, then name the single unblock.
-- **Rhythm: ACT → VERIFY → SHOW → CONTINUE.** See a problem, fix it — don't ask
-  permission for obvious fixes.
-- **Design before code — for *new* design only** (a UI flow, architecture, a
-  pipeline shape). Follow-ups and edits go straight to code.
-- **Waiting: echo/sleep only, never `Monitor` / `ScheduleWakeup` / `until`
-  loops** (they fail silently). Short (<2 min): `cmd && sleep N && check &&
-  echo "result: …"`. Long: `run_in_background: true` with a trailing
-  finish-echo. Never say "I'll check back later".
-- **No emojis** in code, comments, commits, or output — unless asked.
-- **No credentials in env vars or config** — use `agents secrets`. Env vars are
-  not a secure or configuration boundary: anything in them is visible ambient
-  state. Configuration goes in real config files (`agents.yaml`, project
-  config), and don't mint a new env var where a config entry, CLI flag, or
-  function argument would do.
-- **No locally built CLIs** — install globally.
-- **No background shells left running** without an explicit finish signal.
-- **No toasts.** Silent success, inline errors.
-- **`/tmp` is banned for anything you produce.** The user comes back to agent
-  output later, and `/tmp` gets wiped. Everything lands in the repo's
-  `.agents/` workspace: `.agents/scratch/` for working files, screenshots, and
-  one-shot scripts; `.agents/artifacts/yyyy-mm-dd/` for durable outputs (plans,
-  reports, rendered HTML). Outside a repo, use `~/.agents/scratch/`.
-- **No unsolicited .md files.** (Updating existing docs + CHANGELOG for a real
-  user-visible change is required, not this — see F3.)
-- **Permissions:** add permanent agent permissions to settings once; don't
-  re-prompt the same action across sessions.
-- **Images:** include the full file path so the user can click to preview.
-- **Handing off a command the user must run**, in order: (1) clipboard
-  (`pbcopy` / `xclip -selection clipboard` / `wl-copy`) — quote what you copied;
-  (2) a one-shot script in `.agents/scratch/`, `chmod +x`, point them at it; (3)
-  inline only as a last resort. Multi-line commands always go to a script.
-- **Don't:** start/kill dev servers without asking; add unrequested
-  backwards-compat shims; reach for `find` when `fd` is available.
+Use `agents secrets` for credentials; do not write secrets into configuration
+or leave ambient credentials behind. Prefer existing configuration mechanisms
+over adding environment variables. Follow the repository's install and release
+process; do not replace a user's working tool with a development build.
+
+Preserve the user's active environment: do not start or kill their dev servers
+without authorization, and leave no background shell without a bounded purpose
+and explicit completion signal. Obtain permission before adding permanent
+permissions; reuse authorization already given.
+
+Keep scratch under `.agents/scratch/` (or `~/.agents/scratch/` outside a repo).
+Durable output belongs under `~/.agents/artifacts/yyyy-mm-dd/<slug>/`; artifacts
+committed with a feature belong in its worktree under the repository's policy.
+Do not create unsolicited documents. Make requested outputs easy to locate.
+
+No emojis unless requested. For a human-only command, prepare the smallest
+usable handoff, using verified clipboard contents or a script when that reduces
+work for the user.

@@ -20,7 +20,7 @@ commands are often thin wrappers that only invoke a skill (harness-friendly).
 
 | Command | What it does |
 |---|---|
-| [`/plan`](./plan.md) | Plan like a staff engineer — live research, system diagrams, alternatives considered, rendered as a visual HTML artifact opened on your screen (subsumes `/visualize`) |
+| [`/plan`](./plan.md) | Visual product brief, goals/non-goals, accurate diagrams, and a reviewable change proposal via `swarm:plan` |
 | [`/swarm`](./swarm.md) | Front door to the `swarm` plugin — fan work across parallel agents (`run` by default; or `plan` / `spec` / `debug`) |
 | [`/debug`](./debug.md) | Trace the data path, attribute regressions to the responsible agent/session and explain how they slipped, then have independent agents confirm the root cause (routes to `swarm:debug`) |
 | [`/blame`](./blame.md) | Trace a regression — a feature that worked and silently broke — to the culprit change, the removed/skipped test that let it through, and the agent/session behind it. Read-only forensics, no fix |
@@ -71,16 +71,16 @@ window-reopening `sessions:restore` was removed.
 
 | Command | What it does |
 |---|---|
-| [`/dispatch`](./dispatch.md) | Take one task from idea to a working agent — understand the repo, spec fast, debug-skill for bugs, quick plan, track the task (claim first, create if missing), dispatch |
+| [`/dispatch`](./dispatch.md) | Dispatch one task through `work:dispatch`: discover existing work, clarify scope, commit tracking at execution, and verify delivery |
 | [`/teams`](./teams.md) | Spawn parallel agents to work on a task together |
 
 The `tickets` skill is the general-purpose primitive (list, claim, comment, close).
 [`/work:loop triage`](../plugins/work/README.md) is a board-wide sweep that forces every open
 item to a real decision — keep-and-schedule-this-cycle or cancel, never Backlog.
-`/dispatch` is the single-task path from idea to a running agent.
+`/dispatch` is the single-task path from idea through verified delivery.
 [`/work:loop`](../plugins/work/README.md) is the unattended **queue** drain across projects
 and kinds (not engineering-only). Easy to confuse: `/work:loop triage` decides the board
-without touching code; `/dispatch` always ends with an agent building something;
+without touching code; `/dispatch` delegates one authorized task;
 `/work:loop` keeps going unattended until the clear queue is empty.
 
 ## Present
