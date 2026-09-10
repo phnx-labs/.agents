@@ -91,7 +91,7 @@ hooks:
     events:
       - SessionStart
     script: session-start/07-inject-device-topology.sh
-    timeout: 5
+    timeout: 10
     # Measured 2255ms — probes every fleet device for load/memory. Safe to cache: the
     # output has no session or cwd dependency, so a shared entry is the correct answer for
     # every caller. Keyed global for that reason.
