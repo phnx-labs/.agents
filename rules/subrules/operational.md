@@ -6,7 +6,8 @@ environment variables. Follow the repository's install and release process;
 never replace a working tool with a development build. Preserve the user's
 running services and desktop: no starting or killing their processes without
 authorization, and no background work without a bounded purpose and a verified
-completion or cleanup. Ask once before adding permanent permissions.
+completion or cleanup. Reuse authorization already given; ask once before
+adding permanent permissions.
 
 Use the owning tool: `tickets` for trackers, `browser` for the web,
 `agents computer` for native UI, `agents pty` for interactive terminals,
