@@ -75,6 +75,22 @@ The kind changes the content contract, not the rendering pipeline.
    Read [references/authoring.md](references/authoring.md) before adding HTML or
    SVG; follow its diagram recipe.
 
+   Present information visually. Humans read a chart, a figure, or a set of
+   tiles in a glance and skim past a grid. Values a reader compares go in an
+   interactive chart (a fenced `bar-chart`) or an inline SVG (timeline,
+   matrix, flow); single numbers in `artifact-stat` tiles; records with
+   several fields in an `artifact-grid` of panels; relationships in a diagram;
+   file evidence in an `excerpt` fence, which renders the cited lines with the
+   range marked and the path linked. A long enumeration is a figure that groups
+   it (a matrix, a timeline, a treemap) or an appendix; turning a 50-row table
+   into a 50-item list is the same wall in a different shape. A table is the
+   last resort, only when no visual can carry the values, never with sentences
+   in cells, and never twenty rows long. `artifacts check` warns on every table
+   and on every bare `file:line`; only the artifact critic (step 7) can accept
+   a table. Every file, ticket, PR, or URL the text names is a link the reader
+   can open: cite a file as a link to the line at the commit you read, and the
+   renderer turns it into a chip.
+
 4. Preserve the target product's visual language. Keep an existing `DESIGN.md`.
    If none exists and durable project branding is useful, create one with:
 
@@ -109,7 +125,18 @@ The kind changes the content contract, not the rendering pipeline.
    a tall page with a sticky nav, scroll the target into view, let it settle, and
    confirm the intended element is in the frame before trusting the shot.
 
-7. When the user asks to view it, open it in their DEFAULT browser on the
+7. Before presenting a `kind: plan` or `kind: report`, get a non-author verdict
+   on the presentation. Spawn the `artifact-critic` subagent by name
+   ([subagents/artifact-critic/AGENT.md](../../subagents/artifact-critic/AGENT.md));
+   on a harness without named subagents, hand that definition to an independent
+   `agents run` on another harness. Never review your own artifact from the
+   authoring session. Resolve every BLOCKING finding, re-render, and let the
+   critic record its verdict in the frontmatter as
+   `review: {agent, session, verdict, findings}`. A plan is not presentable
+   without `verdict: pass`; the plan-presentation hook checks for it. Only this
+   block can answer a table warning.
+
+8. When the user asks to view it, open it in their DEFAULT browser on the
    interactive machine — the browser they actually use, which every user has and
    which needs no fleet browser profile. On the machine the user sits at, that is
    just `open "$SOURCE_HTML"` (macOS) / `xdg-open "$SOURCE_HTML"` (Linux). If the
@@ -140,7 +167,7 @@ The kind changes the content contract, not the rendering pipeline.
    If no interactive host is reachable, retain the durable Markdown and HTML and
    report their exact paths.
 
-8. Share only on explicit request:
+9. Share only on explicit request:
 
    ```bash
    artifacts share "$SOURCE" --expire 30d
@@ -202,7 +229,7 @@ the plan must actually contain:
 - a proposed-architecture system diagram (modules, arrows, layers — follow the
   diagram recipe in [references/authoring.md](references/authoring.md))
 - load-bearing choices with options / implications / winner
-- independent-panel findings (ADOPTED / REJECTED with `file:line`) when a panel ran
+- independent-panel findings (ADOPTED / REJECTED, linked to `file:line`) when a panel ran
 - external URLs for outside-world claims
 
 A one-file bugfix skips this (one line for alternatives is enough). Do not
@@ -222,7 +249,7 @@ Floor headings, in this relative order:
 5. `## Public Interface` — commands, flags, APIs, or visible behavior.
 6. `## Plan` — render the task checklist.
 7. `## Validation` — commands and end-to-end proof.
-8. `## Risks` — concrete corner cases with `file:line` (misconfig, leaked
+8. `## Risks` — concrete corner cases linked to `file:line` (misconfig, leaked
    resource, boot path that dies), not "this might be hard".
 9. `## Tracking` — linked tickets and PRs.
 
@@ -258,8 +285,9 @@ current/proposed behavior figure). Live captures of the current product or
 competitors, and a drawing inside every architecture section, are how the
 plan becomes reviewable.
 
-Also include at least one Markdown table, one fenced code block, and one
-`artifact-callout`. Treat warnings about these as work to fix before presenting.
+Also include one fenced code block and one `artifact-callout`. Treat warnings
+about these as work to fix before presenting. A table is not a floor and never
+was a substitute for a figure; see the visual-first rule in step 3.
 For multi-step plans, create the local harness task checklist before presenting;
 this does not require creating or claiming tracker tickets during planning. The
 Stop/plan-exit guard checks for it separately from the render.
@@ -271,8 +299,8 @@ title, and a short single-takeaway summary. Choose the page shape from the
 content: infographic, explainer, status dashboard, data story, or comparison.
 
 Make one hero figure the visual spine of the page. A table alone does not count.
-Use `## Story`, optional `## Data`, and `## Figure`, with the hero figure under
-`## Figure`. Give it a clear reading order, labeled connectors or axes, a
+Use `## Story`, optional `## Evidence`, and `## Figure`, with the hero figure under
+`## Figure`. Evidence is excerpt cards, captures, and charts, not a grid of rows. Give it a clear reading order, labeled connectors or axes, a
 caption, and — when color or line style carries meaning — direct labels on the
 marks where the figure stays clean, or a legend when direct labels would clutter.
 
@@ -315,7 +343,7 @@ paragraph — so a recommendation carried by prose alone mostly does not land.
   report makes.
 - **A structured text block is a visual in disguise.** A paragraph that carries a
   comparison, a sequence, a set of options, or a cause and effect is faster to grasp as a
-  table, a small diagram, a timeline, or a callout with the one takeaway pulled out. When
+  chart, a small diagram, a timeline, or a callout with the one takeaway pulled out. When
   you catch yourself writing several sentences of structure, render the structure instead
   and keep the prose to the point it makes.
 - **Digestible, not a landing page.** The goal is accessible and quickly scannable — not
@@ -352,5 +380,8 @@ paragraph — so a recommendation carried by prose alone mostly does not land.
   timeframe.
 - The rendered HTML is self-contained and branded in light and dark themes.
 - The output has been inspected headlessly at desktop and mobile widths.
+- A plan or report carries `review:` with `verdict: pass` from the artifact
+  critic, a session that is not the author's, and every table it still holds
+  is one the critic accepted.
 - No user browser was opened unless requested.
 - Report the source path, HTML path, and any accepted warnings or share URL.
