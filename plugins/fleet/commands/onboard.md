@@ -82,7 +82,9 @@ so and stop.
    platform; on a bare box that may be a one-line installer or `npm i -g`). Everything
    below needs it.
 2. **Bootstrap** — prefer `agents setup` on a bare box (it walks agent install + config
-   sync). Otherwise proceed with the primitives:
+   sync). Otherwise proceed with the primitives. After the system repo is on the box,
+   install host CLIs with `agents clis install` (at least `secrets` — agents-cli no
+   longer ships that engine; PHNX-3989). Confirm with `secrets --version`.
 3. **Agent CLIs** — `agents add <agent>` (or `agents import` to adopt an existing global
    install) for each agent the fleet runs (claude, codex, …).
 4. **Repos** — register + clone the DotAgent repos: `agents repos add` for each (and/or
