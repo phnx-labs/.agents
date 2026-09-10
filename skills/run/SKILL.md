@@ -132,11 +132,10 @@ Controls which installed version/account gets the work.
 agents run opencode "..." --strategy balanced
 agents run codex "..." -b                  # shortcut for --strategy balanced
 
-# Select any named provider or native account
+# Select a named account (`#name` is the taught selector; `--account` is the flag form)
+agents run claude#work "..."
 agents run claude "..." --account work
-
-# Attach the account used when --account is omitted
-agents accounts attach work claude
+agents accounts default claude work        # used when #name / --account is omitted
 ```
 
 Strategy is ignored when `@version` is pinned, a profile is used, or `--fallback` is set.
@@ -303,14 +302,16 @@ widens the pool past worker marks while still excluding personal devices.
 
 For everything else, run `agents run --help`.
 
-`--account <name>` selects any named provider or native account and overrides
-an `agents accounts attach` binding. Provider accounts are independent of
-agent versions and may be used by multiple compatible harnesses; the execution
-device resolves their secret locally and fails before spawn when it is absent.
-Native accounts retain their declared version or device scope and validate the
-harness-owned login before spawn without injecting a secret. Copy a provider bundle explicitly with
-`agents accounts sync <name> <device>`. Harness-native signed-in identities may
-be named with `agents accounts name <agent@version> <name>` and bound with
-`agents accounts attach <name> <target>`; their auth material remains in the
-harness home and is never copied.
+`agents run <harness>#<name>` (or `--account <name>`) selects any named
+provider or native account. Provider accounts are independent of the managed
+install and may be used by multiple compatible harnesses; the execution device
+resolves their secret locally and fails before spawn when it is absent. Native
+accounts are credential slots of the one managed install — add them with
+`agents accounts add <harness> [name]` on a headed device, re-auth with
+`accounts login <harness>#<name>`, and set the omitted-selector default with
+`accounts default <harness> [name]`. Native OAuth stays in that slot on the
+device that minted it and is never copied; workers receive only the durable
+credential the daemon syncs. Copy a provider bundle explicitly with
+`agents accounts sync <name> <device>`. The hidden `name` / `attach` /
+`connect` verbs still work this release and print their replacement.
 Accounts do not apply to cloud or lease placement.

@@ -48,6 +48,12 @@
   review policy, incidental-ticket mandates, and whole-transcript upload obligations.
   Preserve Git, credential, review, and focus protections.
 
+- **`/fleet:onboard` uses the real `devices login` flags (PHNX-3940).** Token-less
+  per-box login is `agents devices login --agents <harness> --devices <target>
+  --interactive`, not `agents fleet login <harness> --device <target>`. Worker
+  credential check is `agents devices accounts --agents <harness> --device <target>`,
+  not `accounts list --device`. Companion: [phnx-labs/agi-cli#3522](https://github.com/phnx-labs/agi-cli/pull/3522).
+
 - `work` plugin no longer carries research; its README, `plugin.json`, and the
   `work:dispatch` skill routing table now point research work at the `research` plugin
   (`/research` for a question, `/research:product` for hands-on exploration).
