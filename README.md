@@ -31,8 +31,8 @@
 A **DotAgents repo**: a directory of agent config that `agents-cli` reads. This one is the
 **system layer** — the baseline that lands at `~/.agents/.system/` on every machine.
 
-**Current cut: [`v0.2.0`](https://github.com/phnx-labs/.agents-system/releases/tag/v0.2.0)**
-(2026-08-06). See [`CHANGELOG.md`](./CHANGELOG.md). There is no separate npm package for this
+**Current cut: [`v0.2.3`](https://github.com/phnx-labs/.agents-system/releases/tag/v0.2.3)**
+(2026-09-10). See [`CHANGELOG.md`](./CHANGELOG.md). There is no separate npm package for this
 repo: hosts get it by **git pull of this repository** into the system layer.
 
 ```bash
