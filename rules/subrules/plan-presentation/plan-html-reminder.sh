@@ -131,7 +131,13 @@ fi
 # current/proposed behavior figure, with each state identified as capture or
 # mockup. An unrelated architecture SVG cannot satisfy a CLI/UI plan.
 html_ok=0
+html_seen=0
 escalated_internal=0
+# A rendered figure is not enough either: a plan is presented only after a
+# non-author artifact critic reviewed the page and wrote `review:` with
+# `verdict: pass` into the source frontmatter. The author cannot write that
+# block honestly; the critic's session id is in it.
+review_ok=1
 for scan_root in $scan_roots; do
   [ -d "$scan_root" ] || continue
   while IFS= read -r candidate; do
@@ -159,6 +165,16 @@ for scan_root in $scan_roots; do
       surface="web"
       escalated_internal=1
     fi
+    review_candidate=0
+    frontmatter=$(awk '
+      NR == 1 && $0 == "---" { frontmatter=1; next }
+      frontmatter && $0 == "---" { exit }
+      frontmatter { print }
+    ' "$source" 2>/dev/null || true)
+    if printf '%s\n' "$frontmatter" | grep -Eq '^review:[[:space:]]*$' \
+      && printf '%s\n' "$frontmatter" | grep -Eq '^[[:space:]]+verdict:[[:space:]]*["'\'']?pass["'\'']?[[:space:]]*$'; then
+      review_candidate=1
+    fi
     case "$surface" in
       internal)
         if grep -Eqi '<svg\b' "$candidate" 2>/dev/null \
@@ -174,12 +190,28 @@ for scan_root in $scan_roots; do
         fi
         ;;
     esac
-    [ "$html_ok" = 1 ] && break
+    # Prefer a render whose source also carries the critic's verdict; a figure
+    # without one only decides the outcome when no reviewed render exists.
+    if [ "$html_ok" = 1 ]; then
+      if [ "$review_candidate" = 1 ]; then
+        review_ok=1
+        break
+      fi
+      review_ok=0
+      html_ok=0
+      html_seen=1
+    fi
   done <<EOF
 $(find -L "$scan_root" -maxdepth 6 \( -name 'plan-*.html' -o -name '*-plan.html' -o -name 'plan.html' \) -mmin -90 -print 2>/dev/null)
 EOF
   [ "$html_ok" = 1 ] && break
 done
+# A figure-bearing render existed but none carried the verdict: report the
+# missing review, not a missing render.
+if [ "$html_ok" != 1 ] && [ "${html_seen:-0}" = 1 ]; then
+  html_ok=1
+  review_ok=0
+fi
 
 # ---- (B) Checklist check (FAILS OPEN) -----------------------------------------
 # Only enforced for a genuinely multi-step plan, and only when we can read the
@@ -208,7 +240,7 @@ if [ -n "$tp" ] && [ -r "$tp" ]; then
 fi
 
 # ---- decide -------------------------------------------------------------------
-if [ "$html_ok" = 1 ] && [ "$checklist_ok" = 1 ]; then
+if [ "$html_ok" = 1 ] && [ "$checklist_ok" = 1 ] && [ "$review_ok" = 1 ]; then
   exit 0
 fi
 
@@ -238,7 +270,8 @@ fi
     echo "    - user-visible: .artifact-behavior with current + proposed states"
     echo "      and data-evidence=\"capture\" or \"mockup\" on each state"
     echo "    - fenced code blocks for commands/APIs (not only inline \`code\` pills)"
-    echo "    - at least one table (files/risks/validation) and an artifact-callout"
+    echo "    - an artifact-callout; no tables unless the artifact critic accepted one;"
+    echo "      every file:line a link or an excerpt card (artifacts check warns on both)"
     echo "  artifacts check/render now ERROR if a plan has no drawn SVG figure."
     echo "  Inspect without stealing focus:"
     echo "    agents browser start --url file://\$PWD/.agents/artifacts/\$DATE/plan-<slug>.html"
@@ -249,6 +282,19 @@ fi
     echo "    agents ssh <host> 'open /tmp/plan-<slug>.html'"
     echo "  Same layout for any related artifact (visuals, reports): .agents/artifacts/yyyy-mm-dd/<title>.md"
   fi
+  if [ "$html_ok" = 1 ] && [ "$review_ok" != 1 ]; then
+    echo "* Get a non-author verdict on the presentation before presenting."
+    echo "  Spawn the artifact-critic subagent (subagents/artifact-critic/AGENT.md) on the"
+    echo "  rendered HTML; on a harness without named subagents, hand that definition to an"
+    echo "  independent 'agents run' on another harness. Resolve BLOCKING findings, re-render,"
+    echo "  and let the critic write into the plan's frontmatter:"
+    echo "    review:"
+    echo "      agent: artifact-critic"
+    echo "      session: <critic session id>"
+    echo "      verdict: pass"
+    echo "  A plan without that block is not presentable; a hand-written pass with no"
+    echo "  critic session behind it is the same offence as approving your own PR."
+  fi
   if [ "$checklist_ok" != 1 ]; then
     echo "* Create a task checklist for this plan — it has multiple steps."
     echo "  Call TaskCreate for each step (subject + description); the checklist becomes the"
@@ -257,7 +303,7 @@ fi
     echo "  Refresh discovery and claim/create only when execution starts (see conventions)."
   fi
   echo
-  echo "Then present/stop again — this passes once the render exists and (for a"
-  echo "multi-step plan) a checklist was created."
+  echo "Then present/stop again — this passes once the render exists, the critic"
+  echo "recorded verdict: pass, and (for a multi-step plan) a checklist was created."
 } >&2
 exit 2

@@ -41,17 +41,28 @@ HTML
   write_source "$1" internal
 }
 
+# write_source <html> <surface> [pass|fail|none]
+# Default carries the critic's `review:` block with verdict: pass so figure and
+# checklist cases isolate their own gate; the review cases below vary it.
 write_source() {
-  html=$1; surface=$2
+  html=$1; surface=$2; review=${3:-pass}
   source=${html%.html}.md
-  cat > "$source" <<EOF
----
-kind: plan
-surface: $surface
----
-
-## Purpose
-EOF
+  {
+    echo "---"
+    echo "kind: plan"
+    echo "surface: $surface"
+    case "$review" in
+      pass|fail)
+        echo "review:"
+        echo "  agent: artifact-critic"
+        echo "  session: 00000000-0000-0000-0000-000000000000"
+        echo "  verdict: $review"
+        ;;
+    esac
+    echo "---"
+    echo
+    echo "## Purpose"
+  } > "$source"
 }
 
 write_behavior_html() {
@@ -124,6 +135,10 @@ cat > "$SCAN/plan-backend.md" <<'EOF'
 ---
 kind: plan
 surface: internal
+review:
+  agent: artifact-critic
+  session: 00000000-0000-0000-0000-000000000000
+  verdict: pass
 ---
 
 ## Purpose
@@ -137,6 +152,10 @@ write_behavior_html "$SCAN/plan-sneaky2.html"
 cat > "$SCAN/plan-sneaky2.md" <<'EOF'
 ---
 kind: plan
+review:
+  agent: artifact-critic
+  session: 00000000-0000-0000-0000-000000000000
+  verdict: pass
 surface: internal
 ---
 
@@ -147,6 +166,41 @@ Rework the dashboard.
 - src/components/Dashboard.tsx — rebuild the layout
 EOF
 run 0 "internal-declared plan listing .tsx, behavior evidence -> allow" "$EPM"
+
+# --- Part C: the critic's verdict gates presentation ---------------------------
+# A rendered figure is necessary, not sufficient: a plan is presented only after
+# the non-author artifact-critic wrote `review:` with `verdict: pass` into the
+# source frontmatter. Missing block and a failing verdict both block; the block
+# message names artifact-critic as the fix.
+
+# 2h. Fresh figure-bearing HTML, source has NO review block -> BLOCK.
+rm -f "$SCAN"/*.html "$SCAN"/*.md 2>/dev/null || true
+write_figure_html "$SCAN/plan-no-review.html"
+write_source "$SCAN/plan-no-review.html" internal none
+run 2 "figure ok but no critic review block -> block" "$EPM"
+msg=$(printf '%s' "$EPM" | sh "$HOOK" 2>&1 >/dev/null || true)
+if printf '%s' "$msg" | grep -q 'artifact-critic'; then
+  pass=$((pass+1)); echo "ok   — missing review names artifact-critic as the fix"
+else
+  fail=$((fail+1)); echo "FAIL — missing review message does not name artifact-critic"
+fi
+
+# 2i. Same render, verdict: fail -> BLOCK.
+write_source "$SCAN/plan-no-review.html" internal fail
+run 2 "critic verdict: fail -> block" "$EPM"
+
+# 2j. Same render, verdict: pass -> ALLOW.
+write_source "$SCAN/plan-no-review.html" internal pass
+run 0 "critic verdict: pass -> allow" "$EPM"
+
+# 2k. A user-visible plan is gated the same way.
+rm -f "$SCAN"/*.html "$SCAN"/*.md 2>/dev/null || true
+write_behavior_html "$SCAN/plan-cli-review.html"
+write_source "$SCAN/plan-cli-review.html" cli none
+run 2 "user-visible plan without critic review -> block" "$EPM"
+write_source "$SCAN/plan-cli-review.html" cli pass
+run 0 "user-visible plan with critic pass -> allow" "$EPM"
+rm -f "$SCAN"/*.html "$SCAN"/*.md 2>/dev/null || true
 
 # 3. ExitPlanMode with the scratchpad <slug>-plan.html convention (nested) -> ALLOW.
 rm -f "$SCAN"/*.html
