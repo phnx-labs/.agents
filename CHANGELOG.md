@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Session-start browser guidance now reads the configured automation host, profile,
+  viewer, and locally available profiles from the CLI. Human-facing pages use
+  `agents browser show`; browser skills no longer prescribe a browser or host.
+
 ### Removed
 
 - **`skills/browser/electron-use.md` and the browser skill's Electron routing.** Electron
