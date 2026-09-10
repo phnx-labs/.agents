@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.2.3] - 2026-09-10
+
 ### Changed
 
 - **Rules: 19 subrules folded into 11, one topic each; the composed ruleset drops from
