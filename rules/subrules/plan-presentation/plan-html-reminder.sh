@@ -171,8 +171,13 @@ for scan_root in $scan_roots; do
       frontmatter && $0 == "---" { exit }
       frontmatter { print }
     ' "$source" 2>/dev/null || true)
+    # A pass counts only when the critic left its fingerprints: a non-empty
+    # session id and an agent name. A hand-written `verdict: pass` with no
+    # session behind it is the same offence as approving your own PR.
     if printf '%s\n' "$frontmatter" | grep -Eq '^review:[[:space:]]*$' \
-      && printf '%s\n' "$frontmatter" | grep -Eq '^[[:space:]]+verdict:[[:space:]]*["'\'']?pass["'\'']?[[:space:]]*$'; then
+      && printf '%s\n' "$frontmatter" | grep -Eq '^[[:space:]]+verdict:[[:space:]]*["'\'']?pass["'\'']?[[:space:]]*$' \
+      && printf '%s\n' "$frontmatter" | grep -Eq '^[[:space:]]+session:[[:space:]]*["'\'']?[A-Za-z0-9][A-Za-z0-9_.:-]{5,}["'\'']?[[:space:]]*$' \
+      && printf '%s\n' "$frontmatter" | grep -Eq '^[[:space:]]+agent:[[:space:]]*["'\'']?[A-Za-z0-9][A-Za-z0-9_.:/-]*["'\'']?[[:space:]]*$'; then
       review_candidate=1
     fi
     case "$surface" in
