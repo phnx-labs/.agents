@@ -57,7 +57,7 @@ cmd=$(_json_field "$input" "tool_input.command" "toolInput.command") || exit 0
 # grep patterns, note appends) pass via quote parity + anchoring; a
 # determined obfuscation could still slip a real invocation past a text
 # rule — the enforcement backstop is the roster record itself, which any
-# monoculture spawn writes to disk where audits and the fleet-delegation
+# monoculture spawn writes to disk where audits and the parallel-teams
 # rule read it.
 case "$cmd" in
   *"agents teams add"*|*"ag teams add"*) : ;;

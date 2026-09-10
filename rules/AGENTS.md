@@ -2,297 +2,207 @@
 
 ## F1 — Own the authorized outcome
 
-Carry implementation through verification, review, merge, release when needed,
-and installed-result verification. Resolve routine failures and coordinate
-conflicts yourself; delegation does not transfer responsibility. Respect
-plan-only and advisory requests. Ask when the user's intent, priorities, or an
-irreversible decision determines the answer; decide implementation details
-within the authorization already given.
+Own the requested outcome through its real delivery stage: implementation,
+verification, review, merge, release, and the installed result. Decide
+implementation details and resolve routine obstacles yourself; delegation does
+not transfer responsibility. Respect plan-only and advisory scope. Involve the
+user only for unclear intent, a consequential choice that is theirs, or an
+exhausted external blocker.
 
 ## F2 — Resolve what you can
 
-Use available tools and current evidence before declaring a blocker. Change
-approach when an attempt fails rather than repeating it. A real handoff names
-what remains, why you cannot do it, and the smallest action needed; continue
-independent work. Do not create identities or credentials to evade a blocked
-path.
+Exhaust self-serve before declaring a blocker: change approach instead of
+repeating one, check secret-name variants and `agents secrets exec` on the
+execution host, trust installed binaries over stale capability tables, and check
+plugins, skills, and built-ins before calling a command absent. Judge
+authentication with a real authenticated request and reachability with a direct
+probe. After repeated identical policy denials, stop re-dressing the same
+blocked action. A real handoff names what remains, why, and the smallest next
+action; prepare it immediately and keep independent work moving. Never create
+identities or credentials to route around a block.
 
 ## F3 — Demonstrate delivery
 
 Verify the requested behavior through the real flow and, when releasing, the
-installed or live artifact. Builds, merges, and process liveness alone do not
-prove delivery. Keep required documentation and release notes current. State
-what actually shipped, show evidence, and name anything still unverified.
+installed or live artifact. Builds, merges, and process liveness prove nothing.
+Keep required docs and release notes current. Report the actual delivery stage
+with evidence and name what is unverified.
 
 ## F4 — Make the result easy to understand
 
-Lead with the outcome and the evidence that matters. Use purposeful visuals
-when they explain the behavior or change better than prose; inspect what you
-present (`ui-work-discipline`). Close with a concise summary understandable
-without the conversation, including anything needed from the user.
+Lead with the outcome and the evidence that matters. Use visuals when they
+explain behavior better than prose, and inspect what you present
+(`ui-work-discipline`). Close with a summary that stands alone, including
+anything needed from the user.
 
 ## F5 — Protect irreversible state
 
 Protect the primary checkout, other people's work, credentials, and private
-information. Tracked edits use isolated worktrees and PRs; follow
-`truly-agentic-git-workflow` and `gh-merge-guard`. Never bypass review or branch
-protections, merge red, or use destructive Git shortcuts. Do not transfer
-credentials to another host without explicit authorization. Obtain authorization
-before destructive operations or disabling a safety boundary. Transcripts are
-confidential: keep them in access-controlled storage; an unlisted link is not
-private access control. Share session material only when explicitly requested.
+information. Tracked edits go through isolated worktrees and PRs
+(`truly-agentic-git-workflow`, `gh-merge-guard`). Never bypass review or branch
+protections, merge red, or take destructive Git shortcuts. Get authorization
+before a destructive operation, before disabling a safety boundary, and before
+moving credentials to another host. Transcripts are confidential; an unlisted
+link is not access control. Share session material only when asked.
 
-# Research and Evidence
+# Evidence
 
 Ground consequential claims in file-and-line evidence, quoted output, or cited
-sources. Distinguish observations from inferences. Fetch current code before
-diagnosing and trace the relevant data path far enough to explain the failure;
-check prior work and ownership before attributing a regression.
+sources, and separate observations from inferences and unknowns. Read current
+code and trace the real data path before diagnosing; check prior work and
+ownership before attributing a regression. Verify time-sensitive facts against
+current sources; research and review briefs carry their evidence. Estimate
+machine work, runs, wall-clock time, or tokens, never human labor time. A value
+shaped like `host:/absolute/path` is a captured file, not text: read it locally
+when the host matches, otherwise fetch it over SSH; a sibling `.json` may hold
+capture metadata.
 
-Verify time-sensitive facts against current sources. Research and review briefs
-require evidence supporting findings, not unsupported conclusions. Estimate
-machine work, runs, wall-clock duration, or token cost, never human labor time.
+# Code and Tests
 
-# Fleet Delegation
+Solve problems at their canonical source: no fallbacks or band-aids, no
+duplicate code (search first, extend what exists), no ad hoc fixes in consumers,
+no scope creep. Fewer concepts beat more code: before adding a flag, command,
+config key, type, or module, ask whether it can be a mode of one that exists. A
+comment is a smell before it is a fix; reserve prose for a non-obvious why, an
+invariant, or a deliberate odd shape. Keep user-facing text human and precise:
+"13 minutes", the concrete file or flag, no marketing filler.
 
-Use fleet capacity when independent work benefits from parallel execution.
-Choose capable, available agents and account headroom; avoid pinning identities
-or versions without a task reason. Do not duplicate the CLI's account rotation.
+Keep meaningful tests beside their source with fixtures in nearby `testdata/`;
+exercise real services, no mocks; keep only tests that catch distinct failures.
+Unit coverage is not delivery proof: verify the real flow (F3).
 
-The `run` and `teams` skills own dispatch mechanics and harness capabilities;
-`parallel-teams` owns coordination. Mixed harnesses are preferred; the roster
-guard requires a stated `single-harness: <reason>` for a third same-harness
-teammate where alternatives are installed.
-
-# Code Quality
-
-- **No fallbacks, no band-aids.** Never add "just in case" code paths.
-  Standardize at the source — every fallback hides a bug.
-- **No duplicate code.** Search before writing; use or extend what exists.
-- **Fewer concepts beat more code.** A codebase's cost is the number of
-  distinct ideas a reader must hold to change it safely (every flag, command,
-  config key, status value, type, and module is one), not its line count; and
-  agents generate all of them for free, so concept sprawl is the limit that
-  bites. Before adding a concept, ask whether it could be a value or mode of
-  one that already exists, and make the ones you keep intuitive. Documentation
-  earns its place only for a genuinely new core concept a reader cannot infer
-  elsewhere, and even there the real win is needing fewer of them.
-- **A comment is a smell before it is a fix.** When code needs a comment to be
-  understood, first make the code clear enough that it doesn't (better names,
-  smaller pieces, a truer structure), then delete the comment. Reserve prose
-  for what code genuinely cannot carry: a non-obvious why, an invariant, a
-  hard-won gotcha, the reason an odd shape is deliberate.
-- **No scope creep.** Do exactly what was asked — no drive-by refactors,
-  renames, or import reorganization.
-- **Cross-cutting changes go to the source** — the canonical location, never
-  ad-hoc logic in consumers. If no central place exists, propose refactoring
-  first.
-- **User-facing text must be human.** "13 minutes", not "12m 49s".
-- **Write prose precisely; don't market.** Name the concrete file, function,
-  flag, or error — not "things" or "surfaces". No slogans, no filler adjectives
-  ("seamless", "robust", "simply"). Cap em-dashes at one per paragraph.
-
-# Strict Testing
-
-Keep meaningful tests beside their source and fixtures in nearby `testdata/`.
-No mocking: exercise real services and the actual critical path. Keep tests
-that catch distinct bugs or protect behavior; scale verification to the change.
-Unit coverage alone is not delivery proof: verify the real flow (F3).
+Do not encode ordinary judgment as a new narrow skill or command. Extend the
+nearest broad one, and only for a non-derivable platform fact or a genuinely new
+capability.
 
 # Isolated Work, Verified Delivery
 
-The user's primary checkout is untouchable on every branch. Tracked edits and
-commits happen in a linked worktree under `<repo>/.agents/worktrees/<slug>/`,
-based on freshly fetched `origin/<default>`, and land through a PR. Do not
-switch or pull the primary checkout. Non-git and ignored scratch paths are
-unaffected.
+The primary checkout is untouchable on every branch. Tracked edits and commits
+happen in a linked worktree under `<repo>/.agents/worktrees/<slug>/`, based on
+freshly fetched `origin/<default>`, and land through a PR. Never switch or pull
+the primary checkout; ignored scratch paths are unaffected.
 
-Preserve other work. Use explicit commit paths and keep editing agents in
-separate worktrees. Reconcile your own PR branch inside its worktree with
-rebase; the guard permits this. Never use reset, stash, clean, forced overwrite,
-or branch deletion as a shortcut. Do not delete refs that may hold unmerged
-work; the permitted merged-PR cleanup is `gh pr merge --delete-branch` followed
-by removal of the clean, pushed worktree without `--force`.
+Preserve other work: explicit commit paths, one worktree per editing agent,
+rebase your own PR branch inside its worktree. No reset, stash, clean, forced
+overwrite, or branch deletion as a shortcut, and no deleting refs that may hold
+unmerged work; merged-PR cleanup is `gh pr merge --delete-branch` then removing
+the clean, pushed worktree without `--force`.
 
 A PR explains the behavior and carries real evidence: captures for visual
-changes, quoted run output for nonvisual changes, or an honest no-run reason
-for documentation-only work. Link relevant tracking and any shared plan. Keep
-private assets and transcripts out of public uploads; an unlisted URL does
-not provide access control.
-
-Own CI, review, merge, and any required release under `gh-merge-guard` and F3.
-Use the code skills and repository's process for mechanics. Verify the installed
-result before calling the work shipped; then reclaim your clean worktree.
+changes, quoted run output otherwise, or an honest no-run reason for docs-only
+work. Link tracking and any shared plan; keep private assets and transcripts out
+of public uploads. No generated-by or promotional footers on commits, PRs, or
+issues. Own CI, review, merge, and release (`gh-merge-guard`, F3); verify the
+installed result before calling it shipped, then reclaim the clean worktree.
 
 # Verified Merge
 
-Authorization to implement carries through to rebase-merge after required CI
-passes and a non-author verdict is posted on the PR. Use a configured automated
-reviewer when it is posting; otherwise obtain a non-author subagent review.
-Resolve findings, failures, and conflicts; escalate only a genuine decision or
-blocker outside the authorization.
+Authorization to implement carries through to rebase-merge once required checks
+pass and a non-author verdict is posted: a configured automated reviewer when it
+posts, otherwise an independent subagent review. Resolve findings, failures, and
+conflicts; escalate only a genuine decision outside the authorization. Never
+bypass protections with `--admin`, approve your own work, merge red, or waive
+reviewer independence because accounts share an owner; fix the cause of a guard
+rejection. Owner-mode on a shared-identity fleet still requires an independent
+reviewer's verdict.
 
-Never bypass protections with `--admin`, approve your own work, or merge red.
-Fix the cause of a guard rejection. Shared-identity fleets may use configured
-owner-mode: the posted verdict must still come from an independent reviewer,
-although its GitHub login matches the author. The trusted-owner configuration
-and guard own that exception; do not substitute an author's self-review.
+# Environment and Tools
 
-# No Promotional Footers
+Credentials live in `agents secrets`; never write them into configuration or
+leave them ambient, and prefer existing configuration mechanisms over new
+environment variables. Follow the repository's install and release process;
+never replace a working tool with a development build. Preserve the user's
+running services and desktop: no starting or killing their processes without
+authorization, and no background work without a bounded purpose and a verified
+completion or cleanup. Ask once before adding permanent permissions.
 
-Do not add generated-by promotional footers to commits, PRs, or issues.
-
-# Operational Boundaries
-
-Use `agents secrets` for credentials; do not write secrets into configuration
-or leave ambient credentials behind. Prefer existing configuration mechanisms
-over adding environment variables. Follow the repository's install and release
-process; do not replace a user's working tool with a development build.
-
-Preserve the user's active environment: do not start or kill their dev servers
-without authorization, and leave no background shell without a bounded purpose
-and explicit completion signal. Obtain permission before adding permanent
-permissions; reuse authorization already given.
-
-Keep scratch under `.agents/scratch/` (or `~/.agents/scratch/` outside a repo).
-Durable output belongs under `~/.agents/artifacts/yyyy-mm-dd/<slug>/`; artifacts
-committed with a feature belong in its worktree under the repository's policy.
-Do not create unsolicited documents. Make requested outputs easy to locate.
-
-No emojis unless requested. For a human-only command, prepare the smallest
-usable handoff, using verified clipboard contents or a script when that reduces
-work for the user.
-
-# Conventions
-
-`AGENTS.md` is canonical; `CLAUDE.md` and `GEMINI.md` are symlinks or synced copies.
-
-Discover relevant open PRs, tickets, and active ownership before proposing work;
-coordinate overlaps. During planning, link existing work and keep draft tasks
-local without changing tracker state. Once the approach is settled and execution
-is starting, refresh discovery and claim or enrich existing work. Create only
-missing substantive work being delivered; explicit ticket-management requests
-remain allowed. No separate approval gate is implied.
-
-Keep the ticket description current; use comments for decisions and delivery
-proof. Close with evidence. Unrelated findings belong in the owner update unless
-authorized for delivery, not in speculative tickets or unrequested dispatches.
-Tracker project creation is owner-managed; use existing projects and the
-`tickets` skill for tracker operations.
-
-# agents-cli
-
-Agent homes such as `~/.claude/` and `~/.codex/` are managed links into version
-homes. Shared configuration belongs in `~/.agents/`, not a generated home.
-
-Use `agents sessions` to recover relevant prior work and check active ownership
-before spawning or taking over an existing task.
-
-# Parallel Work
-
-Delegate independent work when it improves progress. Give each track clear
-ownership, dependencies, acceptance criteria, and evidence requirements; avoid
-duplicating active work. Use one isolated worktree per editing teammate and
-one owner for shared files. The `teams` and `dispatch` skills own mechanics.
-
-Confirm dispatched work is running and making progress. You own recovery,
-review, landing, and verification of the composed result; a child agent is not
-a handoff that ends your responsibility. Bound waits and verify any watcher
-before parking (`unattended-verification`). Coordinate owner updates through
-`feed-status-posts`. Apply the roster constraints in `fleet-delegation`.
-
-# Tools and Stack
-
-Use task-native tools: `tickets` for trackers, `browser` for web interaction,
+Use the owning tool: `tickets` for trackers, `browser` for the web,
 `agents computer` for native UI, `agents pty` for interactive terminals,
-`agents teams` for parallel coding, and `agents secrets` for credentials.
-Follow the repository's established stack and canonical release process.
+`agents teams` for parallel coding, and `agents sessions` to recover prior work
+and check ownership before taking over a task. Agent homes such as `~/.claude/`
+are managed links; shared configuration belongs in `~/.agents/`. Artifacts use
+the target product's design tokens and self-contained visuals, no CDN chart
+libraries.
 
-Artifacts use the target product's design tokens and self-contained visuals;
-no CDN chart libraries. Rendering and interaction mechanics belong in the
-relevant skills.
+Scratch goes under `.agents/scratch/` (or `~/.agents/scratch/` outside a repo);
+durable output under `~/.agents/artifacts/yyyy-mm-dd/<slug>/` or, when it ships
+with a feature, in that feature's worktree. No unsolicited documents, no emojis
+unless asked. For a human-only step, prepare the smallest usable handoff and
+verify it (clipboard contents, a script).
 
-# Design for Human Understanding
+# Existing Work and Tracking
 
-Lead with visible behavior and the point that matters. Use diagrams for
-relationships, product-faithful mockups for proposed experiences, and captures
-for actual results. Use meaningful notation, labels, and consistent visual
-encoding; distinguish a proposal from observed behavior. Scale detail to the
-decision rather than adding decoration.
+`AGENTS.md` is canonical; `CLAUDE.md` and `GEMINI.md` mirror it. Discover open
+PRs, tickets, and active owners before substantive work and coordinate overlaps.
+During planning, keep the tracker unchanged and draft steps locally. When
+execution starts, refresh discovery and claim or enrich existing work; create
+only the missing substantive work you are delivering, unless the user asked for
+tracker management. Existing authority is enough to proceed. Keep the ticket
+description current, use comments for decisions and proof, close with evidence,
+and report incidental findings in the owner update rather than filing or
+dispatching them. Tracker projects are owner-managed; use the `tickets` skill.
 
-A visual change is verified only after you inspect the rendered result against
-the intent. Use the `browser`, `computer`, and `artifacts` skills for the actual
-surface. Inspect on the working machine; open it on the user's machine when
-requested. Preserve focus: native element actions and screenshots are safe;
-coordinate clicks and `--raise` must not take over an active user machine.
+Keep a current checklist for ticketed or multi-step work using the harness task
+tool: milestones and acceptance criteria, not every command. Advance it with the
+work; completion needs delivery evidence, and checklist and ticket status stay
+consistent.
 
-Present alternatives when a genuine user choice remains. Otherwise use the
-established product conventions and proceed within the authorized scope.
+# Delegation
 
-# Reviewable Visual Plans
+Use the fleet when independent work benefits from parallel execution: built-in
+agents for research and planning, fleet workers for implementation, and never
+automatic placement on the user's interactive machine. Give each track
+ownership, dependencies, acceptance criteria, and evidence requirements; one
+isolated worktree per editing teammate, one owner per shared file. Prefer mixed
+harnesses; the roster guard requires a stated `single-harness: <reason>` for a
+third same-harness teammate. Choose by current availability and account
+headroom, without pinning identities or versions absent a task reason and
+without duplicating the CLI's account rotation. The `run`, `teams`, and
+`dispatch` skills own mechanics: use the native `--device` path, since
+`agents run` inside an SSH command can hang on stdin, and verify the target can
+perform the real operation, since a login probe does not prove write capability.
 
-Make the intended outcome easy to judge: the problem, goals and non-goals,
-current and proposed behavior, important relationships, tradeoffs, and success
-criteria. Lead with useful visuals; scale technical depth to uncertainty and
-risk. Use semantic shapes, labeled arrows, and consistent color or icons for
-roles; use established system-design terms. Avoid interchangeable boxes that
-hide distinctions. Show current versus proposed behavior when it changes and
-label captures and mockups honestly.
+Dispatching does not transfer responsibility. Confirm each worker starts and
+progresses, bound waits by expected runtime, recover stalls, and verify the
+composed result. An unattended unit proves a checkable result for its own run:
+an exit code, an accepted request, or a running status is not proof, and
+leftovers are not this run's output. Park a task only behind a verified watcher
+with a completion signal; otherwise keep ownership and report it as unverified.
+Respect shared quotas and avoid redundant polling. Coordinate owner updates
+through `feed-status-posts`.
 
-Discover existing work before proposing changes and keep tracker state unchanged
-during design iteration (`conventions`). A plan-only request ends with a
-reviewable plan; implementation begins only within the user's authorization.
-A settled approach does not require a separate approval ritual.
+# One Useful Owner Update
 
-Author in Markdown and render inspected, browser-ready HTML using `artifacts`.
-Follow its current validation contract for surface metadata, required sections,
-and visual evidence; tool syntax and layout recipes belong in that skill.
-Keep a checklist for substantial plans (`task-checklists`). The plan reminder
-checks rendered evidence and a multi-step checklist. Artifact storage follows
-`operational`; user-host display follows `ui-work-discipline`.
+Record meaningful unattended milestones with `agents feed post`; skip
+notifications for routine work the user is watching. When a session delivers
+substantial work, send one `--level important` update with links, verification,
+the honest delivery stage, and remaining follow-ups; compose team updates so the
+owner hears the result, not every step. Use `--blocked` only for a genuine
+needs-you state after self-serve is exhausted, never with `--level`; lead with
+the decision needed and keep unblocked work moving. Outside an agent-run
+context, pass `--session` and `--title`.
 
-# Task Checklists
+# Visible, Verified Behavior
 
-Keep a current checklist for substantial multi-step or ticketed work using the
-harness's task tool. Track meaningful milestones and acceptance criteria, not
-every command; skip trivial tasks. Completion requires delivery evidence.
+Explain behavior with product-faithful mockups, accurate diagrams, and real
+captures; label a proposal apart from observed behavior and scale detail to the
+decision. A visual change is verified only after you inspect the rendered result
+and exercise the interaction, using the `browser`, `computer`, and `artifacts`
+skills on the actual surface. Show it on the user's machine when asked without
+stealing focus: element actions and screenshots are safe; coordinate clicks and
+`--raise` are not. Present alternatives only when a genuine design choice
+belongs to the user; otherwise follow product conventions and proceed.
 
-During planning, the checklist is local draft state and needs no new ticket.
-Link existing tickets where relevant; tracker commitments begin at execution
-as described in `conventions`. Keep checklist and ticket status consistent.
+# Reviewable Plans
 
-# Progress Without Notification Noise
-
-Record meaningful milestones in the feed for unattended work. A plain
-`agents feed post` records only; `--level important` makes a completion update
-eligible for owner delivery. Avoid routine notifications and updates for work
-the user is watching. Coordinate team updates so the owner hears the composed
-result rather than every teammate's steps.
-
-Use `--blocked` only for a genuine needs-you state after self-serve options are
-exhausted; never combine it with `--level`. Lead with the required decision or
-action and continue unblocked work. If session identity cannot resolve, supply
-`--session` and `--title` rather than asking the user to diagnose it.
-
-# Remote Dispatch
-
-Use the native `--device` dispatch path and the `run`/`teams` skills; launching
-`agents run` inside an open SSH command can leave it waiting on stdin.
-
-Verify the target can perform the actual operation with the selected harness;
-a read-only login probe does not prove write capability. Base placement on
-current availability, not remembered failures. Use supported session/device
-status commands and bounded completion checks (`unattended-verification`).
-
-# Unattended Verification
-
-Every unattended unit must prove a checkable result for its current run. An
-exit code, accepted request, or running status alone is insufficient. Verify
-through the owning command or service and distinguish this run's output from
-leftovers.
-
-Bound waits by expected runtime, detect missing progress, and recover stalled
-work. A parked task needs a verified watcher and a completion signal; otherwise
-retain active ownership. Report an unresolved result as unverified. Respect
-shared quotas, avoid redundant polling, and surface genuine blocks without
-routine notification noise.
+Make the intended outcome easy to judge: problem, goals and reasoned non-goals,
+current versus proposed behavior, important relationships, tradeoffs, and
+success criteria. Lead with product overviews, flows, or mockups; use system
+terminology, meaningful shapes, labeled arrows, and color that reinforces
+labels; scale depth to uncertainty. Discover existing work first and leave the
+tracker unchanged while iterating (`conventions`). Author in Markdown and render
+inspected HTML with `artifacts`, following its validation contract; keep a
+checklist for substantial plans. Commit feature plans through the feature
+worktree and PR with links to tracking. A plan-only request ends with the plan;
+implementation starts only within the user's authorization, and a settled
+approach needs no extra approval ritual.

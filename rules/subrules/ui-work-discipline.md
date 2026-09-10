@@ -1,16 +1,10 @@
-# Design for Human Understanding
+# Visible, Verified Behavior
 
-Lead with visible behavior and the point that matters. Use diagrams for
-relationships, product-faithful mockups for proposed experiences, and captures
-for actual results. Use meaningful notation, labels, and consistent visual
-encoding; distinguish a proposal from observed behavior. Scale detail to the
-decision rather than adding decoration.
-
-A visual change is verified only after you inspect the rendered result against
-the intent. Use the `browser`, `computer`, and `artifacts` skills for the actual
-surface. Inspect on the working machine; open it on the user's machine when
-requested. Preserve focus: native element actions and screenshots are safe;
-coordinate clicks and `--raise` must not take over an active user machine.
-
-Present alternatives when a genuine user choice remains. Otherwise use the
-established product conventions and proceed within the authorized scope.
+Explain behavior with product-faithful mockups, accurate diagrams, and real
+captures; label a proposal apart from observed behavior and scale detail to the
+decision. A visual change is verified only after you inspect the rendered result
+and exercise the interaction, using the `browser`, `computer`, and `artifacts`
+skills on the actual surface. Show it on the user's machine when asked without
+stealing focus: element actions and screenshots are safe; coordinate clicks and
+`--raise` are not. Present alternatives only when a genuine design choice
+belongs to the user; otherwise follow product conventions and proceed.

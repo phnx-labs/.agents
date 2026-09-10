@@ -204,7 +204,7 @@ call each one is) · what re-homed because of limits/logouts.
 hit a wall, explained it, and exited is an `exit 0` with zero work done — the most common
 unattended failure there is. Before marking an item done: query the PR, re-read the
 ticket, confirm the artifact exists. If you cannot observe it, the item is **unverified**,
-not done — park it with the gap named. See `unattended-verification`.
+not done — park it with the gap named. See `parallel-teams`.
 
 ## Unattended rules
 

@@ -1,16 +1,16 @@
-# Conventions
+# Existing Work and Tracking
 
-`AGENTS.md` is canonical; `CLAUDE.md` and `GEMINI.md` are symlinks or synced copies.
+`AGENTS.md` is canonical; `CLAUDE.md` and `GEMINI.md` mirror it. Discover open
+PRs, tickets, and active owners before substantive work and coordinate overlaps.
+During planning, keep the tracker unchanged and draft steps locally. When
+execution starts, refresh discovery and claim or enrich existing work; create
+only the missing substantive work you are delivering, unless the user asked for
+tracker management. Existing authority is enough to proceed. Keep the ticket
+description current, use comments for decisions and proof, close with evidence,
+and report incidental findings in the owner update rather than filing or
+dispatching them. Tracker projects are owner-managed; use the `tickets` skill.
 
-Discover relevant open PRs, tickets, and active ownership before proposing work;
-coordinate overlaps. During planning, link existing work and keep draft tasks
-local without changing tracker state. Once the approach is settled and execution
-is starting, refresh discovery and claim or enrich existing work. Create only
-missing substantive work being delivered; explicit ticket-management requests
-remain allowed. No separate approval gate is implied.
-
-Keep the ticket description current; use comments for decisions and delivery
-proof. Close with evidence. Unrelated findings belong in the owner update unless
-authorized for delivery, not in speculative tickets or unrequested dispatches.
-Tracker project creation is owner-managed; use existing projects and the
-`tickets` skill for tracker operations.
+Keep a current checklist for ticketed or multi-step work using the harness task
+tool: milestones and acceptance criteria, not every command. Advance it with the
+work; completion needs delivery evidence, and checklist and ticket status stay
+consistent.

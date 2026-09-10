@@ -2,6 +2,28 @@
 
 ## [Unreleased]
 
+### Changed
+
+- **Rules: 19 subrules folded into 11, one topic each; the composed ruleset drops from
+  2,216 to 1,693 words.** `fleet-delegation`, `remote-fleet-dispatch`, and
+  `unattended-verification` fold into `parallel-teams`; `testing-strict` into
+  `code-quality`; `no-pr-footer` into `truly-agentic-git-workflow`; `tech-stack` and
+  `agents-cli` into `operational`; `task-checklists` into `conventions`. Every rule is now
+  one or two paragraphs stating the outcome and boundary; guard hooks, their `hooks.yaml`,
+  scripts, and tests are untouched and keep their subrule names. Three rules that had
+  only existed in a private user layer are now shipped generically: exhaust self-serve
+  before declaring a blocker (F2), `host:/path` clip references are captured files
+  (`research-discipline`), and do not encode ordinary judgment as a new narrow skill
+  (`code-quality`). References in `hooks/promptcuts.yaml`, `plugins/work/skills/loop`,
+  and `teams-roster-guard.sh` repoint to the surviving names.
+- **`rules/README.md` documents the shadowing trap:** a same-named flat file in a higher
+  layer wins the name and `collectSubruleHooks` only folds hooks from the winning copy, so
+  shadowing a directory-form subrule with prose silently unregisters its guards. Measured
+  on a fleet host: with flat user-layer shadows for `gh-merge-guard`, `parallel-teams`,
+  `plan-presentation`, and `truly-agentic-git-workflow`, the installed Claude settings
+  carried only `main-branch-guard` (registered separately in `agents.yaml`); `merge-guard`,
+  `teams-roster-guard`, `plan-html-reminder`, and `pr-description-reminder` were absent.
+
 ### Added
 
 - **`research` is now its own plugin** with two skills. The multi-engine research
