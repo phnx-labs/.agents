@@ -15,7 +15,6 @@ Routes to specialized subskills based on the target.
 | Target | Subskill | When to Use |
 |---|---|---|
 | Websites, web apps | `browser-use.md` | Any HTTP/HTTPS URL in a regular browser |
-| Electron desktop apps | `electron-use.md` | Attach to a running Electron process via CDP port |
 
 ## Which machine? (`--device`)
 
@@ -54,10 +53,8 @@ A machine only accepts remote drives when its owner has run
 
 ```
 What are you automating?
-├── Web page / web app → browser-use.md
-│   └── Specific site with known quirks? → domain-skills/<site>/
-└── Electron desktop app (VS Code, Slack, …) → electron-use.md
-    └── App in app-skills/? → read that first, then follow electron-use.md
+└── Web page / web app → browser-use.md
+    └── Specific site with known quirks? → domain-skills/<site>/
 ```
 
 ## Adding a new domain-skill
