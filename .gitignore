@@ -78,6 +78,9 @@ linear.json
 # not the directory: git cannot re-include a file whose parent dir is excluded.
 /subagents/*
 !/subagents/README.md
+# Shipped subagents (the table in subagents/README.md) travel with the repo.
+!/subagents/code-reviewer/
+!/subagents/artifact-critic/
 /swarmify/
 /teams/
 
