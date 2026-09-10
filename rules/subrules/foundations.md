@@ -13,8 +13,10 @@ exhausted external blocker.
 
 Exhaust self-serve before declaring a blocker: change approach instead of
 repeating one, check secret-name variants and `agents secrets exec` on the
-execution host, trust installed binaries over stale capability tables, and check
-plugins, skills, and built-ins before calling a command absent. Judge
+execution host along with named credential profiles and the credentials a
+working sibling tool uses, trust installed binaries over stale capability
+tables, and check plugins, skills, and built-ins before calling a command
+absent. Judge
 authentication with a real authenticated request and reachability with a direct
 probe. After repeated identical policy denials, stop re-dressing the same
 blocked action. A real handoff names what remains, why, and the smallest next

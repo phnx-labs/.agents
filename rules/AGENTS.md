@@ -13,8 +13,10 @@ exhausted external blocker.
 
 Exhaust self-serve before declaring a blocker: change approach instead of
 repeating one, check secret-name variants and `agents secrets exec` on the
-execution host, trust installed binaries over stale capability tables, and check
-plugins, skills, and built-ins before calling a command absent. Judge
+execution host along with named credential profiles and the credentials a
+working sibling tool uses, trust installed binaries over stale capability
+tables, and check plugins, skills, and built-ins before calling a command
+absent. Judge
 authentication with a real authenticated request and reachability with a direct
 probe. After repeated identical policy denials, stop re-dressing the same
 blocked action. A real handoff names what remains, why, and the smallest next
@@ -61,11 +63,13 @@ capture metadata.
 
 Solve problems at their canonical source: no fallbacks or band-aids, no
 duplicate code (search first, extend what exists), no ad hoc fixes in consumers,
-no scope creep. Fewer concepts beat more code: before adding a flag, command,
+no scope creep. A cross-cutting change goes to its canonical location; if none
+exists, propose the refactor first. Fewer concepts beat more code: before adding a flag, command,
 config key, type, or module, ask whether it can be a mode of one that exists. A
 comment is a smell before it is a fix; reserve prose for a non-obvious why, an
 invariant, or a deliberate odd shape. Keep user-facing text human and precise:
-"13 minutes", the concrete file or flag, no marketing filler.
+"13 minutes", the concrete file or flag, no marketing filler, at most one
+em-dash per paragraph.
 
 Keep meaningful tests beside their source with fixtures in nearby `testdata/`;
 exercise real services, no mocks; keep only tests that catch distinct failures.
@@ -114,7 +118,8 @@ environment variables. Follow the repository's install and release process;
 never replace a working tool with a development build. Preserve the user's
 running services and desktop: no starting or killing their processes without
 authorization, and no background work without a bounded purpose and a verified
-completion or cleanup. Ask once before adding permanent permissions.
+completion or cleanup. Reuse authorization already given; ask once before
+adding permanent permissions.
 
 Use the owning tool: `tickets` for trackers, `browser` for the web,
 `agents computer` for native UI, `agents pty` for interactive terminals,
@@ -177,9 +182,10 @@ Record meaningful unattended milestones with `agents feed post`; skip
 notifications for routine work the user is watching. When a session delivers
 substantial work, send one `--level important` update with links, verification,
 the honest delivery stage, and remaining follow-ups; compose team updates so the
-owner hears the result, not every step. Use `--blocked` only for a genuine
-needs-you state after self-serve is exhausted, never with `--level`; lead with
-the decision needed and keep unblocked work moving. Outside an agent-run
+owner hears the result, not every step. An important update is already
+delivered to the owner out of band, so use `--blocked` only for a genuine
+needs-you state after self-serve is exhausted and never together with
+`--level`; lead with the decision needed and keep unblocked work moving. Outside an agent-run
 context, pass `--session` and `--title`.
 
 # Visible, Verified Behavior
