@@ -2,6 +2,13 @@
 
 ## [Unreleased]
 
+### Added
+
+- **`clis/secrets.yaml` — install the published secrets CLI as a host tool (PHNX-3989).**
+  `agents clis install secrets` installs `@phnx-labs/secrets-cli@0.1.2`. `agents doctor`
+  then reports it. agents-cli no longer ships the secrets engine; this is how a new
+  machine gets the binary without setting extra env vars.
+
 ### Removed
 
 - **`skills/browser/electron-use.md` and the browser skill's Electron routing.** Electron

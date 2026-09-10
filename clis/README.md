@@ -13,6 +13,7 @@ These are **host tools**, not agents. They are the binaries a skill shells out t
 | [`mq`](./mq.yaml) | Structure-aware query for large files — extract one section instead of reading the whole file into context |
 | [`jq`](./jq.yaml) | JSON processing. Several hooks depend on it and **fail closed** without it |
 | [`linear-cli`](./linear-cli.yaml) | Linear issue tracker CLI, behind `/tickets` |
+| [`secrets`](./secrets.yaml) | Standalone secrets CLI (`@phnx-labs/secrets-cli`). agents-cli no longer ships the engine; `agents secrets` passthroughs to this binary |
 
 ## Using them
 
