@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+### Removed
+
+- **`skills/browser/electron-use.md` and the browser skill's Electron routing.** Electron
+  desktop apps are `agents computer`'s job: it already detects an Electron bundle and says
+  when an AX action will not reach the webview. The CDP recipe for operating a webview now
+  lives in `skills/computer/SKILL.md` ("Electron apps"); the browser skill routes web
+  automation only.
+
 ## [0.2.3] - 2026-09-10
 
 ### Changed

@@ -8,7 +8,7 @@ user-invocable: true
 
 # Computer Use — macOS App Automation
 
-Drives native macOS apps through the Computer Helper daemon (Accessibility + ScreenCaptureKit + HID-tap event synthesis). macOS only. For websites use the `browser` skill; for Electron apps prefer `browser`'s `electron-use.md` (CDP beats pixel automation when available).
+Drives native macOS apps through the Computer Helper daemon (Accessibility + ScreenCaptureKit + HID-tap event synthesis). macOS only. For websites use the `browser` skill. Electron desktop apps are this skill's job too: `agents computer` detects an Electron bundle and tells you when an AX action will not reach the webview (see Electron apps below).
 
 When you need exact flags, run `agents computer <verb> --help`.
 
@@ -125,7 +125,7 @@ agents computer key --bundle com.parallels.desktop.console --keys enter --requir
 agents computer screenshot --bundle com.parallels.desktop.console --window-id <n> --out /tmp/vm2.jpg  # verify
 ```
 
-## Electron Editors (VS Code / VSCodium / Cursor)
+## Electron apps (VS Code / VSCodium / Cursor and any other Electron bundle)
 
 **First: if you only need to SEE a webview, open it in a browser — do not drive the Electron host at all.** Most VS Code/Electron webviews (dashboards, panels) can be rendered standalone via a dev/preview harness (Vite `bun run dev`, a `/preview` route) and screenshotted from a browser, which never touches the user's focus. Driving the app below to *view* a webview installs the extension and steals the screen for nothing.
 
@@ -137,9 +137,9 @@ agents browser profiles create vscodium --browser custom --electron -e cdp://loc
 agents browser --electron navigate --url "…"      # then click/type via `agents browser` — focus-safe
 ```
 
-The debug port opens **only at launch** — you cannot attach to an app already running without it (`electron-use.md:24,122`). An already-open editor must be relaunched (state loss); warn the user first.
+The debug port opens **only at launch** — you cannot attach to an app already running without it. An already-open editor must be relaunched (state loss); warn the user first.
 
-The default advice is "prefer `browser`'s `electron-use.md` (CDP)." But you often must drive these via AX instead — to reload a window after installing an extension, or when Screen Recording is denied and screenshots are dead. These techniques take the user's focus, so use them only when a browser can't do the job. The webview UI sits in an iframe the AX tree only partially reaches; the rules below are the ones that bite. Bundle ids: `com.microsoft.VSCode`, `com.vscodium`, Cursor varies (`defaults read /Applications/Cursor.app/Contents/Info CFBundleIdentifier`).
+CDP is the reliable way to operate a webview. But you often must drive these via AX instead — to reload a window after installing an extension, or when Screen Recording is denied and screenshots are dead. These techniques take the user's focus, so use them only when a browser can't do the job. The webview UI sits in an iframe the AX tree only partially reaches; the rules below are the ones that bite. Bundle ids: `com.microsoft.VSCode`, `com.vscodium`, Cursor varies (`defaults read /Applications/Cursor.app/Contents/Info CFBundleIdentifier`).
 
 - **AX survives a denied Screen Recording grant.** `get-text` and `describe` read the accessibility tree (incl. webview text) with no ScreenCaptureKit. Only `screenshot` needs Screen Recording. When captures time out with "denied Screen Recording permission," **verify with `get-text`**, not screenshots — grep its output for the strings the UI should render.
 - **Reload a window to activate a freshly-installed extension.** Installing writes to disk; the running window keeps its old extension host until reloaded. Command palette → **"Developer: Reload Window"**. Every open window has its own host — reload each. An editor running with **zero windows** needs one first: `code -n <folder>`.
