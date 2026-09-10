@@ -2,12 +2,37 @@
 
 ## [Unreleased]
 
+### Changed
+
+- **`skills/artifacts/SKILL.md`**, **`skills/artifacts/references/authoring.md`**. Tables are
+  the last resort. The plan floor no longer asks for "at least one Markdown table"; step 3
+  states the visual-first rule (charts, figures, tiles, panels, `excerpt` cards; a long
+  enumeration is a grouping figure or an appendix, a list is not an answer to a table;
+  every cited file is a link pinned to the commit). New step 7: a non-author
+  `artifact-critic` reviews the rendered page and records `review: {verdict}` in the
+  frontmatter before a plan or report is presented. The visual kind's optional section is
+  `## Evidence`, not `## Data`. The diagnostics table documents the new `artifacts check`
+  warnings (every table, bare `file:line`) and the `excerpt` fence.
+- **`rules/subrules/plan-presentation/plan-html-reminder.sh`**. The HARD REQUIREMENTS list
+  no longer demands a table. New gate: a plan whose frontmatter has no `review:` block with
+  `verdict: pass` is not presentable, and the block message names `artifact-critic` as the
+  fix. Test fixtures carry the review block by default; five new cases cover missing,
+  failing, and passing verdicts on internal and user-visible plans.
+- **`rules/subrules/plan-presentation/rule.md`** and the regenerated **`rules/AGENTS.md`**.
+  One sentence in Reviewable Plans: present information visually, a table is the last
+  resort, cited files are links, and a non-author critic reviews the presentation.
+
 ### Added
 
 - **`clis/secrets.yaml` — install the published secrets CLI as a host tool (PHNX-3989).**
   `agents clis install secrets` installs `@phnx-labs/secrets-cli@0.1.2`. `agents doctor`
   then reports it. agents-cli no longer ships the secrets engine; this is how a new
   machine gets the binary without setting extra env vars.
+
+- **`subagents/artifact-critic/AGENT.md`**. Adversarial non-author reviewer for a rendered
+  artifact: captures the page, treats every table and bare file name as a finding, names
+  the visual that should carry each block, and writes the verdict into the frontmatter.
+  The `artifacts` skill spawns it by name; the plan-presentation hook gates on its verdict.
 
 ### Removed
 
