@@ -135,6 +135,23 @@ Example:
 </section>
 ```
 
+## File Excerpts
+
+A fenced `excerpt` block is the component for file evidence, so a file is never
+a table row:
+
+````markdown
+```excerpt path=skills/artifacts/SKILL.md lines=258-263 highlight=261-262 repo=phnx-labs/.agents-system ref=a1b8e5d
+verdict: Delete. This is the floor that forces a table into every plan.
+```
+````
+
+The renderer reads the lines at render time and draws one card: the path as a
+chip linked to `blob/<ref>/<path>#L258-L263`, the lines with their real numbers,
+the highlighted range tinted, and the verdict under it. Twelve files become
+twelve cards in an `artifact-grid`, each showing the text it judges. `--publish`
+inlines the lines so a shared page never depends on a checkout.
+
 ## Images And SVG
 
 - List local files in frontmatter `assets` and reference them with `src`; the
@@ -157,7 +174,9 @@ reviewable** page — not a wall of bullets.
 | Check | Level | What you see |
 | --- | --- | --- |
 | Plan surface | **error** | Declare `surface: internal|cli|web|native|api|workflow`. Internal plans need a live drawn SVG; user-visible plans need a semantic current/proposed `.artifact-behavior` figure with capture-or-mockup evidence. |
-| Markdown table | warning | At least one `| … |` table (files, risks, validation) |
+| Table | warning | Every table warns; the message names the visual to draw instead (`bar-chart`, SVG, `artifact-stat`, `artifact-grid`, `excerpt`). Only the artifact critic's `review:` acceptance answers it. |
+| Bare file reference | warning | `path.ext:NNN` outside a link. Cite files as links pinned to the commit, or with an `excerpt` fence. |
+| `excerpt` fence | **error** | `path=`, `lines=`, optional `highlight=`, `repo=`, `ref=`. Renders a file card: linked path, numbered lines, highlighted range, verdict. Errors when the path or range does not exist at `ref`. |
 | Fenced code | warning | At least one fenced code block — commands belong here, not only as inline pills |
 | `artifact-callout` | warning | One load-bearing takeaway for the reviewer |
 
