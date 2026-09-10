@@ -19,7 +19,7 @@ shortcuts:
     - Ban "probably", "I think", "it seems", "should be". Either you have proof or you label the statement "unverified".
     - For state-of-the-world claims (APIs, library behavior, prices, SOTA, versions, framework capabilities), run WebSearch FIRST with the current year in the query. Weights are stale by default (research-discipline: date-anchoring + web-search-first).
     - For counts, sizes, directory contents: run the tool call THIS session. "I think there are 26 files" is a research-discipline violation — run `ls | wc -l` and quote the number.
-    - For cross-cutting claims spanning multiple files/modules, spawn parallel Agent subagents (model="sonnet" for breadth, "opus" for depth — NEVER "haiku", NEVER omit the field — fleet-delegation). Every subagent brief MUST end with:
+    - For cross-cutting claims spanning multiple files/modules, spawn parallel Agent subagents (model="sonnet" for breadth, "opus" for depth — NEVER "haiku", NEVER omit the field — parallel-teams). Every subagent brief MUST end with:
       `Return file:line quotes for every claim. Do NOT paraphrase. If you can't quote it, don't claim it.`
 
     If you cannot verify a claim, say "unverified" explicitly. Never smuggle an assumption in as a fact.
@@ -57,7 +57,7 @@ shortcuts:
     Every teammate task prompt MUST end with:
       `Return file:line quotes for every claim. Do NOT paraphrase. If you can't quote it, don't claim it.`
 
-    (fleet-delegation still applies to any Agent() subagents you spawn alongside — model explicit, never haiku.)
+    (parallel-teams still applies to any Agent() subagents you spawn alongside — model explicit, never haiku.)
 
     ---------------- SYNTHESIS ----------------------------------------
     Once the team finishes:
@@ -73,13 +73,13 @@ shortcuts:
     Execution plan (follow in order):
     1. Load the `debug` skill — it encodes the project's debugging workflow.
     2. Trace the full data path end-to-end. If data flows A → B → C → D, open A, B, C, AND D. Quote file:line from each. Skipping files in the middle is how you misdiagnose (research-discipline: NO LAZY DEBUGGING).
-    3. Spawn parallel agents for independent verification (parallelize — fleet-delegation: parallelize from message one):
+    3. Spawn parallel agents for independent verification (parallelize — parallel-teams: parallelize from message one):
       - Codex agent via `agents teams` — reproduce the bug from scratch
       - Antigravity agent via `agents teams` — cross-check the data flow independently
       - Opus Agent subagent — deep review of the suspected module
       Every agent prompt MUST end with the exact line:
       `Return file:line quotes for every claim. Do NOT paraphrase. If you can't quote it, don't claim it.`
-      NEVER pass model="haiku". NEVER omit the model field. (fleet-delegation; research-discipline)
+      NEVER pass model="haiku". NEVER omit the model field. (parallel-teams; research-discipline)
     4. Synthesize: do the agents AGREE on the cause? Where do they DIVERGE? Divergence = you do not understand the bug yet — investigate more, do NOT patch.
     5. Present: bug description, full evidence chain with file:line quotes from every file on the path, root cause, proposed fix (sorted by scope). NO fix ships until the user confirms the diagnosis.
 
@@ -108,7 +108,7 @@ shortcuts:
     - Present the evidence chain, not vibes. Every claim backed by a file:line quote or a web-search citation (with year).
     - Banned words: "probably", "I think", "it seems", "might", "should work". Either you have proof or you label the statement explicitly as speculation.
     - For state-of-the-world dimensions (library behavior, API contracts, SOTA approaches, framework capabilities, current-year best practice), WebSearch with the current year BEFORE answering (research-discipline: date-anchoring + web-search-first).
-    - For multi-dimensional questions (multi-file, cross-platform, audits, parity checks, root-cause across a stack), spawn 3-7 parallel Agent subagents (model="opus" for depth, NEVER "haiku", NEVER omit the field — fleet-delegation). Every brief ends with:
+    - For multi-dimensional questions (multi-file, cross-platform, audits, parity checks, root-cause across a stack), spawn 3-7 parallel Agent subagents (model="opus" for depth, NEVER "haiku", NEVER omit the field — parallel-teams). Every brief ends with:
       `Return file:line quotes for every claim. Do NOT paraphrase. If you can't quote it, don't claim it.`
 
     Shallow fast answers are rejected here. If you catch yourself about to answer in one paragraph, stop — you're being lazy.
@@ -142,7 +142,7 @@ shortcuts:
     - If the "simpler" abstraction adds LOC or concept count, it is NOT simpler — reject it and try again.
     - Naming matters. `DataManager` is not an abstraction, it's a parking lot. If you can't name the new concept in one clean word, the concept isn't clean yet.
     - Applies to CODE and CONCEPTS equally — product language, domain terms, UI vocabulary, status enums, event names.
-    - Parallelize the hunt: spawn Agent subagents (Opus, never Haiku — fleet-delegation) to grep for near-duplicates across different areas simultaneously. Every brief ends with:
+    - Parallelize the hunt: spawn Agent subagents (Opus, never Haiku — parallel-teams) to grep for near-duplicates across different areas simultaneously. Every brief ends with:
       `Return file:line quotes for every claim. Do NOT paraphrase. If you can't quote it, don't claim it.`
 
     DO NOT ship the consolidation. Propose it. Enumerate the replacements. Wait for approval.
@@ -315,11 +315,11 @@ shortcuts:
              root-cause across a stack, comparing options), you spawned
              3-7 Agent subagents IN PARALLEL in your FIRST response.
              Sequential single-threaded investigation is BANNED for
-             multi-dimensional work. (fleet-delegation: parallelize from message one)
+             multi-dimensional work. (parallel-teams: parallelize from message one)
     
           3. SUBAGENT MODEL — Every Agent() call has model explicitly set.       Default "sonnet". "opus" for deep investigation / review /
        architecture / anything load-bearing. NEVER "haiku". NEVER
-       omit the field (frontmatter may pin haiku). (fleet-delegation)
+       omit the field (frontmatter may pin haiku). (parallel-teams)
 
     4. INVESTIGATION BRIEFS — Every investigative/debug/review
        subagent prompt ends with the exact line:

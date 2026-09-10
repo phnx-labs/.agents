@@ -1,10 +1,11 @@
-# Research and Evidence
+# Evidence
 
 Ground consequential claims in file-and-line evidence, quoted output, or cited
-sources. Distinguish observations from inferences. Fetch current code before
-diagnosing and trace the relevant data path far enough to explain the failure;
-check prior work and ownership before attributing a regression.
-
-Verify time-sensitive facts against current sources. Research and review briefs
-require evidence supporting findings, not unsupported conclusions. Estimate
-machine work, runs, wall-clock duration, or token cost, never human labor time.
+sources, and separate observations from inferences and unknowns. Read current
+code and trace the real data path before diagnosing; check prior work and
+ownership before attributing a regression. Verify time-sensitive facts against
+current sources; research and review briefs carry their evidence. Estimate
+machine work, runs, wall-clock time, or tokens, never human labor time. A value
+shaped like `host:/absolute/path` is a captured file, not text: read it locally
+when the host matches, otherwise fetch it over SSH; a sibling `.json` may hold
+capture metadata.

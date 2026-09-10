@@ -1,20 +1,23 @@
-# Operational Boundaries
+# Environment and Tools
 
-Use `agents secrets` for credentials; do not write secrets into configuration
-or leave ambient credentials behind. Prefer existing configuration mechanisms
-over adding environment variables. Follow the repository's install and release
-process; do not replace a user's working tool with a development build.
+Credentials live in `agents secrets`; never write them into configuration or
+leave them ambient, and prefer existing configuration mechanisms over new
+environment variables. Follow the repository's install and release process;
+never replace a working tool with a development build. Preserve the user's
+running services and desktop: no starting or killing their processes without
+authorization, and no background work without a bounded purpose and a verified
+completion or cleanup. Ask once before adding permanent permissions.
 
-Preserve the user's active environment: do not start or kill their dev servers
-without authorization, and leave no background shell without a bounded purpose
-and explicit completion signal. Obtain permission before adding permanent
-permissions; reuse authorization already given.
+Use the owning tool: `tickets` for trackers, `browser` for the web,
+`agents computer` for native UI, `agents pty` for interactive terminals,
+`agents teams` for parallel coding, and `agents sessions` to recover prior work
+and check ownership before taking over a task. Agent homes such as `~/.claude/`
+are managed links; shared configuration belongs in `~/.agents/`. Artifacts use
+the target product's design tokens and self-contained visuals, no CDN chart
+libraries.
 
-Keep scratch under `.agents/scratch/` (or `~/.agents/scratch/` outside a repo).
-Durable output belongs under `~/.agents/artifacts/yyyy-mm-dd/<slug>/`; artifacts
-committed with a feature belong in its worktree under the repository's policy.
-Do not create unsolicited documents. Make requested outputs easy to locate.
-
-No emojis unless requested. For a human-only command, prepare the smallest
-usable handoff, using verified clipboard contents or a script when that reduces
-work for the user.
+Scratch goes under `.agents/scratch/` (or `~/.agents/scratch/` outside a repo);
+durable output under `~/.agents/artifacts/yyyy-mm-dd/<slug>/` or, when it ships
+with a feature, in that feature's worktree. No unsolicited documents, no emojis
+unless asked. For a human-only step, prepare the smallest usable handoff and
+verify it (clipboard contents, a script).

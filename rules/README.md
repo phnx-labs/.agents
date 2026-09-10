@@ -27,18 +27,23 @@ in.
 
 A subrule that enforces itself is a directory, not a file: it holds `rule.md`, its guard
 script, a `hooks.yaml` registering the guard, and a test. `gh-merge-guard`,
-`plan-presentation`, and `truly-agentic-git-workflow` work this way. A guard-bearing
-subrule can shed its guard and stay on as prose — `no-pr-footer` did, once the rule was
-fully internalized (0 guard fires across 7,493 transcripts).
+`parallel-teams`, `plan-presentation`, and `truly-agentic-git-workflow` work this way.
+
+**Shadowing a directory-form subrule drops its guards.** A same-named flat file in a
+higher layer wins the name, and `collectSubruleHooks` only folds hooks from the winning
+copy, so the guard silently stops registering. To override the prose of a guard-bearing
+rule, copy the whole directory (or leave the prose alone and let the system copy win).
 
 ## What the system layer ships
 
 `foundations` renders first — the five principles (F1–F5) every other rule references by
-name instead of restating. Then, in order: `research-discipline`, `fleet-delegation`,
-`code-quality`, `testing-strict`, `truly-agentic-git-workflow`, `gh-merge-guard`,
-`no-pr-footer`, `operational`, `conventions`, `agents-cli`, `parallel-teams`, `tech-stack`,
-`plan-presentation`, `task-checklists`, `feed-status-posts`,
-`remote-fleet-dispatch`.
+name instead of restating. Then, in order: `research-discipline` (evidence),
+`code-quality` (code, tests, skill restraint), `truly-agentic-git-workflow` (worktrees,
+PRs, no footers), `gh-merge-guard`, `operational` (environment, credentials, owning tools,
+output locations), `conventions` (existing work, tracker, checklists), `parallel-teams`
+(delegation, remote dispatch, unattended verification), `feed-status-posts`,
+`ui-work-discipline`, `plan-presentation`. Eleven subrules, one topic each; a new rule is
+almost always a sentence in one of these, not a twelfth file.
 
 Your own machine composes more than this — anything in `~/.agents/rules/subrules/` unions in
 on top.
@@ -48,8 +53,9 @@ on top.
 1. Edit `subrules/<name>.md`, or add a new one.
 2. Add the name to the `default` preset in [`rules.yaml`](./rules.yaml) — **order matters**,
    it is the render order. A subrule not listed in a preset never renders.
-3. Regenerate `AGENTS.md` and commit the regenerated file. Agents without native `@imports`
-   get this compiled copy at sync time.
+3. Regenerate `AGENTS.md` and commit the regenerated file: the fragments in preset order,
+   trailing whitespace trimmed, joined by one blank line (what `composeRules` does at sync).
+   Agents without native `@imports` get this compiled copy at sync time.
 4. Add a `CHANGELOG.md` entry.
 
 Rules to follow when writing one:

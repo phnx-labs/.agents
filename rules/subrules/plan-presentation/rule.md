@@ -1,21 +1,13 @@
-# Reviewable Visual Plans
+# Reviewable Plans
 
-Make the intended outcome easy to judge: the problem, goals and non-goals,
-current and proposed behavior, important relationships, tradeoffs, and success
-criteria. Lead with useful visuals; scale technical depth to uncertainty and
-risk. Use semantic shapes, labeled arrows, and consistent color or icons for
-roles; use established system-design terms. Avoid interchangeable boxes that
-hide distinctions. Show current versus proposed behavior when it changes and
-label captures and mockups honestly.
-
-Discover existing work before proposing changes and keep tracker state unchanged
-during design iteration (`conventions`). A plan-only request ends with a
-reviewable plan; implementation begins only within the user's authorization.
-A settled approach does not require a separate approval ritual.
-
-Author in Markdown and render inspected, browser-ready HTML using `artifacts`.
-Follow its current validation contract for surface metadata, required sections,
-and visual evidence; tool syntax and layout recipes belong in that skill.
-Keep a checklist for substantial plans (`task-checklists`). The plan reminder
-checks rendered evidence and a multi-step checklist. Artifact storage follows
-`operational`; user-host display follows `ui-work-discipline`.
+Make the intended outcome easy to judge: problem, goals and reasoned non-goals,
+current versus proposed behavior, important relationships, tradeoffs, and
+success criteria. Lead with product overviews, flows, or mockups; use system
+terminology, meaningful shapes, labeled arrows, and color that reinforces
+labels; scale depth to uncertainty. Discover existing work first and leave the
+tracker unchanged while iterating (`conventions`). Author in Markdown and render
+inspected HTML with `artifacts`, following its validation contract; keep a
+checklist for substantial plans. Commit feature plans through the feature
+worktree and PR with links to tracking. A plan-only request ends with the plan;
+implementation starts only within the user's authorization, and a settled
+approach needs no extra approval ritual.

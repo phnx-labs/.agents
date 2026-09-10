@@ -1,12 +1,10 @@
-# Progress Without Notification Noise
+# One Useful Owner Update
 
-Record meaningful milestones in the feed for unattended work. A plain
-`agents feed post` records only; `--level important` makes a completion update
-eligible for owner delivery. Avoid routine notifications and updates for work
-the user is watching. Coordinate team updates so the owner hears the composed
-result rather than every teammate's steps.
-
-Use `--blocked` only for a genuine needs-you state after self-serve options are
-exhausted; never combine it with `--level`. Lead with the required decision or
-action and continue unblocked work. If session identity cannot resolve, supply
-`--session` and `--title` rather than asking the user to diagnose it.
+Record meaningful unattended milestones with `agents feed post`; skip
+notifications for routine work the user is watching. When a session delivers
+substantial work, send one `--level important` update with links, verification,
+the honest delivery stage, and remaining follow-ups; compose team updates so the
+owner hears the result, not every step. Use `--blocked` only for a genuine
+needs-you state after self-serve is exhausted, never with `--level`; lead with
+the decision needed and keep unblocked work moving. Outside an agent-run
+context, pass `--session` and `--title`.
