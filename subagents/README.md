@@ -12,6 +12,7 @@ across repos and harnesses.
 | Subagent | Use when |
 | --- | --- |
 | [`code-reviewer`](./code-reviewer/AGENT.md) | A diff, branch, or PR needs an independent verdict. Adversarial twice over: it hunts the input that breaks the change, then tries to kill each of its own candidate findings (guard elsewhere / unreachable / sanctioned by the repo) and reports only survivors plus a count of what it filtered. Reads the ticket or plan for the requirement first, bounds what it reports to the diff and what the diff broke, and never edits, pushes, or merges. `code:review` spawns it by name. |
+| [`artifact-critic`](./artifact-critic/AGENT.md) | A rendered plan, report, or visual is about to be presented. Non-author review of the presentation: captures the page, treats every table and every bare file name as a finding, names the visual that should carry each block (`bar-chart`, SVG, `artifact-stat`, `artifact-grid`, `excerpt`), and writes `review: {verdict}` into the artifact's frontmatter, which the plan-presentation hook gates on. The `artifacts` skill spawns it by name (step 7). |
 
 **Why this one is not packaged inside the `code` plugin.** A plugin's `agents/<name>.md` is
 the Claude plugin format: `agents-cli` copies the plugin dir into each harness home, but only
