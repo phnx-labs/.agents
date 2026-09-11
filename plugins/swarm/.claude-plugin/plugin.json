@@ -1,7 +1,7 @@
 {
   "name": "swarm",
   "version": "0.5.3",
-  "description": "swarm \u2014 fan a task out across parallel coding agents via `agents teams`. Top-level `/swarm` (and `/swarm:run`) is the generic fan-out. Specialized modes: `/swarm:plan` (change proposal + mandatory mock-ups + blind verification), `/swarm:spec` (durable source-of-truth contract so others do not invent wrong behavior \u2014 requirements, scenarios, mock-ups, drift-check), `/swarm:debug` (blind multi-provider root-cause). Shared engine: internal `swarm:orchestrate` skill. Commands only invoke skills. `/swarm:test` and `/swarm:qa` removed.",
+  "description": "swarm \u2014 fan a task out across parallel coding agents via `agents teams`. Top-level `/swarm` (and `/swarm:run`) is the generic fan-out. Specialized modes: `/swarm:plan` (reviewable change proposal; the plan skill owns scope, visuals, success checks, and review), `/swarm:spec` (durable source-of-truth contract so others do not invent wrong behavior \u2014 requirements, scenarios, mock-ups, drift-check), `/swarm:debug` (blind multi-provider root-cause). Shared engine: internal `swarm:orchestrate` skill. Commands only invoke skills. `/swarm:test` and `/swarm:qa` removed.",
   "author": {
     "name": "Muqsit Nawaz",
     "email": "contact@trp.so"
