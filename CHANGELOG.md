@@ -4,6 +4,8 @@
 
 ### Changed
 
+- Worktree freshness accepts a no-op fetch when `FETCH_HEAD` matches the target branch, remote and commit; unrelated fetches cannot refresh a stale base.
+
 - **`skills/artifacts/SKILL.md`**, **`skills/artifacts/references/authoring.md`**. Tables are
   the last resort. The plan floor no longer asks for "at least one Markdown table"; step 3
   states the visual-first rule (charts, figures, tiles, panels, `excerpt` cards; a long

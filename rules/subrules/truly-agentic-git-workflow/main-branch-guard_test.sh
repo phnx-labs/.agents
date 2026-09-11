@@ -347,11 +347,32 @@ _FH_PATH=$(git -C "$CLONE" rev-parse --path-format=absolute --git-path FETCH_HEA
 [ -f "$_REF_PATH" ] && touch -t 202001011200 "$_REF_PATH"
 [ -f "$_FH_PATH" ] && touch -t 202001011200 "$_FH_PATH"
 run_guard 2 "worktree add -b, stale origin/ base"  "$(bj "git -C $CLONE worktree add -b feat/stale $TMP/wt_stale origin/trunk")"
-# A no-op fetch does not always bump ref mtime; re-touch to "now" to model a
-# successful refresh (the production path is: agent runs fetch, then worktree add).
-touch "$_REF_PATH" 2>/dev/null
-touch "$_FH_PATH" 2>/dev/null
-run_guard 0 "worktree add -b, origin/ after refresh" "$(bj "git -C $CLONE worktree add -b feat/fresh $TMP/wt_fresh origin/trunk")"
+# Real no-op fetch: Git leaves the aged loose ref intact, but records the
+# matching branch and object in FETCH_HEAD.
+git_q -C "$CLONE" fetch origin
+run_guard 0 "worktree add -b, unchanged origin after fetch" "$(bj "git -C $CLONE worktree add -b feat/fresh $TMP/wt_fresh origin/trunk")"
+# Another branch at the SAME object must not renew origin/trunk.
+git_q -C "$CLONE" push origin trunk:other
+git_q -C "$CLONE" fetch origin other
+run_guard 2 "worktree add -b, unrelated branch fetch" "$(bj "git -C $CLONE worktree add -b feat/fresh $TMP/wt_fresh origin/trunk")"
+# Another repository containing the same branch/object is not origin.
+OTHER_BARE="$TMP/other.git"
+git_q clone --bare "$BARE" "$OTHER_BARE"
+git_q -C "$CLONE" remote add other "$OTHER_BARE"
+git_q -C "$CLONE" fetch other trunk
+run_guard 2 "worktree add -b, unrelated remote fetch" "$(bj "git -C $CLONE worktree add -b feat/fresh $TMP/wt_fresh origin/trunk")"
+# Matching branch/remote with a different object must not renew the old ref.
+git_q -C "$CLONE_FEAT" commit --allow-empty -m advance
+git_q -C "$CLONE_FEAT" push origin HEAD:trunk
+git_q -C "$CLONE" fetch --refmap= origin trunk
+run_guard 2 "worktree add -b, fetched object differs" "$(bj "git -C $CLONE worktree add -b feat/fresh $TMP/wt_fresh origin/trunk")"
+git_q -C "$CLONE" fetch origin
+git_q -C "$CLONE" pack-refs --all
+run_guard 0 "worktree add -b, packed ref matching fetch" "$(bj "git -C $CLONE worktree add -b feat/fresh $TMP/wt_fresh origin/trunk")"
+git_q -C "$CLONE" fetch origin other
+run_guard 2 "worktree add -b, packed ref unrelated fetch" "$(bj "git -C $CLONE worktree add -b feat/fresh $TMP/wt_fresh origin/trunk")"
+# Recreate the loose ref for the following age-override and fresh-form cases.
+printf '%s\n' "$(git -C "$CLONE" rev-parse refs/remotes/origin/trunk)" > "$_REF_PATH"
 # AGENTS_WORKTREE_FETCH_MAX_AGE_SEC=0 disables the age check (form-only escape).
 [ -f "$_REF_PATH" ] && touch -t 202001011200 "$_REF_PATH"
 [ -f "$_FH_PATH" ] && touch -t 202001011200 "$_FH_PATH"
