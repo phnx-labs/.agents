@@ -361,6 +361,13 @@ git_q clone --bare "$BARE" "$OTHER_BARE"
 git_q -C "$CLONE" remote add other "$OTHER_BARE"
 git_q -C "$CLONE" fetch other trunk
 run_guard 2 "worktree add -b, unrelated remote fetch" "$(bj "git -C $CLONE worktree add -b feat/fresh $TMP/wt_fresh origin/trunk")"
+# A retained matching entry from before a remote advance is not freshness.
+git_q -C "$CLONE" fetch origin
+touch -t 202001011200 "$_REF_PATH" "$_FH_PATH"
+git_q -C "$CLONE_FEAT" commit --allow-empty -m remote-advance
+git_q -C "$CLONE_FEAT" push origin HEAD:trunk
+git_q -C "$CLONE" fetch --append origin other
+run_guard 2 "worktree add -b, appended old entry after remote advances" "$(bj "git -C $CLONE worktree add -b feat/fresh $TMP/wt_fresh origin/trunk")"
 # Matching branch/remote with a different object must not renew the old ref.
 git_q -C "$CLONE_FEAT" commit --allow-empty -m advance
 git_q -C "$CLONE_FEAT" push origin HEAD:trunk

@@ -4,7 +4,7 @@
 
 ### Changed
 
-- Worktree freshness accepts a no-op fetch when `FETCH_HEAD` matches the target branch, remote and commit; unrelated fetches cannot refresh a stale base.
+- Worktree freshness accepts a no-op fetch when `FETCH_HEAD` matches the target branch, remote and commit and a bounded read-only remote check confirms it. Retained entries from appended fetches cannot renew an outdated base.
 
 - **`skills/artifacts/SKILL.md`**, **`skills/artifacts/references/authoring.md`**. Tables are
   the last resort. The plan floor no longer asks for "at least one Markdown table"; step 3

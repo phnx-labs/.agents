@@ -758,8 +758,8 @@ _file_mtime_epoch() {
 # After the base has passed the refs/remotes/* form check, require that the
 # remote-tracking ref (or FETCH_HEAD) was refreshed recently. Default max age
 # is 900s (15m); override with AGENTS_WORKTREE_FETCH_MAX_AGE_SEC. Set to 0 to
-# disable the age check (form-only). Does NOT network-fetch here — that belongs
-# in the agent recipe / createWorktree, not inside PreToolUse.
+# disable the age check (form-only). An unchanged fetch needs a bounded read-only
+# remote check: FETCH_HEAD can retain old entries through --append.
 check_remote_ref_freshness() {
   _fr_repo=$1
   _fr_full=$2
@@ -793,8 +793,43 @@ check_remote_ref_freshness() {
       END { exit !found }
     ' "$_fh"; then
     _fetch_mtime=$(_file_mtime_epoch "$_fh")
-    if [ -n "$_fetch_mtime" ] && [ "$_fetch_mtime" -gt "${_mtime:-0}" ]; then
-      _mtime=$_fetch_mtime
+    if [ -n "$_fetch_mtime" ] && [ "$_fetch_mtime" -gt "${_mtime:-0}" ] &&
+      [ "$(($(date +%s) - _fetch_mtime))" -le "$_max_age" ]; then
+      # FETCH_HEAD has no per-entry timestamp. --append can refresh its mtime
+      # while retaining an old match; verify the branch is still at this OID.
+      if python3 - "$_fr_repo" "$_remote" "$_branch" "$_oid" <<'PYVERIFY'
+import os
+import signal
+import subprocess
+import sys
+
+repo, remote, branch, oid = sys.argv[1:]
+env = dict(os.environ, GIT_TERMINAL_PROMPT="0", SSH_ASKPASS_REQUIRE="never")
+# Process-group cleanup keeps a stalled SSH child from outliving the check.
+# Without that primitive, retain the stale-base rejection.
+if os.name != "posix":
+    sys.exit(1)
+try:
+    process = subprocess.Popen(
+        ["git", "-C", repo, "ls-remote", "--exit-code", "--refs", remote,
+         "refs/heads/" + branch],
+        stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL, text=True, env=env, start_new_session=True,
+    )
+    try:
+        output, _ = process.communicate(timeout=3)
+    except subprocess.TimeoutExpired:
+        os.killpg(process.pid, signal.SIGKILL)
+        process.communicate()
+        sys.exit(1)
+    expected = oid + "\trefs/heads/" + branch
+    sys.exit(0 if process.returncode == 0 and output.strip() == expected else 1)
+except OSError:
+    sys.exit(1)
+PYVERIFY
+      then
+        _mtime=$_fetch_mtime
+      fi
     fi
   fi
   _mtime=${_mtime:-0}
