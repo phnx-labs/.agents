@@ -772,26 +772,32 @@ check_remote_ref_freshness() {
   esac
   [ "$_max_age" -eq 0 ] && return 0
 
-  _check_path=""
-  # Paths from `rev-parse --git-path` are relative to the *process cwd*, not the
-  # repo — resolve absolute or the age check looks at the wrong file (or none).
-  _ref_path=$(git -C "$_fr_repo" rev-parse --path-format=absolute --git-path "$_fr_full" 2>/dev/null) \
-    || _ref_path=""
-  if [ -n "$_ref_path" ] && [ -f "$_ref_path" ]; then
-    _check_path=$_ref_path
-  else
-    # Packed-refs or missing loose file → FETCH_HEAD is the last-fetch stamp.
-    _fh=$(git -C "$_fr_repo" rev-parse --path-format=absolute --git-path FETCH_HEAD 2>/dev/null) \
-      || _fh=""
-    if [ -n "$_fh" ] && [ -f "$_fh" ]; then
-      _check_path=$_fh
+  # A no-op fetch leaves loose ref mtimes unchanged. FETCH_HEAD is evidence
+  # only when its branch, remote URL and object match this exact tracking ref.
+  _ref_path=$(git -C "$_fr_repo" rev-parse --path-format=absolute --git-path "$_fr_full" 2>/dev/null) || _ref_path=""
+  _mtime=0
+  if [ -f "$_ref_path" ]; then
+    _mtime=$(_file_mtime_epoch "$_ref_path")
+  fi
+  _tracking=${_fr_full#refs/remotes/}
+  _remote=${_tracking%%/*}
+  _branch=${_tracking#*/}
+  _oid=$(git -C "$_fr_repo" rev-parse "$_fr_full" 2>/dev/null) || _oid=""
+  _url=$(git -C "$_fr_repo" remote get-url "$_remote" 2>/dev/null) || _url=""
+  # Git anonymizes URL credentials and removes a trailing .git in FETCH_HEAD.
+  _url=$(printf '%s' "$_url" | sed -E 's#(://)[^/@]*@#\1#; s#^[^/:@]*@##; s#/$##; s#\.git$##')
+  _fh=$(git -C "$_fr_repo" rev-parse --path-format=absolute --git-path FETCH_HEAD 2>/dev/null) || _fh=""
+  if [ -n "$_url" ] && [ -n "$_oid" ] && [ -f "$_fh" ] &&
+    awk -F '\t' -v oid="$_oid" -v description="branch '$_branch' of $_url" '
+      $1 == oid && $3 == description { found=1 }
+      END { exit !found }
+    ' "$_fh"; then
+    _fetch_mtime=$(_file_mtime_epoch "$_fh")
+    if [ -n "$_fetch_mtime" ] && [ "$_fetch_mtime" -gt "${_mtime:-0}" ]; then
+      _mtime=$_fetch_mtime
     fi
   fi
-  # Cannot determine age → form already required origin/*; fail open on age only.
-  [ -z "$_check_path" ] && return 0
-
-  _mtime=$(_file_mtime_epoch "$_check_path")
-  [ -z "$_mtime" ] && return 0
+  _mtime=${_mtime:-0}
   _now=$(date +%s)
   _age=$((_now - _mtime))
   # Clock skew / future mtime: treat as fresh.
