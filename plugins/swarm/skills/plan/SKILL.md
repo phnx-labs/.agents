@@ -1,6 +1,6 @@
 ---
 name: plan
-description: "Plan a feature or system change with a visual product brief, goals/non-goals, user journeys, accurate diagrams, and independent verification where useful. Use for /plan, swarm plan, or a change proposal before building."
+description: "Plan a feature or system change with a visual product brief, goals/non-goals, user journeys, accurate diagrams, and independent verification where useful. Use for /plan, native plan mode, swarm plan, or a change proposal before building."
 argument-hint: "[feature or change to plan]"
 user-invocable: true
 ---
@@ -10,6 +10,16 @@ user-invocable: true
 Plan **$ARGUMENTS**. Make the intended outcome and proposed change understandable
 before implementation. This is a change proposal; `swarm:spec` documents the
 capability's durable contract. Scale the plan to the uncertainty and impact.
+This skill owns the planning contract for `/plan`, `/swarm:plan`, native plan
+mode, and requests made in ordinary language. Commands only route here.
+
+## Choose the depth
+
+For a small, settled change, keep the proposal compact: outcome, affected behavior,
+implementation steps, and success checks. For substantial or uncertain changes,
+include the product brief, important flows, alternatives, and dependencies below.
+Maintain a current harness checklist for substantial plans. Do not turn a routine
+implementation update into a separate planning exercise.
 
 ## Ground the scope
 
@@ -62,9 +72,14 @@ Distinguish observed facts from proposals. Keep comparable views visually aligne
 Show product-faithful mockups for the changed UI states that matter; do not invent
 screens for backend-only work.
 
-Author, render, inspect, and deliver through `artifacts`. Its schema and semantic
+Present the relationships visually; use tables only when the `artifacts` contract
+allows them. Put long inventories in a grouping figure or an appendix. Make cited
+files clickable links to the relevant revision, and keep evidence beside the claim.
+
+Author in Markdown, then render, inspect, and deliver HTML through `artifacts`. Its schema and semantic
 figure markup are the renderer contract; keep those mechanics there. Follow the
 repository's artifact location and use a linked worktree for committed output.
+Commit feature plans through the feature worktree and PR alongside the change.
 Include existing tracking links without creating tickets to fill a section.
 
 ## Check the approach and finish honestly
@@ -74,6 +89,11 @@ impact warrants it; an explicit request for swarm verification includes it.
 Give independent planners the problem and evidence before your preferred answer.
 Resolve disagreements against the code and requirements, and record consequential
 findings and decisions in the plan. Use `run`/`teams` for dispatch mechanics.
+
+Before presenting a rendered plan, follow `artifacts` for the independent
+`artifact-critic` review and its recorded passing verdict. Presentation review
+is required even when a second planning investigation is unnecessary; the two
+reviews answer different questions. Resolve presentation findings before delivery.
 
 Present the inspected artifact where the user can review it. A plan is complete
 when it makes the change and its validation reviewable; implementation is complete

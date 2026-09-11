@@ -4,6 +4,13 @@
 
 ### Changed
 
+- **Planning has one contract in `plugins/swarm/skills/plan/SKILL.md`.** `/plan`
+  and `/swarm:plan` are matching thin entry points; native plan mode routes to
+  the same skill through a short standing rule. The skill makes depth, evidence,
+  implementation checks, and the distinction between planning review and required
+  artifact review explicit. Existing plan-exit hooks and their review gates remain
+  unchanged; rendering mechanics stay in `artifacts`.
+
 - **`skills/artifacts/SKILL.md`**, **`skills/artifacts/references/authoring.md`**. Tables are
   the last resort. The plan floor no longer asks for "at least one Markdown table"; step 3
   states the visual-first rule (charts, figures, tiles, panels, `excerpt` cards; a long
