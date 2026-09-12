@@ -1,0 +1,20 @@
+name: computer
+description: |
+  Phoenix Labs Computer CLI — desktop actions, native helper setup and lifecycle,
+  remote Windows over SSH, and VNC desktops. The engine ships separately from
+  agents-cli. Use the agents computer adapter for Agents permissions and session
+  tracking; the standalone command also works without Agents.
+homepage: https://github.com/phnx-labs/computer-cli
+
+check: computer --version
+
+install:
+  - npm: "@phnx-labs/computer-cli@0.1.2"
+
+post_install: |
+  computer --version
+  agents computer status --json
+  agents computer setup
+  agents computer sessions --json
+  Helper installation and OS permissions are separate from npm installation.
+  Use agents computer for tracked actions; bare computer writes its own history.

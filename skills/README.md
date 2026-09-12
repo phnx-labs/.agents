@@ -30,7 +30,7 @@ out-of-band) — after the self-unblock ladder is exhausted.
 | Skill | What it does |
 |---|---|
 | [`browser`](./browser/SKILL.md) | Drive a browser — fill forms, click, screenshot, scrape — with per-agent profile isolation over CDP |
-| [`computer`](./computer/SKILL.md) | Drive native macOS apps — screenshot windows, click, type, drag, read text |
+| [`computer`](./computer/SKILL.md) | Drive desktop apps through the standalone Computer engine while retaining Agents permissions and session tracking |
 | [`secrets`](./secrets/SKILL.md) | Keychain-backed bundles of environment variables, injected into a run without landing on disk |
 
 ## Engineering workflow
