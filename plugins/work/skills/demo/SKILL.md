@@ -143,7 +143,7 @@ recaps the owner already likes. The report contains:
 - The **captures** from Step 3, inlined.
 - An **intent → delivered** table (each criterion, status, evidence).
 - The **measured delta** from Step 4.
-- **Honest gaps**, with the ticket ids you filed.
+- **Honest gaps**, each with its disposition — fixed now, a line in the owner update, or a ticket id if one was genuinely warranted.
 
 ```bash
 ROOT=$(git rev-parse --show-toplevel); DATE=$(date +%F)
