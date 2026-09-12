@@ -37,6 +37,8 @@ the `sessions` plugin skills drive them: `/continue` and `/recover` → `session
 agents sessions resume 019fd114                 # reopen one, full context
 agents sessions resume 019fd114 --device zion   # scope identity to the owning device
 agents sessions resume                          # picker: multi-select into tabs/splits
+agents run claude --resume                      # same picker, filtered to Claude
+agents run claude#work --resume                 # same as sessions resume --agent claude --account work
 
 # Fork — copy a session under a NEW id so the two diverge (original untouched)
 agents sessions fork 4f3a9c21                    # prints: Forked <src> -> <new-id>
@@ -47,6 +49,14 @@ agents sessions resume <new-id>                  # then continue the fork
 - **resume vs fork:** `resume` continues the *same* thread; `fork` copies it under a new id so the two branches diverge without touching the original. Fork is a file copy of the transcript — no re-run, no tokens; the new session carries full context natively.
 - **Resume a remote session on its owning device** — pass `--device <machine>` so identity resolves on the box that owns the session instead of being masked as an unknown command locally.
 - **Native fork supports claude today.** For other harnesses, branch by starting a fresh agent and seeding it with `/continue <id>` — the source stays put.
+
+Resume uses the conversation's account and native context with the installed
+harness binary. A recorded vendor version is provenance, not an account selector.
+Keep the saved model, mode and working directory unless the user overrides them.
+If the CLI cannot prove readable native context, inspect its reason; never bypass
+that refusal by recreating the old UUID. Context replay starts a new conversation
+and requires an explicit choice. A model-specific limit is not evidence that every
+model on the account is unavailable.
 
 ## Filters
 
