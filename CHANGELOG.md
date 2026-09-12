@@ -27,9 +27,12 @@
 ### Added
 
 - **`clis/secrets.yaml` — install the published secrets CLI as a host tool (PHNX-3989).**
-  `agents clis install secrets` installs `@phnx-labs/secrets-cli@0.1.2`. `agents doctor`
-  then reports it. agents-cli no longer ships the secrets engine; this is how a new
-  machine gets the binary without setting extra env vars.
+  `agents clis install secrets` installs `@phnx-labs/secrets-cli@0.1.4` (PHNX-4081 moved
+  the pin from 0.1.2: durable unlocks survive broker restarts, and a user-driven agent's
+  read raises the Touch ID sheet instead of asking for `secrets unlock`). `agents doctor`
+  then reports it. agents-cli no longer ships the secrets engine. `agents secrets` and
+  every agent `agents run` launches use `SECRETS_HOME=~/.agents`; a bare `secrets` in
+  your own terminal defaults to `~/.secrets` unless you export it.
 
 - **`subagents/artifact-critic/AGENT.md`**. Adversarial non-author reviewer for a rendered
   artifact: captures the page, treats every table and bare file name as a finding, names
