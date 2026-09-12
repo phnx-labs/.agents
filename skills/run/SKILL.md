@@ -19,13 +19,16 @@ Dispatch a single agent for a one-off task. `agents run` is the fundamental comm
 ## Headless vs interactive
 
 - **Prompt provided** → headless. Pipes stdout, no TTY, exits when the agent finishes.
-- **Prompt omitted** → interactive. Launches the agent's TUI with full stdio inheritance.
+- **Prompt omitted** → interactive. Launches the agent's TUI with full stdio inheritance — and on a real TTY the run *places itself* like `--device auto`: a bare `agents run claude` lands on a fleet worker (TUI forwarded over SSH), it does not automatically run on the machine you typed it at. To stay local, pass `--device <this machine>` or pick this machine (listed first) in the `claude@` device picker; headless runs (any prompt) are unchanged and always run in place.
 
 ```bash
-# Interactive (TUI)
+# Interactive (TUI) — auto-placed onto a fleet worker
 agents run claude
 
-# Headless one-shot
+# Interactive (TUI) pinned to this machine
+agents run claude --device $(hostname -s)
+
+# Headless one-shot — always runs in place
 agents run grok "summarize recent git commits"
 ```
 
@@ -259,7 +262,10 @@ agents logs <id> -f          # re-attach to a running one and follow
 ## Automatic fleet placement
 
 `--device auto` lets the CLI choose a reachable machine from its
-automatic-placement pool. For a named harness, placement prefers a device with
+automatic-placement pool. Since PHNX-4083 a bare interactive run (`agents run
+<harness>` with no prompt on a real TTY) places itself through this same engine
+— no flag needed; headless runs (any prompt) still run in place. For a named
+harness, placement prefers a device with
 a healthy signed-in account, then the device with lower live load. An
 interactive trailing-`@` picker launch also admits installed devices with a
 selectable signed-out or revoked-account login target, while still ranking a

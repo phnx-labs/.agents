@@ -4,6 +4,13 @@
 
 ### Changed
 
+- **`skills/run/SKILL.md`** (PHNX-4083). "Prompt omitted → interactive" now teaches
+  that a bare interactive `agents run <harness>` places itself like `--device auto`
+  (fleet worker, TUI forwarded over SSH), with the two local spellings
+  (`--device <this machine>`, or this machine in the `<harness>@` picker); headless
+  runs still run in place. The Automatic fleet placement section names the bare-run
+  default. Behavior lands with the agents-cli PR of the same ticket.
+
 - Worktree freshness accepts a no-op fetch when `FETCH_HEAD` matches the target branch, remote and commit and a bounded read-only remote check confirms it. Retained entries from appended fetches cannot renew an outdated base. The fallback takes at most three seconds of network wait and requires Python 3 on POSIX; unsupported environments and custom source-ref mappings retain conservative rejection.
 
 - **`skills/artifacts/SKILL.md`**, **`skills/artifacts/references/authoring.md`**. Tables are
