@@ -1,14 +1,20 @@
 ---
 name: computer
-description: Drive native macOS apps — screenshot windows, click, type, drag, read text. Uses the built-in `agents computer` command (Accessibility + ScreenCaptureKit daemon). Triggers on automating desktop apps (Photoshop, Parallels VMs, Finder, any non-browser GUI), "computer use", clicking/typing in a Mac app, or capturing an app window.
+description: Drive desktop apps with the standalone Computer CLI through Agents' tracked adapter — screenshot windows, click, type, drag, read text. Triggers on automating native or Electron apps, remote Windows or VNC desktops, "computer use", or capturing an app window.
 argument-hint: "[bundle-id]"
 allowed-tools: Bash(agents computer*), Bash(sleep*)
 user-invocable: true
 ---
 
-# Computer Use — macOS App Automation
+# Computer Use
 
-Drives native macOS apps through the Computer Helper daemon (Accessibility + ScreenCaptureKit + HID-tap event synthesis). macOS only. For websites use the `browser` skill. Electron desktop apps are this skill's job too: `agents computer` detects an Electron bundle and tells you when an AX action will not reach the webview (see Electron apps below).
+The standalone `@phnx-labs/computer-cli` package owns desktop execution and native helpers. It supports local macOS Accessibility and capture, remote Windows over SSH, and VNC desktops. The interaction recipes below describe macOS. For websites use the `browser` skill. Electron desktop apps are this skill's job too; the engine reports when an AX action cannot reach a webview (see Electron apps below).
+
+## Keep actions attached to the agent session
+
+Use `agents computer …` for agent-driven actions. This is a thin adapter to the installed `computer` executable, not a second desktop engine. Agents resolves fleet devices, supplies its app permissions and session context, and records returned action events in its feed and session database. Bare `computer …` works independently, but its own action ledger does not automatically populate Agents' history. Do not switch to it to bypass an Agents policy denial.
+
+Inspect recorded activity with `agents computer sessions --json` or `agents sessions --computer --json`. Browser activity stays in `agents browser sessions --json` and `agents sessions --browser --json`; the computer extraction does not replace browser tracking.
 
 When you need exact flags, run `agents computer <verb> --help`.
 
@@ -23,6 +29,8 @@ The user is usually working on the same Mac. **Element mode does not take over t
 
 ## Preflight
 
+Install the standalone command with `agents clis install computer` if it is missing. Agents' setup wizard also installs it; the engine is not bundled with Agents CLI. `computer --version` checks the installed engine. Helper setup and macOS permissions remain separate from npm installation.
+
 ```bash
 agents computer status     # installed? daemon running? trust granted? policy?
 agents computer setup      # one-time install to /Applications (then: start)
@@ -32,8 +40,7 @@ agents computer start      # boot the daemon (writes policy + peers, launchctl)
 The daemon only drives **allow-listed** apps. `permission_denied` or `bundle not in allow list` means the target is missing from policy:
 
 ```bash
-# Add to a permissions group, then reload
-echo '  - "Computer(com.example.app)"' >> ~/.agents/permissions/groups/02-computer-apps.yaml
+# After an authorized change to the existing Computer(<bundle-id>) permissions group
 agents computer reload
 ```
 

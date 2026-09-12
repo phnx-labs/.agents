@@ -14,6 +14,7 @@ These are **host tools**, not agents. They are the binaries a skill shells out t
 | [`jq`](./jq.yaml) | JSON processing. Several hooks depend on it and **fail closed** without it |
 | [`linear-cli`](./linear-cli.yaml) | Linear issue tracker CLI, behind `/tickets` |
 | [`secrets`](./secrets.yaml) | Standalone secrets CLI (`@phnx-labs/secrets-cli`). agents-cli no longer ships the engine; `agents secrets` passthroughs to this binary |
+| [`computer`](./computer.yaml) | Standalone desktop engine (`@phnx-labs/computer-cli`); `agents computer` adds permissions, fleet resolution and session tracking |
 
 ## Using them
 

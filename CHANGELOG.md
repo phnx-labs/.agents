@@ -4,6 +4,8 @@
 
 ### Changed
 
+- **`skills/computer/SKILL.md`** explains the standalone desktop engine and keeps agent-driven actions on the thin `agents computer` adapter so permissions and browser/computer session history remain intact. The recipes distinguish local macOS, remote Windows and VNC support.
+
 - Worktree freshness accepts a no-op fetch when `FETCH_HEAD` matches the target branch, remote and commit and a bounded read-only remote check confirms it. Retained entries from appended fetches cannot renew an outdated base. The fallback takes at most three seconds of network wait and requires Python 3 on POSIX; unsupported environments and custom source-ref mappings retain conservative rejection.
 
 - **`skills/artifacts/SKILL.md`**, **`skills/artifacts/references/authoring.md`**. Tables are
@@ -25,6 +27,8 @@
   resort, cited files are links, and a non-author critic reviews the presentation.
 
 ### Added
+
+- **`clis/computer.yaml`** installs the published Computer CLI 0.1.2 through `agents clis install computer`, following the standalone Secrets CLI host-tool structure. Native helper installation and OS permissions remain separate.
 
 - **`clis/secrets.yaml` — install the published secrets CLI as a host tool (PHNX-3989).**
   `agents clis install secrets` installs `@phnx-labs/secrets-cli@0.1.4` (PHNX-4081 moved
