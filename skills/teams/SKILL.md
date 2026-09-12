@@ -265,7 +265,7 @@ agents teams resume my-feature backend "review's in — rebase-merge the PR, the
 agents teams message my-feature qa "skip the flaky screenshot test for now"
 ```
 
-Routing: a **running** teammate is steered via its mailbox (delivered at its next tool call, no re-launch); a **stopped** one (completed / failed / stopped) is **resumed** — re-launched through its original backend/worktree and flipped back to `running`; a **pending** one is refused until you `teams start` it. Every harness: resume delegates to `agents run --resume` (native for Claude/Codex, `/continue` replay for the rest).
+Routing: a **running** teammate is steered via its mailbox (delivered at its next tool call, no re-launch); a **stopped** one (completed / failed / stopped) is **resumed** — re-launched through its original backend/worktree and flipped back to `running`; a **pending** one is refused until you `teams start` it. Every harness: resume delegates to `agents run --resume`, which verifies native context and preserves account identity. When native recovery is unavailable, an unattended resume fails with the reason; starting a new conversation from archived context requires an explicit replay request.
 
 ## Best Practices
 
