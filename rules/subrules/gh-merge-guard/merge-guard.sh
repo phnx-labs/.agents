@@ -191,14 +191,20 @@ case "$norm" in
       fi
     fi
     # Non-code fast path: non-src PRs (docs, config, rules) merge immediately
-    # without review or CI. Conservative: any file outside the allowlist means
-    # the full review path runs.
+    # without review or CI. Two-stage filter:
+    #   1. Extension allowlist — only known non-executable extensions pass.
+    #   2. Path denylist — security-critical paths always require review even
+    #      when their extension would otherwise pass (CI workflows, hook
+    #      registration, permission definitions).
     if [ -n "$_pr_num" ] && [ -n "$_pr_repo" ]; then
       _diff_files=$(_to 3 gh pr diff "$_pr_num" -R "$_pr_repo" --name-only 2>/dev/null) || _diff_files=""
       if [ -n "$_diff_files" ]; then
         _has_code=$(printf '%s\n' "$_diff_files" | grep -cvE '\.(md|yaml|yml|json|toml|txt|cfg|ini|conf|lock|gitignore|env|csv)$' || true)
         if [ "$_has_code" = "0" ]; then
-          exit 0
+          _has_critical=$(printf '%s\n' "$_diff_files" | grep -cE '(^|/)\.github/workflows/|(^|/)agents\.yaml$|(^|/)permissions/' || true)
+          if [ "$_has_critical" = "0" ]; then
+            exit 0
+          fi
         fi
       fi
     fi
