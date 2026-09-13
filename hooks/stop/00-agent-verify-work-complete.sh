@@ -658,8 +658,9 @@ This PR is YOURS until it merges. Keep driving it:
   - red CI / failing tests -> fix forward now; a broken check is your bug
   - docs/CHANGELOG the diff owes -> write them in this delivery
   - review -> the repo's automated reviewer, or spawn a non-author subagent
-    review (subagents/code-reviewer); merge on green. Reviews are never the
-    owner's job.
+    review (subagents/code-reviewer); merge on green. Non-code PRs (docs,
+    config, rules) merge immediately — no review, no CI wait. Reviews are
+    never the owner's job.
 Conflicts, red CI, missing docs, or "waiting on review" are never grounds to
 stop or hand back. Rare exception, only when NO agent action can satisfy the
 requirement (a credential, a repo policy): agents feed post "<ask>" --blocked, then

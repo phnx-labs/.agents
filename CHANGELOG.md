@@ -4,6 +4,17 @@
 
 ### Changed
 
+- **`rules/subrules/gh-merge-guard/rule.md`**, **`rules/subrules/gh-merge-guard/merge-guard.sh`**,
+  **`hooks/stop/00-agent-verify-work-complete.sh`**, and regenerated **`rules/AGENTS.md`**.
+  Non-code PRs (docs, config, rules — files matching `.md`, `.yaml`, `.json`, `.toml`, etc.)
+  now merge immediately without review or CI. The merge-guard hook detects non-code diffs via
+  `gh pr diff --name-only` and exits early; the stop hook no longer tells agents to wait for
+  review on these PRs.
+
+- **`rules/subrules/plan-presentation/rule.md`** and regenerated **`rules/AGENTS.md`**.
+  Plans publish via `artifacts render --publish` to private managed URLs instead of being
+  committed to the repo through worktrees and PRs.
+
 - **`skills/computer/SKILL.md`** explains the standalone desktop engine and keeps agent-driven actions on the thin `agents computer` adapter so permissions and browser/computer session history remain intact. The recipes distinguish local macOS, remote Windows and VNC support.
 
 - Worktree freshness accepts a no-op fetch when `FETCH_HEAD` matches the target branch, remote and commit and a bounded read-only remote check confirms it. Retained entries from appended fetches cannot renew an outdated base. The fallback takes at most three seconds of network wait and requires Python 3 on POSIX; unsupported environments and custom source-ref mappings retain conservative rejection.
