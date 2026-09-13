@@ -47,6 +47,9 @@ case "$*" in
     # stub, so print the bare login string it would have printed after --jq.
     if [ -n "${FAKE_MG_AUTHOR+x}" ]; then printf '%s' "$FAKE_MG_AUTHOR"
     else printf '%s' "someone-else"; fi ;;
+  *"pr diff"*"--name-only"*)
+    if [ -n "${FAKE_MG_DIFF_FILES+x}" ]; then printf '%s' "$FAKE_MG_DIFF_FILES"
+    else echo ""; fi ;;
   *) echo "" ;;
 esac
 STUB
@@ -101,7 +104,8 @@ check() {
   # leaked into every later case and fail-opened them — three block-expecting
   # cases silently passed the wrong way. Clear the per-case fixtures here.
   unset FAKE_MG_GH_FAIL FAKE_MG_REVIEWS FAKE_MG_COMMENTS FAKE_MG_AUTHOR \
-        FAKE_MG_USER_ID FAKE_MG_USER_LOGIN AGENTS_MERGE_TRUSTED_OWNER_IDS
+        FAKE_MG_USER_ID FAKE_MG_USER_LOGIN AGENTS_MERGE_TRUSTED_OWNER_IDS \
+        FAKE_MG_DIFF_FILES
 }
 
 # checkc — same as check, but wraps the command in a Grok CLI camelCase payload
@@ -125,7 +129,8 @@ checkc() {
   # leaked into every later case and fail-opened them — three block-expecting
   # cases silently passed the wrong way. Clear the per-case fixtures here.
   unset FAKE_MG_GH_FAIL FAKE_MG_REVIEWS FAKE_MG_COMMENTS FAKE_MG_AUTHOR \
-        FAKE_MG_USER_ID FAKE_MG_USER_LOGIN AGENTS_MERGE_TRUSTED_OWNER_IDS
+        FAKE_MG_USER_ID FAKE_MG_USER_LOGIN AGENTS_MERGE_TRUSTED_OWNER_IDS \
+        FAKE_MG_DIFF_FILES
 }
 
 # --- Should BLOCK (exit 2): a genuine --admin bypass merge ---
@@ -281,6 +286,33 @@ FAKE_MG_AUTHOR='fleet-bot' FAKE_MG_USER_ID='13007401' FAKE_MG_USER_LOGIN='fleet-
 # the installed guard on the test runner itself.
 FAKE_MG_AUTHOR='fleet-bot' FAKE_MG_USER_ID='13007401' FAKE_MG_USER_LOGIN='fleet-bot' AGENTS_MERGE_TRUSTED_OWNER_IDS='13007401' \
   check 2 "owner-mode: --admin bypass is still blocked for a trusted owner" "gh pr $M 42 $A"
+
+# --- Non-code fast path ---
+# Docs-only PR: all files match the extension allowlist, none hit the critical
+# path denylist. The guard must exit 0 (no review required).
+FAKE_MG_DIFF_FILES=$'README.md\nCHANGELOG.md\ndocs/guide.txt' \
+  check 0 "non-code fast path: docs-only PR merges without review" "gh pr $M 80"
+# Mixed PR: one .ts file among docs. Full review path must run.
+FAKE_MG_DIFF_FILES=$'README.md\nsrc/index.ts\nCHANGELOG.md' \
+  check 0 "non-code fast path: mixed PR with code goes to full review (has APPROVE)" "gh pr $M 80"
+# Config-only but touches .github/workflows — critical path, must NOT fast-path.
+FAKE_MG_DIFF_FILES=$'README.md\n.github/workflows/ci.yml' \
+  FAKE_MG_REVIEWS='[]' FAKE_MG_COMMENTS='[]' \
+  check 2 "non-code fast path: .github/workflows always requires review" "gh pr $M 80"
+# Touches agents.yaml — hook registration, must NOT fast-path.
+FAKE_MG_DIFF_FILES=$'docs/setup.md\nagents.yaml' \
+  FAKE_MG_REVIEWS='[]' FAKE_MG_COMMENTS='[]' \
+  check 2 "non-code fast path: agents.yaml always requires review" "gh pr $M 80"
+# Touches permissions/ — must NOT fast-path.
+FAKE_MG_DIFF_FILES=$'README.md\npermissions/groups/admin.yaml' \
+  FAKE_MG_REVIEWS='[]' FAKE_MG_COMMENTS='[]' \
+  check 2 "non-code fast path: permissions/ always requires review" "gh pr $M 80"
+# Config-only PR (yaml/json, no critical paths) — should fast-path.
+FAKE_MG_DIFF_FILES=$'config/settings.yaml\ndata/fixtures.json\nrules/subrules/foo/rule.md' \
+  check 0 "non-code fast path: config/rules PR without critical paths merges" "gh pr $M 80"
+# Empty diff (gh pr diff failed) — must NOT fast-path (fail closed).
+FAKE_MG_DIFF_FILES='' \
+  check 0 "non-code fast path: empty diff falls through to full review (has APPROVE)" "gh pr $M 80"
 
 printf -- '---\nmerge-guard: %s passed, %s failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]
