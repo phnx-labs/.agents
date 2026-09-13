@@ -118,9 +118,9 @@ agents sessions share <id> --expire never    # a link that does not decay (defau
 It renders the same redacted document `agents sessions render` writes, wraps it in a
 self-contained page, and publishes it to your share endpoint. The slug is
 `session-<shortid>`, so re-sharing one session updates one URL and keeps the prior page
-as a revision (`agents artifacts share revisions <slug>`). One session per link.
+as a revision (`artifacts share revisions <slug>`). One session per link.
 
-- **Unlisted by default** — kept out of your public gallery and out of `agents artifacts
+- **Unlisted by default** — kept out of your public gallery and out of `artifacts
   share list`. `--public` opts in.
 - **Unlisted is not access control.** R2 reads are public: anyone with the exact URL reads
   the page. Never describe such a link as private, encrypted, or access-restricted.
@@ -130,7 +130,7 @@ as a revision (`agents artifacts share revisions <slug>`). One session per link.
 - **Not an evidence mechanism.** This does not license attaching a transcript to a PR,
   issue, or ticket body — that still takes a **secret gist** on a private repo, or a
   `<host>:<path>` reference on a public one. See the `truly-agentic-git-workflow` rule.
-- Needs a share endpoint: `agents artifacts share status` reports it, `agents artifacts
+- Needs a share endpoint: `artifacts share status` reports it, `artifacts share
   setup` provisions one.
 
 ## Export & Import (portable recall over the fleet)
