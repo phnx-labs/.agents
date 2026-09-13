@@ -190,6 +190,18 @@ case "$norm" in
         _pr_repo=$(git remote get-url origin 2>/dev/null | sed -E 's#(git@github\.com:|https://github\.com/)([^/]+/[^/.]+)(\.git)?#\2#' | head -1)
       fi
     fi
+    # Non-code fast path: non-src PRs (docs, config, rules) merge immediately
+    # without review or CI. Conservative: any file outside the allowlist means
+    # the full review path runs.
+    if [ -n "$_pr_num" ] && [ -n "$_pr_repo" ]; then
+      _diff_files=$(_to 3 gh pr diff "$_pr_num" -R "$_pr_repo" --name-only 2>/dev/null) || _diff_files=""
+      if [ -n "$_diff_files" ]; then
+        _has_code=$(printf '%s\n' "$_diff_files" | grep -cvE '\.(md|yaml|yml|json|toml|txt|cfg|ini|conf|lock|gitignore|env|csv)$' || true)
+        if [ "$_has_code" = "0" ]; then
+          exit 0
+        fi
+      fi
+    fi
     if [ -n "$_pr_num" ] && [ -n "$_pr_repo" ]; then
       # 3s per call, but PHNX-3236 made this THREE probes (reviews, comments,
       # + the PR-author fetch below) against a hook `timeout: 5` (hooks.yaml).

@@ -10,7 +10,8 @@ cited file is a link, and a non-author artifact critic reviews the presentation
 before it is presented. Discover existing work first and leave the
 tracker unchanged while iterating (`conventions`). Author in Markdown and render
 inspected HTML with `artifacts`, following its validation contract; keep a
-checklist for substantial plans. Commit feature plans through the feature
-worktree and PR with links to tracking. A plan-only request ends with the plan;
+checklist for substantial plans. Publish plans with `artifacts render --publish`
+to a private managed URL; plans stay outside the repo unless they ship with a
+feature's code change. A plan-only request ends with the plan;
 implementation starts only within the user's authorization, and a settled
 approach needs no extra approval ritual.
