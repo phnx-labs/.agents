@@ -5,12 +5,15 @@
 ### Changed
 
 - **`subagents/code-reviewer/AGENT.md`** — two improvements to the code reviewer. (1) Non-code
-  diffs (docs, config, YAML, JSON, Markdown, images, lockfiles) now get an explicit early exit
-  with "no findings" instead of running the full hunt loop, except when the diff touches
-  security-critical paths (CI workflows, hook scripts, permission definitions). (2) Large code
-  diffs (300+ changed lines across 5+ files) fan out parallel sub-agent forks — correctness,
-  patterns, and security (when risk surfaces are touched) — then merge and deduplicate findings.
-  Small diffs stay single-pass.
+  diffs (files matching the `merge-guard.sh` extension allowlist: `.md`, `.yaml`, `.yml`,
+  `.json`, `.toml`, `.txt`, `.cfg`, `.ini`, `.conf`, `.lock`, `.gitignore`, `.env`, `.csv`)
+  now get an explicit early exit with "no findings" instead of running the full hunt loop,
+  except when the diff touches security-critical paths (`.github/workflows/`, `agents.yaml`,
+  `permissions/`). (2) Scoped invocation: the caller may assign a subset of hunt classes,
+  enabling the calling skill (`code:review`) to fan out parallel reviewers via `run`/`teams`
+  across three natural dimensions — correctness (7 classes), patterns (10 classes), and
+  security — then merge findings. All 18 hunt classes are assigned. Unscoped invocations
+  stay single-pass as before.
 
 - **`rules/subrules/gh-merge-guard/rule.md`**, **`rules/subrules/gh-merge-guard/merge-guard.sh`**,
   **`hooks/stop/00-agent-verify-work-complete.sh`**, and regenerated **`rules/AGENTS.md`**.
