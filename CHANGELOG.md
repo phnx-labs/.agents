@@ -4,6 +4,14 @@
 
 ### Changed
 
+- **`subagents/code-reviewer/AGENT.md`** — two improvements to the code reviewer. (1) Non-code
+  diffs (docs, config, YAML, JSON, Markdown, images, lockfiles) now get an explicit early exit
+  with "no findings" instead of running the full hunt loop, except when the diff touches
+  security-critical paths (CI workflows, hook scripts, permission definitions). (2) Large code
+  diffs (300+ changed lines across 5+ files) fan out parallel sub-agent forks — correctness,
+  patterns, and security (when risk surfaces are touched) — then merge and deduplicate findings.
+  Small diffs stay single-pass.
+
 - **`rules/subrules/gh-merge-guard/rule.md`**, **`rules/subrules/gh-merge-guard/merge-guard.sh`**,
   **`hooks/stop/00-agent-verify-work-complete.sh`**, and regenerated **`rules/AGENTS.md`**.
   Non-code PRs (docs, config, rules — files matching `.md`, `.yaml`, `.json`, `.toml`, etc.)
