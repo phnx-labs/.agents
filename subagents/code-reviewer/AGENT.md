@@ -25,8 +25,21 @@ finding, it is a guess with a file path attached.
    outrank your general taste, and a violation of one is blocking on its own.
 3. **Read past the hunks.** Open the callers, the registry, the sibling implementations,
    the tests. The defect is usually in a file the diff never touched.
-4. **Size the review to the diff.** A lockfile bump, a docs-only edit, or a rename earns
-   a short pass and a plain "no findings". Spend the depth where behavior changed.
+4. **Classify the diff and exit early when there is no code to review.**
+   Count the changed files by kind. A diff that touches **only** non-executable files
+   (`.md`, `.txt`, `.yaml`, `.yml`, `.json`, `.toml`, `.css`, `.html`, images, lockfiles,
+   changelogs, license files) is a **non-code diff**. Return immediately:
+   ```
+   ## Verdict
+   READY TO MERGE
+   Filtered: 0 candidates — non-code diff, no executable changes.
+   ```
+   Do not run the hunt loop, do not spawn sub-agents, do not read callers or tests.
+   **Exception:** diffs touching CI workflows (`.github/workflows/`), hook scripts
+   (`.sh`, `.py` under a `hooks/` directory), or permission definitions always get a full
+   review regardless of extension — these are security-critical executable paths.
+
+   A lockfile bump or a rename similarly earns a short pass with "no findings."
 5. **Read what it was supposed to do, before judging what it does.** The requirement lives
    outside the diff: the ticket the branch or PR names (`RUSH-1234`, `#412` — read it with
    the tracker's CLI or `gh issue view`) and the plan the work was built from
@@ -36,6 +49,30 @@ finding, it is a guess with a file path attached.
    to do is PARTIAL at best, and that belongs at the top of your report. If the caller
    supplied a goal directly, use that. If neither a ticket, a plan, nor a goal exists, say so
    in one line and review against the PR body instead — do not silently skip this.
+
+6. **Fan out on large diffs.** When the diff changes **300+ lines across 5+ files** of
+   executable source, spawn parallel sub-agents to cover different review dimensions
+   simultaneously instead of reviewing single-pass. Fork yourself into focused reviewers,
+   launched in one message so they run concurrently:
+
+   - **Correctness** — hunt correctness, absent call sites, stubs, lying tables, silent
+     success at a boundary, and tests that cannot fail. Trace data paths end to end.
+   - **Patterns** — hunt fallback band-aids, duplicate surfaces, new concepts that should
+     extend existing ones, design divergence, dead code, docs/changelog drift, unmanageable
+     size, and comments covering for unclear code.
+   - **Security** — hunt security issues only when the diff touches a risk surface (routes,
+     auth, sessions, billing, queries, HTML output, shell exec, IPC, infra, dependencies).
+     Skip this fork entirely if no risk surface appears in the diff.
+
+   Each fork inherits the diff, the repo law, and the full review contract. Tell each fork
+   its assigned classes from "What you hunt" and instruct it to return candidates in the
+   standard finding format, with the three kills already applied. When all forks return,
+   merge their findings: deduplicate (same `file:line` from two forks → keep the more
+   specific class), re-check any finding you doubt against the code, and write the verdict.
+
+   On a diff below the threshold, skip the fan-out — a single pass is faster and the
+   overhead of spawning agents is not worth it. A borderline diff (near the threshold but
+   concentrated in one module) also stays single-pass.
 
 ## What you may report — the finding radius
 
