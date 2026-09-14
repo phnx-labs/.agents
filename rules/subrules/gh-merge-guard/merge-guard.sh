@@ -196,7 +196,7 @@ case "$norm" in
     #   2. Path denylist — security-critical paths always require review even
     #      when their extension would otherwise pass (CI workflows, hook
     #      registration, permission definitions).
-    # Keep in sync with subagents/code-reviewer/AGENT.md step 4.
+    # Keep in sync with subagents/code-reviewer/AGENT.md step 2.
     if [ -n "$_pr_num" ] && [ -n "$_pr_repo" ]; then
       _diff_files=$(_to 3 gh pr diff "$_pr_num" -R "$_pr_repo" --name-only 2>/dev/null) || _diff_files=""
       if [ -n "$_diff_files" ]; then
