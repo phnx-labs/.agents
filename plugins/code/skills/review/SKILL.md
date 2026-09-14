@@ -45,6 +45,8 @@ If independent review is unavailable, record the blocker rather than self-review
 
 The brief carries the requirement, exact revision, relevant canonical patterns, and
 scope. Reviewers read the actual diff and affected callers, tests, and sibling paths.
+For TypeScript or Go, use the relevant [language guidance](../refactor/typescript-go.md)
+to inspect package boundaries and behavior; it does not create additional merge gates.
 Scale parallel review to independent areas and risk using `run` or `teams`; the author
 never supplies their own non-author verdict. A non-author verdict must be posted on the PR.
 
@@ -81,6 +83,10 @@ responsibilities where relevant. Existing helper scripts and their data contract
 Tool output is candidate evidence: a grep hit, missing local tool, or similar function
 signature alone does not prove a defect. Validate findings, remove false positives,
 and report skipped checks or incomplete coverage honestly.
+For size, test, type/function, or duplicate-code analysis, use the shared
+[measurement contract](../refactor/measurement-tools.md#comparable-code-health-measurements)
+and [TypeScript/Go guidance](../refactor/typescript-go.md). Read the full caller path before
+recommending a merge or deletion; distinguish navigation problems from repeated behavior.
 
 Produce a readable, ranked report with evidence and practical fixes. Use the existing
 interactive HTML renderer for larger scans; emphasize relationships visually when a

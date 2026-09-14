@@ -18,6 +18,33 @@ Save selected outputs separately (`modules.json`, `exposure.json`, `surface.json
 `patterns.json`, `comments.json`). Check each process and inspect coverage metadata.
 Use `code:review` repo mode for existing file-level scanners instead of duplicating them.
 
+## Comparable code-health measurements
+
+Use the repository's existing metric collector and classification rules first. When
+automation is requested, extend that collector rather than create a second set of counts.
+Record the revision, scoped tracked-file list, tool/version, commands, and exclusions so a
+later run can reproduce the baseline. Refresh the baseline after intervening changes.
+
+Separate production source, tests, and generated/vendor/fixture material. Within source
+and tests, define code, comment, and blank-line counts; do not add overlapping measures
+or present physical lines as code-only LOC. Check the actual test layout, including
+`*.test.ts`, `*.spec.ts`, test directories, and `*_test.go`, against the classifier.
+Roll up the same file inventory by service and major directory so totals reconcile.
+
+For a detailed health request, also locate type declarations, functions/methods, large
+files/functions, and possible duplicates. State what each counter recognizes: named types
+versus anonymous shapes, declarations versus overloads, functions versus methods/closures.
+Prefer an existing language parser for exact symbol counts. Regex counts are estimates;
+name unsupported syntax and do not present them as a semantic analysis.
+
+Similar signatures or bodies nominate a pair for inspection. Read both implementations,
+callers, validation, errors, and side effects before deciding that they own the same
+behavior. Show the shared decision and meaningful differences. Two functions with the
+same types can implement different operations; duplicated behavior can have different
+types. Report confirmed opportunities separately from unreviewed candidates.
+
+## Interpretation and comparison
+
 Interpretation limits matter:
 
 - Graph grouping follows path granularity; inferred layering may follow names. Inspect

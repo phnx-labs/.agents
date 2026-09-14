@@ -4,6 +4,13 @@
 
 ### Changed
 
+- **`plugins/code/`** (0.14.1). Refactor and review share TypeScript/Go guidance for
+  package boundaries, data shapes, library replacements, and behavioral verification.
+  Refactors preserve current feature decisions, show before/after code and tests, and
+  derive reduction estimates from comparable source/test/comment counts. Health scans
+  distinguish duplicate candidates from confirmed shared behavior and document the
+  existing scanner's coverage limits. The marketplace description now matches the skills.
+
 - **`subagents/code-reviewer/AGENT.md`** — two improvements to the code reviewer. (1) Non-code
   diffs (files matching the `merge-guard.sh` extension allowlist: `.md`, `.yaml`, `.yml`,
   `.json`, `.toml`, `.txt`, `.cfg`, `.ini`, `.conf`, `.lock`, `.gitignore`, `.env`, `.csv`)

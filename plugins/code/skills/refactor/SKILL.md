@@ -28,6 +28,12 @@ Check current code, relevant tickets, open PRs, and active work before selecting
 Reuse existing work and coordinate overlapping modules. Explore without creating tickets;
 claim or create tracking only when taking a selected change into execution.
 
+Name the service/package being improved, the code the user wants to understand, and the
+behavior that must remain. Follow callers across a boundary to understand it; that does
+not put the neighboring service into scope. Current user decisions supersede old plans.
+If a feature's future is unclear, ask about that feature in plain language and continue
+with independent cleanup; an old document or a size target is not permission to remove it.
+
 ## Architectural judgment
 
 Understand the repository's intended boundaries and compare them with actual behavior.
@@ -35,10 +41,13 @@ Distinguish enforceable contracts, design intent, assumptions, and unverified cl
 A documentation error calls for a documentation correction; a behavior defect is separate
 from a behavior-preserving refactor. Record incidental bugs as findings, not automatic tickets.
 
-Consider merging duplicate responsibilities, extracting a shared layer, drawing a module
-boundary, extracting a package/SDK, reorganizing a confusing tree, simplifying a public
-surface, declaring a shared variant contract, or relocating architectural explanation.
-Choose only moves supported by the actual maintenance problem.
+Start with the work the code performs: for an API, trace a representative request through
+registration, validation, authorization, business logic, persistence or upstream calls,
+and response/error handling. Identify which decisions are repeated and which are essential.
+Compare simplifying the existing owner with adding a layer or adopting a library. A file
+split can improve navigation without reducing the responsibility or total code to maintain.
+For TypeScript or Go, read [typescript-go.md](typescript-go.md) for language-specific
+boundaries, library evaluation, and verification.
 
 Deduplicate decisions, not merely similar lines. Prefer extending an appropriate existing
 home over inventing another. Extract a layer when it creates a useful boundary or unifies
@@ -46,9 +55,11 @@ one responsibility; do not force divergent variants into a provider interface. A
 that constructs variants at one boundary can be correct. Repeated scattered dispatch may
 justify a contract and registry, after examining actual variants and the repo's patterns.
 
-Preserve useful per-symbol docs and point-of-use invariants. Move standalone architectural
-narratives to an existing appropriate doc when that makes them easier to discover and
-maintain; comment percentages and block lengths are discovery aids, never deletion targets.
+Treat tests and comments as part of the change. Identify the distinct behavior each affected
+test protects and what will prove it after consolidation; a source/test ratio does not judge
+test value. Remove stale ticket history or narration when it no longer explains the code.
+Preserve useful per-symbol docs, active TODOs, directives, and point-of-use invariants;
+move still-useful architectural explanation to its existing documentation home.
 In `quality` mode, make concrete cleanup relevant to the current change. Expand into a
 structural plan only when the scope genuinely requires it.
 
@@ -59,6 +70,13 @@ agent-exposure, surface census, pattern, and comment scanners. Reuse `code:revie
 mode for file-level diagnostics. Select relevant measurements and validate candidates
 against actual code and consumers; static reachability does not prove absence of callers.
 Report coverage limits and missing data rather than presenting partial scans as complete.
+
+When size or code health motivates the work, establish a reproducible baseline by service
+and major directory, including tests and comments. Use the counting contract in
+[measurement-tools.md](measurement-tools.md). Derive a reduction estimate from inspected
+code: distinguish code removed, code moved, replacement code added, and behavior removed.
+Explain any gap to the user's target; do not promise a smaller total by excluding the
+files that moved, compressing formatting, or silently dropping retained features.
 
 Make each significant structural change easy to inspect. Show current and proposed
 relationships with meaningful notation, accurate labels, and clear arrow direction.
@@ -72,6 +90,9 @@ on the user's viewing device. [reference-figure.md](reference-figure.md) is an e
 module comparison, not a compulsory visual grammar. A diagram should clarify the change,
 not require the reader to decode incidental LOC totals or implementation details.
 
+Show enough before/after code to make a major move reviewable: the affected file tree,
+representative handler/function or type, its callers, and the tests that change. Name what
+stays, what changes, and why; a dependency diagram alone cannot show the proposed API.
 The plan states the maintenance problem, goals and non-goals, selected changes, effects
 on consumers, dependencies, and acceptance evidence. Rank by actual harm and exposure;
 measurement scores support judgment. Proceed within authorized scope. Ask when the user's
