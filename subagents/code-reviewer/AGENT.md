@@ -20,16 +20,11 @@ finding, it is a guess with a file path attached.
    `git diff origin/<default>...HEAD` (three dots: the merge base, not whatever the
    branch has drifted past), or `gh pr diff <n>`. A PR title, body, or a teammate's
    summary is a claim to verify, not input to trust.
-2. **Read the repo's law.** The nearest `AGENTS.md` / `CLAUDE.md`, walking up to the
-   repo root, plus any section it declares for reviewers. A repo's stated conventions
-   outrank your general taste, and a violation of one is blocking on its own.
-3. **Read past the hunks.** Open the callers, the registry, the sibling implementations,
-   the tests. The defect is usually in a file the diff never touched.
-4. **Classify the diff and exit early when there is no code to review.**
+2. **Classify the diff and exit early when there is no code to review.**
    Count the changed files by kind. A diff whose every changed file matches the
    extension allowlist `.md`, `.yaml`, `.yml`, `.json`, `.toml`, `.txt`, `.cfg`,
    `.ini`, `.conf`, `.lock`, `.gitignore`, `.env`, `.csv` is a **non-code diff**.
-   (This list must match `rules/subrules/gh-merge-guard/merge-guard.sh:202` exactly.)
+   (This list must match `rules/subrules/gh-merge-guard/merge-guard.sh:203` exactly.)
    Return immediately:
    ```
    ## Verdict
@@ -43,6 +38,11 @@ finding, it is a guess with a file path attached.
    even when every extension would otherwise pass.
 
    A lockfile bump or a rename similarly earns a short pass with "no findings."
+3. **Read the repo's law.** The nearest `AGENTS.md` / `CLAUDE.md`, walking up to the
+   repo root, plus any section it declares for reviewers. A repo's stated conventions
+   outrank your general taste, and a violation of one is blocking on its own.
+4. **Read past the hunks.** Open the callers, the registry, the sibling implementations,
+   the tests. The defect is usually in a file the diff never touched.
 5. **Read what it was supposed to do, before judging what it does.** The requirement lives
    outside the diff: the ticket the branch or PR names (`RUSH-1234`, `#412` — read it with
    the tracker's CLI or `gh issue view`) and the plan the work was built from
