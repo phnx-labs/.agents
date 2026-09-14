@@ -21,3 +21,9 @@ Optional Bun helpers support [repository scans](skills/review/scan-tools.md) and
 [refactor measurements](skills/refactor/measurement-tools.md); incomplete tool coverage is
 reported rather than treated as a clean result. The [PR posting reference](skills/review/pr-posting.md)
 and [module comparison example](skills/refactor/reference-figure.md) load when needed.
+
+Review and refactor share [TypeScript and Go guidance](skills/refactor/typescript-go.md)
+for package boundaries, types, runtime behavior, library replacements, and meaningful
+tests. The [measurement contract](skills/refactor/measurement-tools.md#comparable-code-health-measurements)
+keeps source/test counts and duplicate-code candidates reproducible. Refactor proposals
+show concrete before/after code and preserve the user's current feature decisions.

@@ -1,6 +1,6 @@
 {
   "name": "code",
-  "version": "0.14.0",
+  "version": "0.14.1",
   "description": "Coding workflows: deliver queues, review PRs or repository health, refactor architecture, commit cohesive changes, and preserve useful project knowledge. Evidence-backed visuals and independent review support verified delivery.",
   "author": {
     "name": "Muqsit Nawaz",

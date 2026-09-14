@@ -13,7 +13,7 @@ Create `RUN_DIR/findings/` for selected pass outputs. Helpers require Bun.
 
 | Helper | Invocation | Candidate evidence |
 |---|---|---|
-| Code health | `bun "$SKILL_DIR/code-health.ts" "$RUN_DIR"` | Available compiler/linter output; missing checks recorded in `skipped.json`. |
+| Code health | `bun "$SKILL_DIR/code-health.ts" "$RUN_DIR"` | Available compiler/linter output; missing tools recorded in `skipped-tools.json`. |
 | Invariants | `bun "$SKILL_DIR/invariants.ts" "$RUN_DIR"` | Negative assertions in nearby docs and references to the named tokens. |
 | Identifiers | `bun "$SKILL_DIR/identifiers.ts" "$RUN_DIR"` | MCP names and documented CLI flags against locally available interfaces. |
 | Signatures | `bun "$SKILL_DIR/signatures.ts" "$RUN_DIR"` | Similar function shapes that may duplicate a responsibility. |
@@ -21,8 +21,13 @@ Create `RUN_DIR/findings/` for selected pass outputs. Helpers require Bun.
 Redirect each selected helper's stdout to a distinct `findings/<pass>.json`. Independent
 passes can run concurrently, but check every process completion and output. A missing
 runtime/tool or unsupported source area is an explicit coverage limit; do not auto-install
-a suite merely for this diagnostic. The code-health helper recognizes a limited set of
-project layouts: inspect its surface detection before claiming it checked another repo.
+a suite merely for this diagnostic. The code-health helper currently detects only
+`rush/*`, `prix/*`, and `harness` roots; it does not discover arbitrary TypeScript workspaces
+or Go modules. Its diagnostic parser also does not preserve command exit status or every
+error format. An empty findings array and an empty `skipped-tools.json` therefore do not
+prove that checks ran or passed. Discover the target's manifests and canonical checks,
+run those directly when outside the helper's coverage, and record their scope, exit status,
+and raw diagnostics.
 
 Add an architecture inspection of the scoped code and canonical patterns. An independent
 agent may inspect a bounded area. Look for bypassed ownership, duplicated responsibilities,
