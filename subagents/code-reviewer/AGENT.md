@@ -26,18 +26,20 @@ finding, it is a guess with a file path attached.
 3. **Read past the hunks.** Open the callers, the registry, the sibling implementations,
    the tests. The defect is usually in a file the diff never touched.
 4. **Classify the diff and exit early when there is no code to review.**
-   Count the changed files by kind. A diff that touches **only** non-executable files
-   (`.md`, `.txt`, `.yaml`, `.yml`, `.json`, `.toml`, `.css`, `.html`, images, lockfiles,
-   changelogs, license files) is a **non-code diff**. Return immediately:
+   Count the changed files by kind. A diff whose every changed file matches the
+   extension allowlist `.md`, `.yaml`, `.yml`, `.json`, `.toml`, `.txt`, `.cfg`,
+   `.ini`, `.conf`, `.lock`, `.gitignore`, `.env`, `.csv` is a **non-code diff**.
+   Return immediately:
    ```
    ## Verdict
    READY TO MERGE
    Filtered: 0 candidates — non-code diff, no executable changes.
    ```
    Do not run the hunt loop, do not spawn sub-agents, do not read callers or tests.
-   **Exception:** diffs touching CI workflows (`.github/workflows/`), hook scripts
-   (`.sh`, `.py` under a `hooks/` directory), or permission definitions always get a full
-   review regardless of extension — these are security-critical executable paths.
+   **Denylist — always review regardless of extension:** `.github/workflows/`,
+   `agents.yaml`, and paths under `permissions/`. These are security-critical
+   executable or registration paths; a diff touching any of them gets a full review
+   even when every extension would otherwise pass.
 
    A lockfile bump or a rename similarly earns a short pass with "no findings."
 5. **Read what it was supposed to do, before judging what it does.** The requirement lives
@@ -56,10 +58,12 @@ finding, it is a guess with a file path attached.
    launched in one message so they run concurrently:
 
    - **Correctness** — hunt correctness, absent call sites, stubs, lying tables, silent
-     success at a boundary, and tests that cannot fail. Trace data paths end to end.
-   - **Patterns** — hunt fallback band-aids, duplicate surfaces, new concepts that should
-     extend existing ones, design divergence, dead code, docs/changelog drift, unmanageable
-     size, and comments covering for unclear code.
+     success at a boundary, tests that cannot fail, and missing evidence. Trace data
+     paths end to end.
+   - **Patterns** — hunt fallback band-aids, the expedient mechanism, duplicate surfaces,
+     new concepts that should extend existing ones, design divergence, reintroduced
+     invariants, dead code, docs/changelog drift, unmanageable size, and comments
+     covering for unclear code.
    - **Security** — hunt security issues only when the diff touches a risk surface (routes,
      auth, sessions, billing, queries, HTML output, shell exec, IPC, infra, dependencies).
      Skip this fork entirely if no risk surface appears in the diff.
