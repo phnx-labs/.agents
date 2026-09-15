@@ -99,7 +99,7 @@ to type.
 | Current repository's agent output, cost, mix, and workflow tax as charts | `/yc:workweave` | [`yc`](plugins/yc/README.md) — local session index to private HTML |
 | Review PRs this session (or a whole repo scan) | `/code:review` | `code:review` — three modes |
 | Learn a codebase into project `AGENTS.md` | `/code:learn` | Durable nav notes for future agents |
-| Design / mockup offline | `/design` | [`design`](plugins/design/README.md) |
+| Create or refine systems, graphics, and interactive prototypes; critique existing design | `/design` or `/design:system`, `/design:graphics`, `/design:prototype`, `/design:critique` | [`design`](plugins/design/README.md) |
 | Share an HTML plan/report | `artifacts share <file>` | [`artifacts`](skills/artifacts/SKILL.md) — public link with OG cover, or `--unlisted --no-cover --expire 7d` for a discreet one |
 | Drive a **website** | skill `browser` (`agents browser`) | Not a slash command — load the skill |
 | Drive a **native Mac app** | skill `computer` | Same |
@@ -129,7 +129,7 @@ to type.
 | **[`swarm`](plugins/swarm/README.md)** | You need parallel independent tracks or blind verification | Single small edit |
 | **[`sessions`](plugins/sessions/README.md)** | Resume prior work here, crash-recover headlessly, session analytics | Starting brand-new work |
 | **[`fleet`](plugins/fleet/README.md)** | Onboard a bare box to fleet parity / profile a sluggish machine | Single-machine day-to-day |
-| **[`design`](plugins/design/README.md)** | Render design offline | Shipping app code |
+| **[`design`](plugins/design/README.md)** | Create, refine, or assess visual and interaction design using existing guidelines | Backend-only engineering → use `code` |
 
 Catalog detail: [`plugins/README.md`](plugins/README.md) · full command list: [`commands/README.md`](commands/README.md).
 
