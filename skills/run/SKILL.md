@@ -265,7 +265,7 @@ agents logs <id> -f          # re-attach to a running one and follow
 `--device auto` lets the CLI choose a reachable machine from its
 automatic-placement pool. Since PHNX-4083 a bare interactive run (`agents run
 <harness>` with no prompt on a real TTY) places itself through this same engine
-— no flag needed; headless runs (any prompt) still run in place. For a named
+— no flag needed; headless runs retain their existing placement defaults; a prompt alone does not enable automatic placement. For a named
 harness, placement prefers a device with
 a healthy signed-in account, then the device with lower live load. An
 interactive trailing-`@` picker launch also admits installed devices with a
