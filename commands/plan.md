@@ -1,8 +1,5 @@
 ---
-description: Plan a change with a visual product brief, accurate diagrams, goals/non-goals, and evidence-backed implementation choices
+description: Plan a reviewable change with grounded scope, visual explanation, and success checks
 ---
 
 Invoke the `swarm:plan` skill for: $ARGUMENTS
-
-Use the same planning contract across harnesses. Respect planning-only scope;
-continue into implementation only when authorized.

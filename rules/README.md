@@ -42,7 +42,9 @@ name instead of restating. Then, in order: `research-discipline` (evidence),
 PRs, no footers), `gh-merge-guard`, `operational` (environment, credentials, owning tools,
 output locations), `conventions` (existing work, tracker, checklists), `parallel-teams`
 (delegation, remote dispatch, unattended verification), `feed-status-posts`,
-`ui-work-discipline`, `plan-presentation`. Eleven subrules, one topic each; a new rule is
+`ui-work-discipline`, `plan-presentation`. The last is a thin route to the canonical
+`swarm:plan` skill and carries its existing presentation guards, not a second
+planning contract. Eleven subrules; a new rule is
 almost always a sentence in one of these, not a twelfth file.
 
 Your own machine composes more than this — anything in `~/.agents/rules/subrules/` unions in

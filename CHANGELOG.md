@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Consolidate the planning contract in swarm:plan, with thin aliases and independent presentation review.
+
 ## [0.2.4] - 2026-09-14
 
 ### Changed
