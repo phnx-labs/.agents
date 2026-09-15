@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Use the standalone artifacts CLI for sharing, with current slug and visibility behavior (PHNX-3992).
+
 ## [0.2.4] - 2026-09-14
 
 ### Changed
