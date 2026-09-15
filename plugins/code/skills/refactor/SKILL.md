@@ -1,6 +1,6 @@
 ---
 name: refactor
-description: "Improve codebase structure with evidence-backed, behavior-preserving changes. Use for module boundaries, duplicated responsibilities, package extraction, public-surface cleanup, or quality mode during an existing change."
+description: "Check code health, then improve human maintainability with evidence-backed, behavior-preserving changes. Use for module boundaries, duplicated responsibilities, package extraction, public-surface cleanup, or quality mode during an existing change."
 argument-hint: "[empty = this repo | <path> | quality | --scan-only | --top N | --days N | --depth N | --execute]"
 allowed-tools: Bash(agents *), Bash(artifacts *), Bash(git *), Bash(gh *), Bash(rg *), Bash(fd *), Bash(ls *), Bash(cat *), Bash(jq *), Bash(sqlite3 *), Bash(bun *), Bash(wc *), Bash(sort *), Bash(uniq *), Read(*), Write(*), Edit(*), Task(*)
 user-invocable: true
@@ -8,7 +8,7 @@ user-invocable: true
 
 # code:refactor
 
-Improve the structure so future changes are easier to understand and make correctly.
+Improve the structure so humans can understand, review and safely change less code.
 The result is a justified, behavior-preserving change with evidence of the improvement,
 not a quota of deletions, abstractions, diagrams, or PRs.
 
@@ -33,6 +33,20 @@ behavior that must remain. Follow callers across a boundary to understand it; th
 not put the neighboring service into scope. Current user decisions supersede old plans.
 If a feature's future is unclear, ask about that feature in plain language and continue
 with independent cleanup; an old document or a size target is not permission to remove it.
+
+## Health before changes
+
+Use [code:health](../health/SKILL.md) to establish the relevant baseline before selecting
+changes. Read existing HEALTH.md, compare its assessed source commit with current code,
+and revalidate the findings this work depends on. A matching commit is not proof; a missing
+report or unavailable revision requires fresh inspection. Ignore report-only changes when
+deciding what source needs reassessment. Health owns the report format and counting policy.
+
+For structural work, refresh the component's HEALTH.md and generated HEALTH.html before
+relying on the assessment, then update them after the change with actual results. Keep
+`quality` bounded to the current change; it does not require creating a report or auditing
+the whole component. `--scan-only` may read health and return updated findings, but must not
+write tracked reports, change product code, create tickets or open a report PR.
 
 ## Architectural judgment
 

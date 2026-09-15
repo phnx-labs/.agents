@@ -4,6 +4,13 @@
 
 ### Changed
 
+- **`plugins/code/`** (0.15.0). Add `code:health` for human maintainability, size
+  budgets, and evidence-backed reduction opportunities using existing scan helpers.
+  Component-root HEALTH.md and HEALTH.html use four metadata fields: kind, title,
+  updated, commit. Refactor checks current source before relying on health and
+  refreshes reports around structural changes; quality stays bounded and scan-only
+  remains read-only.
+
 - **`plugins/code/`** (0.14.1). Refactor and review share TypeScript/Go guidance for
   package boundaries, data shapes, library replacements, and behavioral verification.
   Refactors preserve current feature decisions, show before/after code and tests, and
