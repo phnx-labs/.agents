@@ -141,7 +141,7 @@ Two supported credential classes; do not blur them:
 - **Native OAuth/device login:** mint it on a **headed** (`personal`/`desktop`)
   device with `agents accounts add <harness> [name]`. Never copy its credential
   file or keychain entry. Refresh tokens may rotate, so two machines sharing one
-  copied login can invalidate each other. A worker never runs this flow.
+  copied login can invalidate each other. A worker never runs this managed `accounts add` flow.
 - **Setup token/API key:** `accounts add` stores the durable worker credential
   in the reserved `__<harness>__` store; the daemon pushes it to `role=worker`
   peers. A separately named provider account (`accounts add <name> --provider`)
