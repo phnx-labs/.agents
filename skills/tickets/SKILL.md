@@ -28,35 +28,23 @@ Check in this order. Stop at the first one that's actually present.
 
 ## When you're starting a task (not just reacting to a tracker request)
 
-The `conventions` + `truly-agentic-git-workflow` rules ask every substantive task to run a
-small ticket lifecycle; this skill is the mechanism.
-
-**Planning is discovery, not commitment.** Before designing, search open PRs as
-well as tickets; read matching scope, status, ownership, and links. During plan
-iteration, link existing work and keep proposed tasks in the plan or local harness
-checklist. Do not create issues/subtasks, claim tickets, or move them to In Progress
-just to plan. A local `TaskCreate` checklist does not require a tracker issue.
-
-Enter the lifecycle below **when the approach is settled and execution is about to
-start**, then refresh the search so newly opened work is not duplicated. User
-approval may settle the plan, but existing authorization to proceed is enough;
-no mandatory approval gate. A plan-only request remains planning. An explicit
-request to create or manage tickets is a tracker action, handled by Step 2.
+The `conventions` rule asks every substantive task to run a small ticket lifecycle; this
+skill is the mechanism. Planning is discovery: link existing work and keep proposed tasks
+in the plan or the local harness checklist. Enter the lifecycle when execution starts, or
+when the user asks for a tracker action outright (Step 2).
 
 1. **Check first — search wider than the exact title.** Look for an open ticket that already
    covers the task (the injected Linear context, and a real `search` — try the subsystem name,
    the file, the bug class, not just the exact phrase). Found one? Claim it (move to In Progress).
-2. **Enrich before you create.** If a ticket partially overlaps — same subsystem, same surface,
-   same bug class — **consolidate into it** instead of opening a parallel one: add your findings
-   as a comment, sharpen its description, attach evidence. A more complete existing ticket beats
-   a new near-duplicate. If several tickets already cover one problem, fold them: comment the
-   full picture on the canonical one and cancel the rest with a "consolidated into <ID>" note.
-3. **Open only if genuinely missing.** Nothing on the board covers it, a tracker is configured,
-   and it's **work you're delivering now**? Create one scoped to the task. Not delivering it this
-   session — just noticed it? Put it in your owner update, don't mint a Todo. No tracker? Skip
-   and describe the work in the PR.
-4. **Close on delivery.** When it ships, post the PR link plus a screenshot or short screen
-   recording of the outcome, then move it to Done. Close only with proof.
+2. **Enrich before you create.** A partially overlapping ticket — same subsystem, surface, or
+   bug class — gets your findings as a comment and a sharper description instead of a parallel
+   ticket. Several tickets for one problem fold into the canonical one; cancel the rest with a
+   "consolidated into <ID>" note.
+3. **Create when warranted.** Scope it to the task and use labels that already exist
+   (`linear labels`). A label the CLI reports as "not found, skipping" is one to drop, not
+   one to create. No tracker? Describe the work in the PR.
+4. **Close on delivery.** Post the PR link plus a screenshot or short screen recording of the
+   outcome, then move it to Done. Close only with proof.
 
 ## Step 2: Do the thing
 
@@ -75,8 +63,8 @@ If the skill (Step 1) gives you specific commands for these, **use them verbatim
 
 ### Ticket shape — a new ticket must be scannable at a glance
 
-Once you've decided a new ticket is genuinely warranted (Step 1's "open only if missing"),
-keep it small and legible — a board dies from unreadable tickets as fast as from too many:
+Keep a new ticket small and legible — a board dies from unreadable tickets as fast as from
+too many:
 
 - **Title** ≤ ~10 words, naming the concrete thing — no filler, no generic "typical words".
 - **Body** = three bullets: **what** (the change), **why** (the motivating file/PR/error),

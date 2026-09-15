@@ -25,8 +25,7 @@ not a quota of deletions, abstractions, diagrams, or PRs.
 | `--days N`, `--depth N` | Measurement window (default 90 days) and graph granularity (default 2). |
 
 Check current code, relevant tickets, open PRs, and active work before selecting changes.
-Reuse existing work and coordinate overlapping modules. Explore without creating tickets;
-claim or create tracking only when taking a selected change into execution.
+Reuse existing work and coordinate overlapping modules.
 
 Name the service/package being improved, the code the user wants to understand, and the
 behavior that must remain. Follow callers across a boundary to understand it; that does
