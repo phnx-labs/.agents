@@ -14,8 +14,8 @@ proposed screen text or UI chrome.
 
 - The user asks to improve a UX flow, command output, or screen transition and
   the question is "what happens after this?" → **anticipate** (this).
-- The user wants a screen rebuilt right now → **`interface`**.
-- The user wants an existing screen judged against the checklist → **`critique`**.
+- The user wants a screen rebuilt right now → **`design:prototype`**.
+- The user wants an existing screen judged against the checklist → **`design:critique`**.
 
 ## The four dead-end smells
 
@@ -83,7 +83,7 @@ design is missing:
 
 - Two ASCII diagrams (before/after) plus the rationale paragraph, in chat —
   this mode has no HTML/SVG render step; it is a proposal, not a build.
-- Offer to hand off to **`interface`** or **`prototype`** to implement, once
+- Offer to hand off to **`design:prototype`** to implement, once
   the user picks.
 
 ## Mode checklist

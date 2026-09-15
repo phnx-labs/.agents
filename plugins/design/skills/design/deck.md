@@ -13,9 +13,9 @@ and mandatory render/critique verification.
 ## When to use (vs neighbors)
 
 - A sequence of slides — pitch, talk, teaching → **deck** (this).
-- A single screen, page, or component → **`interface`**.
+- A single screen, page, or component → **`design:prototype`**.
 - One standalone chart or infographic → **`dataviz`**.
-- Several screens the user clicks through → **`prototype`**.
+- Several screens the user clicks through → **`design:prototype`** (same skill).
 
 ## The loop
 
@@ -38,10 +38,10 @@ and mandatory render/critique verification.
 ## Output & delivery
 
 - **One self-contained `.html`** (inline CSS + JS, no CDN) at
-  `"$ROOT/.agents/design/<slug>-deck.html"` or `/tmp/<slug>-deck.html`. Offline.
-  Keyless. Navigable with arrow keys from the first slide.
+  `"$ROOT/.agents/design/<slug>-deck.html"`. Offline. Keyless. Navigable with arrow
+  keys from the first slide.
 - Screenshot the title slide and two representative body slides; show them, not a
-  description. Open on the user's machine (see `SKILL.md` delivery).
+  description. Show via `agents browser show` (see `SKILL.md` delivery).
 - **PPTX export** is a follow-on: `reveal.js` with the pptx plugin, or
   LibreOffice headless from the HTML, are viable paths — neither is wired by
   default. Note it as available if the user asks.

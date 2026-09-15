@@ -15,7 +15,7 @@ render/critique verification.
 - Data that needs a visual shape: a trend, a comparison, a distribution → **dataviz** (this).
 - A diagram of structure, flow, or architecture (no quantitative axes) → **`diagram`**.
 - A slide deck with charts embedded in a narrative flow → **`deck`**.
-- A full UI screen that happens to include a chart → **`interface`**.
+- A full UI screen that happens to include a chart → **`design:prototype`**.
 
 ## The loop
 
@@ -41,10 +41,11 @@ render/critique verification.
 ## Output & delivery
 
 - **One self-contained `.html`** (inline CSS + inline SVG, no CDN) at
-  `"$ROOT/.agents/design/<slug>.html"` or `/tmp/<slug>.html`. Opens offline. Keyless.
+  `"$ROOT/.agents/design/<slug>.html"`. Opens offline. Keyless.
 - Reuse the `visualize` HTML/SVG engine: the same file structure, the same spacing
   scale (4 / 8 / 12 / 16 / 24 / 32 / 48), the same dark/light toggle.
-- Show the screenshot and quote the takeaway the chart makes visible; not just a path.
+- Show it via `agents browser show` (see `SKILL.md` delivery) and quote the takeaway the
+  chart makes visible; not just a path.
 
 ## Mode checklist
 
