@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Capture the subject project and creator metadata before authoring artifacts outside the checkout (PHNX-3978).
+
 ## [0.2.4] - 2026-09-14
 
 ### Changed
