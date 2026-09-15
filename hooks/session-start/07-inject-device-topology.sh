@@ -199,7 +199,7 @@ if devices:
 # Read the CLI resolver rather than duplicating config precedence in the hook.
 def read_json(args):
     try:
-        result = subprocess.run(["agents", *args], capture_output=True, text=True, timeout=2)
+        result = subprocess.run(["agents", *args], capture_output=True, text=True, timeout=3)
         return json.loads(result.stdout) if result.returncode == 0 else None
     except (OSError, ValueError, subprocess.TimeoutExpired):
         return None
@@ -249,6 +249,9 @@ if cfg is not None:
                  "and let that host resolve its own profile. Use `agents browser profiles list` and "
                  "`agents config list --json` to recheck after configuration changes. "
                  "Use `agents browser show --json` to verify the actual viewer; unsupported profiles may fall back to the OS browser. Do not assume a particular browser, profile, or fleet hub.")
+
+else:
+    lines.append("Browser configuration unavailable; run `agents config list --json` before choosing a browser or viewer.")
 
 print("\n".join(lines))
 ' <<< "$DEVICES_JSON"
