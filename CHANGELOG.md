@@ -16,6 +16,21 @@
 - Use the standalone artifacts CLI for sharing, with current slug and visibility behavior (PHNX-3992).
 - Replace retired agents pty recipes with the standalone term CLI and register its install manifest (PHNX-4092).
 
+### Removed
+
+- **`plugins/share/`** removed entirely (manifest, `/share` command, and skill). The
+  standalone `agents artifacts share <file>` CLI it wrapped covers the same publish
+  flow directly — public link with an auto OG cover by default, or
+  `--unlisted --no-cover --expire 7d` for a discreet one — so the plugin layer added
+  no behavior of its own. Every `/share` reference across `README.md`,
+  `plugins/README.md`, and `commands/README.md` now points at `agents artifacts
+  share`/the `artifacts` skill instead; `.assets/share.png` (the plugin's promo
+  image) is removed with it (PHNX-4100).
+- **`/fleet:sync`** removed from the `fleet` plugin (`plugins/fleet/commands/sync.md`
+  and its `.claude-plugin/plugin.json` + `.claude-plugin/marketplace.json`
+  descriptions, bumped to 0.3.0). `/fleet:onboard` and `/fleet:profile` are
+  unaffected and remain the plugin's two commands (PHNX-4100).
+
 ## [0.2.4] - 2026-09-14
 
 ### Changed

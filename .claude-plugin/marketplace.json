@@ -50,18 +50,8 @@
     {
       "name": "fleet",
       "source": "./plugins/fleet",
-      "description": "fleet \u2014 fleet-wide operations across every machine registered with `agents devices`. `/fleet:sync` pulls every registered DotAgent repo (system, user, and extras) to origin latest on every online device, then refreshes the installed agents \u2014 non-destructive (git merge --ff-only only; reports repos blocked by local edits instead of clobbering), handling the fast-forward workaround, the transient GitHub-SSH throttle, and Windows PowerShell quoting, ending with a repo x device matrix. `/fleet:onboard <device>` brings a bare new device up to fleet parity (agents-cli, agent CLIs, DotAgent repos, shared SSH key, PATH shim, device registration) and mints its agent auth in the same flow \u2014 the token-minting recipes are folded into the command itself. Discovery-first, additive, idempotent, credentials via sanctioned paths only, never copied host-to-host.",
-      "version": "0.2.1",
-      "author": {
-        "name": "Muqsit Nawaz",
-        "email": "contact@trp.so"
-      }
-    },
-    {
-      "name": "share",
-      "source": "./plugins/share",
-      "description": "share \u2014 publish an HTML artifact (plan, viz, report) to a shareable link via the standalone `artifacts share` CLI (`@phnx-labs/artifacts-cli`): the managed Phoenix endpoint when signed in (`artifacts auth login`), else your own Cloudflare R2 (`artifacts share setup`). `/share` posts a public link with an unfurling OG preview card; `/share --private` posts an unlisted, auto-expiring (`--no-cover --expire 7d`) link with no preview.",
-      "version": "0.2.1",
+      "description": "fleet \u2014 fleet-wide operations across every machine registered with `agents devices`. `/fleet:onboard <device>` brings a bare new device up to fleet parity (agents-cli, agent CLIs, DotAgent repos, shared SSH key, PATH shim, device registration) and mints its agent auth in the same flow \u2014 the token-minting recipes are folded into the command itself. `/fleet:profile [menubar|daemon|doctor|sessions]` profiles a sluggish machine, attributes the load to agents-cli surfaces, and files a GitHub issue. Discovery-first, additive, idempotent, credentials via sanctioned paths only, never copied host-to-host.",
+      "version": "0.3.0",
       "author": {
         "name": "Muqsit Nawaz",
         "email": "contact@trp.so"

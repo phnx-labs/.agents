@@ -17,24 +17,11 @@ session by the device-topology session-start hook.
   the orchestrating machine, and reachable devices registered (`agents devices list`).
 - SSH reach to each device (Tailscale or otherwise) — `agents ssh <dev>` works.
 - `git` on each device, with its DotAgent repos already cloned (that's what
-  `fleet:onboard` will bootstrap; `fleet:sync` assumes they exist).
+  `fleet:onboard` will bootstrap).
 
 ## Commands
 
 | Command | What it does |
 | --- | --- |
-| `/fleet:sync` | Pulls **every registered DotAgent repo** (`system`, `user`, and any extra) to `origin` latest on **every online device**, then refreshes the installed agents. Non-destructive: `git merge --ff-only` only — it reports repos blocked by local edits instead of clobbering them. Handles the fast-forward workaround (`agents repo pull` doesn't FF), the transient GitHub-SSH throttle (retry once), and Windows PowerShell quoting. Reports account readiness gaps with exact `agents accounts sync <account> <device>` remediation commands — never copies credentials automatically. Ends with a repo × device matrix. |
 | `/fleet:onboard <device>` | Brings a **bare new device** up to fleet parity: introspects a healthy reference node, then installs agents-cli, the agent CLIs, the DotAgent repos, the shared fleet SSH key, the non-interactive PATH shim, the device registration, and **mints its agent auth in the same flow** — the token-minting recipes (native device/OAuth login in a per-device account slot, verified by the resulting email; Claude setup-token / API-key as the syncable alternative) are folded into the command itself, no user hand-off. **Discovery-first** — it reads `agents <cmd> --help` + `agents doctor` at run time rather than hardcoding a CLI surface that drifts. Additive + idempotent (installs only what's missing). Provider credentials provisioned via `agents accounts add`/`agents accounts sync`; OAuth flows run natively on the target; native auth material never copied host-to-host. |
 | `/fleet:profile [menubar|daemon|doctor|sessions]` | Profile a sluggish machine, attribute the load to agents-cli surfaces (daemon, menu-bar, doctor/sessions pollers), read the logs to root-cause it, and file a GitHub issue on the public agents-cli repo. Optional focus narrows to one surface. |
-
-## Safety bar
-
-One hard line: **never clobber local work**.
-
-`/fleet:sync` uses `git merge --ff-only` and nothing else — never `reset --hard`,
-`checkout -- .`, `clean`, `stash`, `pull`, or any `--force`, not even to make a
-stubborn repo advance. `user` and team repos are user-authored and each machine
-carries different local drift; a repo that can't fast-forward is *reported*, not
-forced. Sync never auto-commits or pushes a device's local edits (that's a separate,
-explicit `--push` opt-in). Sync never copies credentials — account gaps are reported
-with remediation commands. Offline devices are reported, never block the rest.

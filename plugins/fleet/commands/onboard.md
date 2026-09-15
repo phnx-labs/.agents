@@ -96,8 +96,7 @@ so and stop.
 5. **Fleet SSH key** — install the shared Ed25519 from its `secrets` bundle so
    git and node-to-node SSH work (explicit auth — see the hard line).
 6. **Non-interactive PATH** — ensure agents-cli resolves in a *non-login* shell (fleet
-   tooling like `agents sessions`/`fleet:sync` uses `bash -lc` but a bare box may lack
-   the shim). If `agents ssh <target> 'agents --version'` fails while a login shell
+   tooling like `agents sessions` uses `bash -lc` but a bare box may lack the shim). If `agents ssh <target> 'agents --version'` fails while a login shell
    works, add the fleet-path block to the shell env (`~/.zshenv` on zsh) — the same shim
    the working nodes carry. (No sudo; only affects new shells.)
 7. **Register the device + sync the registry** — `agents devices add`/`sync` so the
@@ -118,7 +117,9 @@ so and stop.
   peer can `agents ssh` the target (proves the fleet SSH key took — the exact thing that
   was broken before the mesh fix).
 - `agents accounts list` on the target shows the expected accounts.
-- Optionally run `/fleet:sync` scoped to the target to confirm its repos pull.
+- Optionally confirm repos fast-forward cleanly: `agents ssh <target> bash -lc
+  "agents repo pull system"` (repeat per registered repo) and check it reports a
+  clean fast-forward, not blocked by local drift.
 
 ### 5. Report
 
