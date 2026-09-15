@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Align session resume and team recovery guidance with account selection and explicit replay confirmation.
+
 ## [0.2.4] - 2026-09-14
 
 ### Changed
@@ -43,8 +47,6 @@
   committed to the repo through worktrees and PRs.
 
 - **`skills/computer/SKILL.md`** explains the standalone desktop engine and keeps agent-driven actions on the thin `agents computer` adapter so permissions and browser/computer session history remain intact. The recipes distinguish local macOS, remote Windows and VNC support.
-
-- Session guidance documents the shared `run --resume` picker and account filter, preserves account identity across binary updates, and distinguishes verified native resume from explicitly chosen context replay. Team resume guidance no longer promises automatic replay.
 
 - Worktree freshness accepts a no-op fetch when `FETCH_HEAD` matches the target branch, remote and commit and a bounded read-only remote check confirms it. Retained entries from appended fetches cannot renew an outdated base. The fallback takes at most three seconds of network wait and requires Python 3 on POSIX; unsupported environments and custom source-ref mappings retain conservative rejection.
 
