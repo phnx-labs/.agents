@@ -1,5 +1,5 @@
 ---
-description: Create or refine a standalone graphic — logo, icon set, OG/social card, favicon, poster, flyer, resume — vector-first, with graceful raster fallback.
+description: Create or refine logos, icons, favicons, and graphic assets in their existing visual language.
 ---
 
-Invoke the `design:graphics` skill. Arguments: $ARGUMENTS
+Invoke the design plugin’s `graphics` skill from the current skill catalog. Arguments: $ARGUMENTS

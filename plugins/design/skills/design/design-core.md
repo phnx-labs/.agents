@@ -1,229 +1,98 @@
-# design-core — the taste every design skill inherits
+# Shared design practice
 
-Every skill in the `design` plugin loads this first — the four focused skills
-(`design:system`, `design:graphics`, `design:prototype`, `design:critique`) and the
-router's own less-common modes (`diagram`, `dataviz`, `deck`, `anticipate`) alike. It is
-the difference between "generated something"
-and "designed something", and it applies equally to a founder's landing page and an
-engineer's architecture diagram. All of it is keyless and offline: none of this needs an
-API key or a paid backend.
+Read this once for the selected design workflow. Use the product's conventions and the
+user's scope; creating, refining, and reviewing are different tasks.
 
-## 1 · The offline-first doctrine
+## 1 · Choose the right medium
 
-The primary substrate is **self-contained HTML/SVG** — the same engine as the
-`artifacts` skill (inline CSS/SVG, no CDN, opens offline by double-click). Most design jobs
-have a better answer in editable vector/HTML than in a generated raster: pages, UIs,
-prototypes, diagrams, dataviz, decks, OG cards, logos, icons, posters. Reach for raster
-generation only when the deliverable is genuinely photographic or painterly. See
-**§8 graceful raster**.
+Refine an existing app in its own stack and component library when implementation is
+requested. A design-only request stays a proposal or prototype. For a standalone preview,
+use editable HTML/SVG where suitable and the `artifacts` skill for authoring and delivery.
+Offline previews should be self-contained; this does not require rebuilding a live app as
+static HTML or removing its router and dependencies.
 
-## 2 · Visual quality (the non-negotiables)
+## 2 · Visual quality
 
-- **Hierarchy.** One clear focal point per view; size, weight, and space encode importance.
-  If everything is bold, nothing is.
-- **Spatial rhythm.** A consistent spacing scale, aligned to a grid. Reuse the target's own
-  scale when one exists (§4/§10); default to 4 / 8 / 12 / 16 / 24 / 32 / 48 only when no
-  system exists to reuse. Whitespace is structure, not leftover.
-- **Type scale.** A small set of sizes with deliberate ratios; one or two families;
-  generous body line-height (~1.5). Never more than a couple of weights.
-- **Color.** A restrained palette: one accent, a neutral ramp, semantic states. Color
-  carries meaning, not decoration.
-- **Restraint.** Remove until it breaks, then add back one step. No gradient-on-gradient,
-  no drop-shadow pileup, no chartjunk.
+Make hierarchy, alignment, density, typography, and spacing support the task. Reuse the
+product's scales and patterns. Introduce new defaults only where no suitable pattern
+exists, or where the requested redesign explicitly changes it. Explain consequential
+changes rather than imposing a favorite palette, font, radius, or layout.
 
-## 3 · Accessibility, baked in (never an afterthought)
+## 3 · Accessibility
 
-- **Contrast.** Body text meets WCAG AA (4.5:1; 3:1 for large text). State the ratio; do
-  not guess it.
-- **Colorblind-safe.** Never encode meaning by red-vs-green alone; pair color with shape,
-  label, or position. Categorical uses Okabe-Ito; sequential uses Viridis. Reuse the
-  palettes in the `artifacts` skill's `references/diagram-conventions.md`.
-- **Focus and motion.** Visible focus rings on interactive elements; honor
-  `prefers-reduced-motion`; nothing conveyed by hover alone.
-- **Text.** Real, selectable text over text-baked-into-an-image; tap targets at least 44px.
+Measure contrast from actual colors or computed styles; never guess ratios. Check text
+against its real background (AA: 4.5:1 for ordinary text, 3:1 for large text). Do not encode
+meaning by color alone. Exercise keyboard navigation and visible focus; inspect labels,
+validation, disabled states, and touch use as relevant. Honor reduced-motion preferences.
 
-## 4 · Brand-probe (on-brand when a brand exists, tasteful when not)
+## 4 · Understand the existing system
 
-Before rendering, build the full picture of what already exists — do not stop at the
-first match. A real product usually carries several of these at once, and each covers
-something the others don't:
+Find the applicable `DESIGN.md`, `BRAND.md`, rendered guidelines, tokens/theme files,
+component library, assets, and relevant implementation. Read them together, not only the
+first matching file. Follow the project's documented authority; distinguish intended
+rules from implementation drift and resolve conflicts before introducing competing rules.
 
-- **`BRAND.md`** at the repo root — voice, palette, type, positioning, anti-tells. When
-  it exists, treat it as the authoritative *identity* source, but still read the tokens
-  and components below for what it doesn't spell out (an exact hex, a component's states).
-- **Design tokens** — `design-system.css`, `theme.ts/css`, `tokens.json`, a `brand/` dir.
-- **Components** — an existing component library, Storybook, or shared UI package; open
-  it and look, don't just grep for filenames (§10).
-- **Framework config** — `tailwind.config.*` theme, CSS custom properties.
-- **Brand assets** — logo / favicon / `site.webmanifest` `theme_color`; sample the hues.
-- **Live UI** — the running app or site; capture it, don't guess from memory (§10).
-- **House fallback** — the dark + light editorial palette, used only when none of the
-  above exists.
+Open the actual rendered guidelines, Storybook, representative pages, and existing assets
+visually using `browser` or `computer`. If only source exists, inspect it and render a
+representative example when feasible. Identify repeated choices: type, spacing, density,
+icon geometry, component variants, state feedback, navigation, and motion. Cite the
+sources and captures that establish those patterns. Name unavailable surfaces and the
+limits of screenshot-only evidence; do not invent their behavior.
 
-Brand is a **layer, not a requirement**. Unbranded output must still be tasteful by
-default. Brand plugins (rush, prix) skin on top by calling `/design`; never require them.
-A full brand identity (voice, palette, type, anti-tells, `BRAND.md`) is defined by
-**`design:system`**, not a separate mode.
+## 5 · Reference work
 
-When refining something that already exists, prefer adjusting its actual components,
-tokens, and implementation over drawing a new one from scratch (§10). New defaults belong
-only where §10 finds nothing to refine.
+Start with the product's own examples and the user's references. Browse relevant current
+examples when exploring a new direction or when existing guidance is insufficient.
+Inspect them before borrowing a specific choice; explain its relevance to the task.
+Do not require competitor browsing for every small refinement.
 
-## 5 · Live inspiration, not frozen examples
+## 6 · Heuristic checks
 
-Before rendering, especially for an unfamiliar domain or when the brand-probe (§4) finds
-nothing to skin to, browse for real, **current** inspiration instead of relying on
-memorized or hardcoded examples — training-data recall and a frozen example file both go
-stale, and stale references are exactly what produces the tells in §6.
+Generic style warnings are prompts to inspect, not universal design laws. An established
+brand may deliberately use any palette or typeface. The static `check-tells.ts` checker
+flags possible issues; judge each against the actual product and requested output.
+Do not restyle a product simply to satisfy an arbitrary count of aesthetic warnings.
 
-1. Use the `browser` skill to open 2-4 real, live sites relevant to the job (the same
-   category of product, or named references the user gives) and screenshot them.
-2. Look at what you captured before drawing on it: what does it actually do with
-   hierarchy, density, type, color — not what you assume it does from the name.
-3. Borrow specific, nameable choices ("dense left-aligned nav with mono labels, flat
-   buttons, no drop-shadow"), never the whole composition. Never copy a screenshot's
-   layout wholesale — synthesize your own from what several examples do.
-4. Treat what you find as a positive AND a negative reference: note what to borrow and
-   what to deliberately avoid (an of-the-moment trend that reads as generic).
+## 7 · Copy
 
-This replaces keeping a fixed set of example screenshots in the skill itself — those
-freeze in time the moment they're written and start training toward whatever was current
-then. Live browsing keeps the reference set current for every render.
+Use precise language, realistic content, and the product's established voice. Labels
+should explain actions and outcomes. Do not invent testimonials, usage counts, or claims.
 
-## 6 · Anti-tells — what makes a design look AI-generated
+## 8 · Raster assets
 
-A design gets flagged as AI-made for one of two reasons: a **trained-corpus signature**
-(the model reproduces the same handful of "tasteful indie SaaS" landing pages from its
-training data) or a **tagline-factory voice** (copy that reads like the model trying to
-sound design-y). Both are diagnosable; check every render against this list before
-calling it done, and avoid the combination even when one move alone would be fine.
+Use the available image capability when the requested deliverable needs generated or
+edited raster artwork. Editable vector work is appropriate for many icons and logos.
+A placeholder or generation brief is unfinished work, not a delivered image; label it
+and report what remains if the required capability is unavailable.
 
-1. **Italic serif display headlines** (Tiempos / Newsreader / GT Sectra Italic, often one
-   italicized accent word). Now the default "tasteful AI tool" look. Use a heavy sans
-   display (NB International, Söhne, GT America, Geist) at 700/800, or all-mono display
-   (JetBrains Mono, Berkeley Mono, IBM Plex Mono) instead.
-2. **Two-tone "muted gray + bright white" headlines** — first line bright, next line
-   `text-zinc-500`, same font and weight. Use a single tone; get hierarchy from size or
-   weight, or a kicker label / accent word / underline rule instead.
-3. **Italic mid-sentence accent words** ("You stay the *architect*."). Bold the word, set
-   it in mono in the accent color, or don't emphasize at all.
-4. **Italic asides under list items** ("— because windows you cannot see are windows you
-   cannot trust."). Delete the aside, or rewrite it as a concrete sentence with a verb
-   and a noun.
-5. **Latin / typographic section markers** (`§ № I · the editor, reconsidered`). Drop
-   them, or use the most boring label possible ("01 / Features", "Workflow").
-6. **Sodium amber / warm cream on warm off-black** (`#ebe6da` on `#0d0c0b` with a
-   `#ffb347` accent). Pick a CRT phosphor green, a desaturated chartreuse, a real brand
-   color, or commit to pure achromatic instead.
-7. **"Made on a Sunday on cold brew" colophons.** Say something concrete (a real
-   changelog timestamp, an actual build number, a one-sentence positioning statement) or
-   say nothing.
-8. **The strikethrough metaphor headline** ("Your editor is not ~~a text box~~. It is a
-   *foreman*."). Lead with the actual product claim, in plain language.
-9. **The lucide-react feature-card grid** (3×3 or 2×3 cards, one icon, a short title, a
-   sentence). Show the product instead — a diff hunk, real terminal output, an actual
-   screenshot — or use a numbered text list / comparison table.
-10. **"Built for X. Trusted by Y." sequencing** — hero, then a grayscale logo row (often
-    invented), then features. If there are no real logos, don't fake the row; use one
-    specific, credible testimonial or skip social proof on a v0.x product.
-11. **Gradient accent buttons + drop-shadow glow halos.** Flat color, square or 4-6px
-    corners, no glow. Or a fully outlined button.
-12. **Em-dash-heavy prose** — clauses separated by em-dashes every other sentence. Use
-    periods and short sentences; keep at most one em-dash per paragraph (§7).
+## 9 · Verify and deliver
 
-**How to use this list.** Check every render against it. For any tell that's present,
-decide deliberately — keep it with a reason, or replace it with the alternative. If
-three or more are present together, the design reads as AI-made regardless of how nice
-it looks individually, even though no single move is forbidden in isolation. The goal is
-not to avoid every move an LLM ever makes — it's to avoid the recognizable *combination*.
-This catalog is meant to evolve: when a render is called out for a new tell, add it here
-so every mode inherits the fix.
+Inspect the result at the relevant sizes and themes. Repeat the affected interactions,
+including a recovery or error path where applicable, and compare before and after when refining existing work.
+Resolve the design plugin's `critique` skill through the current skill catalog for its
+`scripts/check-contrast.ts` and `scripts/check-tells.ts`; resolve script paths from that
+skill's directory. Use the contrast checker on actual pairs and the static checker on
+available markup. Static checks cannot prove live interactions or full accessibility.
 
-**When refining an existing system:** this catalog targets new, from-scratch generation
-drifting toward generic AI output. If the target's own established brand or system already
-and deliberately uses one of these moves (a real italic-serif wordmark, a warm-cream
-palette that's part of its actual identity), that established convention wins — do not
-force a swap for its own sake. Apply the catalog in full only where §10 finds no existing
-convention to defer to.
+For authorized creation or refinement, fix findings and inspect the result again. Use `artifacts` for standalone previews and
+`browser`/`computer` for the live surface. Show results through the configured viewer on
+the user's machine. Follow repository worktree and artifact-location conventions; keep
+captures local unless publication is authorized. State what changed, what was exercised,
+and what remains unverified.
 
-## 7 · Precise, non-marketing copy
+## 10 · Observe interactions before changing them
 
-All copy in a design follows the `code-quality` "write prose precisely" rule: name the
-concrete thing, drop the marketing register (no slogans, no "Critically:" drama, no filler
-adjectives like "seamless" or "powerful"), and cap em-dashes at one per paragraph. A
-headline states what the thing is or does; it is not a tagline. A shareable marketing asset
-may carry one accurate punchy line, but the body copy stays plain.
+For an interactive surface, walk the relevant user journey before proposing changes:
+entry, primary action, feedback, next step, back/cancel, and recovery. Inspect applicable
+hover/focus, validation, loading, empty, error, and success states, responsive behavior,
+and motion. Choose representative paths for the requested scope, not every page by default.
 
-## 8 · Graceful raster (never hard-fail)
+Record a short, bounded interaction clip when timing, transitions, scrolling, or a
+multi-step sequence matters. Review its playback or extracted frames alongside the action
+trace. Otherwise, use state captures and a short account of the actions and outcomes.
+Use the `browser` or `computer` skill for supported capture mechanics. Review supplied
+recordings too. A captured file alone is not evidence that anyone inspected it.
 
-When a job needs true raster:
-
-1. **Prefer vector first.** A logo, icon, OG card, or poster is usually better as SVG/HTML.
-   Render it that way and you need no backend at all.
-2. **Use a backend if configured.** If an image backend is available (a configured `image`
-   or `higgsfield` skill, for example), delegate to it.
-3. **Degrade, do not fail.** If no backend is configured, emit three things and exit
-   successfully: (a) an editable SVG/HTML placeholder at the correct dimensions; (b) a
-   complete generation spec (subject, style, palette, aspect ratio, negative prompts);
-   (c) one line on how to enable a backend. The user is never left staring at an error.
-
-## 9 · Verification is mandatory (see it, then critique it)
-
-No visual mode is done until you have **rendered it, looked at it, and critiqued it**:
-
-1. Render the HTML/SVG (a headless screenshot, or open it in a browser).
-2. Look at the screenshot against the stated intent.
-3. Run the critique checklist below, and the anti-tells list (§6); fix what fails;
-   re-render. Repeat until both pass.
-
-For the mechanical half of that pass, use the two scripts in the `design:critique` skill's
-`scripts/` directory instead of judging by eye: `bun ../critique/scripts/check-contrast.ts`
-computes the WCAG ratios §3 demands (never guess a ratio), and
-`bun ../critique/scripts/check-tells.ts <file.html>` flags the §6 tells, §1 offline
-violations, and §3 color-only glyphs that are detectable from markup. The screenshot
-critique stays mandatory — the scripts cover only what markup can prove.
-
-## 10 · Refining an existing surface — the preflight
-
-`design:system`, `design:graphics`, and `design:prototype` all refine something that may
-already exist. Before proposing anything, do this once, not per mode:
-
-1. **Read everything the brand-probe (§4) finds** — `BRAND.md`, `DESIGN.md`, tokens, and
-   component source — not just the first match.
-2. **Open it visually, not just as text.** Render or browse the actual guidelines page,
-   Storybook, or living style guide with the `browser` skill (or `computer` for a native
-   app). A token file read as plain text misses how the components actually look and
-   behave together.
-3. **Inspect representative live flows**, not one static screenshot: the states a real
-   user hits — keyboard navigation and focus, validation, loading, empty, error, and
-   success — plus responsive breakpoints and `prefers-reduced-motion` where the surface
-   has motion. Drive them with `browser`/`computer`; do not infer a state from markup alone.
-4. **Write down what you observed, separately from what you propose.** A "current state"
-   note and a "proposed change" note are two different things; conflating them is how a
-   proposal gets misread as a description of what already exists.
-5. **Capture proof proportional to what changed.** When a transition's timing, easing, or
-   scroll behavior materially matters, record a short, bounded interaction video and
-   review it before writing the proposal. Otherwise, before/after screenshots plus a
-   plain-language trace of the actions taken are enough. Either way, defer the actual
-   mechanics — flags, recording commands — to the `browser`, `computer`, and `artifacts`
-   skills; do not invent or prescribe a CLI flag those skills don't document.
-6. **Prefer refining what's there.** Adjust the existing components, tokens, and
-   implementation before introducing a new default. A new scale, palette, or pattern is
-   justified only when this preflight finds nothing to refine, and the conventions found
-   here override any generic default elsewhere in this file.
-
-## The critique checklist (also the standalone `design:critique` skill)
-
-Score each. Anything failing is a fix, not a nit.
-
-1. **Focal point** — is there one clear thing the eye lands on first?
-2. **Hierarchy** — do size, weight, and space match importance?
-3. **Alignment and rhythm** — consistent grid and spacing scale?
-4. **Type** — readable sizes, sane line-height, at most two families and weights?
-5. **Color** — restrained palette, meaning-carrying, on-brand or tastefully neutral?
-6. **Contrast (a11y)** — body text at least 4.5:1, and not color-alone for meaning?
-7. **Copy** — precise, concrete, non-marketing; the headline states rather than sells?
-8. **Density** — enough whitespace; nothing cramped or chartjunky?
-9. **Consistency** — components and tokens reused, not reinvented per view?
-10. **Anti-tells (§6)** — fewer than three tells present in combination?
-11. **Intent** — does it actually do the job the user asked for?
+Separate observed behavior from proposed changes. Reuse and refine existing patterns
+before adding new ones. Ask only for missing information or a consequential design choice;
+do not stop routine authorized refinement behind a mandatory alternatives exercise.
