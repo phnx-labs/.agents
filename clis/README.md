@@ -14,6 +14,7 @@ These are **host tools**, not agents. They are the binaries a skill shells out t
 | [`jq`](./jq.yaml) | JSON processing. Several hooks depend on it and **fail closed** without it |
 | [`linear-cli`](./linear-cli.yaml) | Linear issue tracker CLI, behind `/tickets` |
 | [`secrets`](./secrets.yaml) | Standalone secrets CLI (`@phnx-labs/secrets-cli`). agents-cli no longer ships the engine; `agents secrets` passthroughs to this binary |
+| [`browser`](./browser.yaml) | Standalone browser engine (`@phnx-labs/browser-cli`); `agents browser` is a thin adapter adding device resolution, permissions and session tracking (`agents browser` engine extracted, PHNX-4101). `agents setup browser` installs it |
 | [`computer`](./computer.yaml) | Standalone desktop engine (`@phnx-labs/computer-cli`); `agents computer` adds permissions, fleet resolution and session tracking |
 | [`term`](./term.yaml) | Standalone PTY engine (`@phnx-labs/term-cli`); the interactive-terminal tool the setup-token mint behind `agents accounts add`/`login` spawns (`agents pty` was removed, PHNX-4091). `agents setup term` installs it |
 

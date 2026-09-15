@@ -1,12 +1,20 @@
 ---
 name: browser
-description: Drive a browser to automate websites — fill forms, click buttons, take screenshots, scrape pages. Uses the built-in `browser` command (or `agents browser`).
+description: Drive a browser to automate websites — fill forms, click buttons, take screenshots, scrape pages. Uses the standalone `browser` CLI (or `agents browser`).
 argument-hint: "[url]"
 allowed-tools: Bash(browser*), Bash(agents browser*), Bash(sleep*)
 user-invocable: true
 ---
 
 # Browser Automation
+
+The standalone `@phnx-labs/browser-cli` package owns browser execution (process
+management, tabs, CDP/BiDi/Apple Events, network capture, remote-over-SSH).
+`agents browser` is a thin adapter to the installed `browser` binary — it adds
+Agents' device resolution, permissions, and session/feed recording; bare
+`browser …` works independently. Install it with `agents clis install browser`
+or `agents setup browser` (the engine is not bundled with Agents CLI);
+`browser --version` checks the installed engine.
 
 Routes to specialized subskills based on the target.
 
