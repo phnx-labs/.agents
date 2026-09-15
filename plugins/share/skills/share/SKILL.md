@@ -2,7 +2,7 @@
 name: share
 description: "Publish an agent-generated HTML artifact (a plan, viz, or report) to a shareable link via the managed Phoenix endpoint by default, or the user's own Cloudflare R2 when BYO is configured. Public gets an auto Open Graph cover so the link unfurls into a preview card in Slack/iMessage/Twitter/Discord; pass --private for an unlisted auto-expiring link with no card. Use when an agent has produced HTML worth handing to a human, or when a plan/viz should outlive /tmp. Triggers on: 'share this', 'publish the plan', 'make a link', 'shareable link', 'send me the plan', 'og image / preview card for this', '/share --private'."
 argument-hint: "[file | empty for the session's most recent HTML] [--private]"
-allowed-tools: Bash(agents artifacts share*), Bash(agents auth*), Bash(agents secrets*), Read(*), Bash(ls*), Bash(curl *)
+allowed-tools: Bash(agents artifacts share*), Bash(agents auth*), Bash(secrets*), Bash(agents secrets*), Read(*), Bash(ls*), Bash(curl *)
 user-invocable: true
 ---
 

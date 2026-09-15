@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Move secrets guidance and context hooks to the standalone CLI; retain guard coverage for both spellings and use portable test payload serialization.
+
 ## [0.2.4] - 2026-09-14
 
 ### Changed

@@ -5,7 +5,8 @@
 #   - credentials come from the Linear CLI's plaintext config.json
 #     (LINEAR_CLI_CONFIG fixture); env vars still win
 #   - the hook resolves the cwd's project via `agents projects`, but NEVER
-#     touches `agents secrets` (no keychain / Touch ID / broker path)
+#     touches `agents secrets` or the standalone `secrets` CLI (no keychain /
+#     Touch ID / broker path)
 #   - depth goes to the cwd's project; every other project collapses to one line
 #   - injection lists projects with milestones + top open tickets
 #   - active cycle is grouped by project
@@ -28,7 +29,8 @@ mkdir -p "$SANDBOX/bin"
 # agents: the hook resolves the cwd's project through `agents projects`, so the
 # binary IS invoked — what must never happen is a SECRETS-shaped invocation,
 # which is the path that can reach the keychain, pop Touch ID, or block on the
-# broker. Any `agents secrets …` call is recorded and fails the run; the
+# broker. Any `agents secrets …` or bare `secrets …` call is recorded and fails
+# the run; the
 # read-only `projects` subcommands answer from ~/.agents/projects/*.yaml.
 # (08-inject-repo-inflight.sh already shells `agents sessions --active` from
 # SessionStart on the same budget, so calling the CLI here is established.)
@@ -46,6 +48,15 @@ if [ "$1" = "projects" ] && [ "$2" = "view" ]; then
   exit 0
 fi
 exit 1
+STUB
+
+# The secrets engine now also ships as the standalone `secrets` executable
+# (PHNX-3989). A SessionStart hook must never reach it in EITHER spelling, so the
+# bare `secrets` command is stubbed to record and fail exactly like the
+# `agents secrets` twin above; the same assertion (section 7) covers both.
+cat > "$SANDBOX/bin/secrets" <<'STUB'
+#!/usr/bin/env bash
+echo "secrets-invoked: $*" >> "$AGENTS_CALLS"; exit 1
 STUB
 
 # Default curl stub: rich multi-project payload used by most tests.
@@ -179,7 +190,7 @@ cat > "$SANDBOX/bin/curl" <<'STUB'
 printf '%s\n' "$*" >> "$CURL_ARGS"
 cat "$CURL_PAYLOAD"
 STUB
-chmod +x "$SANDBOX/bin/agents" "$SANDBOX/bin/curl"
+chmod +x "$SANDBOX/bin/agents" "$SANDBOX/bin/secrets" "$SANDBOX/bin/curl"
 export PATH="$SANDBOX/bin:$PATH"
 export AGENTS_CALLS="$SANDBOX/agents-calls"
 export CURL_ARGS="$SANDBOX/curl-args"
@@ -520,14 +531,15 @@ else
 fi
 [ "$pages" = "1" ] && echo "ok   - sweep page budget is bounded" || { echo "FAIL - sweep page loop changed; re-check the latency budget"; fail=1; }
 
-# --- 7. no secrets-shaped agents invocation (no keychain / Touch ID path) ------
+# --- 7. no secrets-shaped invocation (no keychain / Touch ID path) ------------
 # The narrow invariant: credentials come from the plaintext Linear CLI config,
-# never from `agents secrets`, so a SessionStart hook can never pop biometry or
-# block on the broker. Read-only `agents projects` calls are expected.
+# never from `agents secrets` or the standalone `secrets` CLI, so a SessionStart
+# hook can never pop biometry or block on the broker. Both spellings are stubbed
+# to record into $AGENTS_CALLS. Read-only `agents projects` calls are expected.
 if [ -f "$AGENTS_CALLS" ]; then
   echo "FAIL - hook reached the secrets path: $(cat "$AGENTS_CALLS")"; fail=1
 else
-  echo "ok   - agents secrets never invoked"
+  echo "ok   - secrets never invoked (neither agents secrets nor bare secrets)"
 fi
 
 # --- 8. a project def resolves the focus project, and scopes the brief ---------

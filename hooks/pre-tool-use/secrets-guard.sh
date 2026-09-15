@@ -2,22 +2,25 @@
 # secrets-guard — PreToolUse hook on Bash (RUSH-2774).
 #
 # Blocks the secret-materializing one-liners that dump bundle values into an
-# agent's context and session transcript:
+# agent's context and session transcript, in BOTH spellings — the embedded
+# `agents secrets <verb>` and the extracted standalone `secrets <verb>`
+# (PHNX-3989), so the guard holds through the whole transition:
 #
-#   agents secrets export <b> --plaintext            whole bundle to stdout
-#   agents secrets get <bundle> <KEY>                one bundle value to stdout
-#   agents secrets view <b> --reveal --plaintext     the non-TTY reveal escape
+#   secrets export <b> --plaintext            whole bundle to stdout
+#   secrets get <bundle> <KEY>                one bundle value to stdout
+#   secrets view <b> --reveal --plaintext     the non-TTY reveal escape
+#   (and the `agents secrets …` twin of each)
 #
-# agents-cli >= the RUSH-2774 build refuses these in the CLI itself; this guard
-# is the skew-immune backstop for boxes still running older installed CLIs — it
-# fires on the agent's own Bash call before any CLI executes. The paved path is
-# injection: `agents secrets exec <bundle> -- <cmd>` (values ride the child
+# The secrets CLI (>= the RUSH-2774 build) refuses these in the CLI itself; this
+# guard is the skew-immune backstop for boxes still running older installed CLIs
+# — it fires on the agent's own Bash call before any CLI executes. The paved
+# path is injection: `secrets exec <bundle> -- <cmd>` (values ride the child
 # process env, never stdout).
 #
 # Unwraps: leading env-var assignments, chain operators (&&, ||, ;, |,
 # newline), `sh -c`/`bash -c` wrappers, a leading `eval`, and one level of
 # $(...) command substitution — the canonical exfil idiom is
-# `eval "$(agents secrets export <b> --plaintext)"`.
+# `eval "$(secrets export <b> --plaintext)"`.
 #
 # Exits 0 (allow) or 2 (deny, structured message on stderr).
 #
@@ -48,7 +51,7 @@ if ! command -v _json_field >/dev/null 2>&1; then
 fi
 
 # --- shared timeout-wrapper peeler ------------------------------------------
-# `timeout 5 agents secrets export ... --plaintext` would otherwise bypass the
+# `timeout 5 secrets export ... --plaintext` would otherwise bypass the
 # guard because `timeout` is the first token. The peeler lives in
 # hooks/lib/git-parse.sh and returns the real inner command.
 _LIB_DIR=$(CDPATH= cd "${0%/*}" 2>/dev/null && pwd) || _LIB_DIR=""
@@ -158,7 +161,7 @@ extract_eval_inner() {  # sets _eval_inner
 }
 
 # One level of $(...) unwrap — the eval-export idiom wraps the real command in a
-# substitution (`eval "$(agents secrets export …)"`). Single-quoted spans are
+# substitution (`eval "$(secrets export …)"`). Single-quoted spans are
 # scrubbed FIRST: a `$(` inside single quotes never expands, so prose like
 # `echo 'do not eval $(agents secrets export …)'` must not deny (the RUSH-2760
 # false-positive class, reproduced by the #336 review).
@@ -216,13 +219,20 @@ check_segment() {
     \'*\') first=$(printf '%s' "$first" | sed "s/^'\(.*\)'$/\1/") ;;
   esac
 
+  # Two spellings during the standalone-CLI transition (PHNX-3989): the embedded
+  # `agents secrets <verb>` and the extracted `secrets <verb>`. Normalise both to
+  # the verb in `$sub`.
   case "$first" in
-    agents|ag|*/agents|*/ag) ;;
+    agents|ag|*/agents|*/ag)
+      shift
+      [ $# -gt 0 ] && [ "$1" = "secrets" ] || return 0
+      shift
+      ;;
+    secrets|*/secrets)
+      shift
+      ;;
     *) return 0 ;;
   esac
-  shift
-  [ $# -gt 0 ] && [ "$1" = "secrets" ] || return 0
-  shift
   [ $# -gt 0 ] || return 0
   sub=$1
   shift
@@ -240,7 +250,7 @@ check_segment() {
       if [ "$has_plaintext" = "1" ] && [ "$has_destination" = "0" ]; then
         set_deny "secrets.export-plaintext" \
           "secrets export --plaintext prints a whole bundle to stdout — inside an agent session that lands in the model context and the session transcript (RUSH-2774)." \
-          "run the consuming command under injection: \`agents secrets exec <bundle> -- <cmd>\` (values ride the child env, never stdout); one value in a script: \`VAR=\"\$(agents secrets exec <bundle> -- printenv KEY)\`."
+          "run the consuming command under injection: \`secrets exec <bundle> -- <cmd>\` (values ride the child env, never stdout); one value in a script: \`VAR=\"\$(secrets exec <bundle> -- printenv KEY)\`."
         return 1
       fi
       ;;
@@ -255,7 +265,7 @@ check_segment() {
       if [ "$nonflag" -ge 2 ]; then
         set_deny "secrets.get-bundle-key" \
           "secrets get <bundle> <KEY> prints a bundle credential to stdout — inside an agent session that lands in the model context and the session transcript (RUSH-2774)." \
-          "run the consuming command under injection: \`agents secrets exec <bundle> -- <cmd>\`, or \`agents secrets exec <bundle> -- printenv <KEY>\` inside a script you author."
+          "run the consuming command under injection: \`secrets exec <bundle> -- <cmd>\`, or \`secrets exec <bundle> -- printenv <KEY>\` inside a script you author."
         return 1
       fi
       ;;
@@ -270,8 +280,8 @@ check_segment() {
       done
       if [ "$has_reveal" = "1" ] && [ "$has_plaintext" = "1" ]; then
         set_deny "secrets.view-reveal-plaintext" \
-          "secrets view --reveal --plaintext is the non-TTY reveal escape — it prints bundle values into the agent context and session transcript (RUSH-2774; removed in current agents-cli)." \
-          "inspect key NAMES with \`agents secrets view <bundle>\` (masked), or run the consuming command under \`agents secrets exec <bundle> -- <cmd>\`."
+          "secrets view --reveal --plaintext is the non-TTY reveal escape — it prints bundle values into the agent context and session transcript (RUSH-2774; removed in the current secrets CLI)." \
+          "inspect key NAMES with \`secrets view <bundle>\` (masked), or run the consuming command under \`secrets exec <bundle> -- <cmd>\`."
         return 1
       fi
       ;;

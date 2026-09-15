@@ -1,6 +1,6 @@
 # Environment and Tools
 
-Credentials live in `agents secrets`; never write them into configuration or
+Credentials live in `secrets`; never write them into configuration or
 leave them ambient, and prefer existing configuration mechanisms over new
 environment variables. Follow the repository's install and release process;
 never replace a working tool with a development build. Preserve the user's
