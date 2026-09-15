@@ -10,8 +10,8 @@
     {
       "name": "code",
       "source": "./plugins/code",
-      "description": "Coding workflows: deliver queues, review PRs or repository health, refactor architecture, commit cohesive changes, and preserve useful project knowledge. Evidence-backed visuals and independent review support verified delivery.",
-      "version": "0.14.1",
+      "description": "Coding workflows: assess human maintainability, refactor from current code health, deliver queues, review changes, commit cohesive work, and preserve useful project knowledge.",
+      "version": "0.15.0",
       "author": {
         "name": "Muqsit Nawaz",
         "email": "contact@trp.so"

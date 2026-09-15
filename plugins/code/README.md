@@ -7,14 +7,15 @@ preserving useful project knowledge. Repository policies own merge and release r
 |---|---|---|
 | `/code:loop` | Deliver one item or a queue; coordinate ownership, verification, review, and release. | [Command](commands/loop.md) · [Skill](skills/loop/SKILL.md) |
 | `/code:review` | Review session/named PRs, or run a read-only repository diagnostic. | [Command](commands/review.md) · [Skill](skills/review/SKILL.md) |
-| `/code:refactor` | Behavior-preserving structural improvements; `quality` scopes cleanup to a current change. | [Command](commands/refactor.md) · [Skill](skills/refactor/SKILL.md) |
+| `/code:health` | Assess human maintainability and reduction opportunities; maintain component-root HEALTH.md and HEALTH.html. | [Command](commands/health.md) · [Skill](skills/health/SKILL.md) |
+| `/code:refactor` | Check current code health, then simplify; `quality` scopes cleanup and `--scan-only` stays read-only. | [Command](commands/refactor.md) · [Skill](skills/refactor/SKILL.md) |
 | `/code:learn` | Update durable, non-obvious project knowledge; refine existing workflow guidance when warranted. | [Command](commands/learn.md) · [Skill](skills/learn/SKILL.md) |
 | `/code:commit` | Commit and push cohesive changes under repository conventions. | [Command](commands/commit.md) |
 
 The independent review rubric lives in the portable
 [`code-reviewer` definition](../../subagents/code-reviewer/AGENT.md), not a plugin-local copy.
 On harnesses without named subagents, the review workflow supplies the same rubric to an
-independent agent. Commands accelerate access; loop, review, refactor, and learn also
+independent agent. Commands accelerate access; loop, review, health, refactor, and learn also
 have standalone skills. Commit currently remains command-only on harnesses without commands.
 
 Optional Bun helpers support [repository scans](skills/review/scan-tools.md) and
@@ -27,3 +28,7 @@ for package boundaries, types, runtime behavior, library replacements, and meani
 tests. The [measurement contract](skills/refactor/measurement-tools.md#comparable-code-health-measurements)
 keeps source/test counts and duplicate-code candidates reproducible. Refactor proposals
 show concrete before/after code and preserve the user's current feature decisions.
+
+Health reports use only `kind`, `title`, `updated`, and `commit` frontmatter. The
+[health skill](skills/health/SKILL.md) owns freshness, component-root output and human
+maintainability criteria; existing measurements and language guidance are reused.
