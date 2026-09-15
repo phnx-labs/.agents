@@ -33,16 +33,18 @@ skill is the mechanism. Planning is discovery: link existing work and keep propo
 in the plan or the local harness checklist. Enter the lifecycle when execution starts, or
 when the user asks for a tracker action outright (Step 2).
 
-1. **Check first — search wider than the exact title.** Look for an open ticket that already
-   covers the task (the injected Linear context, and a real `search` — try the subsystem name,
-   the file, the bug class, not just the exact phrase). Found one? Claim it (move to In Progress).
+1. **Check first.** `linear tasks --similar "<your title or a sentence about the work>"` ranks
+   the team's tickets by relevance, done and canceled included, fusing Linear's semantic search
+   with local text overlap (linear-cli 0.24.0+; other trackers: their own search, tried with the
+   subsystem name, the file, and the bug class). Found one? Claim it (move to In Progress).
 2. **Enrich before you create.** A partially overlapping ticket — same subsystem, surface, or
    bug class — gets your findings as a comment and a sharper description instead of a parallel
    ticket. Several tickets for one problem fold into the canonical one; cancel the rest with a
    "consolidated into <ID>" note.
 3. **Create when warranted.** Scope it to the task and use labels that already exist
    (`linear labels`). A label the CLI reports as "not found, skipping" is one to drop, not
-   one to create. No tracker? Describe the work in the PR.
+   one to create. `linear create` repeats the similarity check and prints the closest
+   existing tickets before creating; read them. No tracker? Describe the work in the PR.
 4. **Close on delivery.** Post the PR link plus a screenshot or short screen recording of the
    outcome, then move it to Done. Close only with proof.
 

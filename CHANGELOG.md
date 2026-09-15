@@ -1,5 +1,11 @@
 # Changelog
 
+## [Unreleased]
+
+### Changed
+
+- **`skills/tickets/SKILL.md`**. The check-first step runs `linear tasks --similar` (linear-cli 0.24.0), and notes that `linear create` prints the closest existing tickets before creating. (PHNX-4105)
+
 ## [0.2.6] - 2026-09-14
 
 ### Changed
