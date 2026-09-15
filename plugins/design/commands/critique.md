@@ -1,5 +1,5 @@
 ---
-description: Audit an existing design surface — a URL, local HTML file, screenshot, several pages of one site, or a running app — against the design plugin's rubric. Runs the deterministic checkers (WCAG contrast computed, never guessed; the anti-tells/offline/color-only-status linter), critiques real screenshots in both themes, diffs pages against the product's own brand tokens and against each other for drift, and returns ranked findings plus a paste-ready fix brief and standing design laws for the project's docs.
+description: Assess existing design and interactions with evidence and concrete findings.
 ---
 
-Invoke the `design:critique` skill. Target: $ARGUMENTS
+Invoke the design plugin’s `critique` skill from the current skill catalog. Arguments: $ARGUMENTS

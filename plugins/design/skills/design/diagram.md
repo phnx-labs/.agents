@@ -1,55 +1,21 @@
-# design:diagram — architecture, flow, and structural diagrams
+# Diagram design
 
-Produce a structure diagram as **self-contained HTML with a hand-authored inline `<svg>`** —
-no mermaid, no CDN chart library. Every node shape and arrowhead follows the field's standard
-notation; a legend appears whenever color or line-style encodes meaning.
+Read `design-core.md` beside this file. Create or refine diagrams of structures,
+relationships, processes, or interactions using the actual system and its evidence.
 
-## Load design-core first
+1. Establish the question, audience, and scope. Inspect existing diagrams and trace the
+   relevant source or observed behavior; label proposed structure separately from reality.
+2. Resolve the `artifacts` skill through the current catalog and read its
+   `references/diagram-conventions.md`. Choose meaningful shapes and notation for the
+   subject, such as service relationships, message order, or entity cardinality.
+3. Reuse the product's visual conventions. Label relationships, direction, and what
+   passes between elements; add a legend where color or line style encodes meaning.
+4. Use a suitable diagram medium. A small Mermaid figure may suffice; use an inspected
+   artifact with editable SVG/HTML when layout or presentation needs more control.
+   Do not replace an existing editable diagram with a disconnected drawing without reason.
+5. Inspect the rendered result for correctness, clipping, readability, and clear
+   relationships. Verify navigation or interaction if present. Deliver through the
+   shared artifact and presentation guidance.
 
-Read `design-core.md`. Everything here inherits its spatial rhythm, color discipline,
-accessibility (contrast + colorblind-safe palettes), brand-probe, precise non-marketing copy,
-and mandatory render/critique verification (§9).
-
-## When to use (vs neighbors)
-
-- A structure: services, actors, data models, processes, networks → **diagram** (this).
-- Quantitative data (time series, distributions, comparisons) → **`dataviz`**.
-- A screen, page, or component a user interacts with → **`design:prototype`**.
-- Several clickable screens → **`design:prototype`** (same skill).
-
-## The loop
-
-1. **Identify the notation.** Consult the `artifacts` skill's `references/diagram-conventions.md` and
-   pick the notation that fits what the figure shows: C4 for service architecture, UML
-   sequence for message ordering, UML class for type relationships, ER crow's-foot for data
-   models, ISO 5807 shapes for control flow, BPMN for multi-actor processes, provider icons
-   for network topology. Never invent a bespoke notation when a standard one exists.
-2. **Draw the SVG correctly.** Use the notation's exact shapes and arrowheads: filled
-   arrowhead = UML sync call; dashed open arrowhead = return; hollow triangle = inheritance;
-   filled diamond = composition; crow's-foot glyphs for cardinality; diamond for ISO 5807
-   decisions. Pick one flow direction (top-down or left-to-right) and hold it.
-3. **Label every arrow** with what flows — for architecture, include the protocol. Label every
-   node with its type. Every axis carries units when data is involved.
-4. **Add a legend** whenever color or line-style encodes meaning. For C4 this is mandatory.
-   Use colorblind-safe palettes: Okabe-Ito for categorical distinctions, Viridis for
-   sequential encoding.
-5. **Verify** (design-core §9): screenshot the rendered SVG and check it against the
-   amateur-tells in `diagram-conventions.md` (unlabeled arrows, decision boxes not diamonds,
-   mixed notations, color without a legend). Fix what fails and re-render.
-
-## Output & delivery
-
-- **One self-contained `.html`** (inline CSS and SVG, no CDN) at
-  `"$ROOT/.agents/design/<slug>.html"`. Opens offline. Keyless.
-- Screenshot and show it via `agents browser show` (see `SKILL.md` delivery). A diagram
-  described but not rendered is not delivered.
-
-## Mode checklist
-
-- [ ] Notation matched to the figure type per `diagram-conventions.md`.
-- [ ] Correct domain shapes and arrowheads — no plain rectangles with unlabeled arrows.
-- [ ] One consistent flow direction throughout.
-- [ ] Every arrow labeled with what flows; every node labeled with its type.
-- [ ] Legend present whenever color or line-style carries meaning.
-- [ ] Colorblind-safe palette (Okabe-Ito or Viridis); no red-vs-green-only encoding.
-- [ ] Rendered, screenshotted, and checked against the amateur-tells before "done".
+Quantitative axes and data stories belong in `dataviz.md`; interactive product screens
+belong in `design:prototype`.

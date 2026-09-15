@@ -4,29 +4,12 @@
 
 ### Changed
 
-- **`plugins/design/`** (0.4.0). Split the single `design` skill into four focused,
-  independently invocable skills: `design:system` (tokens, components, brand identity),
-  `design:graphics` (standalone vector/raster assets), `design:prototype` (screens,
-  clickable flows, redesign, and motion — merging the former `interface`, `prototype`,
-  `interface-redesign`, and `motion` mode files), and `design:critique` (moved out of the
-  router skill, with its `scripts/`). The `design` skill itself becomes a leaner router:
-  it keeps `design-core.md` and the less common `diagram`/`dataviz`/`deck`/`anticipate`
-  modes, routing to them directly rather than promoting each to its own door. In
-  `design-core.md`, §4's brand-probe no longer stops at the first match — it reads
-  `BRAND.md`, tokens, components, and live UI together — and gains a new §10 preflight
-  for refining an existing surface: open guidelines/tokens/components visually via
-  `browser`/`computer` rather than as text alone, inspect representative live states
-  (keyboard/focus, validation, loading, empty, error, success, responsive breakpoints,
-  `prefers-reduced-motion`), record a bounded interaction video only when timing/scrolling
-  materially matters (before/after captures otherwise), document what's observed
-  separately from what's proposed, and prefer refining existing components/tokens over a
-  new default. §2's spacing scale and §6's anti-tells catalog are now defaults for when no
-  system exists, not universal bans overriding an established convention. Delivery drops
-  the raw `open`/`xdg-open`/`/tmp`/`~/Downloads` defaults in favor of `agents browser show`
-  on the user's interactive host, deferring transport mechanics to the `browser`/`artifacts`
-  skills. New commands `/design:system`, `/design:graphics`, `/design:prototype` join the
-  existing `/design` and `/design:critique`. Registered in
-  `plugins/design/.claude-plugin/plugin.json` and `.claude-plugin/marketplace.json`.
+- **`plugins/design/`** (0.4.0). Add focused system, graphics, prototype, and critique
+  skills behind a short design router. Shared guidance inspects existing guidelines,
+  components, visual patterns, and live interactions before creation or refinement;
+  meaningful motion and sequences require a reviewed interaction capture. Remove
+  static-only prototype rules, mandatory redesign approval rounds, and duplicated mode
+  guidance. Keep the contrast and markup checkers with critique (PHNX-4103).
 
 - **`rules/subrules/conventions.md`**, **`skills/tickets/SKILL.md`**. State the ticket
   lifecycle once: reuse and enrich existing tickets, create one when the work warrants it,

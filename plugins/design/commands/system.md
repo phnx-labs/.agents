@@ -1,5 +1,5 @@
 ---
-description: Create or refine a design system — token scales, component specs, and brand identity (DESIGN.md, BRAND.md) — plus a self-contained live token-preview page.
+description: Create or refine design-system guidelines, tokens, components, and interaction patterns.
 ---
 
-Invoke the `design:system` skill. Arguments: $ARGUMENTS
+Invoke the design plugin’s `system` skill from the current skill catalog. Arguments: $ARGUMENTS

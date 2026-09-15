@@ -1,58 +1,21 @@
-# design:dataviz — infographics, charts, and dashboards
+# Data visualization design
 
-Turn data into a visual: infographics, charts, data-stories, and status dashboards
-as **self-contained HTML with hand-authored inline SVG charts**. No chart library,
-no CDN, keyless, offline.
+Read `design-core.md` beside this file. Create or refine a chart, infographic, or data
+story. Use `design:prototype` for a full interactive product screen that includes charts.
 
-## Load design-core first
-
-Read `design-core.md`. Everything here inherits its hierarchy, spacing, type, color,
-accessibility (contrast + colorblind-safe), brand-probe, precise copy, and mandatory
-render/critique verification.
-
-## When to use (vs neighbors)
-
-- Data that needs a visual shape: a trend, a comparison, a distribution → **dataviz** (this).
-- A diagram of structure, flow, or architecture (no quantitative axes) → **`diagram`**.
-- A slide deck with charts embedded in a narrative flow → **`deck`**.
-- A full UI screen that happens to include a chart → **`design:prototype`**.
-
-## The loop
-
-1. **Understand the data and the one takeaway.** What is the single thing the chart
-   should make undeniable? Every design decision follows from that answer.
-2. **Pick the fitting chart type** (diagram-conventions "Charts" rules, non-negotiable):
-   - Categorical comparison → bar, y-axis from zero.
-   - Trend over time → line.
-   - Distribution → histogram or box.
-   - Correlation → scatter.
-   - Part-to-whole → stacked bar; not a pie beyond ~3 slices.
-   - Two-variable field → heatmap.
-3. **Draw the SVG with labeled axes and direct labels.** Label every axis with quantity
-   and units. Direct-label each series at its end; do not add a legend when a label
-   at the data does the same job with less eye travel.
-4. **Apply a colorblind-safe palette.** Categorical: Okabe-Ito. Sequential: Viridis.
-   Never encode meaning by red-vs-green alone; pair color with shape or position.
-5. **Delete chartjunk.** No 3-D, no gradients, no drop-shadows, no heavy gridlines,
-   no rainbow/jet colormap. Remove until it breaks, then stop.
-6. **Verify** (design-core §9): render via the `visualize` engine, screenshot, run the
-   critique checklist, fix, re-render. The chart is not done until you have looked at it.
-
-## Output & delivery
-
-- **One self-contained `.html`** (inline CSS + inline SVG, no CDN) at
-  `"$ROOT/.agents/design/<slug>.html"`. Opens offline. Keyless.
-- Reuse the `visualize` HTML/SVG engine: the same file structure, the same spacing
-  scale (4 / 8 / 12 / 16 / 24 / 32 / 48), the same dark/light toggle.
-- Show it via `agents browser show` (see `SKILL.md` delivery) and quote the takeaway the
-  chart makes visible; not just a path.
-
-## Mode checklist
-
-- [ ] One clear takeaway; the chart type matches the data shape (see loop step 2).
-- [ ] Every axis labeled with quantity + units; y-axis starts at zero for bars.
-- [ ] Series direct-labeled at the data; no legend where a label suffices.
-- [ ] Okabe-Ito (categorical) or Viridis (sequential); color never the sole encoding.
-- [ ] No chartjunk: no 3-D, no gradients, no decorative gridlines.
-- [ ] Self-contained HTML, inline SVG, no CDN, opens offline.
-- [ ] Rendered, screenshotted, and critiqued before "done".
+1. Establish the question and inspect the data, units, provenance, and limitations.
+   When refining, inspect the existing chart and its use before changing the encoding.
+   Never invent values to make a graphic appear complete.
+2. Choose a chart form suited to the comparison, trend, distribution, or relationship.
+   Resolve the `artifacts` skill and its `references/diagram-conventions.md` for chart
+   guidance. Use the existing visualization stack when refining a product; standard
+   plotting tools suit scientific or exportable figures.
+3. Label quantities and units, use honest scales (including zero baselines for bars),
+   and expose uncertainty where relevant. Prefer direct labels when they reduce ambiguity.
+   Reuse appropriate product colors; keep categories distinguishable without color alone.
+4. For interactive charts, exercise filtering, selection, tooltips, empty data, and
+   keyboard/focus behavior relevant to the task. Inspect the information users can access
+   rather than judging only the default image.
+5. Inspect the rendered output and any requested exports at their intended size. Verify
+   labels and plotted values against the data. For refinement, compare before/after and
+   explain the change in readability or behavior. Use the shared delivery guidance.

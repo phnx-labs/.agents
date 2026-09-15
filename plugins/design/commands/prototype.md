@@ -1,5 +1,5 @@
 ---
-description: Create or refine a screen, a clickable multi-screen prototype, a redesign of an existing screen, or UI motion/micro-interactions.
+description: Create or refine screens, components, interactive flows, and UI motion.
 ---
 
-Invoke the `design:prototype` skill. Arguments: $ARGUMENTS
+Invoke the design plugin’s `prototype` skill from the current skill catalog. Arguments: $ARGUMENTS
