@@ -117,9 +117,8 @@ so and stop.
   peer can `agents ssh` the target (proves the fleet SSH key took — the exact thing that
   was broken before the mesh fix).
 - `agents accounts list` on the target shows the expected accounts.
-- Optionally confirm repos fast-forward cleanly: `agents ssh <target> bash -lc
-  "agents repo pull system"` (repeat per registered repo) and check it reports a
-  clean fast-forward, not blocked by local drift.
+- Inspect the target’s registered repos with `agents repo list --device <target>`
+  and report any missing repositories or local drift.
 
 ### 5. Report
 

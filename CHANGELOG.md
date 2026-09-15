@@ -18,18 +18,11 @@
 
 ### Removed
 
-- **`plugins/share/`** removed entirely (manifest, `/share` command, and skill). The
-  standalone `agents artifacts share <file>` CLI it wrapped covers the same publish
-  flow directly — public link with an auto OG cover by default, or
-  `--unlisted --no-cover --expire 7d` for a discreet one — so the plugin layer added
-  no behavior of its own. Every `/share` reference across `README.md`,
-  `plugins/README.md`, and `commands/README.md` now points at `agents artifacts
-  share`/the `artifacts` skill instead; `.assets/share.png` (the plugin's promo
-  image) is removed with it (PHNX-4100).
-- **`/fleet:sync`** removed from the `fleet` plugin (`plugins/fleet/commands/sync.md`
-  and its `.claude-plugin/plugin.json` + `.claude-plugin/marketplace.json`
-  descriptions, bumped to 0.3.0). `/fleet:onboard` and `/fleet:profile` are
-  unaffected and remain the plugin's two commands (PHNX-4100).
+- Remove the share plugin, its command, skill, registration, and promo image.
+  Publishing references now use the standalone `artifacts share` CLI or the
+  existing artifacts skill (PHNX-4100).
+- Remove `/fleet:sync`; fleet 0.3.0 retains `/fleet:onboard` and `/fleet:profile`
+  (PHNX-4100).
 
 ## [0.2.4] - 2026-09-14
 
