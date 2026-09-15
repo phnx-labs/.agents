@@ -14,8 +14,8 @@ and mandatory render/critique verification (§9).
 
 - A structure: services, actors, data models, processes, networks → **diagram** (this).
 - Quantitative data (time series, distributions, comparisons) → **`dataviz`**.
-- A screen, page, or component a user interacts with → **`interface`**.
-- Several clickable screens → **`prototype`**.
+- A screen, page, or component a user interacts with → **`design:prototype`**.
+- Several clickable screens → **`design:prototype`** (same skill).
 
 ## The loop
 
@@ -40,8 +40,8 @@ and mandatory render/critique verification (§9).
 ## Output & delivery
 
 - **One self-contained `.html`** (inline CSS and SVG, no CDN) at
-  `"$ROOT/.agents/design/<slug>.html"` or `/tmp/<slug>.html`. Opens offline. Keyless.
-- Screenshot and show it; open on the user's machine (see `SKILL.md` delivery). A diagram
+  `"$ROOT/.agents/design/<slug>.html"`. Opens offline. Keyless.
+- Screenshot and show it via `agents browser show` (see `SKILL.md` delivery). A diagram
   described but not rendered is not delivered.
 
 ## Mode checklist

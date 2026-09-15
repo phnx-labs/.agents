@@ -1,6 +1,9 @@
-# design-core — the taste every mode inherits
+# design-core — the taste every design skill inherits
 
-Every `design` mode loads this first. It is the difference between "generated something"
+Every skill in the `design` plugin loads this first — the four focused skills
+(`design:system`, `design:graphics`, `design:prototype`, `design:critique`) and the
+router's own less-common modes (`diagram`, `dataviz`, `deck`, `anticipate`) alike. It is
+the difference between "generated something"
 and "designed something", and it applies equally to a founder's landing page and an
 engineer's architecture diagram. All of it is keyless and offline: none of this needs an
 API key or a paid backend.
@@ -18,8 +21,9 @@ generation only when the deliverable is genuinely photographic or painterly. See
 
 - **Hierarchy.** One clear focal point per view; size, weight, and space encode importance.
   If everything is bold, nothing is.
-- **Spatial rhythm.** A consistent spacing scale (4 / 8 / 12 / 16 / 24 / 32 / 48). Align to
-  a grid. Whitespace is structure, not leftover.
+- **Spatial rhythm.** A consistent spacing scale, aligned to a grid. Reuse the target's own
+  scale when one exists (§4/§10); default to 4 / 8 / 12 / 16 / 24 / 32 / 48 only when no
+  system exists to reuse. Whitespace is structure, not leftover.
 - **Type scale.** A small set of sizes with deliberate ratios; one or two families;
   generous body line-height (~1.5). Never more than a couple of weights.
 - **Color.** A restrained palette: one accent, a neutral ramp, semantic states. Color
@@ -40,22 +44,30 @@ generation only when the deliverable is genuinely photographic or painterly. See
 
 ## 4 · Brand-probe (on-brand when a brand exists, tasteful when not)
 
-Before rendering, probe the target for a brand and skin the output in it. Fall through in
-order, first hit wins (the same cascade as `artifacts`):
+Before rendering, build the full picture of what already exists — do not stop at the
+first match. A real product usually carries several of these at once, and each covers
+something the others don't:
 
-0. **`BRAND.md`** at the repo root — read it directly; it is the authoritative brand
-   source (voice, palette, type, positioning, anti-tells). If it exists, use it and
-   skip the remaining steps unless you need a specific token not covered there.
-1. **Design tokens** — `design-system.css`, `theme.ts/css`, `tokens.json`, a `brand/` dir.
-2. **Framework config** — `tailwind.config.*` theme, CSS custom properties.
-3. **Brand assets** — logo / favicon / `site.webmanifest` `theme_color`; sample the hues.
-4. **Live UI** — a screenshot or a running app; eyedrop the palette.
-5. **House fallback** — the dark + light editorial palette, used only when no brand exists.
+- **`BRAND.md`** at the repo root — voice, palette, type, positioning, anti-tells. When
+  it exists, treat it as the authoritative *identity* source, but still read the tokens
+  and components below for what it doesn't spell out (an exact hex, a component's states).
+- **Design tokens** — `design-system.css`, `theme.ts/css`, `tokens.json`, a `brand/` dir.
+- **Components** — an existing component library, Storybook, or shared UI package; open
+  it and look, don't just grep for filenames (§10).
+- **Framework config** — `tailwind.config.*` theme, CSS custom properties.
+- **Brand assets** — logo / favicon / `site.webmanifest` `theme_color`; sample the hues.
+- **Live UI** — the running app or site; capture it, don't guess from memory (§10).
+- **House fallback** — the dark + light editorial palette, used only when none of the
+  above exists.
 
 Brand is a **layer, not a requirement**. Unbranded output must still be tasteful by
 default. Brand plugins (rush, prix) skin on top by calling `/design`; never require them.
-A full brand identity (voice, palette, type, anti-tells, `BRAND.md`) is defined by the
-**`system`** mode, not a separate mode — see `system.md`.
+A full brand identity (voice, palette, type, anti-tells, `BRAND.md`) is defined by
+**`design:system`**, not a separate mode.
+
+When refining something that already exists, prefer adjusting its actual components,
+tokens, and implementation over drawing a new one from scratch (§10). New defaults belong
+only where §10 finds nothing to refine.
 
 ## 5 · Live inspiration, not frozen examples
 
@@ -127,6 +139,13 @@ not to avoid every move an LLM ever makes — it's to avoid the recognizable *co
 This catalog is meant to evolve: when a render is called out for a new tell, add it here
 so every mode inherits the fix.
 
+**When refining an existing system:** this catalog targets new, from-scratch generation
+drifting toward generic AI output. If the target's own established brand or system already
+and deliberately uses one of these moves (a real italic-serif wordmark, a warm-cream
+palette that's part of its actual identity), that established convention wins — do not
+force a swap for its own sake. Apply the catalog in full only where §10 finds no existing
+convention to defer to.
+
 ## 7 · Precise, non-marketing copy
 
 All copy in a design follows the `code-quality` "write prose precisely" rule: name the
@@ -157,14 +176,43 @@ No visual mode is done until you have **rendered it, looked at it, and critiqued
 3. Run the critique checklist below, and the anti-tells list (§6); fix what fails;
    re-render. Repeat until both pass.
 
-For the mechanical half of that pass, use the two scripts in the `critique` mode's
-`scripts/` directory instead of judging by eye: `bun scripts/check-contrast.ts`
+For the mechanical half of that pass, use the two scripts in the `design:critique` skill's
+`scripts/` directory instead of judging by eye: `bun ../critique/scripts/check-contrast.ts`
 computes the WCAG ratios §3 demands (never guess a ratio), and
-`bun scripts/check-tells.ts <file.html>` flags the §6 tells, §1 offline violations,
-and §3 color-only glyphs that are detectable from markup. The screenshot critique
-stays mandatory — the scripts cover only what markup can prove.
+`bun ../critique/scripts/check-tells.ts <file.html>` flags the §6 tells, §1 offline
+violations, and §3 color-only glyphs that are detectable from markup. The screenshot
+critique stays mandatory — the scripts cover only what markup can prove.
 
-## The critique checklist (also the standalone `critique` mode)
+## 10 · Refining an existing surface — the preflight
+
+`design:system`, `design:graphics`, and `design:prototype` all refine something that may
+already exist. Before proposing anything, do this once, not per mode:
+
+1. **Read everything the brand-probe (§4) finds** — `BRAND.md`, `DESIGN.md`, tokens, and
+   component source — not just the first match.
+2. **Open it visually, not just as text.** Render or browse the actual guidelines page,
+   Storybook, or living style guide with the `browser` skill (or `computer` for a native
+   app). A token file read as plain text misses how the components actually look and
+   behave together.
+3. **Inspect representative live flows**, not one static screenshot: the states a real
+   user hits — keyboard navigation and focus, validation, loading, empty, error, and
+   success — plus responsive breakpoints and `prefers-reduced-motion` where the surface
+   has motion. Drive them with `browser`/`computer`; do not infer a state from markup alone.
+4. **Write down what you observed, separately from what you propose.** A "current state"
+   note and a "proposed change" note are two different things; conflating them is how a
+   proposal gets misread as a description of what already exists.
+5. **Capture proof proportional to what changed.** When a transition's timing, easing, or
+   scroll behavior materially matters, record a short, bounded interaction video and
+   review it before writing the proposal. Otherwise, before/after screenshots plus a
+   plain-language trace of the actions taken are enough. Either way, defer the actual
+   mechanics — flags, recording commands — to the `browser`, `computer`, and `artifacts`
+   skills; do not invent or prescribe a CLI flag those skills don't document.
+6. **Prefer refining what's there.** Adjust the existing components, tokens, and
+   implementation before introducing a new default. A new scale, palette, or pattern is
+   justified only when this preflight finds nothing to refine, and the conventions found
+   here override any generic default elsewhere in this file.
+
+## The critique checklist (also the standalone `design:critique` skill)
 
 Score each. Anything failing is a fix, not a nit.
 
