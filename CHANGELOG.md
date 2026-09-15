@@ -1,5 +1,16 @@
 # Changelog
 
+## [Unreleased]
+
+### Changed
+
+- **`clis/`, `skills/browser/`** — align browser guidance with the standalone
+  `@phnx-labs/browser-cli`, now that `agents browser`'s engine was extracted and the
+  in-repo duplicate deleted (PHNX-4101, merged agents-cli `fc77575e6`). Adds
+  `clis/browser.yaml` (`@phnx-labs/browser-cli@0.1.5`) + its `clis/README.md` row,
+  and updates the browser skill to describe the standalone engine + thin
+  `agents browser` adapter (was "built-in `browser` command").
+
 ## [0.2.6] - 2026-09-14
 
 ### Changed
