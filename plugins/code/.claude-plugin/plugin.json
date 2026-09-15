@@ -1,7 +1,7 @@
 {
   "name": "code",
-  "version": "0.15.0",
-  "description": "Coding workflows: assess human maintainability, refactor from current code health, deliver queues, review changes, commit cohesive work, and preserve useful project knowledge.",
+  "version": "0.16.0",
+  "description": "Assess code health, review changes, refactor, and preserve useful project knowledge.",
   "author": {
     "name": "Muqsit Nawaz",
     "email": "contact@trp.so"

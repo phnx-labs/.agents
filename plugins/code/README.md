@@ -1,22 +1,20 @@
 # code plugin
 
-Coding workflows for delivering changes, reviewing code, improving architecture, and
-preserving useful project knowledge. Repository policies own merge and release requirements.
+Assess code health, review changes, improve architecture, and preserve useful project
+knowledge. Shared delivery and Git workflows live in the [work plugin](../work/README.md).
 
 | Command | Capability | Source |
 |---|---|---|
-| `/code:loop` | Deliver one item or a queue; coordinate ownership, verification, review, and release. | [Command](commands/loop.md) · [Skill](skills/loop/SKILL.md) |
 | `/code:review` | Review session/named PRs, or run a read-only repository diagnostic. | [Command](commands/review.md) · [Skill](skills/review/SKILL.md) |
 | `/code:health` | Assess human maintainability and reduction opportunities; maintain component-root HEALTH.md and HEALTH.html. | [Command](commands/health.md) · [Skill](skills/health/SKILL.md) |
 | `/code:refactor` | Check current code health, then simplify; `quality` scopes cleanup and `--scan-only` stays read-only. | [Command](commands/refactor.md) · [Skill](skills/refactor/SKILL.md) |
 | `/code:learn` | Update durable, non-obvious project knowledge; refine existing workflow guidance when warranted. | [Command](commands/learn.md) · [Skill](skills/learn/SKILL.md) |
-| `/code:commit` | Commit and push cohesive changes under repository conventions. | [Command](commands/commit.md) |
 
 The independent review rubric lives in the portable
 [`code-reviewer` definition](../../subagents/code-reviewer/AGENT.md), not a plugin-local copy.
 On harnesses without named subagents, the review workflow supplies the same rubric to an
-independent agent. Commands accelerate access; loop, review, health, refactor, and learn also
-have standalone skills. Commit currently remains command-only on harnesses without commands.
+independent agent. Review, health, refactor, and learn have portable skills; commands
+accelerate access. Use `work:commit` for cohesive commits and `work:loop` for delivery.
 
 Optional Bun helpers support [repository scans](skills/review/scan-tools.md) and
 [refactor measurements](skills/refactor/measurement-tools.md); incomplete tool coverage is

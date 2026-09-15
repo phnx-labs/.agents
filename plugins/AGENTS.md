@@ -3,7 +3,7 @@
 Humans start at [README.md](./README.md).
 
 A plugin is a namespaced bundle of commands and skills. The directory name is the namespace:
-`plugins/code/commands/loop.md` is `/code:loop`.
+`plugins/work/commands/loop.md` is `/work:loop`.
 
 ## Three places must agree
 
@@ -55,9 +55,9 @@ copies of one rubric is the drift the reviewer itself is built to catch.
 
 ## The canonical definition lives in the plugin
 
-`/code:commit` is the canonical commit command. There is no top-level `/commit` alias —
-the behavior lives in the plugin skill exclusively. When you change it, change the plugin
-skill and let any thin top-level aliases follow. Never fork logic into an alias.
+`/commit` and `/loop` are thin aliases of `/work:commit` and `/work:loop`. The
+canonical behavior lives in the work plugin skills. Top-level and plugin commands
+only route to those skills with `$ARGUMENTS`; never copy behavior into an alias.
 
 ## What belongs here vs in extras
 

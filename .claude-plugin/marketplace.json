@@ -10,8 +10,8 @@
     {
       "name": "code",
       "source": "./plugins/code",
-      "description": "Coding workflows: assess human maintainability, refactor from current code health, deliver queues, review changes, commit cohesive work, and preserve useful project knowledge.",
-      "version": "0.15.0",
+      "description": "Assess code health, review changes, refactor, and preserve useful project knowledge.",
+      "version": "0.16.0",
       "author": {
         "name": "Muqsit Nawaz",
         "email": "contact@trp.so"
@@ -20,8 +20,8 @@
     {
       "name": "work",
       "source": "./plugins/work",
-      "description": "Dispatch one task, resume project work, drain a queue, or demonstrate delivery across coding and non-coding work.",
-      "version": "0.8.2",
+      "description": "Dispatch tasks, resume projects, deliver queues, commit cohesive changes, and demonstrate delivery across coding and non-coding work.",
+      "version": "0.9.0",
       "author": {
         "name": "Muqsit Nawaz",
         "email": "contact@trp.so"
@@ -81,7 +81,7 @@
       "name": "sessions",
       "source": "./plugins/sessions",
       "description": "sessions \u2014 lifecycle and analytics for agent conversation transcripts. `/sessions:continue` (and top-level `/continue` / `/recover`) loads prior work and finishes it in this session \u2014 reattach only when genuinely live; group- and crash-recover capable (crash recovery finishes work headlessly via `/continue recover`). `/sessions:insights` (and `/insights`) is the conductor over `agents insights`, `agents trends`, `agents perf`, and `agents sessions stats` \u2014 one evidence-backed action list, no separate trends/perf plugin commands. `/sessions:finish` (and top-level `/finish`) drives the current task to fully delivered \u2014 verify E2E, docs, commit, PR, release, close the ticket; never stops at a recap or partial handoff. `/sessions:fork` (and top-level `/fork`) branches this conversation into a new independent session. `/sessions:search` (and top-level `/recall`) pulls ranked, snippet-level context from prior sessions on a topic \u2014 layers `agents sessions` CLI discovery with a bundled stdlib-only `recall.py` fallback that recovers assistant answers the index never stores (it only indexes user turns + title/topic/project, never assistant text or tool I/O). Instructions live in skills; commands only invoke those skills (harness-friendly: many agents prefer skills over slash commands). `finish`/`insights`/`fork` keep one command door each (top-level alias only, no duplicate plugin-namespaced command).",
-      "version": "0.4.1",
+      "version": "0.4.2",
       "author": {
         "name": "Muqsit Nawaz",
         "email": "contact@trp.so"

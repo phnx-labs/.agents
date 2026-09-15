@@ -1,6 +1,11 @@
 ---
-description: Commit and push cohesive, independently understandable changes using repository conventions.
+name: commit
+description: "Commit and push cohesive changes to code, documentation, assets, or configuration using repository conventions. Use for committing work or grouping a diff into coherent commits."
+argument-hint: "[paths or scope | squash | chunky]"
+user-invocable: true
 ---
+
+# work:commit
 
 Commit and push the requested changes. Arguments: $ARGUMENTS
 
@@ -31,4 +36,4 @@ was verified.
 Push the commits and verify the remote result. A background push needs a checked finish
 signal before reporting success. If nothing is in scope to commit, say so without
 creating an empty commit. When the task includes delivery, continue through the PR and
-release workflow using `code:loop`.
+release workflow using `work:loop`.

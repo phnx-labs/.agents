@@ -1,6 +1,6 @@
 ---
 name: resume
-description: "Pick a whole PROJECT's work back up. Best-effort auto-detects the project from the CWD (GitHub repo + subdirectory → Linear project), reconstructs its in-flight work (live + interrupted sessions, open PRs, worktrees, open/doing tickets), presents it not-progressing-first, then OFFLOADS each item to a role=worker device — never the interactive/personal box. Not sessions:continue (one transcript) and not work:loop (the whole board). Triggers on: /work:resume, /resume, 'pick this project back up', 'resume the work on <project>', 'what was in flight here', 'get this project moving again'."
+description: "Pick a whole PROJECT's work back up. Best-effort auto-detects the project from the CWD (GitHub repo + subdirectory → Linear project), reconstructs its in-flight work (live + interrupted sessions, open PRs, worktrees, open/doing tickets), presents it not-progressing-first, then OFFLOADS each item to a role=worker device — never the interactive/personal box. Not sessions:continue (one transcript) and not work:loop (deliver a selected queue). Triggers on: /work:resume, /resume, 'pick this project back up', 'resume the work on <project>', 'what was in flight here', 'get this project moving again'."
 argument-hint: "[project name | empty = auto-detect from CWD | --all] [--here]"
 allowed-tools: Bash(agents *), Bash(git *), Bash(gh *), Bash(linear *), Bash(rg *), Bash(fd *), Bash(ls *), Bash(cat *), Bash(jq *), Read(*), Task(*), AskUserQuestion(*)
 user-invocable: true
@@ -18,7 +18,7 @@ Scope: `$ARGUMENTS` (empty = auto-detect the project from the CWD).
 |---|---|
 | One **project's** whole in-flight state, then resume it | `sessions:continue` — resume **one transcript** in this window |
 | Reconstruct across sessions + PRs + worktrees + tickets | `work:dispatch` — route **one** item to an executor |
-| **Offload** execution to workers | `work:loop` — drain the **whole board, every project** |
+| **Offload** execution to workers | `work:loop` — deliver a selected queue, optionally across projects |
 | Put crashed work back to *work* on the fleet | crash recovery that only reopened terminal windows is gone — see `/continue recover` |
 
 ## The compute rule (load-bearing — read first)

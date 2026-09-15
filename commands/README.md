@@ -40,6 +40,8 @@ debt moved into the code plugin, and became architectural restructuring there:
 
 | Command | What it does |
 |---|---|
+| [`/commit`](./commit.md) | Alias of `/work:commit`: commit and push cohesive changes to code, docs, assets, or configuration. |
+| [`/loop`](./loop.md) | Alias of `/work:loop`: deliver one item or a queue across any kind of work; `triage` scopes board decisions. |
 | [`/finish`](./finish.md) | Alias of `/sessions:finish` — drive the current task all the way to delivered: verify end-to-end, docs, commit, PR, release checklist, close the ticket. Never stops at a recap, blocker, or partial handoff |
 | [`/demo`](./demo.md) | Alias of `/work:demo` — demonstrate landed work: recover the original intent, exercise the shipped thing in its REAL environment on real representative inputs (signed in as the owner via `agents browser`/`agents computer`), before/after side by side with a measured delta, then deliver an analyzed report on your screen + the PR. The answer to "show me a demo.." |
 
@@ -100,7 +102,7 @@ Several commands escalate to `agents teams` when the scope is wide: `/debug`, `/
 
 Capabilities like `/secrets`, `/sessions`, and `/browser` are **skills**, not commands —
 see [`skills/`](../skills/README.md). They are invoked the same way but carry their own
-tooling. Plugins ship namespaced commands (`/code:loop`, `/swarm:run`, `/fleet:onboard`) —
+tooling. Plugins ship namespaced commands (`/work:loop`, `/swarm:run`, `/fleet:onboard`) —
 see [`plugins/`](../plugins/README.md).
 
 ---

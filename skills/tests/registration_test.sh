@@ -28,9 +28,7 @@ FAIL=0
 #   learn   — top-level `learn` (post-session reflection) vs code:learn (learn the
 #             codebase). Different jobs; the bare name resolves to the top-level one.
 #   run     — top-level `run` (one agent) vs swarm:run (fan out). Different jobs.
-#   loop    — code:loop vs work:loop. KNOWN WRONG: the bare name resolves to the
-#             narrower code:loop while work:loop describes itself as the general case.
-ALLOWED_CONTESTED="browser learn run loop"
+ALLOWED_CONTESTED="browser learn run"
 
 say() { printf '%s\n' "$*"; }
 fail() { say "FAIL - $*"; FAIL=1; }
