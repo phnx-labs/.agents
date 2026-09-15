@@ -16,38 +16,30 @@ Routes to specialized subskills based on the target.
 |---|---|---|
 | Websites, web apps | `browser-use.md` | Any HTTP/HTTPS URL in a regular browser |
 
-## Which machine? (`--device`)
+## Configured browser and viewer
 
-The routing table above picks the *kind* of target. This picks the *box*.
+Use `agents browser start` for automation. The CLI resolves `browser.device`
+when a fleet hub is configured, otherwise this machine, then that machine's
+`browser.profile`. `agents browser use` reports the default; `agents browser
+profiles list` lists discovered profiles and their devices. Follow the live
+session configuration, never a hardcoded browser or host.
 
-Every `agents browser` command takes `--device <host>`, which runs the CLI over
-there — so the target machine resolves its own profile. **Never pass `--profile`
-on a `--device` run**; you would be naming a profile that means something
-different on that box.
+Use `agents browser show <url|file>` on the user's interactive host for pages
+they should read. It resolves `browser.viewer`, then `browser.profile`; `os`
+selects the OS default browser. Viewer tabs are not owned by an automation task. The CLI may report a fallback
+to the OS browser when the configured profile cannot open viewer tabs; do not
+claim it opened the selected profile without checking the result (`--json`).
+Deliver local files to that host before opening them.
 
-The reason this matters is not display, it is credentials. A fleet usually has
-one browser carrying the real logins, and it lives on one machine. An agent on a
-worker that needs to act as the user (post, read a dashboard, use a signed-in
-API) has to reach that browser rather than launch a logged-out one locally.
+To drive another device explicitly, use `agents browser start --device <host>`
+and omit `--profile` so the target resolves its own configuration. Later commands
+use the task bound at start. Check the installed command help for supported options. Remote driving requires the owner's remote-control
+consent on the target; do not bypass a refusal through SSH.
 
-```bash
-agents browser profiles logins                    # what is signed in here
-agents browser profiles logins --device <host>    # ...and over there
-agents browser navigate --device <host> --url https://example.com
-```
-
-`agents browser profiles logins` is the discovery step: one row per detected
-session, with the profile name, the service, the signed-in account, and whether
-login credentials sit in that profile's secrets bundle. Read it to find which box
-holds the session you need before you drive anything.
-
-**Do not use `agents ssh <host> 'agents browser ...'`.** It reaches the same
-machine but skips the fleet dispatch path, so the remote-control consent marker
-is never set — the target cannot tell it is being driven remotely. `--device` is
-the supported form.
-
-A machine only accepts remote drives when its owner has run
-`agents browser remote-control on` there; a refusal names that command.
+Profiles reflect the installed browser's capabilities. Inspect the selected
+profile before choosing capture or interaction commands. A missing capability
+is not a reason to silently switch the user's configured browser or create a
+fresh profile without their logins.
 
 ## Decision Tree
 

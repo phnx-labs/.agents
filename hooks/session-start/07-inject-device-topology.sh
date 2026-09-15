@@ -35,7 +35,8 @@ esac
 DEVICES_JSON=$(agents devices list --json 2>/dev/null)
 
 SELF_HOST="$SELF_HOST" SELF_OS="$SELF_OS" python3 -c '
-import json, os, sys
+import json, os, sys, subprocess
+from concurrent.futures import ThreadPoolExecutor
 
 self_host = os.environ.get("SELF_HOST", "").strip()
 self_os = os.environ.get("SELF_OS", "").strip()
@@ -169,44 +170,14 @@ if devices:
         )
     lines.append(guidance)
 
-    # Interactive host: the one device that shows the USER artifacts (browser
-    # opens, rendered plans, dashboards). Newer agents-cli marks it in
-    # `devices list --json` (`interactive: true`); older CLIs omit the field and
-    # we fall back to the generic guidance below.
     interactive = next((d.get("name") for d in devices if d.get("interactive")), None)
-    if interactive and interactive != self_host:
-        lines.append(
-            f"The user sits at **{interactive}** (interactive host). To show them anything "
-            f"visual (an HTML plan, a screenshot, a dashboard), deliver it THERE and open it "
-            f"in their DEFAULT browser — the one they actually use, no fleet browser setup "
-            f"required: `scp <file> {interactive}:/tmp/` then "
-            f"`agents ssh {interactive} '"'"'open /tmp/<file>'"'"'` (`open` on macOS, "
-            f"`xdg-open` on Linux). Do NOT open it in the agent'"'"'s automation browser — "
-            f"`agents browser` drives a headless/Comet profile for the agent'"'"'s own "
-            f"read-back, not the surface the user is looking at. Do not open it locally — the "
-            f"user is not watching this machine. (Optional refinement, ONLY if a browser "
-            f"profile is configured on {interactive} and you are re-rendering the SAME file "
-            f"repeatedly: `agents browser navigate --device {interactive} --url "
-            f"file:///tmp/<file>` reuses ONE tab in place instead of a fresh tab per `open`.)"
-        )
-    elif interactive:
-        lines.append(
-            "The user sits at THIS machine (interactive host) — open visual artifacts in "
-            "their DEFAULT browser with `open <file>` (macOS) / `xdg-open <file>` (Linux), "
-            "the browser they actually use. `agents browser` is the agent'"'"'s own "
-            "automation profile for headless read-back, not how you show the user. (Optional: "
-            "if a browser profile is configured here and you re-render the SAME file "
-            "repeatedly, `agents browser navigate --url file://<file>` reuses ONE tab instead "
-            "of a fresh tab per `open`.)"
-        )
+    if interactive:
+        lines.append(f"The user sits at **{interactive}** (interactive host). Deliver visual artifacts there. "
+                     "Use `agents browser show <url|file>` on that host to open the configured viewer; "
+                     "viewer tabs remain available to the user after the agent task ends.")
     else:
-        lines.append(
-            "To show the user something visual (an HTML plan, a screenshot), display it on "
-            "the online device where they sit — `scp` the file over, then "
-            "`agents ssh <host> '"'"'open /tmp/<file>'"'"'` to open it in their default "
-            "browser (`xdg-open` on Linux). That is the browser they use, and it needs no "
-            "fleet browser profile."
-        )
+        lines.append("To show the user a visual artifact, first identify their interactive host, "
+                     "then use `agents browser show <url|file>` there.")
 
     # Operator config for this machine (newer CLIs only): caps and notes set via
     # `agents devices config` (the retired `configure`/`note` verbs forward there).
@@ -225,12 +196,59 @@ if devices:
     if cfg_bits:
         lines.append("This box: " + " · ".join(cfg_bits) + ".")
 
-    lines.append(
-        "Browser: a bare `agents browser start` on any machine uses THAT machine"
-        "'"'"'s configured profile — never pass --profile and never name a browser binary; "
-        "the machine knows. To drive another box, add `--device <host>` (still no "
-        "--profile: the target picks its own)."
-    )
+# Read the CLI resolver rather than duplicating config precedence in the hook.
+def read_json(args):
+    try:
+        result = subprocess.run(["agents", *args], capture_output=True, text=True, timeout=2)
+        return json.loads(result.stdout) if result.returncode == 0 else None
+    except (OSError, ValueError, subprocess.TimeoutExpired):
+        return None
+
+def config(rows):
+    if not isinstance(rows, list):
+        return None
+    return {r["key"]: r.get("value") for r in rows if isinstance(r, dict) and "key" in r}
+
+with ThreadPoolExecutor(max_workers=2) as pool:
+    cfg_future = pool.submit(read_json, ["config", "list", "--json"])
+    profiles_future = pool.submit(read_json, ["browser", "profiles", "list", "--json"])
+    cfg = config(cfg_future.result())
+    profiles = profiles_future.result()
+
+if cfg is not None:
+    interactive = cfg.get("interactive.host") or next((d.get("name") for d in devices if d.get("interactive")), None)
+    drive_host = cfg.get("browser.device") or self_host
+    hosts = {h for h in (drive_host, interactive) if h and h != self_host}
+    configs = {self_host: cfg}
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        futures = {h: pool.submit(read_json, ["config", "list", "--device", h, "--json"]) for h in hosts}
+        configs.update({h: config(f.result()) for h, f in futures.items()})
+    drive_cfg = configs.get(drive_host)
+    lines.append("")
+    lines.append("Browser configuration (resolved at session start):")
+    if drive_cfg is not None:
+        profile = drive_cfg.get("browser.profile")
+        lines.append(f"Automation: `agents browser start` routes to {drive_host}; " +
+                     (f"configured profile: {profile}." if profile else "no default profile is configured."))
+    else:
+        lines.append(f"Automation routes to {drive_host}; its profile configuration could not be read.")
+    if interactive:
+        viewer_cfg = configs.get(interactive)
+        if viewer_cfg is not None:
+            viewer = viewer_cfg.get("browser.viewer") or viewer_cfg.get("browser.profile")
+            lines.append(f"Show the user: `agents browser show <url|file>` on {interactive}; " +
+                         ("viewer: OS default browser." if viewer == "os" else
+                          f"configured viewer profile: {viewer}." if viewer else "no viewer profile is configured; uses the OS default browser."))
+        else:
+            lines.append(f"Show the user: run `agents browser show <url|file>` on {interactive}; viewer configuration unavailable here.")
+    if isinstance(profiles, list):
+        local = [p.get("name") for p in profiles if isinstance(p, dict) and self_host in p.get("devices", []) and p.get("name")]
+        if local:
+            lines.append("Profiles available on this machine: " + ", ".join(local) + ".")
+    lines.append("Use the configured default for automation. To select another host, use `agents browser start --device <host>` "
+                 "and let that host resolve its own profile. Use `agents browser profiles list` and "
+                 "`agents config list --json` to recheck after configuration changes. "
+                 "Use `agents browser show --json` to verify the actual viewer; unsupported profiles may fall back to the OS browser. Do not assume a particular browser, profile, or fleet hub.")
 
 print("\n".join(lines))
 ' <<< "$DEVICES_JSON"

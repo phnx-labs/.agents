@@ -83,7 +83,7 @@ implementation. See [§Subrule hooks](#subrule-hooks-rules-not-this-tree).
 |---|---|
 | [`04-session-identity.sh`](./session-start/04-session-identity.sh) | The single "who am I" hook — session id, transcript path, runtime. Enriches by-pid with `sessionId` while **preserving** launcher `terminalId` / `launchId` (Factory / `--active` join keys) |
 | [`03-linear-inject-tasks-context.sh`](./session-start/03-linear-inject-tasks-context.sh) | Injects Team & Agents, **every project** (milestones + top open tickets; cwd-matched first), then the active cycle grouped by project. Credentials from `~/.linear-cli/config.json` only (never `agents secrets` / Touch ID); skips with a one-line fix when absent |
-| [`07-inject-device-topology.sh`](./session-start/07-inject-device-topology.sh) | Host and fleet topology, live load/memory per machine |
+| [`07-inject-device-topology.sh`](./session-start/07-inject-device-topology.sh) | Host and fleet topology, live load/memory, configured browser routing and viewer |
 | [`08-inject-repo-inflight.sh`](./session-start/08-inject-repo-inflight.sh) | In-flight PRs and agents working on this project |
 | [`05-session-start-autosync.sh`](./session-start/05-session-start-autosync.sh) | Brings the machine current — config repos, secrets, sessions |
 | [`09-git-pull-forward.sh`](./session-start/09-git-pull-forward.sh) | Fast-forwards the session cwd git repo when clean (ff-only) |

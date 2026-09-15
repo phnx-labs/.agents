@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Inject the configured browser routing and viewer guidance into sessions, with live configuration verification (PHNX-4047).
+
 ## [0.2.4] - 2026-09-14
 
 ### Changed
