@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Bare interactive runs use automatic device placement; headless prompts retain their existing placement defaults (PHNX-4083).
+
 ## [0.2.4] - 2026-09-14
 
 ### Changed
