@@ -224,10 +224,11 @@ To change behavior on one machine without touching this repo, add the same-named
 `~/.agents/` — the user layer wins on a name collision.
 
 GitHub's protection on `main` (the `required-reviews` ruleset plus the classic branch rule)
-requires a pull request but **no approving review** as of 2026-09-14, and only the owner
-account can push or merge. A plain `gh pr merge --rebase` on a PR the owner opened lands it,
-with no admin flag and no REST merge workaround. The non-author review in `gh-merge-guard`
-is an agent-side gate, not a GitHub one.
+requires a pull request with **one approving review**, and only the owner account can push
+or merge. The owner account is the ruleset's sole `exempt` bypass actor, so as of 2026-09-14
+a plain `gh pr merge --rebase` run by the owner lands a PR with no admin flag and no REST
+merge workaround; every other account still needs the review. The non-author review in
+`gh-merge-guard` is an agent-side gate that applies regardless.
 
 ## Verify a change reached an agent, not just the repo
 
