@@ -100,8 +100,8 @@ Several commands escalate to `agents teams` when the scope is wide: `/debug`, `/
 
 Capabilities like `/secrets`, `/sessions`, and `/browser` are **skills**, not commands —
 see [`skills/`](../skills/README.md). They are invoked the same way but carry their own
-tooling. Plugins ship namespaced commands (`/code:loop`, `/swarm:run`, `/fleet:sync`) — see
-[`plugins/`](../plugins/README.md).
+tooling. Plugins ship namespaced commands (`/code:loop`, `/swarm:run`, `/fleet:onboard`) —
+see [`plugins/`](../plugins/README.md).
 
 ---
 

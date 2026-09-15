@@ -1,7 +1,7 @@
 # Plugins
 
 A plugin bundles related commands and skills into one installable unit with its own
-namespace. `/work:loop`, `/code:loop`, `/swarm`, and `/fleet:sync` all come from plugins.
+namespace. `/work:loop`, `/code:loop`, `/swarm`, and `/fleet:onboard` all come from plugins.
 
 The system layer ships the lightweight, no-paid-key plugins. Heavier or key-required ones live
 in the opt-in `.agents-extras` bundle instead, so the default install stays fast and works
@@ -25,8 +25,7 @@ I run?* and § *Automate your work*. This page is the plugin catalog.
 | Parallel agents / blind plan / spec / debug | **swarm** | `/swarm`, `/swarm:plan`, … |
 | Resume prior work / recall / session analytics | **sessions** | `/continue`, `/finish`, `/insights`, `/recall`, `/fork` |
 | Current repository's agent output, cost, mix, and workflow tax as HTML | **yc** | `/yc:workweave` |
-| Multi-machine sync / onboard | **fleet** | `/fleet:sync`, `/fleet:onboard` |
-| Publish HTML artifact | **share** | `/share` (`--private` for `--no-cover --expire 7d`) |
+| Onboard a bare device / profile a sluggish machine | **fleet** | `/fleet:onboard`, `/fleet:profile` |
 | Offline design render | **design** | `/design` |
 | Agent self-exit | **self** | `/self:close` |
 
@@ -41,16 +40,11 @@ Do not stretch `code:loop` into browser outreach — use `work:loop`.
 | [`work`](./work/README.md) | 3 | General-purpose work — `/work:loop` unattended multi-project drain with load spread + browser/computer, whose `triage` mode forces the whole board to keep-and-schedule or cancel; `/work:dispatch` is ONE unit of work (coding or not); `/work:resume` (top-level `/resume`) picks a whole PROJECT's work back up — auto-detect it from the CWD (git repo + subdir → Linear), reconstruct its in-flight work, offload each item to a role=worker device (never the personal box); `/work:demo` (top-level `/demo`) is the post-ship capstone — recover intent, exercise the shipped thing in its real environment on real inputs, before/after side by side, deliver an analyzed report |
 | [`research`](./research/README.md) | 2 | Get the real, evidenced answer — `/research` (`/research:research`) answers a hard research question across DISTINCT engines blind to each other (Codex/web, Grok/X, Antigravity/Google, Perplexity/broad Deep Research, Claude/deep-read + reconcile), cross-checks every claim (single-sourced = a lead, not a fact) and promotes a cited artifact; `/research:product` explores a PRODUCT hands-on — composes `research:research` for the claimed surface + sentiment, then signs up/installs and DRIVES the real product through each user journey (screenshot every step, a clip of the headline flow, favicon-tagged journey diagrams + claims-vs-reality), never one idle screenshot and a wall of text |
 | [`swarm`](./swarm/README.md) | 4 | Fan a task across parallel agents — top-level `/swarm` + `/swarm:run`, `/swarm:plan`, `/swarm:spec`, `/swarm:debug` (test/qa removed; plan/spec require mock-ups) |
-| [`fleet`](./fleet/README.md) | 3 | Fleet-wide ops — `/fleet:sync` brings every device to latest, `/fleet:onboard` brings a bare box to parity and mints its agent auth in the same flow, `/fleet:profile` profiles a sluggish machine and attributes the load to agents-cli surfaces |
-| [`share`](./share/README.md) | 1 | Publish agent-generated HTML to a link on your own Cloudflare R2 — `/share` (auto OG cover), `/share --private` (`--no-cover --expire 7d`) |
+| [`fleet`](./fleet/README.md) | 2 | Fleet-wide ops — `/fleet:onboard` brings a bare box to parity and mints its agent auth in the same flow, `/fleet:profile` profiles a sluggish machine and attributes the load to agents-cli surfaces |
 | [`design`](./design/README.md) | 1 | One keyless, offline-first front door for design — routes an intent to a mode and renders self-contained HTML/SVG |
 | [`self`](./self/README.md) | 3 | Agent self-operations — `/self:close` cleanly self-terminates the session (guarded SIGTERM to the harness); `/self:hibernate` sleeps the session until a future time; `/self:reflect` recalls corrections and constraints before revising work |
 | [`sessions`](./sessions/README.md) | 2 | Session lifecycle + analytics — `/sessions:continue` finishes prior work here (crash recovery finishes headlessly via `/continue recover`), `/sessions:search` pulls ranked snippet-level context from prior sessions (falls back to a bundled `recall.py` that recovers assistant answers the index misses); `/sessions:finish`/`/sessions:insights`/`/sessions:fork` skills are reached only via their top-level `/finish` `/insights` `/fork` aliases, and `/recall` aliases `/sessions:search` |
 | [`yc`](./yc/README.md) | 1 | Local recreations of YC startup products using a general-purpose agent plus focused skills/scripts; first recipe `/yc:workweave` turns indexed agent sessions, output, cost, resource use, hook/command latency, and friction into private HTML |
-
-<p align="center">
-  <img src="../.assets/share.png" alt="/share — one command turns any agent-generated HTML into a shareable link with an auto OG cover" width="82%">
-</p>
 
 ## Layout
 

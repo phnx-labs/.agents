@@ -100,8 +100,7 @@ to type.
 | Review PRs this session (or a whole repo scan) | `/code:review` | `code:review` — three modes |
 | Learn a codebase into project `AGENTS.md` | `/code:learn` | Durable nav notes for future agents |
 | Design / mockup offline | `/design` | [`design`](plugins/design/README.md) |
-| Share an HTML plan/report | `/share` (`--private` for `--no-cover --expire 7d`) | [`share`](plugins/share/README.md) |
-| Fleet: pull every device to latest | `/fleet:sync` | [`fleet`](plugins/fleet/README.md) |
+| Share an HTML plan/report | `agents artifacts share <file>` | [`artifacts`](skills/artifacts/SKILL.md) — public link with OG cover, or `--unlisted --no-cover --expire 7d` for a discreet one |
 | Drive a **website** | skill `browser` (`agents browser`) | Not a slash command — load the skill |
 | Drive a **native Mac app** | skill `computer` | Same |
 | Credentials | skill `secrets` | `secrets` |
@@ -129,8 +128,8 @@ to type.
 | **[`code`](plugins/code/README.md)** | Engineering loop, PR review, commit split, project AGENTS.md learn | Browser outreach / overnight mixed board → use `work` |
 | **[`swarm`](plugins/swarm/README.md)** | You need parallel independent tracks or blind verification | Single small edit |
 | **[`sessions`](plugins/sessions/README.md)** | Resume prior work here, crash-recover headlessly, session analytics | Starting brand-new work |
-| **[`fleet`](plugins/fleet/README.md)** | Many machines must stay in sync / onboard a box | Single-machine day-to-day |
-| **[`share`](plugins/share/README.md)** / **[`design`](plugins/design/README.md)** | Publish HTML or render design offline | Shipping app code |
+| **[`fleet`](plugins/fleet/README.md)** | Onboard a bare box to fleet parity / profile a sluggish machine | Single-machine day-to-day |
+| **[`design`](plugins/design/README.md)** | Render design offline | Shipping app code |
 
 Catalog detail: [`plugins/README.md`](plugins/README.md) · full command list: [`commands/README.md`](commands/README.md).
 
@@ -206,7 +205,7 @@ Each directory has a `README.md` for humans (a catalog of everything in it) and 
 |---|---|
 | [`commands/`](commands/README.md) | Slash commands — `/finish`, `/visualize`, `/code:loop`, `/code:review`, `/swarm`, `/continue`, … (see guide above) |
 | [`skills/`](skills/README.md) | Skills — multi-file capabilities like `browser`, `teams`, `sessions`, `mq` |
-| [`plugins/`](plugins/README.md) | Plugins — `work` (drain any kind), `code`, `swarm`, `sessions`, `fleet`, `share`, `design`, … |
+| [`plugins/`](plugins/README.md) | Plugins — `work` (drain any kind), `code`, `swarm`, `sessions`, `fleet`, `design`, … |
 | [`hooks/`](hooks/README.md) | Lifecycle scripts — session-start context injection, prompt expansion, Stop checks, guards |
 | [`rules/`](rules/README.md) | The ruleset every agent gets as its memory file, composed from `subrules/` |
 | [`permissions/`](permissions/README.md) | Canonical YAML permission rules, translated per agent |
