@@ -223,6 +223,12 @@ refactors, test-only changes, self-evident renames.
 To change behavior on one machine without touching this repo, add the same-named file under
 `~/.agents/` — the user layer wins on a name collision.
 
+GitHub's protection on `main` (the `required-reviews` ruleset plus the classic branch rule)
+requires a pull request but **no approving review** as of 2026-09-14, and only the owner
+account can push or merge. A plain `gh pr merge --rebase` on a PR the owner opened lands it,
+with no admin flag and no REST merge workaround. The non-author review in `gh-merge-guard`
+is an agent-side gate, not a GitHub one.
+
 ## Verify a change reached an agent, not just the repo
 
 Merged is not live. After a change lands, the proof is that the resource is registered in an
