@@ -100,7 +100,7 @@ to type.
 | Review PRs this session (or a whole repo scan) | `/code:review` | `code:review` — three modes |
 | Learn a codebase into project `AGENTS.md` | `/code:learn` | Durable nav notes for future agents |
 | Design / mockup offline | `/design` | [`design`](plugins/design/README.md) |
-| Share an HTML plan/report | `agents artifacts share <file>` | [`artifacts`](skills/artifacts/SKILL.md) — public link with OG cover, or `--unlisted --no-cover --expire 7d` for a discreet one |
+| Share an HTML plan/report | `artifacts share <file>` | [`artifacts`](skills/artifacts/SKILL.md) — public link with OG cover, or `--unlisted --no-cover --expire 7d` for a discreet one |
 | Drive a **website** | skill `browser` (`agents browser`) | Not a slash command — load the skill |
 | Drive a **native Mac app** | skill `computer` | Same |
 | Credentials | skill `secrets` | `secrets` |
