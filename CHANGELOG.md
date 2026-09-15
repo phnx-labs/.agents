@@ -2,6 +2,8 @@
 
 ## [Unreleased]
 
+## [0.2.4] - 2026-09-14
+
 ### Changed
 
 - **`plugins/code/`** (0.15.0). Add `code:health` for human maintainability, size
