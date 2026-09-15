@@ -130,9 +130,8 @@ Go back to the paragraph from Step 1 and check the work against it, not against 
   / missing, each with its evidence (a capture, a quote).
 - **What's still a gap?** Name it plainly rather than burying it in prose — a demo's
   honesty is measured by whether it surfaces what's *not* done. A gap you can close now
-  doesn't need a ticket: fix it (or dispatch the fix). For one you can't, check the board
-  and enrich an existing ticket, opening a new one only if the work is genuinely missing
-  (see `conventions`); a gap you merely noticed goes in the owner update, not a fresh Todo.
+  gets fixed (or dispatched); one you can't goes through the `tickets` skill or into the
+  owner update.
 
 ## Step 6 — Build the report
 

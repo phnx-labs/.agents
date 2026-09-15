@@ -18,8 +18,6 @@ A branch or PR is a queue of one; it needs no multi-item planning ceremony.
 Understand each item's intended result and acceptance evidence. Before adopting it,
 check relevant tickets, open PRs, and active sessions for existing work. Continue work
 you own; coordinate with another active owner rather than racing or taking over.
-Reuse the existing ticket. Create one only when committing to execute work that has no
-suitable ticket, not while exploring a plan or merely noticing a follow-up.
 
 Claim work when execution starts and keep meaningful scope changes, blockers, and
 handoffs on its ticket. Link the ticket in the PR so other workers can find it.

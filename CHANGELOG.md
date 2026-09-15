@@ -4,6 +4,11 @@
 
 ### Changed
 
+- **`rules/subrules/conventions.md`**, **`skills/tickets/SKILL.md`**. State the ticket
+  lifecycle once: reuse and enrich existing tickets, create one when the work warrants it,
+  and pick labels, cycles, milestones, and projects from what exists. Drop the restatements
+  in `sessions:finish`, `code:loop`, `code:refactor`, `swarm:debug`, `work:demo`, and
+  `/recap`, which now point at the `tickets` skill.
 - Allow recap and demo follow-ups to name an owner update when a new ticket is unwarranted.
 - Remove paths, imports and flags superseded by the same change, preserving the concise code-quality contract.
 - Capture the subject project and creator metadata before authoring artifacts outside the checkout (PHNX-3978).
