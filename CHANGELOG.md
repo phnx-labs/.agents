@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Remove paths, imports and flags superseded by the same change, preserving the concise code-quality contract.
+
 ## [0.2.4] - 2026-09-14
 
 ### Changed
