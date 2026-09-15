@@ -2,6 +2,18 @@
 
 ## [Unreleased]
 
+### Changed
+
+- **`rules/`, `clis/`, `plugins/fleet/`** — align fleet instructions with the standalone
+  `term` CLI (`@phnx-labs/term-cli`), which replaced the removed `agents pty` (PHNX-4091)
+  and is now installed via `agents setup term` (PHNX-4092). The tool-picker rule
+  (`rules/subrules/operational.md` + composed `rules/AGENTS.md`) names `term` for
+  interactive terminals; `plugins/fleet/commands/onboard.md` migrates its entire
+  auth-mint recipe from `agents pty <verb>` to `term <verb>` (verbs are 1:1) and adds
+  `term`/`computer` to the bootstrap host-CLI list. Adds `clis/term.yaml`
+  (`@phnx-labs/term-cli@0.1.0`) alongside `computer.yaml`/`secrets.yaml`, with its
+  `clis/README.md` row.
+
 ## [0.2.4] - 2026-09-14
 
 ### Changed

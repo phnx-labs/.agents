@@ -1,0 +1,22 @@
+name: term
+description: |
+  Phoenix Labs term CLI — the standalone PTY engine (start/exec/read/write/
+  screen/signal/resize/list/stop, plus its own background server). agents-cli's
+  `agents pty` was removed (PHNX-4091); the OAuth device-code driver behind
+  `agents fleet login` / `agents auth mint` spawns this binary on demand and
+  fails loud when it is absent. Binary is `term`. `agents setup term` installs it.
+homepage: https://github.com/phnx-labs/term-cli
+
+check: term --version
+
+# Pin the published package. Bumping means editing this tag plus CHANGELOG.
+# Keep in lockstep with agents-cli's cli/src/lib/setup-tool-install.ts pin.
+install:
+  - npm: "@phnx-labs/term-cli@0.1.0"
+
+post_install: |
+  term --version
+  agents setup term
+  There is no further setup — term needs no profile, OS permission, or migrate
+  step. Presence on PATH is its whole readiness signal; fleet login and auth
+  mint spawn it on demand. `agents setup status --tool term` reports it.

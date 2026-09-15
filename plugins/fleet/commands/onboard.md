@@ -36,7 +36,7 @@ only through the sanctioned paths, and only with the user's explicit OK:
 
 - **Agent auth** → **mint it yourself first** — see [**Minting agent auth yourself**](#minting-agent-auth-yourself--the-token-flow) below.
   Prefer the harness's native device/OAuth flow inside a distinct account slot on the
-  target, driven through `agents pty` plus a browser signed into the intended account.
+  target, driven through `term` plus a browser signed into the intended account.
   Verify the resulting email on the target and repeat independently per device. For a
   deliberately shared headless credential, mint a long-lived `setup-token` / API key
   and store it as a named provider account with `agents accounts add <name> --provider
@@ -82,9 +82,13 @@ so and stop.
    platform; on a bare box that may be a one-line installer or `npm i -g`). Everything
    below needs it.
 2. **Bootstrap** — prefer `agents setup` on a bare box (it walks agent install + config
-   sync). Otherwise proceed with the primitives. After the system repo is on the box,
-   install host CLIs with `agents clis install` (at least `secrets` — agents-cli no
-   longer ships that engine; PHNX-3989). Confirm with `secrets --version`.
+   sync, including the `browser`/`computer`/`secrets`/`term` standalone-tool phases).
+   Otherwise proceed with the primitives. After the system repo is on the box, install
+   the standalone host CLIs agents-cli no longer ships as engines with `agents clis
+   install` (or the matching `agents setup <tool>`): `secrets` (PHNX-3989), `computer`
+   (PHNX-4075), and `term` (the PTY engine this onboard flow drives — PHNX-4091/4092;
+   `agents setup term` installs `@phnx-labs/term-cli`). Confirm with `secrets --version`,
+   `computer --version`, `term --version`.
 3. **Agent CLIs** — `agents add <agent>` (or `agents import` to adopt an existing global
    install) for each agent the fleet runs (claude, codex, …).
 4. **Repos** — register + clone the DotAgent repos: `agents repos add` for each (and/or
@@ -151,7 +155,7 @@ requirement. Copying native OAuth material is not a fallback.
 
 ### DISCOVER first — the CLI surface moves
 
-Confirm the current verbs before running: `claude setup-token --help`, `agents pty
+Confirm the current verbs before running: `claude setup-token --help`, `term
 --help`, `agents computer --help` / `agents browser --help`, `agents accounts --help`.
 Treat the keystrokes below as the map, not gospel.
 
@@ -171,24 +175,24 @@ changing that label.
    Never reuse a slot that already belongs to another email. Do not infer identity from
    the label; the native login result is the source of truth.
 
-2. **Start the native login on the target in a PTY.** Let `agents pty start` choose the
+2. **Start the native login on the target in a PTY.** Let `term start` choose the
    target's native shell; never hardcode `/bin/bash` fleet-wide. Use the managed
    invocation so `HOME` resolves to that slot.
 
    From a POSIX orchestrator:
    ```
-   SID=$(agents ssh <target> 'agents pty start' | tail -1)
-   agents ssh <target> "agents pty write $SID 'agents run grok@<stable-label> -- login --device-auth\r'"
+   SID=$(agents ssh <target> 'term start' | tail -1)
+   agents ssh <target> "term write $SID 'agents run grok@<stable-label> -- login --device-auth\r'"
    sleep 3
-   agents ssh <target> "agents pty screen $SID"
+   agents ssh <target> "term screen $SID"
    ```
 
    From a PowerShell orchestrator:
    ```powershell
-   $SID = (agents ssh <target> "agents pty start" | Select-Object -Last 1)
-   agents ssh <target> "agents pty write $SID `"agents run grok@<stable-label> -- login --device-auth\r`""
+   $SID = (agents ssh <target> "term start" | Select-Object -Last 1)
+   agents ssh <target> "term write $SID `"agents run grok@<stable-label> -- login --device-auth\r`""
    Start-Sleep -Seconds 3
-   agents ssh <target> "agents pty screen $SID"
+   agents ssh <target> "term screen $SID"
    ```
    Read the exact device URL and code from the PTY. Keep the PTY alive while authorizing.
 
@@ -202,9 +206,9 @@ changing that label.
    form uses the same verbs on PowerShell; replace shell quoting and `$SID` assignment
    with the PowerShell form above:
    ```
-   agents ssh <target> "agents pty screen $SID"  # must say Signed in as <expected-email>
+   agents ssh <target> "term screen $SID"  # must say Signed in as <expected-email>
    agents ssh <target> 'agents view grok --json'
-   agents ssh <target> "agents pty stop $SID"
+   agents ssh <target> "term stop $SID"
    ```
    Success means the expected slot reports `signedIn: true` with the expected email.
    A browser success page alone is not proof.
@@ -218,12 +222,12 @@ changing that label.
 1. **Start the flow in a pty** (run it anywhere — the token is account-scoped, not
    machine-bound):
    ```
-   SID=$(agents pty start)
-   agents pty exec "$SID" "claude setup-token"
-   sleep 5 && agents pty screen "$SID"
+   SID=$(term start)
+   term exec "$SID" "claude setup-token"
+   sleep 5 && term screen "$SID"
    ```
    It prints an authorize URL and waits for a code. Pull the exact URL from
-   `agents pty read "$SID"` (it wraps on screen — join the fragments).
+   `term read "$SID"` (it wraps on screen — join the fragments).
 
 2. **Authorize in a browser signed in to claude.ai.** The online macOS device is
    signed in; open the URL in its *default* browser and read the code off the page:
@@ -240,9 +244,9 @@ changing that label.
 
 3. **Complete the mint:**
    ```
-   agents pty write "$SID" "<code>#<state>\r"
-   sleep 6 && agents pty screen "$SID"           # prints: sk-ant-oat01-...  (valid ~1 year)
-   agents pty stop "$SID"
+   term write "$SID" "<code>#<state>\r"
+   sleep 6 && term screen "$SID"           # prints: sk-ant-oat01-...  (valid ~1 year)
+   term stop "$SID"
    ```
 
 4. **Store it as a named provider account** — not in any shared bundle. One account
