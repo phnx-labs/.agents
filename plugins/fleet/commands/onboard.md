@@ -36,7 +36,7 @@ only through the sanctioned paths, and only with the user's explicit OK:
 
 - **Agent auth** → **mint it yourself first** — see [**Minting agent auth yourself**](#minting-agent-auth-yourself--the-token-flow) below.
   Prefer the harness's native device/OAuth flow inside a distinct account slot on the
-  target, driven through `agents pty` plus a browser signed into the intended account.
+  target, driven through `term` plus a browser signed into the intended account.
   Verify the resulting email on the target and repeat independently per device. For a
   deliberately shared headless credential, mint a long-lived `setup-token` / API key
   and store it as a named provider account with `agents accounts add <name> --provider
@@ -50,7 +50,7 @@ only through the sanctioned paths, and only with the user's explicit OK:
   (safe to hold and sync with `agents accounts sync`). (Confirm the current verb via
   `--help` — there is no bare `agents login`.)
 - **Fleet SSH key** (the one shared Ed25519 that unlocks git + node-to-node mesh) →
-  installed from its `agents secrets` bundle, **with explicit authorization** each time.
+  installed from its `secrets` bundle, **with explicit authorization** each time.
   It is a private key; treat distributing it as the sensitive act it is.
 
 Only after you have genuinely tried to mint it yourself (see **Minting agent auth
@@ -64,7 +64,7 @@ even then, never improvise a credential-file copy.
 
 Run on the machine you're on (a known-good node): `agents view`, `agents inspect user`
 and `agents inspect system`, `agents repos list`, `agents devices list`, `agents
-accounts list`, `agents secrets list`. Note: which agent CLIs are installed, which
+accounts list`, `secrets list`. Note: which agent CLIs are installed, which
 repos are registered (system + user + extras), which accounts and auth model are in
 use, and that the shared fleet SSH key + the non-interactive PATH shim are present.
 That's the parity target.
@@ -82,14 +82,18 @@ so and stop.
    platform; on a bare box that may be a one-line installer or `npm i -g`). Everything
    below needs it.
 2. **Bootstrap** — prefer `agents setup` on a bare box (it walks agent install + config
-   sync). Otherwise proceed with the primitives. After the system repo is on the box,
-   install host CLIs with `agents clis install` (at least `secrets` — agents-cli no
-   longer ships that engine; PHNX-3989). Confirm with `secrets --version`.
+   sync, including the `browser`/`computer`/`secrets`/`term` standalone-tool phases).
+   Otherwise proceed with the primitives. After the system repo is on the box, install
+   the standalone host CLIs agents-cli no longer ships as engines with `agents clis
+   install` (or the matching `agents setup <tool>`): `secrets` (PHNX-3989), `computer`
+   (PHNX-4075), and `term` (the PTY engine this onboard flow drives — PHNX-4091/4092;
+   `agents setup term` installs `@phnx-labs/term-cli`). Confirm with `secrets --version`,
+   `computer --version`, `term --version`.
 3. **Agent CLIs** — `agents add <agent>` (or `agents import` to adopt an existing global
    install) for each agent the fleet runs (claude, codex, …).
 4. **Repos** — register + clone the DotAgent repos: `agents repos add` for each (and/or
    `agents repo pull system` for the system repo). Match the reference's repo set.
-5. **Fleet SSH key** — install the shared Ed25519 from its `agents secrets` bundle so
+5. **Fleet SSH key** — install the shared Ed25519 from its `secrets` bundle so
    git and node-to-node SSH work (explicit auth — see the hard line).
 6. **Non-interactive PATH** — ensure agents-cli resolves in a *non-login* shell (fleet
    tooling like `agents sessions`/`fleet:sync` uses `bash -lc` but a bare box may lack
@@ -138,11 +142,14 @@ and it failed for a concrete, quoted reason. Proven end-to-end 2026-08-01.
 
 Two supported credential classes; do not blur them:
 
-- **Native OAuth/device login:** mint it independently inside every target device's
-  version-home/account slot. Never copy its credential file or keychain entry. Refresh
-  tokens may rotate, so two machines sharing one copied login can invalidate each other.
-- **Setup token/API key:** store it as a named provider account. This long-lived,
-  non-rotating credential class may be distributed with `agents accounts sync`.
+- **Native OAuth/device login:** mint it on a **headed** (`personal`/`desktop`)
+  device with `agents accounts add <harness> [name]`. Never copy its credential
+  file or keychain entry. Refresh tokens may rotate, so two machines sharing one
+  copied login can invalidate each other. A worker never runs this managed `accounts add` flow.
+- **Setup token/API key:** `accounts add` stores the durable worker credential
+  in the reserved `__<harness>__` store; the daemon pushes it to `role=worker`
+  peers. A separately named provider account (`accounts add <name> --provider`)
+  is still a policy-`never` bundle you can `accounts sync` by hand.
 
 Prefer native device OAuth when the harness exposes it and the user wants the harness's
 full native account identity, subscription, and usage behavior. Use setup tokens/API keys
@@ -151,44 +158,60 @@ requirement. Copying native OAuth material is not a fallback.
 
 ### DISCOVER first — the CLI surface moves
 
-Confirm the current verbs before running: `claude setup-token --help`, `agents pty
+Confirm the current verbs before running: `claude setup-token --help`, `term
 --help`, `agents computer --help` / `agents browser --help`, `agents accounts --help`.
 Treat the keystrokes below as the map, not gospel.
 
 ### Recipe — native device OAuth in a target account slot
 
-The preferred fleet recipe for Grok, Kimi, Droid, and any harness that exposes a
-device-code flow. Run it once per account per device. A version label is the stable
-account-slot identity; the vendor binary may self-update to a different release without
-changing that label.
+Install the harness **once** (`agents add <harness>`). Each account is a
+credential slot of that install, not a second installation — do not
+`agents add grok@<label>` to isolate logins.
 
-1. **Create or select a distinct slot on the target.** Discover the current `agents add`
-   and `agents view` syntax first. For Grok, a concrete label keeps credentials separate:
+**Headed device (personal/desktop):** `agents accounts add <harness> [name]`
+opens the native login in a new slot, registers the fleet-wide row, and mints
+the durable worker credential. Re-auth is `agents accounts login <harness>#<name>`.
+
+**Workers:** supported named accounts receive durable credentials from the headed
+mint through the daemon. Check `agents accounts add --help` for supported native
+account targets; provider-key support alone does not imply native account creation
+is supported. For a harness requiring per-device login, run
+`agents run <harness> --device <target>` and complete its native login there.
+Do not copy the resulting native credential between machines.
+
+1. **Create the one managed install on the target if absent:**
    ```
-   agents ssh <target> 'agents add grok@<stable-label> -y'
+   agents ssh <target> 'agents add grok -y'
    agents ssh <target> 'agents view grok'
    ```
    Never reuse a slot that already belongs to another email. Do not infer identity from
-   the label; the native login result is the source of truth.
+   the name; the native login result is the source of truth.
 
-2. **Start the native login on the target in a PTY.** Let `agents pty start` choose the
-   target's native shell; never hardcode `/bin/bash` fleet-wide. Use the managed
-   invocation so `HOME` resolves to that slot.
-
-   From a POSIX orchestrator:
+2. **On a headed device only**, add the account (this is the login):
    ```
-   SID=$(agents ssh <target> 'agents pty start' | tail -1)
-   agents ssh <target> "agents pty write $SID 'agents run grok@<stable-label> -- login --device-auth\r'"
+   agents accounts add grok work
+   ```
+   For a token-less harness on the target itself:
+   ```
+   agents run kimi --device <target>
+   ```
+   A leftover interactive login into an existing slot uses a PTY on a headed
+   box, never on a worker:
+
+   From a POSIX orchestrator (headed box):
+   ```
+   SID=$(term start | tail -1)
+   term write $SID 'agents accounts login grok#work\r'
    sleep 3
-   agents ssh <target> "agents pty screen $SID"
+   term screen $SID
    ```
 
    From a PowerShell orchestrator:
    ```powershell
-   $SID = (agents ssh <target> "agents pty start" | Select-Object -Last 1)
-   agents ssh <target> "agents pty write $SID `"agents run grok@<stable-label> -- login --device-auth\r`""
+   $SID = (term start | Select-Object -Last 1)
+   term write $SID "agents accounts login grok#work`r"
    Start-Sleep -Seconds 3
-   agents ssh <target> "agents pty screen $SID"
+   term screen $SID
    ```
    Read the exact device URL and code from the PTY. Keep the PTY alive while authorizing.
 
@@ -198,32 +221,36 @@ changing that label.
    not authorize when the displayed account is wrong; sign out or choose the correct
    browser identity first.
 
-4. **Verify the terminal and installed identity, then clean up.** The following POSIX
-   form uses the same verbs on PowerShell; replace shell quoting and `$SID` assignment
-   with the PowerShell form above:
+4. **Verify the headed slot, then clean up.** The PTY lives on the headed box:
    ```
-   agents ssh <target> "agents pty screen $SID"  # must say Signed in as <expected-email>
-   agents ssh <target> 'agents view grok --json'
-   agents ssh <target> "agents pty stop $SID"
+   term screen $SID  # must say Signed in as <expected-email>
+   agents accounts list grok
+   term stop $SID
    ```
-   Success means the expected slot reports `signedIn: true` with the expected email.
-   A browser success page alone is not proof.
+   Success means `grok#work` reports live with the expected email. A browser
+   success page alone is not proof. Workers pick the durable credential up on
+   the next daemon tick (`agents devices accounts --agents grok --device <target>`).
 
-5. **Repeat for every target device and account.** Device OAuth is deliberately
-   per-machine. Minting on one worker does not authorize the rest, and copying the
-   resulting native credential is forbidden.
+5. **Verify the supported provisioning path.** Durable named-account credentials
+   propagate from the headed mint. Harnesses requiring per-device login use
+   `agents run <harness> --device <target>` and their native login flow.
+   Copying the resulting native credential is forbidden.
 
 ### Recipe — Claude setup-token (syncable alternative)
 
-1. **Start the flow in a pty** (run it anywhere — the token is account-scoped, not
+Preferred: on a headed device, `agents accounts add claude work` logs in, mints
+the setup-token into `__claude__`, and the daemon provisions workers. Use the
+pty recipe below only when that mint step needs a hand.
+
+1. **Start the flow in a pty** (run it on a headed device — the token is account-scoped, not
    machine-bound):
    ```
-   SID=$(agents pty start)
-   agents pty exec "$SID" "claude setup-token"
-   sleep 5 && agents pty screen "$SID"
+   SID=$(term start)
+   term exec "$SID" "claude setup-token"
+   sleep 5 && term screen "$SID"
    ```
    It prints an authorize URL and waits for a code. Pull the exact URL from
-   `agents pty read "$SID"` (it wraps on screen — join the fragments).
+   `term read "$SID"` (it wraps on screen — join the fragments).
 
 2. **Authorize in a browser signed in to claude.ai.** The online macOS device is
    signed in; open the URL in its *default* browser and read the code off the page:
@@ -240,23 +267,23 @@ changing that label.
 
 3. **Complete the mint:**
    ```
-   agents pty write "$SID" "<code>#<state>\r"
-   sleep 6 && agents pty screen "$SID"           # prints: sk-ant-oat01-...  (valid ~1 year)
-   agents pty stop "$SID"
+   term write "$SID" "<code>#<state>\r"
+   sleep 6 && term screen "$SID"           # prints: sk-ant-oat01-...  (valid ~1 year)
+   term stop "$SID"
    ```
 
 4. **Store it as a named provider account** — not in any shared bundle. One account
-   is one `agents secrets` bundle with `policy: never`, so agent launches read it
+   is one `secrets` bundle with `policy: never`, so agent launches read it
    without Touch ID on any OS. Pick a name that identifies the account (e.g. the
    email slug):
    ```
-   agents accounts add claude-muqsit \
+   agents accounts add claude-work \
        --provider anthropic \
        --auth setup-token
    ```
    Enter the setup token at the command's secret prompt. Do not put it in an
    environment variable, command argument, or shell history.
-   If you already stored the token in an intermediate bundle with `agents secrets add`,
+   If you already stored the token in an intermediate bundle with `secrets add`,
    import it instead of re-entering:
    ```
    agents accounts add "$ACCOUNT_NAME" \
@@ -290,18 +317,19 @@ changing that label.
 
 ### Other harnesses
 
-- **API-key harnesses** (Codex `OPENAI_API_KEY`, Grok `XAI_API_KEY`): no browser dance —
-  provision the key with the provider name the account registry owns:
-  `agents accounts add codex-work --provider openai --auth api-key` or
-  `agents accounts add grok-work --provider xai --auth api-key`.
-- **Device-code harnesses** (Grok, Droid, Kimi): use the native target-slot recipe above.
-  Mint/log in independently on every target and verify the resulting email; do not copy
-  the native credential file.
+- **API-key harnesses** (Codex `OPENAI_API_KEY`, Grok `XAI_API_KEY`, Cursor
+  `CURSOR_API_KEY`): on a headed device, `agents accounts add <harness> [name]` and follow its credential prompt. Workers receive the key from the daemon. A
+  separately named provider account is still
+  `agents accounts add <name> --provider openai --auth api-key`.
+- **Per-device or unsupported native accounts:** discover the harness capability
+  through `agents accounts add --help`. Where native login is per-device, use
+  `agents run <harness> --device <target>` and complete its native login. Use
+  supported provider credentials for other cases; do not copy native credential files.
 
-For native OAuth report the device, stable slot label, verified email, and a redacted
-`agents view --json` result; for named setup-token/API-key accounts report the account
-name, provider, headless `agents run --account` verification, and devices that received
-the bundle. **Never** paste a token, device credential, or credential file into a message,
+For native OAuth report the headed device, account `#name`, verified email, and a redacted
+`agents accounts list --json` result; for named setup-token/API-key accounts report the
+account name, provider, headless `agents run <harness>#<name>` verification, and devices
+that received the key. **Never** paste a token, device credential, or credential file into a message,
 PR, or commit.
 
 ## Safety rules (non-negotiable)

@@ -86,7 +86,7 @@ fail: the agent forgets it can actually open the product and drive it.
   agents browser profiles logins --device <interactive-box>
   ```
 - Where a native login is needed, `agents computer` can select the owner's normal
-  account and sign in. If a credential is needed, it's in `agents secrets` — inject it,
+  account and sign in. If a credential is needed, it's in `secrets` — inject it,
   don't stop.
 - Demonstrate on the **real account**, never a logged-out or throwaway session. A demo
   behind a login wall you didn't cross proves nothing.
@@ -143,7 +143,7 @@ recaps the owner already likes. The report contains:
 - The **captures** from Step 3, inlined.
 - An **intent → delivered** table (each criterion, status, evidence).
 - The **measured delta** from Step 4.
-- **Honest gaps**, with the ticket ids you filed.
+- **Honest gaps**, each with its disposition — fixed now, a line in the owner update, or a ticket id if one was genuinely warranted.
 
 ```bash
 ROOT=$(git rev-parse --show-toplevel); DATE=$(date +%F)
@@ -179,7 +179,7 @@ Concrete, not a slogan. Name real files, flags, numbers, error strings.
 - **Demoing the dev build / worktree** and calling it shipped. Demo the released artifact.
 - **Toy inputs.** "hello world" hides the failures a demo exists to catch. Real,
   representative data or a same-shape sample.
-- **A logged-out session.** You have the owner's logged-in profile and `agents secrets` —
+- **A logged-out session.** You have the owner's logged-in profile and `secrets` —
   sign in and demonstrate the real flow.
 - **Asserting improvement without measuring it.** Put a number on it or admit there isn't
   one.

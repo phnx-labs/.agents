@@ -25,7 +25,7 @@ nothing while idle.
 agents webhook serve --secrets-bundle <name>
 ```
 
-`--secrets-bundle` is required: it names the `agents secrets` bundle holding
+`--secrets-bundle` is required: it names the `secrets` bundle holding
 `GITHUB_WEBHOOK_SECRET` and `LINEAR_WEBHOOK_SECRET`. Signing secrets go in the keychain,
 never in a file here — this repo is designed to be safely version-controlled, so treat every
 byte of it as public.

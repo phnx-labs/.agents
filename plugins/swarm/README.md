@@ -17,7 +17,7 @@ the internal **`swarm:orchestrate`** skill (no command of its own).
 
 | Command | Use when |
 | --- | --- |
-| `/swarm:plan` | Before building anything non-trivial. Staff-engineer system diagrams, alternatives considered, live research + captures, mock-ups, adversarial review in the HTML. |
+| `/swarm:plan` | A reviewable change proposal. The [plan skill](skills/plan/SKILL.md) owns scope, evidence, visuals, success checks, and review requirements. |
 | `/swarm:spec` | Durable **source-of-truth** description of how a capability behaves, in plain language (intent, behavior, sharp cases, what must not change) so other agents and humans do not invent wrong behavior — reverse-engineered from real code, with **mock-ups** for any UI/flow surface. |
 | `/swarm:debug` | Non-obvious bug; wrong diagnosis is expensive. Trace the data path, attribute regressions to the responsible agent/session and explain how they slipped, then blind multi-provider root-cause confirm. |
 
@@ -29,10 +29,11 @@ the internal **`swarm:orchestrate`** skill (no command of its own).
 | Shape | Change proposal + tasks + delta | Intent + behavior + sharp cases + mock-ups |
 | Time | Forward-looking | Present contract (the *is*) |
 | Audience | Builders draining the change | Anyone who must not break or re-invent the capability |
-| Mock-ups | **Required** for any UI / multi-step flow in the proposal | **Required** for any UI / multi-step flow in the contract |
+| Mock-ups | Product-faithful views for changed UI states; diagrams for system behavior | **Required** for any UI / multi-step flow in the contract |
 
-Both produce a reviewable HTML artifact (via `artifacts`). Both use the swarm to try to
-break the draft (blind independent plans / specs).
+Both produce a reviewable HTML artifact through `artifacts`, including its independent
+presentation review. Independent investigation follows each skill: planning uses it
+when useful or explicitly requested; specification follows the `spec` contract.
 
 ## Removed
 

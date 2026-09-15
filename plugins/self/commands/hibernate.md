@@ -8,7 +8,7 @@ Use this when you are blocked on something slow and external — an approval tha
 
 > **Why a launchd one-shot, not a routine.** The wake must resume the *actual* session so it reopens with full context. A `routines`-fired job spawns a *fresh* headless agent, and a fresh agent handed "run this command" for a session it has no memory of correctly refuses it as prompt injection — so the routine path cannot wake a hibernated session today. A launchd one-shot runs `agents run claude --resume` directly (no relay agent) — which resumes the *actual* session natively under the smart permission classifier (`--mode auto`, **never** `--dangerously-skip-permissions`) — and even catches up if the laptop was asleep at the wake time. (When `agents routines` gains native `--resume`, this switches to a one-line routine; until then, launchd.)
 
-> **Prerequisite.** macOS, and `agents run claude` must be able to launch non-interactively — it drives the wake and manages claude auth itself. Concrete probe: `agents secrets exec claude.ai -- printenv CLAUDE_CODE_OAUTH_TOKEN` prints a token (same underlying auth `agents run` uses). For a logged-in Rush user it does. If it prompts or is empty, the wake can't authenticate — fix that first.
+> **Prerequisite.** macOS, and `agents run claude` must be able to launch non-interactively — it drives the wake and manages claude auth itself. Concrete probe: `secrets exec claude.ai -- printenv CLAUDE_CODE_OAUTH_TOKEN` prints a token (same underlying auth `agents run` uses). For a logged-in Rush user it does. If it prompts or is empty, the wake can't authenticate — fix that first.
 
 > **`/self:hibernate` vs `/finish` vs `/self:close`** — `/finish` refuses to stop and drives the current task to delivered. `/self:close` self-exits when the work is *delivered*. `/self:hibernate` is for work that is *neither done nor blocked-forever*: it's waiting on wall-clock time. You come back and finish it yourself later — the user doesn't have to remember to ping you.
 
@@ -192,7 +192,7 @@ Notes:
 - **Don't wake a session you're actively sitting in headlessly.** A headless `-p` resume of a session that's also live in a foreground TUI briefly double-attaches one transcript. For short interactive waits prefer `WAKE_VISIBLE=1` (a fresh tab is a clean second surface); the headless floor is for when no one's watching anyway.
 - `--mode auto` lets the woken session act with the **smart permission classifier** — it auto-approves safe ops and still prompts/blocks on risky ones. **Never** `--mode skip` / `--dangerously-skip-permissions`: a persistent, auto-launched job must not carry a blanket permission bypass. The user issuing `/self:hibernate` is the authorization; `auto` keeps risky operations blocked. (If a wake genuinely needs to run something the classifier would block, prefer a narrower allow-list over widening the mode.)
 - `StartCalendarInterval` drops the year, so it fires on the next occurrence of that month/day — the wrapper boots the job out on first fire, so it runs exactly once.
-- `agents run claude --resume` resumes the session natively and manages claude auth itself — no `agents secrets exec` wrapper, no `--dangerously-skip-permissions`, no routines daemon.
+- `agents run claude --resume` resumes the session natively and manages claude auth itself — no `secrets exec` wrapper, no `--dangerously-skip-permissions`, no routines daemon.
 
 ## Step 4 - Verify the job is armed
 

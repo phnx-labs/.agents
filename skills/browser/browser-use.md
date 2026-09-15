@@ -290,8 +290,12 @@ agents browser devices                           # list available presets
 
 ## Account Credentials
 
+Inject the bundle into the consuming command — never print the values to stdout
+(the `secrets-guard` hook denies the plaintext export, since it lands in the
+model context and the session transcript):
+
 ```bash
-eval "$(agents secrets export browser-accounts --plaintext)"
+secrets exec browser-accounts -- ./login-helper
 ```
 
 Always screenshot first — if the session is still alive in the profile, skip login.
