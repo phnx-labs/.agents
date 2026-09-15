@@ -129,6 +129,6 @@ paths when concepts merge. Documentation-only changes need verified claims and a
 checks, not a forced full suite. Recompute the relevant measurements after structural
 changes and reconcile the proposed view with the actual result.
 
-Use `code:loop` for owned delivery: independent review, required green CI, merge, and
+Use `work:loop` for owned delivery: independent review, required green CI, merge, and
 repository-specific release/installed verification when applicable. Report the achieved
 structural improvement and remaining limitations. Close tracking only with delivery proof.

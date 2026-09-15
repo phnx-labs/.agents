@@ -36,10 +36,9 @@ rule still references the old `/name`. `grep -rn "/<oldname>"` from the repo roo
 
 ## Aliases point at the canonical definition
 
-`/code:commit` is the canonical commit command — it lives in the `code` plugin. There is no
-top-level `/commit` alias. The behavior stays in the plugin; do not fork it into any top-level
-file. Top-level aliases like `/continue` → `/sessions:continue` follow the same pattern: the
-thin file only routes, the behavior lives in the plugin skill.
+`/commit` and `/loop` are thin aliases of `/work:commit` and `/work:loop`. The
+canonical behavior lives in the work plugin skills. Top-level and plugin commands
+only route to those skills with `$ARGUMENTS`; never copy behavior into an alias.
 
 ## Namespacing
 

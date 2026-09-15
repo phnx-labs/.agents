@@ -1,8 +1,13 @@
 # Changelog
 
-## [Unreleased]
+## [0.2.6] - 2026-09-14
 
 ### Changed
+
+- **Work 0.9.0 / code 0.16.0:** move commit into the portable `work:commit` skill,
+  consolidate engineering and mixed queues in `work:loop`, and add thin `/commit`
+  and `/loop` aliases. Remove the old code commit/loop entry points and update
+  consumers (sessions 0.4.2). Code retains health, review, refactor, and learn.
 
 - **`plugins/design/`** (0.4.0). Add focused system, graphics, prototype, and critique
   skills behind a short design router. Shared guidance inspects existing guidelines,

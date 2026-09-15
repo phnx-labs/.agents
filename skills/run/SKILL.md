@@ -46,7 +46,7 @@ Permission mode controls what the agent can do.
 
 ```bash
 agents run kimi "fix lint errors in src/" --mode edit
-agents run codex "/code:commit" --mode auto          # run a command unattended, safely
+agents run codex "/work:commit" --mode auto          # run a command unattended, safely
 ```
 
 **Treat `skip` as a last resort.** In direct-exec runs (without `--acp`), agents-cli

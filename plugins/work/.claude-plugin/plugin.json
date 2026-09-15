@@ -1,7 +1,7 @@
 {
   "name": "work",
-  "version": "0.8.2",
-  "description": "Dispatch one task, resume project work, drain a queue, or demonstrate delivery across coding and non-coding work.",
+  "version": "0.9.0",
+  "description": "Dispatch tasks, resume projects, deliver queues, commit cohesive changes, and demonstrate delivery across coding and non-coding work.",
   "author": {
     "name": "Muqsit Nawaz",
     "email": "contact@trp.so"

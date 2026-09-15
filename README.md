@@ -31,7 +31,7 @@
 A **DotAgents repo**: a directory of agent config that `agents-cli` reads. This one is the
 **system layer** — the baseline that lands at `~/.agents/.system/` on every machine.
 
-**Current cut: [`v0.2.4`](https://github.com/phnx-labs/.agents-system/releases/tag/v0.2.4)**
+**Current cut: [`v0.2.6`](https://github.com/phnx-labs/.agents/tree/v0.2.6)**
 (2026-09-14). See [`CHANGELOG.md`](./CHANGELOG.md). There is no separate npm package for this
 repo: hosts get it by **git pull of this repository** into the system layer.
 
@@ -82,7 +82,7 @@ to type.
 | I want to… | Run | Plugin / notes |
 |---|---|---|
 | **Drain everything overnight** (any project, code *or* browser/outreach) without waiting on me | `/work:loop` | [`work`](plugins/work/README.md) — spreads load across accounts/hosts; **merges on green** behind a non-author review instead of leaving PRs for you |
-| Finish a **queue of engineering tickets** (merge-oriented) | `/code:loop` | [`code`](plugins/code/README.md) — worktrees, CI, review/merge |
+| Finish a **queue of engineering tickets** | `/loop` (`/work:loop`) | [`work`](plugins/work/README.md) — worktrees, CI, review, release |
 | **One** clear task (any kind) to an agent | `/work:dispatch` or `/dispatch` | `work` for kind-agnostic; top-level `/dispatch` leans engineering |
 | Decide keep/cancel/priority on the **whole board** | `/work:loop triage` | Triage mode — forces keep-and-schedule or cancel, never a hedge state |
 | Drive the **current task** to fully delivered | `/finish` | [`sessions`](plugins/sessions/README.md) — never stops at a recap or partial handoff |
@@ -110,9 +110,9 @@ to type.
 | Situation | Do this |
 |---|---|
 | "Keep moving — finish the queue while I sleep" | `/work:loop` on a **worker** host (not your interactive laptop). Prefer `agents run claude "/work:loop" --mode auto --device yosemite-s0` (or your worker). |
-| "Only ship code PRs to merge" | `/code:loop` with a ticket filter — merge-oriented engineering loop. |
+| "Only ship code PRs to merge" | `/work:loop` with a ticket filter — merge-oriented engineering loop. |
 | "One ticket, not sure if code or web" | `/work:dispatch RUSH-1234` — classifies and routes. |
-| "Board is a mess of maybe-later items" | `/work:loop triage` first, then `/work:loop` or `/code:loop` on what remains. |
+| "Board is a mess of maybe-later items" | `/work:loop triage` first, then `/work:loop` on what remains. |
 | "Agents keep hitting rate limits / logouts" | Use `/work:loop` (forced load-spread) or `/swarm` with mixed harnesses and `--strategy balanced` — never one long single-account session. |
 | "Machine crashed; pick the work back up" | `/continue recover` finishes the interrupted work **headlessly** (windows are not reopened); `/work:resume` re-enters a whole project and resumes it on workers. |
 | "Pick up where that session left off" | `/continue <id-or-topic>`. |
@@ -156,18 +156,20 @@ Or type **`/work:loop`** inside an agent session on a worker host.
 That skill **spreads load** (teams + balanced accounts + re-home on logout/rate-limit). Do
 not point the whole night at a single Claude account on one machine.
 
-### 2. Engineering-only queue to merge
+### 2. Engineering queue through delivery
 
 ```text
-/code:loop --label=…     # or a ticket id, or empty to resume
+/work:loop --label=…     # or a ticket id, branch, PR, or empty to resume
 ```
 
-Use when "done" means **merged**, not merely "PR open."
+The same loop handles engineering queues through review, merge, and the repository
+release process. `/loop` is the short alias. Use `/commit` (`/work:commit`) when the
+requested outcome is cohesive commits and a verified push.
 
 ### 3. Schedule it (cron)
 
 [`routines`](skills/routines/SKILL.md) + the **continuous ticket drain** recipe in that
-skill: one drain routine per worker, unattended `work:loop` or `code:loop`, overlap lock,
+skill: one drain routine per worker, unattended `work:loop`, overlap lock,
 park blockers and continue. Register with `agents routines add ./drain-worker.yml`.
 
 ```bash
@@ -203,7 +205,7 @@ Each directory has a `README.md` for humans (a catalog of everything in it) and 
 
 | Directory | What it holds |
 |---|---|
-| [`commands/`](commands/README.md) | Slash commands — `/finish`, `/visualize`, `/code:loop`, `/code:review`, `/swarm`, `/continue`, … (see guide above) |
+| [`commands/`](commands/README.md) | Slash commands — `/finish`, `/visualize`, `/work:loop`, `/code:review`, `/swarm`, `/continue`, … (see guide above) |
 | [`skills/`](skills/README.md) | Skills — multi-file capabilities like `browser`, `teams`, `sessions`, `mq` |
 | [`plugins/`](plugins/README.md) | Plugins — `work` (drain any kind), `code`, `swarm`, `sessions`, `fleet`, `design`, … |
 | [`hooks/`](hooks/README.md) | Lifecycle scripts — session-start context injection, prompt expansion, Stop checks, guards |

@@ -15,7 +15,7 @@ verify the real flow, and ship. If the current task is genuinely already deliver
 `/continue` just drove it there), say so **with evidence** and stop there.
 
 > **`/finish` vs the neighbors.** For draining a whole *queue* of tickets/branches to
-> merged, that's `/code:loop` (engineering) or `/work:loop` (any kind). To *recap and
+> merged, that's `/work:loop` (any kind). To *recap and
 > exit* the session, that's `/recap` then `/self:close`. `/finish` is the anti-stopping
 > driver for the one task in front of you.
 

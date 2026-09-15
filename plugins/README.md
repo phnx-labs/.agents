@@ -1,7 +1,7 @@
 # Plugins
 
 A plugin bundles related commands and skills into one installable unit with its own
-namespace. `/work:loop`, `/code:loop`, `/swarm`, and `/fleet:onboard` all come from plugins.
+namespace. `/work:loop`, `/code:review`, `/swarm`, and `/fleet:onboard` all come from plugins.
 
 The system layer ships the lightweight, no-paid-key plugins. Heavier or key-required ones live
 in the opt-in `.agents-extras` bundle instead, so the default install stays fast and works
@@ -20,7 +20,8 @@ I run?* and § *Automate your work*. This page is the plugin catalog.
 | Prove landed work — demo it in its real env, before/after, report | **work** | `/demo` (`/work:demo`) |
 | A hard research question — many engines, blind, one cited answer | **research** | `/research` (`/research:research`) |
 | Explore a PRODUCT hands-on — drive it, prove claims visually | **research** | `/research:product` |
-| Engineering queue to **merge** | **code** | `/code:loop` |
+| Engineering queue through release | **work** | `/loop` (`/work:loop`) |
+| Commit code, docs, assets, or configuration | **work** | `/commit` (`/work:commit`) |
 | PR review or whole-repo architecture scan | **code** | `/code:review` |
 | Parallel agents / blind plan / spec / debug | **swarm** | `/swarm`, `/swarm:plan`, … |
 | Resume prior work / recall / session analytics | **sessions** | `/continue`, `/finish`, `/insights`, `/recall`, `/fork` |
@@ -29,15 +30,15 @@ I run?* and § *Automate your work*. This page is the plugin catalog.
 | Offline design render | **design** | `/design` |
 | Agent self-exit | **self** | `/self:close` |
 
-`work` is kind-agnostic and unattended-first. `code` is engineering-first and merge-oriented.
-Do not stretch `code:loop` into browser outreach — use `work:loop`.
+`work` owns delivery across all kinds of work. `code` owns engineering assessment,
+review, refactoring, and codebase learning.
 
 ## What ships here
 
 | Plugin | Commands | What it's for |
 |---|---|---|
-| [`code`](./code/README.md) | 6 | The coding loop — `/code:health` (human maintainability and component health reports), `/code:loop`, `/code:review` (session PRs / cold PR review / whole-repo scan, three modes on one skill), `/code:learn` (writes project AGENTS.md nav notes), `/code:refactor` (architectural restructuring, plus a `quality` small-change mode), and `/code:commit`. `/code:review` spawns the repo's [`code-reviewer`](../subagents/code-reviewer/AGENT.md) subagent, which ships from `subagents/`, not from this plugin. |
-| [`work`](./work/README.md) | 3 | General-purpose work — `/work:loop` unattended multi-project drain with load spread + browser/computer, whose `triage` mode forces the whole board to keep-and-schedule or cancel; `/work:dispatch` is ONE unit of work (coding or not); `/work:resume` (top-level `/resume`) picks a whole PROJECT's work back up — auto-detect it from the CWD (git repo + subdir → Linear), reconstruct its in-flight work, offload each item to a role=worker device (never the personal box); `/work:demo` (top-level `/demo`) is the post-ship capstone — recover intent, exercise the shipped thing in its real environment on real inputs, before/after side by side, deliver an analyzed report |
+| [`code`](./code/README.md) | 4 | Engineering assessment and improvement: `/code:health`, `/code:review`, `/code:refactor`, and `/code:learn`. Review uses the portable [`code-reviewer`](../subagents/code-reviewer/AGENT.md). |
+| [`work`](./work/README.md) | 5 | Shared delivery: `/work:dispatch`, `/work:resume`, `/work:loop` (`/loop`), `/work:commit` (`/commit`), and `/work:demo`. Queue delivery includes engineering and mixed work; `loop triage` decides the board. |
 | [`research`](./research/README.md) | 2 | Get the real, evidenced answer — `/research` (`/research:research`) answers a hard research question across DISTINCT engines blind to each other (Codex/web, Grok/X, Antigravity/Google, Perplexity/broad Deep Research, Claude/deep-read + reconcile), cross-checks every claim (single-sourced = a lead, not a fact) and promotes a cited artifact; `/research:product` explores a PRODUCT hands-on — composes `research:research` for the claimed surface + sentiment, then signs up/installs and DRIVES the real product through each user journey (screenshot every step, a clip of the headline flow, favicon-tagged journey diagrams + claims-vs-reality), never one idle screenshot and a wall of text |
 | [`swarm`](./swarm/README.md) | 4 | Fan a task across parallel agents — top-level `/swarm` + `/swarm:run`, `/swarm:plan`, `/swarm:spec`, `/swarm:debug` (test/qa removed; plan/spec require mock-ups) |
 | [`fleet`](./fleet/README.md) | 2 | Fleet-wide ops — `/fleet:onboard` brings a bare box to parity and mints its agent auth in the same flow, `/fleet:profile` profiles a sluggish machine and attributes the load to agents-cli surfaces |

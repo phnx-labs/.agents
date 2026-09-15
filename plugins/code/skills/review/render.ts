@@ -319,7 +319,7 @@ const html = `<!doctype html>
   };
 
   const loopBrief = (f) => {
-    let s = "/code:loop \\"Fix " + f.rule + " at " + f.file + ":" + f.line_start;
+    let s = "/work:loop \\"Fix " + f.rule + " at " + f.file + ":" + f.line_start;
     if (f.anchor_file) s += ". Pattern to follow: " + f.anchor_file + ":" + (f.anchor_line || "");
     if (f.fix_one_line) s += ". Approach: " + f.fix_one_line;
     return s + "\\"";
@@ -454,7 +454,7 @@ const html = `<!doctype html>
 
   document.getElementById("batchbtn").addEventListener("click", (e) => {
     const picks = findings.filter((f) => selected.has(fingerprint(f)));
-    const brief = "/code:loop \\"Address the following " + picks.length + " findings from /code:review repo:\\n"
+    const brief = "/work:loop \\"Address the following " + picks.length + " findings from /code:review repo:\\n"
       + picks.map((f, i) => (i+1) + ". " + f.rule + " at " + f.file + ":" + f.line_start
                             + (f.anchor_file ? " (pattern: " + f.anchor_file + ":" + (f.anchor_line||"") + ")" : "")
                             + (f.fix_one_line ? " — " + f.fix_one_line : "")).join("\\n")

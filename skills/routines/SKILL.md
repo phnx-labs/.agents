@@ -234,7 +234,7 @@ cwd: '~'
 prompt: |
   Unattended fleet drain on <worker>. No interactive user: never call
   AskUserQuestion, never wait for input.
-  Queue: invoke the code:loop skill in unattended mode. Fetch tickets from
+  Queue: invoke the work:loop skill in unattended mode. Fetch tickets from
   your tracker filtered to label host:<worker> and status Todo.
   Notify command (verbatim, substitute ticket ID and blocker):
   <your messaging-CLI one-liner>
@@ -242,7 +242,7 @@ prompt: |
   Queue empty: exit with a one-paragraph summary.
 ```
 
-The `code:loop` skill's "Unattended mode" and "Claim before you build" sections carry the rest of the contract (dedup against open PRs and active sessions, claim via Todo → In Progress, ticket ID in every PR title).
+The `work:loop` skill's "Blockers and unattended runs" and "Queue and ownership" sections carry the rest of the contract (dedup against open PRs and active sessions, claim via Todo → In Progress, ticket ID in every PR title).
 
 ## Quick reference
 
