@@ -105,8 +105,9 @@ installed, a deploy is not a verified deploy.
 
 ### What did not land
 Anything dropped, deferred, or blocked, and why. Scope you deliberately cut belongs
-here, named, not silently omitted — and each item is a ticket id you filed above, not
-an intention.
+here, named, not silently omitted — and each item carries its disposition, not a vague
+intention: a ticket id if the work earned one, otherwise the owner-update line where it
+now lives (per Step 2, most follow-ups are a line, not a Todo).
 
 ### Still open
 Only if something genuinely is: an unresolved question, or a hypothesis with the

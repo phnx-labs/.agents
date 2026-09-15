@@ -47,9 +47,9 @@ skill owns the overnight / multi-project / multi-kind contract, and it inherits
 
 | Surface | Use when |
 |---|---|
-| **`browser` skill / `agents browser`** | Web apps, portals, forms, dashboards, ordering, web outreach. Prefer signed-in fleet profiles; use `agents secrets` for bundles. |
+| **`browser` skill / `agents browser`** | Web apps, portals, forms, dashboards, ordering, web outreach. Prefer signed-in fleet profiles; use `secrets` for bundles. |
 | **`computer` skill / `agents computer`** | Native desktop apps (Finder, Electron hosts, anything not a browser). Element mode; do not steal the user's interactive machine when workers can run headless. |
-| **`agents secrets` / `agents secrets exec`** | Credentials. Never invent logins; inject the named bundle. If a harness shows "not logged in", try minting/rotating via fleet paths before parking. |
+| **`secrets` / `secrets exec`** | Credentials. Never invent logins; inject the named bundle. If a harness shows "not logged in", try minting/rotating via fleet paths before parking. |
 | **`agents sessions`** | Prior conversations, decisions, mid-task context. Search by topic/ticket/id; load summaries; continue from real history. |
 | **Tracker comments + PRs** | Prior human decisions, "do this not that", scope cuts. Prefer written history over guessing. |
 | **Read the code** | When a ticket or product note is ambiguous — the repo is ground truth. Read entry points, AGENTS.md, recent CHANGELOG; do not invent APIs. |

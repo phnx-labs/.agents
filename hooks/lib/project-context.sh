@@ -17,8 +17,8 @@
 # "AGI") — the bug this replaced.
 #
 # Safe for a SessionStart hook: only the read-only `projects` subcommands are
-# used, answered from local YAML. Nothing here touches `agents secrets`, the
-# keychain, Touch ID, or the broker.
+# used, answered from local YAML. Nothing here touches `agents secrets` or the
+# standalone `secrets` CLI, the keychain, Touch ID, or the broker.
 #
 # Everything is bounded and fails open — no `agents` on PATH, no def for this
 # cwd, a malformed answer, or a slow call leaves the outputs empty and the

@@ -12,7 +12,7 @@ exhausted external blocker.
 ## F2 — Resolve what you can
 
 Exhaust self-serve before declaring a blocker: change approach instead of
-repeating one, check secret-name variants and `agents secrets exec` on the
+repeating one, check secret-name variants and `secrets exec` on the
 execution host along with named credential profiles and the credentials a
 working sibling tool uses, trust installed binaries over stale capability
 tables, and check plugins, skills, and built-ins before calling a command
@@ -63,7 +63,8 @@ capture metadata.
 
 Solve problems at their canonical source: no fallbacks or band-aids, no
 duplicate code (search first, extend what exists), no ad hoc fixes in consumers,
-no scope creep. A cross-cutting change goes to its canonical location; if none
+no scope creep. Delete paths, imports, and flags superseded by the same change;
+finishing that replacement is part of its scope. A cross-cutting change goes to its canonical location; if none
 exists, propose the refactor first. Fewer concepts beat more code: before adding a flag, command,
 config key, type, or module, ask whether it can be a mode of one that exists. A
 comment is a smell before it is a fix; reserve prose for a non-obvious why, an
@@ -116,7 +117,7 @@ reviewer's verdict.
 
 # Environment and Tools
 
-Credentials live in `agents secrets`; never write them into configuration or
+Credentials live in `secrets`; never write them into configuration or
 leave them ambient, and prefer existing configuration mechanisms over new
 environment variables. Follow the repository's install and release process;
 never replace a working tool with a development build. Preserve the user's
@@ -126,7 +127,7 @@ completion or cleanup. Reuse authorization already given; ask once before
 adding permanent permissions.
 
 Use the owning tool: `tickets` for trackers, `browser` for the web,
-`agents computer` for native UI, `agents pty` for interactive terminals,
+`agents computer` for native UI, `term` (the standalone `@phnx-labs/term-cli`) for interactive terminals,
 `agents teams` for parallel coding, and `agents sessions` to recover prior work
 and check ownership before taking over a task. Agent homes such as `~/.claude/`
 are managed links; shared configuration belongs in `~/.agents/`. Artifacts use
@@ -203,20 +204,8 @@ stealing focus: element actions and screenshots are safe; coordinate clicks and
 `--raise` are not. Present alternatives only when a genuine design choice
 belongs to the user; otherwise follow product conventions and proceed.
 
-# Reviewable Plans
+# Planning
 
-Make the intended outcome easy to judge: problem, goals and reasoned non-goals,
-current versus proposed behavior, important relationships, tradeoffs, and
-success criteria. Lead with product overviews, flows, or mockups; use system
-terminology, meaningful shapes, labeled arrows, and color that reinforces
-labels; scale depth to uncertainty. Present information visually: a table is
-the last resort, a long enumeration is a grouping figure or an appendix, every
-cited file is a link, and a non-author artifact critic reviews the presentation
-before it is presented. Discover existing work first and leave the
-tracker unchanged while iterating (`conventions`). Author in Markdown and render
-inspected HTML with `artifacts`, following its validation contract; keep a
-checklist for substantial plans. Publish plans with `artifacts render --publish`
-to a private managed URL; plans stay outside the repo unless they ship with a
-feature's code change. A plan-only request ends with the plan;
-implementation starts only within the user's authorization, and a settled
-approach needs no extra approval ritual.
+For a change proposal or native plan mode, load `swarm:plan` (the `plan` skill
+on harnesses with flattened plugin skills). It owns the planning contract;
+`artifacts` owns rendering, inspection, and independent presentation review.

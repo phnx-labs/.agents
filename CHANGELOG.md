@@ -2,6 +2,20 @@
 
 ## [Unreleased]
 
+### Changed
+
+- Allow recap and demo follow-ups to name an owner update when a new ticket is unwarranted.
+- Remove paths, imports and flags superseded by the same change, preserving the concise code-quality contract.
+- Capture the subject project and creator metadata before authoring artifacts outside the checkout (PHNX-3978).
+- Move secrets guidance and context hooks to the standalone CLI; retain guard coverage for both spellings and use portable test payload serialization.
+- Document accounts add/login/default, named selectors, durable worker credentials, and supported per-device native login (PHNX-3940).
+- Inject the configured browser routing and viewer guidance into sessions, with live configuration verification (PHNX-4047).
+- Consolidate the planning contract in swarm:plan, with thin aliases and independent presentation review.
+- Align session resume and team recovery guidance with account selection and explicit replay confirmation.
+- Bare interactive runs use automatic device placement; headless prompts retain their existing placement defaults (PHNX-4083).
+- Use the standalone artifacts CLI for sharing, with current slug and visibility behavior (PHNX-3992).
+- Replace retired agents pty recipes with the standalone term CLI and register its install manifest (PHNX-4092).
+
 ## [0.2.4] - 2026-09-14
 
 ### Changed

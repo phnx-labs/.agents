@@ -37,6 +37,8 @@ the `sessions` plugin skills drive them: `/continue` and `/recover` → `session
 agents sessions resume 019fd114                 # reopen one, full context
 agents sessions resume 019fd114 --device zion   # scope identity to the owning device
 agents sessions resume                          # picker: multi-select into tabs/splits
+agents run claude --resume                      # same picker, filtered to Claude
+agents run claude#work --resume                 # same as sessions resume --agent claude --account work
 
 # Fork — copy a session under a NEW id so the two diverge (original untouched)
 agents sessions fork 4f3a9c21                    # prints: Forked <src> -> <new-id>
@@ -47,6 +49,14 @@ agents sessions resume <new-id>                  # then continue the fork
 - **resume vs fork:** `resume` continues the *same* thread; `fork` copies it under a new id so the two branches diverge without touching the original. Fork is a file copy of the transcript — no re-run, no tokens; the new session carries full context natively.
 - **Resume a remote session on its owning device** — pass `--device <machine>` so identity resolves on the box that owns the session instead of being masked as an unknown command locally.
 - **Native fork supports claude today.** For other harnesses, branch by starting a fresh agent and seeding it with `/continue <id>` — the source stays put.
+
+Resume uses the conversation's account and native context with the installed
+harness binary. A recorded vendor version is provenance, not an account selector.
+Keep the saved model, mode and working directory unless the user overrides them.
+If the CLI cannot prove readable native context, inspect its reason; never bypass
+that refusal by recreating the old UUID. Context replay starts a new conversation
+and requires an explicit choice. A model-specific limit is not evidence that every
+model on the account is unavailable.
 
 ## Filters
 
@@ -118,9 +128,9 @@ agents sessions share <id> --expire never    # a link that does not decay (defau
 It renders the same redacted document `agents sessions render` writes, wraps it in a
 self-contained page, and publishes it to your share endpoint. The slug is
 `session-<shortid>`, so re-sharing one session updates one URL and keeps the prior page
-as a revision (`agents artifacts share revisions <slug>`). One session per link.
+as a revision (`artifacts share revisions <slug>`). One session per link.
 
-- **Unlisted by default** — kept out of your public gallery and out of `agents artifacts
+- **Unlisted by default** — kept out of your public gallery and out of `artifacts
   share list`. `--public` opts in.
 - **Unlisted is not access control.** R2 reads are public: anyone with the exact URL reads
   the page. Never describe such a link as private, encrypted, or access-restricted.
@@ -130,7 +140,7 @@ as a revision (`agents artifacts share revisions <slug>`). One session per link.
 - **Not an evidence mechanism.** This does not license attaching a transcript to a PR,
   issue, or ticket body — that still takes a **secret gist** on a private repo, or a
   `<host>:<path>` reference on a public one. See the `truly-agentic-git-workflow` rule.
-- Needs a share endpoint: `agents artifacts share status` reports it, `agents artifacts
+- Needs a share endpoint: `artifacts share status` reports it, `artifacts share
   setup` provisions one.
 
 ## Export & Import (portable recall over the fleet)

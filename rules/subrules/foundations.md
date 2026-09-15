@@ -12,7 +12,7 @@ exhausted external blocker.
 ## F2 — Resolve what you can
 
 Exhaust self-serve before declaring a blocker: change approach instead of
-repeating one, check secret-name variants and `agents secrets exec` on the
+repeating one, check secret-name variants and `secrets exec` on the
 execution host along with named credential profiles and the credentials a
 working sibling tool uses, trust installed binaries over stale capability
 tables, and check plugins, skills, and built-ins before calling a command

@@ -19,13 +19,17 @@ Dispatch a single agent for a one-off task. `agents run` is the fundamental comm
 ## Headless vs interactive
 
 - **Prompt provided** → headless. Pipes stdout, no TTY, exits when the agent finishes.
-- **Prompt omitted** → interactive. Launches the agent's TUI with full stdio inheritance.
+- **Prompt omitted** → interactive. Launches the agent's TUI with full stdio inheritance — and on a real TTY the run *places itself* like `--device auto`: a bare `agents run claude` lands on a fleet worker (TUI forwarded over SSH), it does not automatically run on the machine you typed it at. To stay local, pass `--device <this machine>` or pick this machine (listed first) in the `claude@` device picker; headless runs keep their existing placement defaults; a prompt alone does not
+enable automatic placement.
 
 ```bash
-# Interactive (TUI)
+# Interactive (TUI) — auto-placed onto a fleet worker
 agents run claude
 
-# Headless one-shot
+# Interactive (TUI) pinned to this machine
+agents run claude --device $(hostname -s)
+
+# Headless one-shot — keeps existing placement defaults
 agents run grok "summarize recent git commits"
 ```
 
@@ -132,11 +136,10 @@ Controls which installed version/account gets the work.
 agents run opencode "..." --strategy balanced
 agents run codex "..." -b                  # shortcut for --strategy balanced
 
-# Select any named provider or native account
+# Select a named account (`#name` is the taught selector; `--account` is the flag form)
+agents run claude#work "..."
 agents run claude "..." --account work
-
-# Attach the account used when --account is omitted
-agents accounts attach work claude
+agents accounts default claude work        # used when #name / --account is omitted
 ```
 
 Strategy is ignored when `@version` is pinned, a profile is used, or `--fallback` is set.
@@ -259,7 +262,10 @@ agents logs <id> -f          # re-attach to a running one and follow
 ## Automatic fleet placement
 
 `--device auto` lets the CLI choose a reachable machine from its
-automatic-placement pool. For a named harness, placement prefers a device with
+automatic-placement pool. Since PHNX-4083 a bare interactive run (`agents run
+<harness>` with no prompt on a real TTY) places itself through this same engine
+— no flag needed; headless runs retain their existing placement defaults; a prompt alone does not enable automatic placement. For a named
+harness, placement prefers a device with
 a healthy signed-in account, then the device with lower live load. An
 interactive trailing-`@` picker launch also admits installed devices with a
 selectable signed-out or revoked-account login target, while still ranking a
@@ -303,14 +309,16 @@ widens the pool past worker marks while still excluding personal devices.
 
 For everything else, run `agents run --help`.
 
-`--account <name>` selects any named provider or native account and overrides
-an `agents accounts attach` binding. Provider accounts are independent of
-agent versions and may be used by multiple compatible harnesses; the execution
-device resolves their secret locally and fails before spawn when it is absent.
-Native accounts retain their declared version or device scope and validate the
-harness-owned login before spawn without injecting a secret. Copy a provider bundle explicitly with
-`agents accounts sync <name> <device>`. Harness-native signed-in identities may
-be named with `agents accounts name <agent@version> <name>` and bound with
-`agents accounts attach <name> <target>`; their auth material remains in the
-harness home and is never copied.
+`agents run <harness>#<name>` (or `--account <name>`) selects any named
+provider or native account. Provider accounts are independent of the managed
+install and may be used by multiple compatible harnesses; the execution device
+resolves their secret locally and fails before spawn when it is absent. Native
+accounts are credential slots of the one managed install — add them with
+`agents accounts add <harness> [name]` on a headed device, re-auth with
+`accounts login <harness>#<name>`, and set the omitted-selector default with
+`accounts default <harness> [name]`. Native OAuth stays in that slot on the
+device that minted it and is never copied; workers receive only the durable
+credential the daemon syncs. Copy a provider bundle explicitly with
+`agents accounts sync <name> <device>`. The hidden `name` / `attach` /
+`connect` verbs still work this release and print their replacement.
 Accounts do not apply to cloud or lease placement.

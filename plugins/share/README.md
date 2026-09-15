@@ -2,8 +2,8 @@
 
 Turn any agent-generated HTML — a plan, a viz, a report — into a shareable link in
 one step through the managed Phoenix share endpoint, or your own Cloudflare R2
-(zero egress, ~$0) when BYO is configured. Wraps the
-`agents artifacts share` CLI.
+(zero egress, ~$0) when BYO is configured. Wraps the standalone
+`artifacts share` CLI (`@phnx-labs/artifacts-cli`).
 
 ## Commands
 
@@ -32,10 +32,10 @@ and it renders the card above.
 
 ## Requirements
 
-- [`agents-cli`](https://github.com/phnx-labs/agents-cli) on `$PATH`.
-- A Phoenix sign-in (`agents auth login`) for the managed endpoint; alternatively,
-  a one-time `agents artifacts setup` provisions your own R2 bucket + Worker — or
-  `agents artifacts share join <baseUrl>` to publish through an existing endpoint.
+- The `artifacts` CLI on `$PATH` (`npm i -g @phnx-labs/artifacts-cli`, or via `agents clis`).
+- A Phoenix sign-in (`artifacts auth login`) for the managed endpoint; alternatively,
+  a one-time `artifacts share setup` provisions your own R2 bucket + Worker — or
+  `artifacts share join <baseUrl>` to publish through an existing endpoint.
 - BYO-only preview fallback: a local headless-capable Chromium-family browser.
   Managed shares render the cover on the server and need no local browser.
 
@@ -46,4 +46,5 @@ discreet sharing: it publishes with `--unlisted --no-cover --expire 7d`, hiding
 the page from the public gallery, suppressing the preview card, and expiring it
 after 7 days (the Worker returns `410` afterwards). Note that reads remain public,
 so anyone with the exact URL can view a "private" link — it is unlisted, not
-access-controlled. True view restriction (a viewer token) is a future Worker enhancement.
+access-controlled. For true read-authentication, `artifacts share <file> --protected`
+returns 404 without the secret `?k=` key it appends to the URL.

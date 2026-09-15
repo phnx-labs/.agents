@@ -1,6 +1,6 @@
 # Environment and Tools
 
-Credentials live in `agents secrets`; never write them into configuration or
+Credentials live in `secrets`; never write them into configuration or
 leave them ambient, and prefer existing configuration mechanisms over new
 environment variables. Follow the repository's install and release process;
 never replace a working tool with a development build. Preserve the user's
@@ -10,7 +10,7 @@ completion or cleanup. Reuse authorization already given; ask once before
 adding permanent permissions.
 
 Use the owning tool: `tickets` for trackers, `browser` for the web,
-`agents computer` for native UI, `agents pty` for interactive terminals,
+`agents computer` for native UI, `term` (the standalone `@phnx-labs/term-cli`) for interactive terminals,
 `agents teams` for parallel coding, and `agents sessions` to recover prior work
 and check ownership before taking over a task. Agent homes such as `~/.claude/`
 are managed links; shared configuration belongs in `~/.agents/`. Artifacts use
