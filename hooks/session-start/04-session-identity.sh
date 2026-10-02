@@ -25,9 +25,9 @@
 
 input="$(cat 2>/dev/null || true)"
 
-# $PPID = the agent process that spawned this hook (bash's parent). The metadata
-# file is keyed by it, matching the former 04 hook's `$PPID` behaviour. Passed
-# explicitly because python's os.getppid() would resolve to bash, not the agent.
+# $PPID = the process that spawned this hook (bash's parent): the agent, or a
+# `sh -c` wrapper that unwrap_hook_shell resolves to the agent. Passed explicitly
+# because python's os.getppid() would resolve to bash, not the agent.
 python3 - "$input" "$PPID" <<'PY' 2>/dev/null || true
 import json, os, socket, struct, sys, time
 
@@ -36,6 +36,27 @@ try:
     agent_ppid = int(sys.argv[2]) if len(sys.argv) > 2 else os.getppid()
 except (ValueError, IndexError):
     agent_ppid = os.getppid()
+
+
+def unwrap_hook_shell(pid):
+    """Claude runs a hook as `/bin/sh -c <command>`. bash (macOS /bin/sh) execs
+    the lone command, so $PPID is the agent; dash (Debian/Ubuntu /bin/sh) forks
+    it, so $PPID is a wrapper that exits with the hook. Keying state on that
+    wrapper left a restarted `claude` unbound from its terminal."""
+    try:
+        with open("/proc/%d/cmdline" % pid, "rb") as f:
+            argv = f.read().split(b"\0")
+        if len(argv) > 2 and os.path.basename(argv[0]) in (b"sh", b"dash", b"bash") and argv[1] == b"-c":
+            with open("/proc/%d/stat" % pid) as f:
+                parent = int(f.read().rsplit(")", 1)[1].split()[1])
+            if parent > 1:
+                return parent
+    except Exception:
+        pass
+    return pid
+
+
+agent_ppid = unwrap_hook_shell(agent_ppid)
 
 data = {}
 try:

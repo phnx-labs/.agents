@@ -120,6 +120,17 @@ check "no prior entry: grok inferred"     "$(python3 -c 'import json,sys;print(j
 check "no prior entry: id recorded"       "$(python3 -c 'import json,sys;print(json.load(open(sys.argv[1])).get("sessionId",""))' "$NEW" 2>/dev/null)" "sid-g2"
 [ -n "$newf" ] && rm -f "$NEW"
 
+# W1: Claude runs hooks as `/bin/sh -c <command>`; dash forks the command, so
+# the hook's $PPID is a wrapper that exits with it. State must key on the
+# wrapper's parent (the agent), never the wrapper. The trailing `:` forces the
+# fork in any sh. Linux only: the unwrap reads /proc.
+if [ "$(uname -s)" = Linux ]; then
+  cleanup
+  echo '{"session_id":"sid-dash","cwd":"/w"}' | sh -c "bash \"$HOOK\"; :" >/dev/null
+  check "sh -c wrapper: registry keyed on agent" "$(regfld sessionId)"  "sid-dash"
+  check "sh -c wrapper: metadata keyed on agent" "$(metafld session_id)" "sid-dash"
+fi
+
 # --- Job 3: Claude-harness-scoped stdout injection -------------------------
 # I1: CLAUDECODE set -> emit additionalContext carrying the session id.
 cleanup
