@@ -42,11 +42,15 @@ def unwrap_hook_shell(pid):
     """Claude runs a hook as `/bin/sh -c <command>`. bash (macOS /bin/sh) execs
     the lone command, so $PPID is the agent; dash (Debian/Ubuntu /bin/sh) forks
     it, so $PPID is a wrapper that exits with the hook. Keying state on that
-    wrapper left a restarted `claude` unbound from its terminal."""
+    wrapper left a restarted `claude` unbound from its terminal. A shell the
+    launcher registered is the agent itself and stays the key."""
+    if os.path.exists(os.path.expanduser("~/.agents/.cache/terminals/by-pid/%d.json" % pid)):
+        return pid
     try:
         with open("/proc/%d/cmdline" % pid, "rb") as f:
             argv = f.read().split(b"\0")
-        if len(argv) > 2 and os.path.basename(argv[0]) in (b"sh", b"dash", b"bash") and argv[1] == b"-c":
+        if (len(argv) > 2 and os.path.basename(argv[0]) in (b"sh", b"dash", b"bash", b"ash")
+                and argv[1][:1] == b"-" and argv[1][-1:] == b"c" and argv[1][1:].isalpha()):
             with open("/proc/%d/stat" % pid) as f:
                 parent = int(f.read().rsplit(")", 1)[1].split()[1])
             if parent > 1:
