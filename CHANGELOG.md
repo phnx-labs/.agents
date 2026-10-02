@@ -2,6 +2,15 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- **`hooks/session-start/04-session-identity.sh`**. On Linux, a `claude` started bare in a
+  terminal (for example after `/exit`) now registers under its own pid. Claude runs hooks
+  as `/bin/sh -c <command>`, and dash forks rather than execs, so the hook keyed its
+  by-pid and session-metadata files on that short-lived wrapper. `agents sessions` then
+  never linked the new session to its terminal, and the AGI EXT tab kept the old id.
+  The hook now resolves an `sh -c` wrapper to its parent. (PHNX-4218)
+
 ### Changed
 
 - **`clis/`, `skills/browser/`** — align browser guidance with the standalone
