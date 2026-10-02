@@ -129,6 +129,22 @@ if [ "$(uname -s)" = Linux ]; then
   echo '{"session_id":"sid-dash","cwd":"/w"}' | sh -c "bash \"$HOOK\"; :" >/dev/null
   check "sh -c wrapper: registry keyed on agent" "$(regfld sessionId)"  "sid-dash"
   check "sh -c wrapper: metadata keyed on agent" "$(metafld session_id)" "sid-dash"
+
+  # W2: an option cluster ending in c (`bash -lc`) is the same wrapper.
+  cleanup
+  echo '{"session_id":"sid-lc","cwd":"/w"}' | bash -lc "bash \"$HOOK\"; :" >/dev/null
+  check "bash -lc wrapper: registry keyed on agent" "$(regfld sessionId)" "sid-lc"
+
+  # W3: a wrapper the launcher registered is the agent, so it stays the key and
+  # keeps its launcher fields; nothing is written for its parent.
+  cleanup
+  wrapped="$(echo '{"session_id":"sid-reg","cwd":"/w"}' | REG="$REG" HOOK="$HOOK" sh -c '
+    printf "{\"pid\":%s,\"agent\":\"codex\",\"terminalId\":\"W-tab\"}" $$ > "$REG/$$.json"
+    bash "$HOOK" >/dev/null
+    cat "$REG/$$.json"; rm -f "$REG/$$.json"; :')"
+  check "registered wrapper: keeps its session" "$(printf '%s' "$wrapped" | python3 -c 'import json,sys;print(json.load(sys.stdin).get("sessionId",""))')" "sid-reg"
+  check "registered wrapper: keeps launcher terminalId" "$(printf '%s' "$wrapped" | python3 -c 'import json,sys;print(json.load(sys.stdin).get("terminalId",""))')" "W-tab"
+  check "registered wrapper: parent not written" "$([ -f "$REG_FILE" ] && echo yes || echo no)" "no"
 fi
 
 # --- Job 3: Claude-harness-scoped stdout injection -------------------------
