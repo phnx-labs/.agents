@@ -37,7 +37,6 @@ The kind changes the content contract, not the rendering pipeline.
    ```bash
    DATE=$(date +%F)
    ARTIFACTS_DIR="$HOME/.agents/artifacts/$DATE/<slug>"
-   mkdir -p "$ARTIFACTS_DIR"
    ```
 
    `~/.agents/` can itself be a checkout. If so, use a linked worktree for
@@ -48,7 +47,9 @@ The kind changes the content contract, not the rendering pipeline.
    Never write into a primary checkout, locally or when copying to another
    machine. Whether `<repo>/.agents/artifacts/` is tracked depends on that
    repository. Deliberately committed artifacts belong in its linked worktree
-   and PR; do not assume a directory name makes a write safe.
+   and PR; do not assume a directory name makes a write safe. Once the boundary
+   check is complete and the destination is chosen, create it with
+   `mkdir -p "$ARTIFACTS_DIR"`.
 
    Alongside the Markdown and HTML, write `.artifact.json` so the artifact is
    findable days later by slug rather than by a path someone has to remember:
