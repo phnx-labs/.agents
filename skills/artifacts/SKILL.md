@@ -101,21 +101,32 @@ The kind changes the content contract, not the rendering pipeline.
    Read [references/authoring.md](references/authoring.md) before adding HTML or
    SVG; follow its diagram recipe.
 
-   Present information visually. Humans read a chart, a figure, or a set of
-   tiles in a glance and skim past a grid. Values a reader compares go in an
-   interactive chart (a fenced `bar-chart`) or an inline SVG (timeline,
-   matrix, flow); single numbers in `artifact-stat` tiles; records with
-   several fields in an `artifact-grid` of panels; relationships in a diagram;
-   file evidence in an `excerpt` fence, which renders the cited lines with the
-   range marked and the path linked. A long enumeration is a figure that groups
-   it (a matrix, a timeline, a treemap) or an appendix; turning a 50-row table
-   into a 50-item list is the same wall in a different shape. A table is the
-   last resort, only when no visual can carry the values, never with sentences
-   in cells, and never twenty rows long. `artifacts check` warns on every table
-   and on every bare `file:line`; only the artifact critic (step 7) can accept
-   a table. Every file, ticket, PR, or URL the text names is a link the reader
-   can open: cite a file as a link to the line at the commit you read, and the
-   renderer turns it into a chip.
+   Design a reading path: the conclusion and consequence first, the important
+   comparison or relationship next, then inspectable detail and sources. A reader
+   should know what matters before opening anything. Preserve correct terms,
+   qualifications, units, denominators, timeframes and unresolved decisions; when
+   rewriting, account for the original claims rather than quietly dropping them.
+
+   Choose the form by the reader's task. Use prose for a simple claim, aligned
+   tables for exact lookup or a few comparable options, charts for quantitative
+   patterns, and diagrams for containment, dependencies or sequence. A card is
+   useful for an independent unit; do not automatically turn every record into a
+   tile or every number into a stat. Long inventories belong behind disclosure or
+   in an appendix. A table warning asks for judgment, not automatic conversion.
+
+   Make meaningful detail inspectable. A service, chart mark or stage that invites
+   a click should reveal its actual modules, evidence or explanation. Prefer the
+   renderer's reusable components: run `artifacts components`, then
+   `artifacts components <name>` for its input contract and example. Fill in data;
+   let the renderer own layout, keyboard behavior and printing. If the installed
+   version lacks that command or component, use supported native disclosure or
+   links and state the limitation. Do not invent a component, callback, or working
+   control the renderer does not implement. See the authoring reference.
+
+   Cite evidence near the claim it supports, with descriptive links or `excerpt`
+   fences pinned to the source revision. Put source details inside the relevant
+   disclosure when they interrupt the overview. Decorative chips and repeated
+   metadata must not dominate the reading path.
 
 4. Preserve the target product's visual language. Keep an existing `DESIGN.md`.
    If none exists and durable project branding is useful, create one with:
@@ -140,7 +151,10 @@ The kind changes the content contract, not the rendering pipeline.
 
 6. Inspect the rendered file headlessly. Check both themes, desktop and mobile
    widths, image loading, SVG bounds, overflow, interactive behavior, and browser
-   console errors. Do not open the user's browser unless explicitly requested.
+   console errors. Exercise each meaningful control: open, inspect, close, follow
+   sources, and navigate by keyboard. Check expanded states and effective text
+   size after SVG scaling, not just the declared font size. Capture the normal
+   entry view as well as the detail being demonstrated. Do not open the user's browser unless explicitly requested.
 
    **A render is verified only when you have looked at the actual pixels.** A clean
    `artifacts check`, an exit-0 render, an empty console, or a loader that reports
@@ -162,36 +176,19 @@ The kind changes the content contract, not the rendering pipeline.
    without `verdict: pass`; the plan-presentation hook checks for it. Only this
    block can answer a table warning.
 
-8. When the user asks to view it, open it in their DEFAULT browser on the
-   interactive machine — the browser they actually use, which every user has and
-   which needs no fleet browser profile. On the machine the user sits at, that is
-   just `open "$SOURCE_HTML"` (macOS) / `xdg-open "$SOURCE_HTML"` (Linux). If the
-   artifact was rendered on a different host, copy it over first, then open it
-   there:
+8. Deliver a durable, obvious entry point. When the user asks to see it, open
+   the finished HTML on their interactive machine with the configured viewer
+   (`agents browser show <path-or-url> --json`). Check the result for the actual
+   viewer or fallback. If rendering elsewhere, copy the self-contained HTML and
+   any linked companion files into a dated durable artifact directory there;
+   never write into a primary checkout. Give the exact entry link in the reply.
 
-   ```bash
-   scp "$SOURCE_HTML" <host>:/tmp/<slug>.html
-   agents ssh <host> 'open /tmp/<slug>.html'   # xdg-open on a Linux host
-   ```
-
-   `agents browser` is the agent's own automation profile — use it for the
-   headless render-and-inspect in step 6, never as the way you present the finished
-   artifact to the user. (Optional refinement, only when a browser profile is
-   configured on that host and you are re-rendering the SAME file repeatedly:
-   `agents browser navigate --device <host> --url file:///tmp/<slug>.html` reuses
-   ONE tab in place instead of spawning a fresh tab per `open`.)
-
-   `/tmp` is the only correct destination for this copy. Never `scp` an artifact
-   into a checkout on the target machine — that is a write into someone's
-   primary working tree from another host, and it is exactly how twelve
-   untracked files ended up in the agents repo on `main`.
-
-   Prefer publishing over copying when the artifact is worth keeping: a share
-   link needs no file transfer at all, works from any machine, and survives the
-   session.
-
-   If no interactive host is reachable, retain the durable Markdown and HTML and
-   report their exact paths.
+   For a visual change, include inspected before/after captures at comparable
+   widths and states, with a short statement of the expected difference. For
+   interaction, show the opened state or a short recording as well as the entry
+   view. Label mockups as proposed and captures as observed; screenshots of a
+   prototype do not prove a production rollout. If the interactive machine is
+   unreachable, retain the files and report their exact paths.
 
 9. Share only on explicit request:
 
@@ -313,7 +310,8 @@ plan becomes reviewable.
 
 Also include one fenced code block and one `artifact-callout`. Treat warnings
 about these as work to fix before presenting. A table is not a floor and never
-was a substitute for a figure; see the visual-first rule in step 3.
+was a substitute for the required behavior or architecture figure; choose other
+forms by the reading-task guidance in step 3.
 For multi-step plans, create the local harness task checklist before presenting;
 this does not require creating or claiming tracker tickets during planning. The
 Stop/plan-exit guard checks for it separately from the render.
@@ -326,17 +324,17 @@ content: infographic, explainer, status dashboard, data story, or comparison.
 
 Make one hero figure the visual spine of the page. A table alone does not count.
 Use `## Story`, optional `## Evidence`, and `## Figure`, with the hero figure under
-`## Figure`. Evidence is excerpt cards, captures, and charts, not a grid of rows. Give it a clear reading order, labeled connectors or axes, a
+`## Figure`. Choose supporting evidence by its job: excerpts, captures, charts, or exact-value
+tables. Give it a clear reading order, labeled connectors or axes, a
 caption, and — when color or line style carries meaning — direct labels on the
 marks where the figure stays clean, or a legend when direct labels would clutter.
 
-Use motion or interaction only when it improves comprehension: SVG/CSS hover,
-SMIL, tabs, or progressive disclosure. Prevent automated capture from freezing
-on initial animation values:
-
-```js
-if (navigator.webdriver) return;
-```
+Use interaction to reveal structure, compare states, or inspect evidence while
+keeping the main conclusion visible. Prefer a supported component with embedded
+detail over a hand-built control. Show an explicit affordance and useful opened
+state; hover alone must not hide essential information. Motion is optional and
+must respect reduced motion. Do not ask authors to add scripts to Markdown:
+the renderer owns behavior, and authored scripts are rejected.
 
 Quantitative charts must use honest scales, units, source labels, and accessible
 color choices. Use inline SVG for bespoke explanatory graphics; use the
@@ -357,31 +355,19 @@ marks they name. For the chart mechanics (palette, marks, accessibility) load th
 
 ## When the artifact recommends
 
-A `visual` or `report` that proposes changes is judged on whether a human grasps each
-recommendation fast. Humans are visual — they read a diagram in a glance and skim past a
-paragraph — so a recommendation carried by prose alone mostly does not land.
+Make the current problem, proposed result and reason for the change reviewable.
+For visible UI changes, show a real current capture beside a product-faithful
+proposed state or working prototype. Match the viewport and task; label what was
+observed, inferred from code, proposed, or actually verified after implementation.
+For behavior or architecture, show the relevant flow or relationship and retain
+exact conditions in nearby prose. A simple recommendation can remain a sentence;
+putting paragraphs inside SVG boxes does not improve communication.
 
-- **Show it, do not just tell it.** Every recommendation gets a mockup, a before/after,
-  or a working demo — not a prose bullet. A suggestion with no picture hides whether it
-  is feasible or even understood; the idea lands when the reader can see it. This is the
-  same show-don't-tell discipline `kind: plan` enforces with its current/proposed
-  behavior figure on user-visible surfaces — apply it to each proposal a visual or
-  report makes.
-- **A structured text block is a visual in disguise.** A paragraph that carries a
-  comparison, a sequence, a set of options, or a cause and effect is faster to grasp as a
-  chart, a small diagram, a timeline, or a callout with the one takeaway pulled out. When
-  you catch yourself writing several sentences of structure, render the structure instead
-  and keep the prose to the point it makes.
-- **Digestible, not a landing page.** The goal is accessible and quickly scannable — not
-  marketing copy, not a slide deck, not a hero-section pitch. Lead with the visual, keep
-  the words concrete and few, and never let "make it visual" turn into slop (see Voice).
-- **Say why it matters.** Beside each recommendation, state the payoff and the cost of
-  not doing it — the importance, not just the instruction.
-- **Cite the record and stamp the date.** Every quantitative claim links to its primary
-  source (the actual record, not a secondary summary or "the news said"), every dataset
-  carries an as-of date or time-window, and a raw-records appendix ties each number back
-  to its source. A number nobody can trace reads as invented — traceability is what lets
-  the reader trust it was not.
+Keep the comparison close to the recommendation, and attach the evidence that
+lets the reader check it. Distinguish merged code from released and verified
+behavior. Quantitative claims need sources and timeframes; estimated reductions
+remain estimates until measured. Do not invent precision, causal links, module
+breakdowns or live results to make a visual look complete.
 
 ## Voice
 
@@ -401,9 +387,9 @@ paragraph — so a recommendation carried by prose alone mostly does not land.
 - A visual contains one hero figure that carries the explanation.
 - Every embedded capture was viewed at the pixel level before shipping, and any live
   page was fully settled before it was captured.
-- When the artifact recommends, each recommendation is shown (mockup / before-after /
-  demo) with its rationale, and every quantitative claim cites a primary source with a
-  timeframe.
+- Recommendations include their rationale and evidence; visible changes have a
+  comparable before/after or working demonstration. Quantities retain sources and
+  timeframes. Interactive figures have been exercised in their opened states.
 - The rendered HTML is self-contained and branded in light and dark themes.
 - The output has been inspected headlessly at desktop and mobile widths.
 - A plan or report carries `review:` with `verdict: pass` from the artifact

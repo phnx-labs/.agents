@@ -72,9 +72,16 @@ Distinguish observed facts from proposals. Keep comparable views visually aligne
 Show product-faithful mockups for the changed UI states that matter; do not invent
 screens for backend-only work.
 
-Present the relationships visually; use tables only when the `artifacts` contract
-allows them. Put long inventories in a grouping figure or an appendix. Make cited
-files clickable links to the relevant revision, and keep evidence beside the claim.
+Lead with the outcome and consequence, then the changed behavior, choices and
+implementation evidence. Keep the main conclusion visible without expanding
+anything. Use supported reusable components for inspectable modules, stages or
+source detail; agents supply data and the renderer supplies behavior. Follow
+`artifacts` for component discovery and fallback on older versions.
+
+Choose the form that serves the question: diagrams for relationships, aligned
+tables for exact comparisons, prose for simple claims. Put long inventories behind
+disclosure or in an appendix. Keep evidence beside the claim and preserve exact
+terms and qualifications. Test the actual controls and show their opened states.
 
 Author in Markdown, then render, inspect, and deliver HTML through `artifacts`. Its schema and semantic
 figure markup are the renderer contract; keep those mechanics there. Follow the

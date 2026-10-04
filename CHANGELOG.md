@@ -15,6 +15,14 @@
 
 ### Changed
 
+- **Artifact communication across `/visualize`, `/plan` and reports:** lead with
+  the conclusion, choose prose/tables/figures by the reader's task, preserve exact
+  evidence, and use discoverable reusable components for inspectable detail.
+  Require opened-state and keyboard checks, comparable before/after captures,
+  readable SVG text at phone width, and a durable entry link on the user's viewer.
+  The artifact critic now checks these outcomes instead of automatically replacing
+  every table with tiles. `/visualize` remains a thin route to the shared skill.
+
 - **`hooks/stop/07-investigate-first-gate.py`** replaces `07-gather-before-reply.py`.
   The old hook exited 0 and printed advice that Claude Code records only after the
   reply is already shown, so it changed no reply. The gate blocks a reply to the
