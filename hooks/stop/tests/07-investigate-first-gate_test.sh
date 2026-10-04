@@ -28,10 +28,11 @@ def meta(text): print(json.dumps({"type":"user","isMeta":True,"message":{"role":
 def a_text(t): print(json.dumps({"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":t}]}}))
 def a_tool(i,name="Bash"): print(json.dumps({"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":i,"name":name,"input":{}}]}}))
 def res(i): print(json.dumps({"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":i,"content":"ok"}]}}))
+def compact(t): print(json.dumps({"type":"user","isCompactSummary":True,"message":{"role":"user","content":t}}))
 def fb(t): print(json.dumps({"type":"user","isMeta":True,"message":{"role":"user","content":"Stop hook feedback:\n[~/hooks/investigate-first-gate.py]: [investigate-first-gate] "+t}}))
 '
 
-# Real failure (screenshot 2026-10-04 07:09): "what is the TLDR?" answered from memory.
+# Observed failure: a status question answered from memory.
 _case zero-tools block cli "$LIB
 u('Wait, so what is the TLDR? What have we completed and what is still left???')
 a_text('Nothing has landed on main yet: phases 1 and 2a are written, tested and approved.')"
@@ -42,7 +43,7 @@ u('fix the flaky test'); a_tool('t1'); res('t1'); a_text('Fixed.')
 u('are you sure it is merged?')
 a_text('Yes. Both changes are merged and live on the fleet.')"
 
-# Real failure (3dd8d2c6 #321): conceded first, then called tools.
+# Observed failure: conceded first, then called tools.
 _case agree-first block cli "$LIB
 u('use our artifact CLI, never the other artifacts')
 a_text('You are right. Your instructions say to use the artifacts skill.')
@@ -85,6 +86,12 @@ a_text('Tests pass.')"
 _case headless allow sdk-cli "$LIB
 u('Generate a concise session headline naming what this coding session is working on.')
 a_text('Stop-hook redesign')"
+
+# A compaction summary mid-turn is not an owner message: work before it still counts.
+_case compaction-not-owner allow cli "$LIB
+u('merge the PR'); a_tool('t1'); res('t1')
+compact('This session is being continued from a previous conversation that ran out of context.')
+a_text('Done, merged.')"
 
 # Loop cap: after 3 blocks on one message the gate lets go instead of wedging.
 _case loop-cap allow cli "$LIB
