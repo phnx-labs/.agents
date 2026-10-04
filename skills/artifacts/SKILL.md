@@ -29,8 +29,10 @@ The kind changes the content contract, not the rendering pipeline.
    If it is missing, report that prerequisite. Do not replace it with a
    hand-written HTML fallback.
 
-2. Resolve the artifact directory. It lives in the DURABLE HOME, never in a
-   git checkout:
+2. Resolve a durable artifact directory before writing. Honor the repository
+   policy when output ships with a feature: commit it through a linked worktree.
+   For standalone output, first check whether the usual home below is itself
+   inside a git checkout:
 
    ```bash
    DATE=$(date +%F)
@@ -38,16 +40,15 @@ The kind changes the content contract, not the rendering pipeline.
    mkdir -p "$ARTIFACTS_DIR"
    ```
 
-   `~/.agents/artifacts/` is outside every repository, is never reaped, and is
-   already date-partitioned. The `<slug>` level exists so two agents working on
-   the same day cannot collide on `plan.md`.
+   `~/.agents/` can itself be a checkout. If so, use a linked worktree for
+   committed output or a durable directory outside that checkout, such as
+   `~/.local/share/agents/artifacts/`. Check this before creating files. The
+   `<slug>` level keeps concurrent authors from colliding on `plan.md`.
 
-   Do NOT write into `<repo>/.agents/artifacts/`. That directory is TRACKED —
-   untracked files inside it are what make `git checkout` and `git merge` refuse
-   with "would be overwritten". Writing there also means writing into a primary
-   checkout, which `main-branch-guard` denies. The only artifacts that belong in
-   a repo are ones deliberately committed with their feature, through a worktree
-   and a PR like any other tracked file.
+   Never write into a primary checkout, locally or when copying to another
+   machine. Whether `<repo>/.agents/artifacts/` is tracked depends on that
+   repository. Deliberately committed artifacts belong in its linked worktree
+   and PR; do not assume a directory name makes a write safe.
 
    Alongside the Markdown and HTML, write `.artifact.json` so the artifact is
    findable days later by slug rather than by a path someone has to remember:
