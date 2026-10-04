@@ -20,10 +20,18 @@ import json
 import re
 import subprocess
 
-# Labels too generic to identify a service when they appear in a message.
+# Words too generic to identify a service: TLDs, environment and role names, and
+# credential vocabulary itself. A bundle named `prod`, `auth` or `share` must not
+# turn every sentence containing that word into a match.
 _STOP_LABELS = {
-    "com", "ai", "io", "app", "dev", "net", "org", "co", "sh", "so", "cloud",
-    "www", "api", "exe", "local", "the", "key", "keys", "token", "default",
+    "com", "ai", "io", "app", "dev", "net", "org", "co", "sh", "so", "cloud", "www",
+    "api", "exe", "local", "the", "default", "auth", "share", "shared", "prod",
+    "production", "staging", "stage", "test", "testing", "main", "live", "user",
+    "users", "admin", "root", "personal", "work", "team", "account", "accounts",
+    "env", "config", "key", "keys", "token", "tokens", "secret", "secrets",
+    "password", "passwords", "login", "service", "server", "db", "database",
+    "private", "public", "internal", "global", "common", "misc", "temp", "tmp",
+    "backup", "new", "old", "my", "your", "our",
 }
 
 
