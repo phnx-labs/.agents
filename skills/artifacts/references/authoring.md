@@ -91,6 +91,35 @@ These project-wide values
 feed HTML, document PDF, and poster PDF. Artifact metadata remains only in the
 Markdown frontmatter.
 
+## Reusable interactive components
+
+Run `artifacts components` to discover the installed catalogue, and
+`artifacts components explorer --json` for the input contract and complete example.
+An `explorer` fence accepts JSON: `title`, optional `description`, optional
+`metric: {label, unit, max}`, and `items`. Each item has a `label`, optional numeric
+`value`, `detail`, `description`, `sources: [{label, href}]`, and nested `children`.
+An explicit shared scale is required for values. Omit child values when their
+units differ; use detail text and preserve the distinction. Supply actual modules
+and evidence, not invented subdivisions that happen to total the overview.
+
+Use this for service → module → evidence, a finding → affected paths, or a stage
+→ work and validation. Summary rows show the comparison; opening a row exposes
+its content. All data travels with the HTML. Authors supply no React, CSS or event
+handlers. Do not imply live agent actions or production changes from local
+exploration. Check that the installed catalogue contains the component before use;
+on an older CLI use ordinary `<details>` and links, or report the missing feature.
+
+Keep overview and expanded states readable. Native disclosure needs HTML inside
+it, not Markdown that may render literally:
+
+```html
+<details>
+  <summary>Runtime: inspect the remaining modules</summary>
+  <p>The exact condition and its consequence.</p>
+  <p><a href="https://example.com/source">Source at the inspected revision</a></p>
+</details>
+```
+
 ## Safe HTML Layout
 
 Markdown remains the default. Inside a raw HTML block, write HTML rather than
@@ -174,7 +203,7 @@ reviewable** page — not a wall of bullets.
 | Check | Level | What you see |
 | --- | --- | --- |
 | Plan surface | **error** | Declare `surface: internal|cli|web|native|api|workflow`. Internal plans need a live drawn SVG; user-visible plans need a semantic current/proposed `.artifact-behavior` figure with capture-or-mockup evidence. |
-| Table | warning | Every table warns; the message names the visual to draw instead (`bar-chart`, SVG, `artifact-stat`, `artifact-grid`, `excerpt`). Only the artifact critic's `review:` acceptance answers it. |
+| Table | warning | Every table warns for review. Keep it when exact lookup or aligned comparison is clearer; the critic records that acceptance. Do not automatically replace rows with tiles. |
 | Bare file reference | warning | `path.ext:NNN` outside a link. Cite files as links pinned to the commit, or with an `excerpt` fence. |
 | `excerpt` fence | **error** | `path=`, `lines=`, optional `highlight=`, `repo=`, `ref=`. Renders a file card: linked path, numbered lines, highlighted range, verdict. Errors when the path or range does not exist at `ref`. |
 | Fenced code | warning | At least one fenced code block — commands belong here, not only as inline pills |
@@ -206,9 +235,11 @@ optional comparison example, not a system-design notation:
 | Shared / hand-off | `#0e1418` | `#38bdf8` (blue) | bridges, shared layers |
 | Connector | — | `#38bdf8`, `stroke-dasharray="3 3"`, `opacity="0.7"` | dashed parallels |
 
-Text: labels `font-family="JetBrains Mono, monospace" font-size="11"` in the
-concept's stroke color; box titles `font-size="12" fill="#c8c8c8"`; subtitles
-`font-size="10" fill="#8a8a8a"` (both `font-family="Inter, system-ui, sans-serif"`).
+Use body-sized labels at the actual reading width. SVG viewBox scaling also
+shrinks fonts: a declared 16-unit font in a 1200-unit figure is unreadable when
+squeezed onto a phone. Inspect effective pixel sizes, wrap or split the diagram,
+or expose detail in a reusable component. Use theme colors with legible contrast;
+reserve monospace for code and identifiers, not paragraphs.
 For nodes whose notation calls for rounded boxes: `rx="8"`, `stroke-width="1.5"`. Keep columns aligned on a grid
 (e.g. x=40 and x=520 with a 100-unit gap) and pair rows across the gap with
 dashed connectors. Figures are dark-first: these tints sit on the
