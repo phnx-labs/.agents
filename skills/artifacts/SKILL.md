@@ -222,7 +222,7 @@ exited 0."
 
 ## `kind: plan`
 
-Write `~/.agents/artifacts/yyyy-mm-dd/<slug>/plan.md` with frontmatter shaped like:
+Write `<selected artifact directory>/plan.md` with frontmatter shaped like:
 
 ```yaml
 ---
@@ -320,7 +320,7 @@ Stop/plan-exit guard checks for it separately from the render.
 
 ## `kind: visual`
 
-Write `~/.agents/artifacts/yyyy-mm-dd/<slug>/<slug>.md` with `kind: visual`, a precise
+Write `<selected artifact directory>/<slug>.md` with `kind: visual`, a precise
 title, and a short single-takeaway summary. Choose the page shape from the
 content: infographic, explainer, status dashboard, data story, or comparison.
 
