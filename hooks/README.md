@@ -87,6 +87,7 @@ implementation. See [§Subrule hooks](#subrule-hooks-rules-not-this-tree).
 | [`08-inject-repo-inflight.sh`](./session-start/08-inject-repo-inflight.sh) | In-flight PRs and agents working on this project |
 | [`05-session-start-autosync.sh`](./session-start/05-session-start-autosync.sh) | Brings the machine current — config repos, secrets, sessions |
 | [`09-git-pull-forward.sh`](./session-start/09-git-pull-forward.sh) | Fast-forwards the session cwd git repo when clean (ff-only) |
+| [`10-inject-credentials-catalog.py`](./session-start/10-inject-credentials-catalog.py) | Value-free "Credentials you can reach": secrets bundles (name, key count, description) and signed-in browser profiles (service, account), so an agent self-serves with `secrets exec` instead of asking the human. Cached 10m, global; silent when there is nothing to list |
 
 ### `pre-tool-use/` — PreToolUse
 
@@ -129,6 +130,7 @@ implementation. See [§Subrule hooks](#subrule-hooks-rules-not-this-tree).
 | [`verify-delivery-chain.py`](./stop/verify-delivery-chain.py) | Goal-scoped delivery-chain verifier invoked by the Stop check (not registered alone) |
 | [`check-outcome-backfill.py`](./stop/check-outcome-backfill.py) | Offline: derives whether each recorded block was followed by the specific thing that block demanded; never on a hook path |
 | [`07-gather-before-reply.py`](./stop/07-gather-before-reply.py) | Advisory: if the agent made no tool call and used no skill since the user's last message, injects a directive to gather context before replying; exit 0, fails open |
+| [`credential-ask-nudge.py`](./stop/credential-ask-nudge.py) | Blocks (exit 2) a final message that asks the human for a password/token/API key/login when a secrets bundle or signed-in browser profile on this machine matches the service, naming it. Once per session per service; skips one-time codes, an agent that already ran `secrets`/`profiles logins`, and `stop_hook_active`; fails open. Shares `lib/credential_catalog.py` with the catalog hook |
 
 ### `notification/` — Notification
 

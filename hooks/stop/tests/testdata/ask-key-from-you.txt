@@ -1,0 +1,14 @@
+I've stopped because I need the key from you: `STRIPE_SECRET_KEY` isn't set in my environment, so `./check.sh` fails:
+
+```
+FAIL: STRIPE_SECRET_KEY is not set
+exit=1
+```
+
+As you asked, I didn't look anywhere else for it or make one up.
+
+`check.sh` only confirms that the variable is set and starts with `sk_`. It never calls Stripe, so a test-mode key (`sk_test_...`) will pass just as well as a live one.
+
+There are two ways to provide it:
+- **Preferred:** tell me the name of the `secrets` bundle that holds it, and I'll run `./check.sh` through `secrets exec` so the key stays out of the chat and isn't written to a file.
+- **Directly:** paste the key and I'll set it only for the `./check.sh` run.
