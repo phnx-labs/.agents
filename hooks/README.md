@@ -119,6 +119,7 @@ implementation. See [§Subrule hooks](#subrule-hooks-rules-not-this-tree).
 | [`02-expand-prompt-bang-commands.sh`](./user-prompt-submit/02-expand-prompt-bang-commands.sh) | **bangcuts** — runs inline `` `!cmd` `` blocks concurrently and injects their output |
 | [`03-vacation-recap.py`](./user-prompt-submit/03-vacation-recap.py) | On a long gap since the session's last prompt, reminds the agent to open with a back-from-vacation recap |
 | [`04-verify-work-state.py`](./user-prompt-submit/04-verify-work-state.py) | Records a hashed goal boundary plus transcript byte offset in `verify-work-complete`'s session-keyed hook database; never stores prompt text |
+| [`06-investigate-first-reminder.sh`](./user-prompt-submit/06-investigate-first-reminder.sh) | Interactive Claude only: injects the investigate-first rule before the agent writes its first token (a Stop hook cannot take back text already shown) |
 
 ### `stop/` — Stop
 
@@ -129,7 +130,7 @@ implementation. See [§Subrule hooks](#subrule-hooks-rules-not-this-tree).
 | [`visual_readback.py`](./stop/visual_readback.py) | Shared transcript evidence for authored, delivered, and image-read visual artifacts |
 | [`verify-delivery-chain.py`](./stop/verify-delivery-chain.py) | Goal-scoped delivery-chain verifier invoked by the Stop check (not registered alone) |
 | [`check-outcome-backfill.py`](./stop/check-outcome-backfill.py) | Offline: derives whether each recorded block was followed by the specific thing that block demanded; never on a hook path |
-| [`07-gather-before-reply.py`](./stop/07-gather-before-reply.py) | Advisory: if the agent made no tool call and used no skill since the user's last message, injects a directive to gather context before replying; exit 0, fails open |
+| [`07-investigate-first-gate.py`](./stop/07-investigate-first-gate.py) | Interactive Claude only: blocks a reply with no investigation tool call since the owner's message, and once blocks a reply that opened by conceding ("You're right…") before any evidence came back; caps at 3 blocks per message |
 | [`credential-ask-nudge.py`](./stop/credential-ask-nudge.py) | Blocks (exit 2) a final message that asks the human for a password/token/API key/login when a secrets bundle or signed-in browser profile on this machine matches the service, naming it. Once per session per service; skips one-time codes, an agent that already ran `secrets`/`profiles logins`, and `stop_hook_active`; fails open. Shares `lib/credential_catalog.py` with the catalog hook |
 
 ### `notification/` — Notification

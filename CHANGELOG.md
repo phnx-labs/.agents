@@ -13,6 +13,18 @@
   credential the catalog names, pointing at `secrets exec <bundle>`, and lets a repeat
   ask through. Shared reader: `hooks/lib/credential_catalog.py`.
 
+### Changed
+
+- **`hooks/stop/07-investigate-first-gate.py`** replaces `07-gather-before-reply.py`.
+  The old hook exited 0 and printed advice that Claude Code records only after the
+  reply is already shown, so it changed no reply. The gate blocks a reply to the
+  owner that has no investigation tool call since their message, and once blocks a
+  reply that opened by conceding ("You're right…") before any evidence came back.
+  Interactive Claude sessions only (`CLAUDE_CODE_ENTRYPOINT=cli`); at most 3 blocks
+  per message.
+- **`hooks/user-prompt-submit/06-investigate-first-reminder.sh`** injects the same rule
+  before the agent's first token, and **`rules/AGENTS.md`** states it under F2.
+
 ### Fixed
 
 - **`hooks/session-start/04-session-identity.sh`**. On Linux, a `claude` started bare in a
