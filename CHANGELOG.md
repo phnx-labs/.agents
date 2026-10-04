@@ -2,6 +2,17 @@
 
 ## [Unreleased]
 
+### Added
+
+- **`hooks/session-start/10-inject-credentials-catalog.py`** and
+  **`hooks/stop/credential-ask-nudge.py`**. Agents asked the human for API keys and
+  logins that already sat in a secrets bundle or a signed-in browser profile on the
+  machine. The SessionStart hook now injects a value-free "Credentials you can reach"
+  block (bundle names, key counts, descriptions; browser profile, service, account).
+  The Stop hook blocks once per session per service when the final message asks for a
+  credential the catalog names, pointing at `secrets exec <bundle>`, and lets a repeat
+  ask through. Shared reader: `hooks/lib/credential_catalog.py`.
+
 ### Fixed
 
 - **`hooks/session-start/04-session-identity.sh`**. On Linux, a `claude` started bare in a

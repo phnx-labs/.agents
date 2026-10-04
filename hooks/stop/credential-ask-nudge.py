@@ -27,6 +27,7 @@ import json
 import os
 import re
 import sys
+import time
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "lib"))
 import credential_catalog  # noqa: E402
@@ -51,6 +52,15 @@ REQUEST = re.compile(
 ONE_TIME = re.compile(
     r"\b(2fa|two[- ]factor|otp|one[- ]time|verification code|authenticator|sms code|mfa)\b", re.I
 )
+# A service word counts only this close to a credential word, so "the Stripe
+# dashboard looked fine ... can you share the VPN password" does not match Stripe.
+NEAR = 6
+CREDENTIAL_WORDS = {
+    "password", "passwords", "passphrase", "key", "keys", "token", "tokens",
+    "credential", "credentials", "secret", "secrets", "login", "log", "sign",
+    "username", "pass",
+}
+STATE_TTL_SECONDS = 7 * 24 * 3600
 CONSULTED = re.compile(r"\bsecrets (?:list|ls|exec|view|show|status)\b|\bprofiles logins\b")
 
 
@@ -106,9 +116,11 @@ def is_credential_ask(text: str) -> bool:
 
 
 def matches(text: str, catalog: dict) -> tuple[list[dict], list[dict]]:
-    words = set(re.findall(r"[a-z0-9]+", text[-TAIL_CHARS:].lower()))
-    bundles = [b for b in catalog["bundles"] if credential_catalog.aliases(b["name"]) & words]
-    logins = [r for r in catalog["logins"] if credential_catalog.aliases(r["service"]) & words]
+    words = re.findall(r"[a-z0-9]+", text[-TAIL_CHARS:].lower())
+    anchors = [i for i, w in enumerate(words) if w in CREDENTIAL_WORDS]
+    near = {w for i, w in enumerate(words) if any(abs(i - a) <= NEAR for a in anchors)}
+    bundles = [b for b in catalog["bundles"] if credential_catalog.aliases(b["name"]) & near]
+    logins = [r for r in catalog["logins"] if credential_catalog.aliases(r["service"]) & near]
     return bundles, logins
 
 
@@ -129,6 +141,10 @@ def nudge(bundles: list[dict], logins: list[dict]) -> str:
 def claim_topic(session: str, topic: str) -> bool:
     """True the first time this session asks about this topic; records it."""
     os.makedirs(STATE_DIR, mode=0o700, exist_ok=True)
+    cutoff = time.time() - STATE_TTL_SECONDS
+    for entry in os.scandir(STATE_DIR):
+        if entry.stat().st_mtime < cutoff:
+            os.unlink(entry.path)
     key = hashlib.sha256(f"{session}\0{topic}".encode()).hexdigest()[:32]
     try:
         fd = os.open(os.path.join(STATE_DIR, key), os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
@@ -143,7 +159,10 @@ def main() -> int:
         payload = json.load(sys.stdin)
     except ValueError:
         return 0
-    if payload.get("stop_hook_active"):
+    session = payload.get("session_id")
+    # No session id means no per-session cool-off; one shared key would let a
+    # single nudge silence every later session on the machine.
+    if payload.get("stop_hook_active") or not session:
         return 0
     text = last_assistant_text(payload)
     if not text or not is_credential_ask(text):
@@ -154,7 +173,7 @@ def main() -> int:
     if not bundles and not logins:
         return 0
     topic = ",".join(sorted({b["name"] for b in bundles} | {r["service"] for r in logins}))
-    if not claim_topic(str(payload.get("session_id") or "unknown"), topic):
+    if not claim_topic(str(session), topic):
         return 0
     print(nudge(bundles, logins), file=sys.stderr)
     return 2

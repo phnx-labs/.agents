@@ -19,10 +19,13 @@ export HOME="$SANDBOX" SECRETS_HOME="$SANDBOX/secrets" SECRETS_PASSPHRASE=test-o
 secrets create stripe.com --description "Stripe test account" >/dev/null 2>&1
 secrets add stripe.com STRIPE_SECRET_KEY --value sk_test_placeholder >/dev/null 2>&1
 secrets create __claude__ >/dev/null 2>&1
+# Generic bundle names a real machine carries; none may turn an ordinary word
+# into a match (review finding on #481).
+for b in share auth prod; do secrets create "$b" >/dev/null 2>&1; done
 
 # Runs the hook; prints "BLOCK" (exit 2 + message on stderr) or "PASS" (exit 0).
 run() {
-  local msg="$1" sid="${2:-s1}" transcript="${3:-}" active="${4:-false}" err rc
+  local msg="$1" sid="${2-s1}" transcript="${3:-}" active="${4:-false}" err rc
   err=$(python3 -c 'import json,sys; print(json.dumps({"session_id":sys.argv[1],"last_assistant_message":sys.argv[2],"transcript_path":sys.argv[3],"stop_hook_active":sys.argv[4]=="true"}))' \
     "$sid" "$msg" "$transcript" "$active" | python3 "$HOOK" 2>&1 >/dev/null)
   rc=$?
@@ -46,6 +49,11 @@ check "same topic, new session -> blocks" "$(run "$ASK" c)" "BLOCK"
 
 check "credential ask with no catalog match -> passes" \
   "$(run "Can you share the Twilio auth token?" d)" "PASS"
+check "generic bundle names never match ordinary words" \
+  "$(run "I need your Twilio API key. Please share it so the prod auth check passes." d2)" "PASS"
+check "service named far from the credential word -> passes" \
+  "$(run "The Stripe dashboard looked fine earlier when I checked the billing graphs and the invoices. Can you share the VPN password?" d3)" "PASS"
+check "no session id -> passes (no shared cool-off key)" "$(run "$ASK" "")" "PASS"
 check "one-time code ask -> passes" \
   "$(run "Stripe sent a 2FA verification code. Can you give me the code?" e)" "PASS"
 check "mentions a credential but asks nothing -> passes" \
