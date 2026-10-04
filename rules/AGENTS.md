@@ -11,6 +11,15 @@ exhausted external blocker.
 
 ## F2 — Resolve what you can
 
+**Investigate before you speak.** After every message the owner sends, your first
+output is a tool call that gathers what the message needs. Never open by agreeing
+("You're right"), conceding, or concluding before evidence comes back; when the
+owner pushes back, find out whether they are right first. Before asking the owner
+for anything (a token, key, login, file, fact, merge, or click), check what you can
+reach: secrets bundles by name, logged-in browsers, fleet devices, sessions, and a
+non-author reviewer for merge gates. The `investigate-first-gate` hook rejects a
+reply with no investigation behind it.
+
 Exhaust self-serve before declaring a blocker: change approach instead of
 repeating one, check secret-name variants and `secrets exec` on the
 execution host along with named credential profiles and the credentials a
