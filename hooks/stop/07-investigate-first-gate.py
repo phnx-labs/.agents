@@ -26,7 +26,7 @@ BOOKKEEPING = {
     "ScheduleWakeup", "AskUserQuestion", "ExitPlanMode", "EnterPlanMode",
 }
 
-# Closed list; on 142 real owner turns it hit 3 openers, all genuine.
+# Closed list of concession openers.
 CONCEDE = re.compile(
     r"\b(?:you'?re (?:absolutely |exactly |totally |completely )?(?:right|correct)"
     r"|you are (?:absolutely |exactly |totally |completely )?(?:right|correct)"
@@ -46,7 +46,8 @@ SYNTHETIC = re.compile(
 def owner_typed(record: dict) -> bool:
     """A user record carrying text or an image the owner sent (slash commands and
     `!` shell inputs included: both are the owner speaking)."""
-    if record.get("type") != "user" or record.get("isMeta") or record.get("isSidechain"):
+    if (record.get("type") != "user" or record.get("isMeta") or record.get("isSidechain")
+            or record.get("isCompactSummary")):
         return False
     content = (record.get("message") or {}).get("content")
     if isinstance(content, str):
@@ -72,9 +73,17 @@ def own_feedback(record: dict) -> str:
 def main() -> int:
     if os.environ.get("CLAUDE_CODE_ENTRYPOINT") != "cli":
         return 0
-    payload = json.load(sys.stdin)
-    with open(payload["transcript_path"]) as handle:
-        records = [json.loads(line) for line in handle if line.strip()]
+    path = json.load(sys.stdin).get("transcript_path")
+    if not path:
+        print(f"{MARKER} no transcript_path in the Stop payload; cannot check, allowing.", file=sys.stderr)
+        return 0
+    records = []
+    with open(path) as handle:
+        for line in handle:
+            try:
+                records.append(json.loads(line))
+            except json.JSONDecodeError:
+                continue  # blank or half-written last line while the harness is still writing
 
     start = max((i for i, r in enumerate(records) if owner_typed(r)), default=-1)
     if start < 0:
