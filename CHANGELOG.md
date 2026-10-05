@@ -18,8 +18,9 @@
   fresh watcher, a `--blocked` receipt, `ExitPlanMode`/`AskUserQuestion` as the
   last tool call of the current goal, or plan mode; its message no longer
   recommends `AskUserQuestion`. A done-claim now only triggers the delivery chain, matches on
-  word boundaries, and no longer counts a bare "done." / "done!" (a list ending
-  "…; done." used to drive a block). The delivery chain drops its visual
+  word boundaries, and no longer counts a bare "done." / "done!" as a done-claim (a list ending
+  "…; done." used to drive a block); the PR/merge route into the delivery chain
+  still matches the word "done" (`has_merge_phrase`). The delivery chain drops its visual
   read-back demand, which only recognized screenshots taken through local
   `agents browser` and blocked sessions that had read the visual back another
   way; `hooks/stop/visual_readback.py` is removed. The advisory

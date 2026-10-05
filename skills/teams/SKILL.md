@@ -169,9 +169,9 @@ Every edit-mode brief carries the fixed parts — Mission, Full scope, **Owns**,
 
 **Completion contract:**
 
-> Your task is complete only when your PR is merged, or you have handed it off by naming who/what now owns it. If you are waiting on CI or review, keep waiting with a background watch — `(gh pr checks <pr> --watch --fail-fast; echo "CI settled rc=$?")` run in the background, never a `while`/`until` loop — do not stop.
+> Your task is complete only when your PR is merged, or a durable watcher (`agents monitors add`) owns its merge, or a genuine owner-only block is filed with `agents feed post "<ask>" --blocked`. Naming an owner in prose does not count. If you are waiting on CI or review, keep waiting with a background watch — `(gh pr checks <pr> --watch --fail-fast; echo "CI settled rc=$?")` run in the background, never a `while`/`until` loop — do not stop.
 
-A teammate is done only when its PR is **merged or handed to a named owner** — "PR open, CI green, waiting for review" is the top way team output gets stranded (a real 11-teammate run once ended with every PR unmerged). The `verify-work-complete` Stop hook backstops this, but the brief line is what makes teammates drive to merge.
+A teammate is done only when its PR is **merged, or watched by a durable monitor, or filed as a genuine `--blocked` ask** — "PR open, CI green, waiting for review" is the top way team output gets stranded (a real 11-teammate run once ended with every PR unmerged). The `verify-work-complete` Stop hook backstops this, but the brief line is what makes teammates drive to merge.
 
 ## Orchestrator: post at boundaries, verify the seam
 
