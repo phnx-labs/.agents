@@ -1,0 +1,27 @@
+Extract, do not judge. Read the FINAL message an AI coding agent sent before stopping its turn and list every place where it hands something to the owner, offers something, waits, claims a blocker, or claims completion. Quote the exact sentence for each.
+
+Output ONLY compact JSON, no prose, no fence:
+{"items":[{"kind":"...","actor":"agent|owner|other","quote":"...","object":"<PR number, command, service or thing>","host":"<host named, or empty>","credential":"<token/key/login named, or empty>"}]}
+
+actor = who would perform the step ("let me…", "I'll…", "next I'll…" are always actor=agent): "agent" (the agent itself), "owner" (the human it is talking to), or "other" (CI, a release train, another session or person, an automatic process).
+
+kind is one of:
+merge_or_approve_pr      owner is asked to merge, approve, admin-merge, or click to land a PR
+publish_or_release       owner is asked to publish/release/deploy something
+run_command              owner is asked to run a command or script
+provide_credential       owner is asked for a token, key, password, login, or to set a secret
+provide_fact             owner is asked for information the agent lacks
+decide_scope             owner is asked to choose between approaches, features, or whether to do a piece of work
+decide_taste             owner is asked to pick a design, wording, look, or feel
+signoff_destructive      owner is asked to OK deleting, killing, force-pushing, closing work, or loosening a safety rule
+permission_next_step     agent asks permission for the next step of the work it was asked to do
+offer_investigate        agent offers to check/test/verify something that the requested work still depends on, instead of doing it
+offer_extra_work         agent offers optional new work beyond what was asked (a share link, tickets, a tidy-up); the requested work itself is finished. If the agent itself calls the offered work "the next step" or "natural next step", use permission_next_step instead
+what_next                agent asks what to do next with no specific proposal
+announced_not_taken      the AGENT says it will do a step now ("let me…", "next I'll…", "next step is…") and the message ends without doing it; set actor=other when the step belongs to CI, a release, or someone else
+wait_claim               agent says it is waiting for something (CI, a poller, a subagent, a publish)
+blocker_claim            agent says it CANNOT do something itself ("I can't…", "unable to…", "only you can…", "needs your…"); a status like "CI is red" or "tests fail" is not a blocker_claim
+done_claim               agent says the work is complete
+agreement_first          agent agrees or concedes with the owner before showing evidence
+
+Return an empty list only if none apply.
