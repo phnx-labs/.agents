@@ -25,6 +25,15 @@
   `agents browser` and blocked sessions that had read the visual back another
   way; `hooks/stop/visual_readback.py` is removed. The advisory
   `pre-tool-use/11-visual-readback-nudge.py` is unchanged.
+- **`hooks/pre-tool-use/12-repo-freshness.py`** replaces
+  `user-prompt-submit/05-worktree-law-reminder.sh` and
+  `session-start/09-git-pull-forward.sh`. The reminder repeated the worktree rule on
+  every prompt, while `main-branch-guard` already enforces it at the first write and
+  creates a fresh worktree from origin. The pull-forward only updated the session's
+  starting directory, at session start. The new hook runs before a tool touches a
+  primary checkout, at most once per repo per 10 minutes: it fetches, fast-forwards a
+  clean tree that is only behind, and otherwise tells the agent the exact lag and how
+  to read current code (`git show <upstream>:<path>` or a fresh worktree).
 
 - **`clis/browser.yaml`** pins `@phnx-labs/browser-cli@0.1.15` (was 0.1.5). `browser profiles
   logins --json` exists from 0.1.14, and 0.1.15 reads Arc/Comet/pinned profiles from their

@@ -24,7 +24,7 @@ Target harnesses: **claude, codex, kimi, grok, cursor, droid, antigravity**.
 | Gemini CLI | Hard-deprecated (Google → Antigravity). Do not list as a target; use `antigravity`. |
 | Stdin field names | Claude / Codex / Kimi / Cursor / Droid: snake_case (`tool_name`, `tool_input.command`, `session_id`). Grok: camelCase (`toolName`, `toolInput.command`, `sessionId`). Guards and inject scripts accept **both**. |
 | Shell tool matcher | Manifest keeps `matcher: Bash`. Grok auto-aliases `Bash` → `run_terminal_command` (and keeps the original name). |
-| SessionStart stdout | Claude / Codex / Kimi / Cursor inject stdout into context. **Grok ignores SessionStart stdout** (passive only) — Linear / topology / inflight text injects do not reach the Grok model. Side-effect SessionStart hooks (autosync, git-pull-forward, session-identity file writes) still run. |
+| SessionStart stdout | Claude / Codex / Kimi / Cursor inject stdout into context. **Grok ignores SessionStart stdout** (passive only) — Linear / topology / inflight text injects do not reach the Grok model. Side-effect SessionStart hooks (autosync, session-identity file writes) still run. |
 | Antigravity events | agents-cli maps only `PreToolUse` → `before_tool_call`, `PostToolUse` → `after_model_call`, `Stop` → `on_loop_stop`. No SessionStart / UserPromptSubmit / Notification on agy today. |
 | Block protocol | Exit `2` + reason on stderr for PreToolUse / Stop (Claude-compatible). Grok also accepts `{"decision":"deny"}` on stdout. |
 
@@ -86,7 +86,6 @@ implementation. See [§Subrule hooks](#subrule-hooks-rules-not-this-tree).
 | [`07-inject-device-topology.sh`](./session-start/07-inject-device-topology.sh) | Host and fleet topology, live load/memory, configured browser routing and viewer |
 | [`08-inject-repo-inflight.sh`](./session-start/08-inject-repo-inflight.sh) | In-flight PRs and agents working on this project |
 | [`05-session-start-autosync.sh`](./session-start/05-session-start-autosync.sh) | Brings the machine current — config repos, secrets, sessions |
-| [`09-git-pull-forward.sh`](./session-start/09-git-pull-forward.sh) | Fast-forwards the session cwd git repo when clean (ff-only) |
 | [`10-inject-credentials-catalog.py`](./session-start/10-inject-credentials-catalog.py) | Value-free "Credentials you can reach": secrets bundles (name, key count, description) and signed-in browser profiles (service, account), so an agent self-serves with `secrets exec` instead of asking the human. Cached 10m, global; silent when there is nothing to list |
 
 ### `pre-tool-use/` — PreToolUse
@@ -102,6 +101,7 @@ implementation. See [§Subrule hooks](#subrule-hooks-rules-not-this-tree).
 | [`01-git-require-clean-tree.sh`](./pre-tool-use/01-git-require-clean-tree.sh) | Blocks `git pull` / `rebase` / autostash while the tree is dirty; skips explicit plan-mode events |
 | [`09-mailbox-inject.py`](./pre-tool-use/09-mailbox-inject.py) | Delivers queued messages into a running session |
 | [`11-visual-readback-nudge.py`](./pre-tool-use/11-visual-readback-nudge.py) | Advises rendering and reading back a visual artifact before it leaves the session |
+| [`12-repo-freshness.py`](./pre-tool-use/12-repo-freshness.py) | Before a tool touches a **primary** checkout (once per repo per 10 min): fetches, fast-forwards when clean and only behind, otherwise tells the agent how far behind and where to read current code. Skips linked worktrees; never forces, stashes, or blocks |
 | [`linear-guard.py`](./pre-tool-use/linear-guard.py) | DENYs an agent creating a Linear project (`linear projects create`); NUDGEs (non-blocking) before an agent files an issue (`linear create`) to fix-now or dispatch instead of filing bloat |
 
 ### `post-tool-use/` — PostToolUse
