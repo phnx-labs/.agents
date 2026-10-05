@@ -32,6 +32,11 @@
 
 ### Changed
 
+- **`clis/secrets.yaml` pins secrets-cli 0.1.8, up from 0.1.4.** 0.1.8 makes
+  `secrets unlock --durable` survive sleep and restart. With agents-cli's
+  host-CLI pin upgrade (phnx-labs/agi-cli#3750), the pin is now a floor that
+  installed boxes are brought up to, not only what a fresh install gets.
+
 - **`gh-merge-guard` also denies the other admin-bypass merge paths.** Besides
   `gh pr merge --admin`, an agent is now refused `agents projects prs merge … --admin`
   (the CLI's bypass, which only a human's confirm click in AGI Menu passes) and a raw
