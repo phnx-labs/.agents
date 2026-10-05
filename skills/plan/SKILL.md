@@ -9,3 +9,7 @@ user-invocable: true
 
 Invoke the `swarm:plan` skill for **$ARGUMENTS**. It owns the planning contract,
 including goals, expected outcomes, success checks, visual rendering and review.
+
+If the harness does not expose namespaced plugin skills, locate the resolved
+`swarm` plugin with `agents plugins view swarm` and read its
+`skills/plan/SKILL.md` directly. Do not invoke this bare `plan` alias again.
