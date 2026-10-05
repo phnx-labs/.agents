@@ -90,7 +90,8 @@ p.update(json.loads(sys.argv[2])); print(json.dumps(p))' "$t" "$extra" > "$TMP/$
   env -u CLAUDE_CODE_EXECPATH -u CLAUDE_CODE_OAUTH_TOKEN HOME="$home" PATH="$BIN:$PATH" \
     CLAUDE_CODE_ENTRYPOINT="$ep" CLAUDE_CONFIG_DIR="$home/cfg" STUB_LOG="$home/stub.log" \
     STUB_BUNDLES="$FILE_AUTH" STUB_ITEMS='{"items":[]}' "$@" \
-    python3 "${HOOK_OVERRIDE:-$HOOK}" < "$TMP/$name.payload" > "$TMP/$name.out" 2>&1
+    bash -c 'if [ -n "${CLAUDE_PARENT:-}" ]; then exec -a "$CLAUDE_PARENT" bash -c "python3 \"\$0\" < \"\$1\"" "$0" "$1"; else exec python3 "$0" < "$1"; fi' \
+      "${HOOK_OVERRIDE:-$HOOK}" "$TMP/$name.payload" > "$TMP/$name.out" 2>&1
   RC=$?
   end=$(python3 -c 'import time;print(int(time.time()*1000))')
   FG_MS=$((end - start))
@@ -344,6 +345,19 @@ NOCLAUDE="$TMP/noclaude"; mkdir -p "$NOCLAUDE"; ln -sf "$BIN/secrets" "$NOCLAUDE
 HOOK_OVERRIDE="$VER/home/.claude/hooks/08-stop-judge.py" \
   run_hook installed-layout cli "$WORKED" '{}' STUB_ITEMS="$(item merge_or_approve_pr owner)" PATH="$NOCLAUDE:/usr/bin:/bin"
 check installed-layout "1|merge_or_approve_pr|ok|merge_or_approve_pr|0" "$(row installed-layout)"
+
+# Per-account home: the hook lives at accounts/claude/<id>/.claude/hooks/, so neither
+# CLAUDE_CODE_EXECPATH, the version-home layout, nor PATH finds claude. The claude that
+# fired the hook is its ancestor process; the foreground finds it there and hands it to the
+# detached child. Before that fallback, live rows on this layout read error/no-claude.
+ACCT="$TMP/accounts/claude/acct-1/.claude/hooks"; mkdir -p "$ACCT" "$TMP/acctbin"
+cp "$HOOK" "$ACCT/08-stop-judge.py"; cp "$HERE/../../lib/credential_catalog.py" "$ACCT/"
+cp "$BIN/claude" "$TMP/acctbin/claude"
+NOCLAUDE2="$TMP/noclaude2"; mkdir -p "$NOCLAUDE2"; ln -sf "$BIN/secrets" "$NOCLAUDE2/secrets"; ln -sf "$BIN/browser" "$NOCLAUDE2/browser"
+# Run the hook under a parent whose argv[0] is the stub claude's absolute path.
+HOOK_OVERRIDE="$ACCT/08-stop-judge.py" CLAUDE_PARENT="$TMP/acctbin/claude" \
+  run_hook account-home cli "$WORKED" '{}' STUB_ITEMS="$(item merge_or_approve_pr owner)" PATH="$NOCLAUDE2:/usr/bin:/bin"
+check account-home "1|merge_or_approve_pr|ok|merge_or_approve_pr|0" "$(row account-home)"
 
 echo "08-stop-judge: $pass passed, $fail failed"
 [ "$fail" -eq 0 ]

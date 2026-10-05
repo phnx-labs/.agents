@@ -310,13 +310,36 @@ agreement_first          agent agrees or concedes with the owner before showing 
 Return an empty list only if none apply."""
 
 
+def ancestor_claude(pid: int | None = None, depth: int = 8) -> str | None:
+    """The claude executable that fired this hook: walk up parent processes until one's
+    argv[0] is an executable named claude / claude.exe. Works for every install layout
+    (version homes and per-account homes alike) because the hook always runs under it."""
+    pid = pid or os.getppid()
+    for _ in range(depth):
+        try:
+            out = subprocess.run(["ps", "-o", "ppid=,args=", "-p", str(pid)], capture_output=True,
+                                 text=True, timeout=2, stdin=subprocess.DEVNULL).stdout.strip()
+        except (OSError, subprocess.SubprocessError):
+            return None
+        if not out:
+            return None
+        ppid, _, args = out.partition(" ")
+        exe = args.split(" ", 1)[0] if args else ""
+        if os.path.basename(exe) in ("claude", "claude.exe") and os.path.isabs(exe) and os.access(exe, os.X_OK):
+            return exe
+        if not ppid.strip().isdigit() or int(ppid) <= 1:
+            return None
+        pid = int(ppid)
+    return None
+
+
 def claude_binary() -> str | None:
     """The claude binary for the judge call.
 
-    Hook processes do not reliably inherit CLAUDE_CODE_EXECPATH, and a version home's
-    claude is not on PATH, so the installed layout decides: the hook lives at
-    <version>/home/.claude/hooks/<this file> and its own claude at
-    <version>/node_modules/.bin/claude.
+    Hook processes do not reliably inherit CLAUDE_CODE_EXECPATH and the version's claude is
+    not on PATH. Order: CLAUDE_CODE_EXECPATH; the version-home layout
+    <version>/node_modules/.bin/claude; PATH; last, the claude that fired this hook, found
+    by the foreground walking its parent processes (per-account homes).
     """
     env_path = os.environ.get("CLAUDE_CODE_EXECPATH")
     if env_path and os.access(env_path, os.X_OK):
@@ -326,7 +349,13 @@ def claude_binary() -> str | None:
         installed = here.parents[3] / "node_modules" / ".bin" / "claude"
         if os.access(installed, os.X_OK):
             return str(installed)
-    return shutil.which("claude")
+    on_path = shutil.which("claude")
+    if on_path:
+        return on_path
+    # Last: the claude the foreground found among its parents (per-account homes, where
+    # neither the env var nor the version-home layout applies).
+    found = os.environ.get("STOP_JUDGE_CLAUDE")
+    return found if found and os.access(found, os.X_OK) else None
 
 
 def judge(snapshot: dict, caps: dict) -> dict:
@@ -615,10 +644,17 @@ def main() -> None:
     try:
         with os.fdopen(fd, "w") as handle:
             json.dump(payload, handle)
+        # The detached child is reparented away from claude, so the foreground (still a
+        # descendant of the claude that fired this hook) finds that binary for it.
+        child_env = dict(os.environ)
+        if not os.environ.get("CLAUDE_CODE_EXECPATH"):
+            found = ancestor_claude()
+            if found:
+                child_env["STOP_JUDGE_CLAUDE"] = found
         subprocess.Popen(
             [sys.executable, str(Path(__file__).resolve()), "--judge", handoff],
             stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-            start_new_session=True, close_fds=True,
+            start_new_session=True, close_fds=True, env=child_env,
         )
     except BaseException:
         os.unlink(handoff)
