@@ -7,7 +7,9 @@
 - **`hooks/stop/00-agent-verify-work-complete.sh`** counts a non-empty `background_tasks`
   in an interactive session's Stop payload as a live watcher: the harness re-invokes the
   agent when the task finishes, so an agent waiting on a background merge or review is no
-  longer blocked as if it had abandoned its PR. Headless runs stay excluded (RUSH-2394).
+  longer blocked as if it had abandoned its PR. Like a `--blocked` receipt, it covers
+  waiting only: a PR with conflicts or red checks still blocks. Headless runs stay
+  excluded (RUSH-2394).
   `08-stop-judge.py`'s parent walk also tolerates non-UTF-8 process arguments.
 
 - **`hooks/stop/08-stop-judge.py`** also finds `claude` for sessions launched from a

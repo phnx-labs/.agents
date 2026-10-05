@@ -1036,6 +1036,9 @@ rc=$(CLAUDE_CODE_ENTRYPOINT=sdk-cli FIXTURE_BG_TASKS='[{"id":"b1","status":"runn
 check "headless + open PR + background task still blocks" "$rc" "2"
 rc=$(CLAUDE_CODE_ENTRYPOINT=cli FIXTURE_BG_TASKS='[]' FAKE_GH_STATE=OPEN run_hook "$TBG" "Nothing running." false)
 check "interactive + open PR + empty background_tasks still blocks" "$rc" "2"
+rc=$(CLAUDE_CODE_ENTRYPOINT=cli FIXTURE_BG_TASKS='[{"id":"b1","status":"running"}]' FAKE_GH_STATE=OPEN FAKE_GH_MERGEABLE=CONFLICTING run_hook "$TBG" "Waiting on a background job." false)
+check "interactive + running background task does not excuse a CONFLICTING PR" "$rc" "2"
+grep -q "conflicts or failing checks" "$SANDBOX/stderr" && echo "ok   - conflicting-PR message names the agent's own work" || { echo "FAIL - conflicting-PR message missing"; fail=1; }
 
 # WF3. Keep-moving: a pre-boundary watcher no longer covers unfinished items.
 TKF=$(mk_tasks watcher-remaining)
