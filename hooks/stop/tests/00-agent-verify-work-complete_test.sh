@@ -29,10 +29,16 @@ export VERIFY_WORK_STATE_DB="$SANDBOX/verify-work-state.db"
 mkdir -p "$SANDBOX/bin"
 cat > "$SANDBOX/bin/gh" <<'STUB'
 #!/usr/bin/env bash
-# Minimal gh stub. `gh pr view --json state --jq .state` is used by the open-PR
-# gate and expects a bare state string; `gh pr view --json title,body,headRefName`
-# is used by the delivery gate and expects JSON.
+# Minimal gh stub. `gh pr view --json state,mergeable,statusCheckRollup` is the
+# open-PR probe (FAKE_GH_STATE / FAKE_GH_MERGEABLE / FAKE_GH_CHECKS);
+# `gh pr view --json title,body,headRefName` is used by the delivery gate.
 case "$*" in
+  *state,mergeable,statusCheckRollup*)
+    # The open-PR probe: live state plus the conflict / red-check facts a
+    # --blocked receipt may never cover.
+    case "$*" in *pull/99*) st=OPEN ;; *) st="${FAKE_GH_STATE:-OPEN}" ;; esac
+    printf '{"state":"%s","mergeable":"%s","statusCheckRollup":%s}\n' \
+      "$st" "${FAKE_GH_MERGEABLE:-MERGEABLE}" "${FAKE_GH_CHECKS:-[]}" ;;
   *pull/99*)                          echo "OPEN" ;;
   *title,body,headRefName*)           echo "${FAKE_GH_JSON:-}" ;;
   *--json*)                           echo "${FAKE_GH_STATE:-OPEN}" ;;
@@ -966,6 +972,76 @@ check "positive control: a real done-claim on the same setup reaches the deliver
 grep -q "close out the delivery" "$SANDBOX/stderr" && echo "ok   - positive control hit the delivery chain" || { echo "FAIL - positive control did not reach the delivery chain"; fail=1; }
 rc=$(FAKE_GIT_BRANCH=feature/RUSH-1234 FAKE_LINEAR_STATE=Todo run_hook "$TLIST" "Overall done-ness is tracked in the ticket; the widget is half built." false)
 check "done-claim phrases match on word boundaries only" "$rc" "0"
+
+# OWN5. A receipt never covers agent-fixable facts: an owned open PR whose
+#       mergeable state is CONFLICTING still blocks with the receipt on disk,
+#       and the block says conflicts are the agent's own work.
+rc=$(HOME="$FAKEHOME" FAKE_GH_STATE=OPEN FAKE_GH_MERGEABLE=CONFLICTING run_hook "$T" "Waiting for approval." false)
+check "ownership: receipt does not clear a CONFLICTING PR" "$rc" "2"
+grep -q "your own work" "$SANDBOX/stderr" && echo "ok   - conflict block names the work as the agent's" || { echo "FAIL - conflict block message missing"; fail=1; }
+
+# OWN6. Same for red checks (a failed CheckRun or an errored status context).
+rc=$(HOME="$FAKEHOME" FAKE_GH_STATE=OPEN FAKE_GH_CHECKS='[{"name":"test","status":"COMPLETED","conclusion":"FAILURE"}]' run_hook "$T" "Waiting for approval." false)
+check "ownership: receipt does not clear a PR with a failing check" "$rc" "2"
+rc=$(HOME="$FAKEHOME" FAKE_GH_STATE=OPEN FAKE_GH_CHECKS='[{"context":"ci/legacy","state":"ERROR"}]' run_hook "$T" "Waiting for approval." false)
+check "ownership: receipt does not clear a PR with an errored status" "$rc" "2"
+
+# OWN7. Green, mergeable checks with the receipt -> still passes.
+rc=$(HOME="$FAKEHOME" FAKE_GH_STATE=OPEN FAKE_GH_CHECKS='[{"name":"test","status":"COMPLETED","conclusion":"SUCCESS"},{"name":"lint","status":"IN_PROGRESS","conclusion":""}]' run_hook "$T" "Waiting for approval." false)
+check "ownership: receipt clears a mergeable PR with green or pending checks" "$rc" "0"
+
+# --- watcher freshness: only a watcher armed for the CURRENT goal counts -----
+# The goal boundary is the byte offset verify-work-state.py records when the
+# owner sends a message. A watcher armed before that message covered the old
+# ask, not this one.
+STATE_PY="$HERE/../verify-work-state.py"
+record_boundary() {   # $1 transcript — record an owner prompt at its current end
+  python3 - "$1" <<'PY' | python3 "$STATE_PY" record-prompt >/dev/null
+import hashlib, json, sys
+fid = "fixture-" + hashlib.sha256(sys.argv[1].encode()).hexdigest()[:16]
+print(json.dumps({"session_id": fid, "launch_id": fid, "agent": "claude",
+                  "prompt": "new ask", "transcript_path": sys.argv[1]}))
+PY
+}
+arm_wakeup() {   # $1 transcript, $2 id — append a successfully armed ScheduleWakeup
+  echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"'"$2"'","name":"ScheduleWakeup","input":{"delaySeconds":300,"reason":"re-check CI"}}]}}' >> "$1"
+  echo '{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"'"$2"'","content":[{"type":"text","text":"wakeup scheduled"}]}]}}' >> "$1"
+}
+
+# WF1. Open PR, watcher armed BEFORE the owner's latest message -> blocks.
+# The first stop (before the new message) passes on that watcher and records
+# the PR in the session-owned ledger, which is how ownership survives a prompt.
+TWF=$(mk_transcript create+monitor)
+rc=$(FAKE_GH_STATE=OPEN run_hook "$TWF" "Watcher armed; waiting on CI." false)
+check "open PR + watcher armed for the current goal passes" "$rc" "0"
+record_boundary "$TWF"
+echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"on it"}]}}' >> "$TWF"
+rc=$(FAKE_GH_STATE=OPEN run_hook "$TWF" "Still waiting on CI." false)
+check "open PR + watcher armed before the latest owner message blocks" "$rc" "2"
+
+# WF2. Same PR, watcher re-armed AFTER that message -> passes.
+arm_wakeup "$TWF" toolu_wf2
+rc=$(FAKE_GH_STATE=OPEN run_hook "$TWF" "Still waiting on CI." false)
+check "open PR + watcher armed after the latest owner message passes" "$rc" "0"
+
+# WF3. Keep-moving: a pre-boundary watcher no longer covers unfinished items.
+TKF=$(mk_tasks watcher-remaining)
+record_boundary "$TKF"
+echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"on it"}]}}' >> "$TKF"
+rc=$(run_hook "$TKF" "Wiring is next." false)
+check "pending checklist + watcher armed before the latest owner message blocks" "$rc" "2"
+grep -q "AskUserQuestion" "$SANDBOX/stderr" && { echo "FAIL - keep-moving message recommends AskUserQuestion"; fail=1; } || echo "ok   - keep-moving message does not recommend AskUserQuestion"
+grep -q "feed post" "$SANDBOX/stderr" && echo "ok   - keep-moving message names the --blocked ask" || { echo "FAIL - keep-moving message omits the --blocked ask"; fail=1; }
+arm_wakeup "$TKF" toolu_wf3
+rc=$(run_hook "$TKF" "Wiring is next." false)
+check "pending checklist + watcher armed after the latest owner message passes" "$rc" "0"
+
+# WF4. Keep-moving: a --blocked receipt on disk for this session covers it.
+TKR=$(mk_tasks one-remaining)
+SIDK="fixture-$(printf '%s' "$TKR" | sha256sum | cut -c1-16)"
+printf '{"blocked":true}' > "$FAKEHOME/.agents/.history/feed/block-${SIDK}.json"
+rc=$(HOME="$FAKEHOME" run_hook "$TKR" "Wiring needs the owner's credential." false)
+check "pending checklist + --blocked receipt passes" "$rc" "0"
 
 # CAP1/CAP2. Identical-state cap (RUSH-3032 item a): with 2 prior fires in
 # the transcript, the FIRST evaluation of a given state blocks; a SECOND

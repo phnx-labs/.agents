@@ -10,11 +10,14 @@
   the command-handback check (0 of 4 demands met in its own telemetry), the
   parking / stand-down lists, and the generic "you claimed this work is done"
   self-audit. The open-PR check (19/40 met) no longer reads handoff, blocker, or
-  plan-mode prose: an owned open PR passes only on an armed durable watcher, a
-  `--blocked` feed receipt on disk for the session, or `permission_mode: plan` in
-  the Stop payload. The keep-moving checklist check (3/5 met) passes only on an
-  armed durable watcher, `AskUserQuestion`/`ExitPlanMode` as the last tool call,
-  or plan mode. A done-claim now only triggers the delivery chain, matches on
+  plan-mode prose: an owned open PR passes only on a durable watcher armed after
+  the owner's latest message, `permission_mode: plan` in the Stop payload, or a
+  `--blocked` feed receipt on disk for the session — and the receipt never covers
+  a PR that `gh` reports as CONFLICTING or with a failed/errored/timed-out/
+  cancelled check. The keep-moving checklist check (3/5 met) passes only on such a
+  fresh watcher, a `--blocked` receipt, `ExitPlanMode`/`AskUserQuestion` as the
+  last tool call of the current goal, or plan mode; its message no longer
+  recommends `AskUserQuestion`. A done-claim now only triggers the delivery chain, matches on
   word boundaries, and no longer counts a bare "done." / "done!" (a list ending
   "…; done." used to drive a block). The delivery chain drops its visual
   read-back demand, which only recognized screenshots taken through local

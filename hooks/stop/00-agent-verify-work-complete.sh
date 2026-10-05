@@ -6,11 +6,12 @@ set -euo pipefail
 # is phrased.
 #
 #   open-pr      a PR this session created or drove is still OPEN, and no
-#                durable watcher, filed --blocked receipt, or plan mode covers it
+#                fresh durable watcher, plan mode, or filed --blocked receipt
+#                (only for a PR without conflicts or red checks) covers it
 #   live-team    teammates are RUNNING and nothing is armed to re-invoke you
 #   keep-moving  the session's own checklist has unfinished items, and no
-#                durable watcher, AskUserQuestion/ExitPlanMode, or plan mode
-#                covers them
+#                fresh durable watcher, filed --blocked receipt, last-tool
+#                ExitPlanMode/AskUserQuestion, or plan mode covers them
 #   delivery     a done-claim (or PR/merge finish line) on a session with real
 #                delivery evidence, checked by verify-delivery-chain.py
 #
@@ -167,7 +168,12 @@ fi
 # --- shared transcript facts -------------------------------------------------
 # Computed lazily (at most once per stop) and only when a check needs them.
 #
-# LIVE_WATCHER — a durable watcher was ARMED this session: a native
+# Both facts read only the current goal's transcript suffix (from
+# STATE_GOAL_OFFSET, the byte offset verify-work-state.py recorded at the
+# owner's latest message): a watcher armed for an earlier ask does not cover
+# the current one. With no recorded boundary the offset is 0 (whole transcript).
+#
+# LIVE_WATCHER — a durable watcher was ARMED for this goal: a native
 # ScheduleWakeup / Monitor tool_use (the harness owns the re-invoke) or an
 # `agents monitors add` at a command position (the daemon owns the schedule),
 # each counted only when its paired tool_result came back WITHOUT error —
@@ -179,7 +185,7 @@ fi
 # that hands control to the user through AskUserQuestion / ExitPlanMode is
 # recognized structurally rather than by a question mark in the prose.
 transcript_facts() {
-  python3 - "$TRANSCRIPT_PATH" <<'PY' 2>/dev/null || echo "no -"
+  python3 - "$TRANSCRIPT_PATH" "${STATE_GOAL_OFFSET:-0}" <<'PY' 2>/dev/null || echo "no -"
 import json, re, sys
 CMD_POS = r'(?:^|[\n;&]\s*|\$\(\s*)'
 MONITORS_ADD = re.compile(CMD_POS + r'agents monitors add\b')
@@ -187,8 +193,10 @@ wake_ids = set()
 ok_ids = set()
 last_tool = ''
 try:
-    with open(sys.argv[1]) as f:
+    with open(sys.argv[1], 'rb') as f:
+        f.seek(max(0, int(sys.argv[2] or 0)))
         for raw in f:
+            raw = raw.decode('utf-8', 'replace')
             if 'tool_use' not in raw and 'tool_result' not in raw:
                 continue
             try:
@@ -246,10 +254,12 @@ block_receipt="no"
 # stopped with it unmerged.
 #
 # An open PR is covered — the stop passes — only by a fact:
-#   - a durable watcher armed this session (LIVE_WATCHER), which owns the merge
-#     after this agent exits, or
+#   - a durable watcher armed for the current goal (LIVE_WATCHER), which owns
+#     the merge after this agent exits, or
 #   - a --blocked feed receipt on disk for this session (block_receipt): the
-#     owner-only gate was filed where the owner sees it, or
+#     owner-only gate was filed where the owner sees it. A receipt never covers
+#     a PR whose mergeable state is CONFLICTING or whose checks are red — those
+#     are the agent's own work — or
 #   - the Stop payload's permission_mode is "plan" (the agent physically cannot
 #     push or merge).
 # What the final message says about handoffs, blockers, or plan mode is not read.
@@ -265,6 +275,25 @@ block_receipt="no"
 # PR never triggers the check. Fail-open: no gh, network down, parse errors —
 # allow the stop.
 responsible_prs=""
+# Reads one `gh pr view --json state,mergeable,statusCheckRollup` document and
+# prints "<STATE>[ conflicting][ red-checks]". A check is red when a CheckRun
+# concluded FAILURE/ERROR/TIMED_OUT/CANCELLED or a StatusContext reads
+# FAILURE/ERROR.
+PR_FACTS_PY='
+import json, sys
+d = json.load(sys.stdin)
+out = [str(d.get("state") or "")]
+if str(d.get("mergeable") or "").upper() == "CONFLICTING":
+    out.append("conflicting")
+RED = {"FAILURE", "ERROR", "TIMED_OUT", "CANCELLED"}
+for c in d.get("statusCheckRollup") or []:
+    if not isinstance(c, dict):
+        continue
+    if str(c.get("conclusion") or "").upper() in RED or str(c.get("state") or "").upper() in {"FAILURE", "ERROR"}:
+        out.append("red-checks")
+        break
+print(" ".join(out))
+'
 if command -v gh >/dev/null 2>&1; then
   responsible_prs=$(python3 -c "
 import json, re, sys
@@ -375,12 +404,20 @@ except Exception:
     record_check_ok open-pr skipped no-owned-pr
   fi
   if [ -n "$responsible_prs" ]; then
+    # One probe per PR reads its live state plus the two agent-fixable facts a
+    # receipt may never cover: merge conflicts and red checks. Fail-open as
+    # before: a probe error reads as not-OPEN.
     open_prs=""
+    unfit_prs=""
     while IFS= read -r pr_url; do
       [ -z "$pr_url" ] && continue
-      state=$(_to 5 gh pr view "$pr_url" --json state --jq .state 2>/dev/null || echo "")
+      pr_facts=$(_to 5 gh pr view "$pr_url" --json state,mergeable,statusCheckRollup 2>/dev/null | python3 -c "$PR_FACTS_PY" 2>/dev/null || echo "")
+      state=${pr_facts%% *}
       if [ "$state" = "OPEN" ]; then
         open_prs="${open_prs}${pr_url}"$'\n'
+        case "$pr_facts" in
+          *" conflicting"*|*" red-checks"*) unfit_prs="${unfit_prs}${pr_url} (${pr_facts#OPEN })"$'\n' ;;
+        esac
       fi
     done <<< "$responsible_prs"
 
@@ -428,6 +465,20 @@ except Exception:
 
       if [ "$LIVE_WATCHER" = "yes" ]; then
         record_check_ok open-pr passed durable-watcher-armed
+      elif [ "$block_receipt" = "yes" ] && [ -n "$unfit_prs" ]; then
+        # A receipt says the owner was asked; it cannot hand off conflicts or
+        # red checks, which are the agent's own work.
+        cat >&2 <<UNFITMSG
+STOP — a --blocked receipt is on file, but these open PRs have merge conflicts
+or failing checks:
+
+$unfit_prs
+Conflicts and red CI are your own work, never the owner's: rebase onto the base
+branch and re-push, or fix forward until checks are green. The receipt covers
+only what no agent action can satisfy.
+UNFITMSG
+        record_block open-pr receipt-but-conflicts-or-red-ci
+        exit 2
       elif [ "$block_receipt" = "yes" ]; then
         record_check_ok open-pr passed blocked-receipt-filed
       elif [ "${PERMISSION_MODE:-}" = "plan" ]; then
@@ -613,9 +664,10 @@ fi
 #
 # Fires when the folded checklist has >=1 remaining item, unless a fact covers
 # the stop:
-#   - a durable watcher was armed this session (LIVE_WATCHER), or
-#   - the last tool_use was AskUserQuestion or ExitPlanMode (control is with
-#     the user, structurally), or
+#   - a durable watcher was armed for the current goal (LIVE_WATCHER), or
+#   - a --blocked feed receipt is on disk for this session (block_receipt), or
+#   - the last tool_use this goal was ExitPlanMode or AskUserQuestion (control
+#     is with the user, structurally), or
 #   - the Stop payload's permission_mode is "plan".
 # Wording in the final message is not read. The checklist state is folded by
 # todo-progress.py (snapshot TodoWrite/TodoList/todo_write/update_plan + Claude
@@ -631,8 +683,10 @@ if echo "$todo_json" | grep -q '"remaining": [1-9]'; then
   load_transcript_facts
   if [ "$LIVE_WATCHER" = "yes" ]; then
     task_reason="durable-watcher-armed"
-  elif [ "$LAST_STRUCT_TOOL" = "AskUserQuestion" ] || [ "$LAST_STRUCT_TOOL" = "ExitPlanMode" ]; then
-    task_reason="asked-user-via-tool"
+  elif [ "$block_receipt" = "yes" ]; then
+    task_reason="blocked-receipt-filed"
+  elif [ "$LAST_STRUCT_TOOL" = "ExitPlanMode" ] || [ "$LAST_STRUCT_TOOL" = "AskUserQuestion" ]; then
+    task_reason="control-with-user-via-tool"
   elif [ "${PERMISSION_MODE:-}" = "plan" ]; then
     task_reason="plan-mode"
   else
@@ -662,9 +716,9 @@ except Exception:
   repeat_guidance "unfinished checklist items" "$(prior_fires 'our task list still has')"
   cat >&2 <<TASKMSG
 STOP — your task list still has ${task_remaining} unfinished item(s); next:
-"${task_next}". Advance it now (TaskUpdate), delete items no longer needed
-(status=deleted), ask the user with AskUserQuestion, or arm a durable watcher
-that owns the remaining step.
+"${task_next}". Advance it now (TaskUpdate), or mark items that are no longer
+needed status=deleted. If it genuinely needs the owner, file the ask:
+agents feed post "<ask>" --blocked
 TASKMSG
   record_block keep-moving unfinished-checklist
   exit 2

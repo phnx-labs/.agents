@@ -125,7 +125,7 @@ implementation. See [§Subrule hooks](#subrule-hooks-rules-not-this-tree).
 
 | Hook | What it does |
 |---|---|
-| [`00-agent-verify-work-complete.sh`](./stop/00-agent-verify-work-complete.sh) | Blocks a stop only on facts: an owned PR still open with no armed watcher, filed `--blocked` receipt, or plan mode; running teammates with nothing armed; unfinished checklist items; a delivery that has not closed its Linear/docs/release loop. Final-message wording never blocks or clears a check |
+| [`00-agent-verify-work-complete.sh`](./stop/00-agent-verify-work-complete.sh) | Blocks a stop only on facts: an owned PR still open with no watcher armed for the current goal, no plan mode, and no filed `--blocked` receipt (a receipt never covers conflicts or red checks); running teammates with nothing armed; unfinished checklist items; a delivery that has not closed its Linear/docs/release loop. Final-message wording never blocks or clears a check |
 | [`verify-work-state.py`](./stop/verify-work-state.py) | Goal-scoped positive-evidence classifier, session-owned entity ledger, and structured check telemetry used by `verify-work-complete` |
 | [`verify-delivery-chain.py`](./stop/verify-delivery-chain.py) | Goal-scoped delivery-chain verifier invoked by the Stop check (not registered alone) |
 | [`check-outcome-backfill.py`](./stop/check-outcome-backfill.py) | Offline: derives whether each recorded block was followed by the specific thing that block demanded; never on a hook path |
