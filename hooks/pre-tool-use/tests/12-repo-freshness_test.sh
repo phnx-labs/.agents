@@ -50,5 +50,45 @@ check "non-repo" '[ -z "$out" ] && [ $rc -eq 0 ]'
 out=$(printf 'not json' | python3 "$HOOK"); rc=$?
 check "malformed" '[ -z "$out" ] && [ $rc -eq 0 ]'
 
+# --- review findings (PR #487) ---------------------------------------------
+fresh_pair() {  # $1 = name; makes origin + primary clone behind by one commit adding "$2"
+  git init -q --bare -b main "$T/$1.git"
+  git clone -q "$T/$1.git" "$T/$1" 2>/dev/null
+  ( cd "$T/$1" && echo a > a.txt && git add a.txt && git commit -qm a && git push -q origin main )
+  git clone -q "$T/$1.git" "$T/$1-up" 2>/dev/null
+  ( cd "$T/$1-up" && mkdir -p "$(dirname "$2")" && echo tracked > "$2" && git add "$2" && git commit -qm up && git push -q origin main )
+}
+
+# 7. untracked file collides with an incoming tracked file -> git refuses; note gives git's reason
+fresh_pair col b.txt
+echo mine > "$T/col/b.txt"
+out=$(run "$T/col/a.txt")
+check "untracked-collision-reason" 'printf "%s" "$out" | grep -q "git refused the fast-forward" && ! printf "%s" "$out" | grep -q "0 local commit" && grep -q mine "$T/col/b.txt"'
+
+# 8. IGNORED local file that upstream now tracks -> never overwritten
+fresh_pair ign b.cfg
+printf 'b.cfg\n' > "$T/ign/.git/info/exclude"; echo precious > "$T/ign/b.cfg"
+out=$(run "$T/ign/a.txt")
+check "ignored-file-protected" 'grep -q precious "$T/ign/b.cfg" && printf "%s" "$out" | grep -q "overwrite ignored local file"'
+
+# 9. six concurrent tool calls in one window -> exactly one does the work
+unset REPO_FRESHNESS_WINDOW_SEC
+fresh_pair race r.txt
+for i in 1 2 3 4 5 6; do run "$T/race/a.txt" > "$T/race-out.$i" & done; wait
+notes=$(cat "$T"/race-out.* | grep -c "repo-freshness")
+check "concurrent-single-claim" '[ "$notes" -eq 1 ] && [ -f "$T/race/r.txt" ]'
+export REPO_FRESHNESS_WINDOW_SEC=0
+
+# 10. Bash payload (no file path) uses the session cwd; camelCase toolInput (Grok) is read
+fresh_pair bsh x.txt
+out=$(printf '{"tool_name":"Bash","tool_input":{"command":"ls"},"cwd":"%s"}' "$T/bsh" | python3 "$HOOK")
+check "bash-cwd" '[ -f "$T/bsh/x.txt" ] && printf "%s" "$out" | grep -q Fast-forwarded'
+fresh_pair cml y.txt
+out=$(printf '{"toolName":"Read","toolInput":{"filePath":"%s"}}' "$T/cml/a.txt" | python3 "$HOOK")
+check "camelcase-payload" '[ -f "$T/cml/y.txt" ]'
+
+# 11. state lives under the hook-state convention
+check "state-path" '[ -d "$HOME/.agents/.cache/state/hooks/repo-freshness" ]'
+
 echo "repo-freshness: $pass passed, $fail failed"
 [ "$fail" -eq 0 ]

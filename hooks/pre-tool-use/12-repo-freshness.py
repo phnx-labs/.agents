@@ -27,7 +27,9 @@ import time
 
 WINDOW = int(os.environ.get("REPO_FRESHNESS_WINDOW_SEC", "600"))
 FETCH_TIMEOUT = 4
-STATE = os.path.join(os.path.expanduser("~"), ".agents", ".cache", "state", "repo-freshness")
+# Disposable hook state lives under ~/.agents/.cache/state/hooks/<hook-id>/ (hooks/AGENTS.md).
+STATE = os.path.join(os.path.expanduser("~"), ".agents", ".cache", "state", "hooks", "repo-freshness")
+ENV = {**os.environ, "GIT_TERMINAL_PROMPT": "0"}
 
 
 def primary_top(path: str) -> str | None:
@@ -36,10 +38,10 @@ def primary_top(path: str) -> str | None:
     if not os.path.isdir(d):
         d = os.path.dirname(d)
     while True:
-        git = os.path.join(d, ".git")
-        if os.path.isdir(git):
+        git_dir = os.path.join(d, ".git")
+        if os.path.isdir(git_dir):
             return d
-        if os.path.isfile(git):  # linked worktree or submodule: the agent's own tree
+        if os.path.isfile(git_dir):  # linked worktree or submodule: the agent's own tree
             return None
         parent = os.path.dirname(d)
         if parent == d:
@@ -48,29 +50,41 @@ def primary_top(path: str) -> str | None:
 
 
 def git(top: str, *args: str, timeout: float = 3) -> subprocess.CompletedProcess:
-    return subprocess.run(["git", "-C", top, *args], capture_output=True, text=True, timeout=timeout)
+    return subprocess.run(["git", "-C", top, *args], capture_output=True, text=True,
+                          timeout=timeout, stdin=subprocess.DEVNULL, env=ENV)
 
 
-def due(top: str) -> bool:
-    """True at most once per WINDOW per repo; claims the window by touching a stamp."""
+def claim(top: str) -> bool:
+    """Atomically claim this repo's current window: exactly one caller wins per window.
+
+    The claim is an O_EXCL create of a file named for the window bucket, so concurrent
+    tool calls cannot all pass. Claims older than a day are pruned.
+    """
     os.makedirs(STATE, exist_ok=True)
-    stamp = os.path.join(STATE, hashlib.sha1(top.encode()).hexdigest())
+    key = hashlib.sha1(top.encode()).hexdigest()
+    bucket = int(time.time() // max(WINDOW, 1)) if WINDOW > 0 else time.time_ns()
     try:
-        if time.time() - os.path.getmtime(stamp) < WINDOW:
-            return False
-    except FileNotFoundError:
-        pass
-    with open(stamp, "w"):
-        pass
+        os.close(os.open(os.path.join(STATE, f"{key}.{bucket}"), os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600))
+    except FileExistsError:
+        return False
+    cutoff = time.time() - 86400
+    for name in os.listdir(STATE):
+        path = os.path.join(STATE, name)
+        try:
+            if os.path.getmtime(path) < cutoff:
+                os.remove(path)
+        except OSError:
+            pass
     return True
 
 
 def main() -> int:
     payload = json.load(sys.stdin)
-    inputs = payload.get("tool_input") or {}
-    target = inputs.get("file_path") or inputs.get("notebook_path") or inputs.get("path") or payload.get("cwd") or os.getcwd()
+    inputs = payload.get("tool_input") or payload.get("toolInput") or {}
+    target = (inputs.get("file_path") or inputs.get("filePath") or inputs.get("notebook_path")
+              or inputs.get("path") or payload.get("cwd") or os.getcwd())
     top = primary_top(str(target))
-    if not top or not due(top):
+    if not top or not claim(top):
         return 0
 
     branch = git(top, "symbolic-ref", "--quiet", "--short", "HEAD").stdout.strip()
@@ -89,13 +103,29 @@ def main() -> int:
         return 0
 
     dirty = bool(git(top, "status", "--porcelain", "--untracked-files=no").stdout.strip())
-    if not dirty and ahead == 0 and git(top, "merge", "--ff-only", "--quiet", upstream).returncode == 0:
-        note = f"[repo-freshness] Fast-forwarded {top} ({branch}) by {behind} commit(s) to {upstream}; you are reading current code."
+    # A fast-forward silently overwrites an IGNORED local file that upstream now tracks;
+    # refuse that case instead of losing the file.
+    incoming = set(git(top, "diff", "--name-only", f"HEAD..{upstream}").stdout.split("\n")) - {""}
+    ignored = set(git(top, "ls-files", "-o", "-i", "--exclude-standard").stdout.split("\n")) - {""}
+    clobber = sorted(incoming & ignored)
+
+    if dirty:
+        reason = "it has uncommitted changes"
+    elif ahead:
+        reason = f"it has {ahead} local commit(s)"
+    elif clobber:
+        reason = f"fast-forwarding would overwrite ignored local file(s): {', '.join(clobber[:5])}"
     else:
-        why = "it has uncommitted changes" if dirty else f"it has {ahead} local commit(s)"
-        note = (f"[repo-freshness] {top} ({branch}) is {behind} commit(s) behind {upstream} and was not "
-                f"fast-forwarded because {why}. Do not treat it as current: read with "
-                f"`git -C {top} show {upstream}:<path>`, or work in a fresh worktree from {upstream}.")
+        merged = git(top, "merge", "--ff-only", "--quiet", upstream, timeout=FETCH_TIMEOUT)
+        if merged.returncode == 0:
+            note = f"[repo-freshness] Fast-forwarded {top} ({branch}) by {behind} commit(s) to {upstream}; you are reading current code."
+            print(json.dumps({"hookSpecificOutput": {"hookEventName": "PreToolUse", "additionalContext": note}}))
+            return 0
+        detail = " ".join((merged.stderr or merged.stdout).split())[:200] or f"git exited {merged.returncode}"
+        reason = f"git refused the fast-forward ({detail})"
+    note = (f"[repo-freshness] {top} ({branch}) is {behind} commit(s) behind {upstream} and was not "
+            f"fast-forwarded because {reason}. Do not treat it as current: read with "
+            f"`git -C {top} show {upstream}:<path>`, or work in a fresh worktree from {upstream}.")
     print(json.dumps({"hookSpecificOutput": {"hookEventName": "PreToolUse", "additionalContext": note}}))
     return 0
 
