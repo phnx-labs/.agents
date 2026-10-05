@@ -8,7 +8,8 @@
   `gh pr merge --admin`, an agent is now refused `agents projects prs merge … --admin`
   (the CLI's bypass, which only a human's confirm click in AGI Menu passes) and a raw
   `gh api -X PUT …/pulls/<n>/merge` (any spelling of the method: `-XPUT`,
-  `--method PUT`, `--method=PUT`, lowercase). With `enforce_admins` off, the shared
+  `--method PUT`, `--method=PUT`, lowercase), and a raw GraphQL `mergePullRequest`
+  mutation. With `enforce_admins` off, the shared
   owner account could otherwise merge past pending or red required checks. A `GET`
   of the merge path and documentation text that mentions either form still pass.
   `merge-guard_test.sh` now runs with a temporary `HOME`, so a machine whose user

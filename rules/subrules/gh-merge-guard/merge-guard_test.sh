@@ -318,7 +318,7 @@ FAKE_MG_DIFF_FILES=$'config/settings.yaml\ndata/fixtures.json\nrules/subrules/fo
 FAKE_MG_DIFF_FILES='' \
   check 0 "non-code fast path: empty diff falls through to full review (has APPROVE)" "gh pr $M 80"
 
-# --- Other admin-bypass merge paths (2026-10-05) ----------------------------
+# --- Other admin-bypass merge paths (2026-10-04) ----------------------------
 # With enforce_admins off, the shared owner account can merge past pending or red
 # required checks through the CLI's --admin flag or a raw REST merge PUT. Only a
 # human's confirm click in AGI Menu may pass --admin; an agent never may.
@@ -348,6 +348,12 @@ check 0 "REST GET of merged state"          "gh api repos/acme/widgets/pulls/42/
 check 0 "REST PUT on another PR endpoint"   "gh api -X PUT repos/acme/widgets/pulls/42/update-branch"
 check 0 "commit message documents the REST merge" \
   "git commit -m \"guard: deny gh api -X PUT repos/o/r/pulls/1/$M\""
+
+G="mergePull""Request"
+check 2 "raw GraphQL merge mutation"        "gh api graphql -f query='mutation { $G(input: {pullRequestId: \"PR_1\"}) { clientMutationId } }'"
+check 0 "GraphQL auto-merge stays allowed"  "gh api graphql -f query='mutation { enablePullRequestAutoMerge(input: {pullRequestId: \"PR_1\"}) { clientMutationId } }'"
+check 0 "PR body documents the GraphQL merge" \
+  "gh pr create --body \"guard denies gh api graphql $G\""
 
 # Fail closed: an unparseable payload carrying either new form is refused.
 printf '%s' "{malformed \"command\":\"agents $P rush $A\"" | "$GUARD" >/dev/null 2>&1
