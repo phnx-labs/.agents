@@ -310,11 +310,30 @@ agreement_first          agent agrees or concedes with the owner before showing 
 Return an empty list only if none apply."""
 
 
+def claude_binary() -> str | None:
+    """The claude binary for the judge call.
+
+    Hook processes do not reliably inherit CLAUDE_CODE_EXECPATH, and a version home's
+    claude is not on PATH, so the installed layout decides: the hook lives at
+    <version>/home/.claude/hooks/<this file> and its own claude at
+    <version>/node_modules/.bin/claude.
+    """
+    env_path = os.environ.get("CLAUDE_CODE_EXECPATH")
+    if env_path and os.access(env_path, os.X_OK):
+        return env_path
+    here = Path(os.path.abspath(__file__))
+    if len(here.parents) > 3:
+        installed = here.parents[3] / "node_modules" / ".bin" / "claude"
+        if os.access(installed, os.X_OK):
+            return str(installed)
+    return shutil.which("claude")
+
+
 def judge(snapshot: dict, caps: dict) -> dict:
     """One extraction call. Returns {outcome, detail, items, latency_ms, in_tok, out_tok}."""
     result = {"outcome": "error", "detail": "", "items": [], "latency_ms": None,
               "in_tok": None, "out_tok": None}
-    claude = os.environ.get("CLAUDE_CODE_EXECPATH") or shutil.which("claude")
+    claude = claude_binary()
     if not claude:
         result["detail"] = "no-claude"
         return result
