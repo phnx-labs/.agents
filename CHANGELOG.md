@@ -40,6 +40,10 @@
 
 ### Fixed
 
+- **Portable `/plan` skill:** add a thin skill entry point to the canonical
+  `swarm:plan` contract. Skill sync can now replace an older standalone planning
+  copy instead of leaving it stale while only the plugin receives updates.
+
 - **`hooks/session-start/04-session-identity.sh`**. On Linux, a `claude` started bare in a
   terminal (for example after `/exit`) now registers under its own pid. Claude runs hooks
   as `/bin/sh -c <command>`, and dash forks rather than execs, so the hook keyed its

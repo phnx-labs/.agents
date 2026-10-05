@@ -46,6 +46,7 @@ out-of-band) — after the self-unblock ladder is exhausted.
 | Skill | What it does |
 |---|---|
 | [`artifacts`](./artifacts/SKILL.md) | Author plans, reports, and visuals as Markdown, then render them to branded light/dark HTML with `artifacts-cli`. One pipeline; `kind: plan` and `kind: visual` carry the differences |
+| [`plan`](./plan/SKILL.md) | Portable entry point for the canonical `swarm:plan` skill, including goals, expected outcomes, success checks and visual artifacts |
 | [`docs`](./docs/SKILL.md) | Write documentation — user-facing, technical, runbooks, onboarding, changelogs, and AGENTS.md (`write-agents-md.md`) |
 
 `docs` covers system docs; for directory agent contracts use `docs/write-agents-md.md`.
