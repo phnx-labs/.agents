@@ -11,7 +11,7 @@
 # History: this body was copy-pasted verbatim into 11 hook scripts (git-guard,
 # main-branch-guard, merge-guard, rm-guard, secrets-guard,
 # large-file-add-guard, teams-roster-guard, pr-description-reminder,
-# public-artifact-guard, 01-git-require-clean-tree, 09-git-pull-forward). A
+# public-artifact-guard, 01-git-require-clean-tree). A
 # parser fix therefore had to land in 11 places and demonstrably did not — the
 # camelCase alternate-path arg reached main-branch-guard first and the rest
 # open-coded the same fallback at their call sites instead. One definition, one

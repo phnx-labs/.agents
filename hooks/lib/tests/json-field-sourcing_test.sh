@@ -71,16 +71,6 @@ printf '%s\n' "$CASES" | while IFS='|' read -r rel want cmd; do
   echo pass >>"$SANDBOX/results"
 done
 
-# 09-git-pull-forward is SessionStart (payload has no command); test separately.
-run_isolated "hooks/session-start/09-git-pull-forward.sh" ""
-if [ "$RC" = 0 ]; then
-  printf 'ok   - 09-git-pull-forward.sh fails open (exit 0) when the shared lib is unreachable\n'
-  echo pass >>"$SANDBOX/results"
-else
-  printf 'FAIL - 09-git-pull-forward.sh: lib-absent expected rc=0, got rc=%s\n' "$RC"
-  echo fail >>"$SANDBOX/results"
-fi
-
 # grep -c prints the count (0 when none) even as it exits 1 on no match, so take
 # its stdout and don't chain `|| echo 0` (which would append a second line).
 pass=$(grep -c '^pass$' "$SANDBOX/results" 2>/dev/null); pass=${pass:-0}

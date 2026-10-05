@@ -36,12 +36,14 @@ hooks:
     script: session-start/05-session-start-autosync.sh
     timeout: 5
 
-  # SessionStart: fast-forward the cwd git repo when the tree is clean.
-  # Never force, never rebase over local commits, never autostash.
-  git-pull-forward:
-    events: [SessionStart]
-    script: session-start/09-git-pull-forward.sh
-    timeout: 20
+  # Before a tool touches a PRIMARY checkout (once per repo per 10 min): fetch,
+  # fast-forward when clean and only behind, else tell the agent the exact lag.
+  # Replaces the SessionStart-only, cwd-only git-pull-forward.
+  repo-freshness:
+    events: [PreToolUse]
+    matcher: Read|Grep|Glob|Bash|Edit|Write|MultiEdit|NotebookEdit
+    script: pre-tool-use/12-repo-freshness.py
+    timeout: 8
   verify-work-complete:
     events:
       - Stop
@@ -203,14 +205,6 @@ hooks:
     events:
       - UserPromptSubmit
     script: user-prompt-submit/03-vacation-recap.py
-    timeout: 5
-  # Owner directive (2026-08-15) after an agent wrote into a primary checkout
-  # on main: keep the worktree law inside every context window, every prompt.
-  # main-branch-guard stays the hard enforcement; this is the standing reminder.
-  worktree-law-reminder:
-    events:
-      - UserPromptSubmit
-    script: user-prompt-submit/05-worktree-law-reminder.sh
     timeout: 5
   investigate-first-reminder:
     events:
