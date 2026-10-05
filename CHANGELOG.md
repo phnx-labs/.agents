@@ -15,6 +15,11 @@
 
 ### Changed
 
+- **Planning expectations:** `/plan` includes visual artifact rendering and
+  inspection without a separate `/visualize` invocation. Plans state the goal,
+  observable expected outcome and success checks before implementation details;
+  the shared artifact contract and presentation critic check the same requirement.
+
 - **Artifact communication across `/visualize`, `/plan` and reports:** lead with
   the conclusion, choose prose/tables/figures by the reader's task, preserve exact
   evidence, and use discoverable reusable components for inspectable detail.

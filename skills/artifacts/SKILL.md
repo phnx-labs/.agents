@@ -103,6 +103,11 @@ The kind changes the content contract, not the rendering pipeline.
    Read [references/authoring.md](references/authoring.md) before adding HTML or
    SVG; follow its diagram recipe.
 
+   State the artifact's purpose and what the reader should understand, decide or
+   expect from it near the beginning. Plans must make the goal, observable expected
+   outcome and success checks visible before implementation details; use the
+   planning brief rather than inventing targets or hiding acceptance in disclosures.
+
    Design a reading path: the conclusion and consequence first, the important
    comparison or relationship next, then inspectable detail and sources. A reader
    should know what matters before opening anything. Preserve correct terms,
