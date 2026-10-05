@@ -2,6 +2,24 @@
 
 ## [Unreleased]
 
+### Added
+
+- **`hooks/stop/08-stop-judge.py` measures a model-based Stop judge without
+  enforcing it.** Log-only: it always exits 0. On each interactive Claude stop it
+  makes one `claude-haiku-4-5` extraction call over a code-built snapshot (the
+  owner's latest request, tool counts since it, the final message, and the names
+  of this machine's secrets bundles and browser profiles), and code decides what
+  a judge would block: no investigation tool since the owner's message, the owner
+  asked to merge, publish, or run something, an announced step left untaken with
+  no live background task or session cron, a credential a bundle already covers,
+  an unverified blocker. Owner decisions (scope, taste, destructive sign-off) and
+  done/wait claims never count. Each stop records a row (reason code, item kinds,
+  latency, tokens, outcome `ok|timeout|no-auth|parse-fail|error`, and a sha256 of
+  the final message) in `~/.agents/.history/hooks/system.stop-judge/state.db`; no
+  message text is stored. Auth uses `CLAUDE_CODE_OAUTH_TOKEN`, else the session
+  account's token from a file-backed `auth` bundle; with neither, the row says
+  `no-auth`.
+
 ### Changed
 
 - **`gh-merge-guard` also denies the other admin-bypass merge paths.** Besides
