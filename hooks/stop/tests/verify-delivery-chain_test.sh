@@ -113,15 +113,18 @@ else
   echo "FAIL: prior goal evidence poisoned the current diagnostic goal:"; echo "$out5"; fail=1
 fi
 
-# --- Test 6: a scratch visual shipped without read-back is a real delivery --------
+# --- Test 6: a scratch visual shipped without an image read-back is not a demand ----
+# The read-back demand only recognized screenshots taken one specific way, so it
+# blocked sessions that had read the visual back by other means. It is removed;
+# the chain must say nothing about a shipped visual.
 tr6="$(mktemp)"
 printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Write","input":{"file_path":"/tmp/mockup.html"}}]}}' > "$tr6"
-printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Bash","input":{"command":"scp /tmp/mockup.html zion:/tmp/mockup.html"}}]}}' >> "$tr6"
+printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Bash","input":{"command":"scp /tmp/mockup.html remote-box:/tmp/mockup.html"}}]}}' >> "$tr6"
 out6="$(run_gate "$d1" "$tr6")"
-if printf '%s' "$out6" | grep -q "Visual delivered without image read-back"; then
-  echo "PASS: scratch visual delivery requires image read-back"
+if [ -z "$out6" ]; then
+  echo "PASS: shipped scratch visual makes no read-back demand"
 else
-  echo "FAIL: scratch visual delivery passed without image read-back:"; echo "$out6"; fail=1
+  echo "FAIL: delivery chain still demands something for a shipped scratch visual:"; echo "$out6"; fail=1
 fi
 
 # --- Test 7: merged but still under [Unreleased], in a repo that has tags -> gate FIRES --

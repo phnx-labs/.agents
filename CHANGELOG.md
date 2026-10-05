@@ -4,6 +4,24 @@
 
 ### Changed
 
+- **`hooks/stop/00-agent-verify-work-complete.sh` decides only on facts.** Checks
+  whose only signal was phrase-matching the final message are deleted: the
+  argue-past ramp (a retried stop now always passes), the swarm integration check,
+  the command-handback check (0 of 4 demands met in its own telemetry), the
+  parking / stand-down lists, and the generic "you claimed this work is done"
+  self-audit. The open-PR check (19/40 met) no longer reads handoff, blocker, or
+  plan-mode prose: an owned open PR passes only on an armed durable watcher, a
+  `--blocked` feed receipt on disk for the session, or `permission_mode: plan` in
+  the Stop payload. The keep-moving checklist check (3/5 met) passes only on an
+  armed durable watcher, `AskUserQuestion`/`ExitPlanMode` as the last tool call,
+  or plan mode. A done-claim now only triggers the delivery chain, matches on
+  word boundaries, and no longer counts a bare "done." / "done!" (a list ending
+  "…; done." used to drive a block). The delivery chain drops its visual
+  read-back demand, which only recognized screenshots taken through local
+  `agents browser` and blocked sessions that had read the visual back another
+  way; `hooks/stop/visual_readback.py` is removed. The advisory
+  `pre-tool-use/11-visual-readback-nudge.py` is unchanged.
+
 - **`clis/browser.yaml`** pins `@phnx-labs/browser-cli@0.1.15` (was 0.1.5). `browser profiles
   logins --json` exists from 0.1.14, and 0.1.15 reads Arc/Comet/pinned profiles from their
   real stores, which the browser half of `10-inject-credentials-catalog.py` needs.

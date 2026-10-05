@@ -79,7 +79,9 @@ visual="$SANDBOX/visual.jsonl"
 printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Write","input":{"file_path":"/tmp/mockup.html"}}]}}' > "$visual"
 printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Bash","input":{"command":"scp /tmp/mockup.html zion:/tmp/mockup.html"}}]}}' >> "$visual"
 out=$(eval_payload "{\"session_id\":\"visual-1\",\"agent\":\"claude\",\"transcript_path\":\"$visual\"}")
-check "delivered scratch visual is delivery evidence" "$(printf '%s' "$out" | python3 -c 'import json,sys; print(json.load(sys.stdin)["delivery_evidence"])')" "True"
+# A scratch visual shipped off-box is not repository delivery: visual read-back
+# is no longer a delivery-chain demand, so it must not trigger the chain either.
+check "shipped scratch visual is not repository delivery" "$(printf '%s' "$out" | python3 -c 'import json,sys; print(json.load(sys.stdin)["delivery_evidence"])')" "False"
 
 # A new prompt boundary excludes every prior goal's delivery evidence.
 scoped="$SANDBOX/scoped.jsonl"
