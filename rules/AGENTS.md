@@ -119,7 +119,8 @@ immediately without review or CI, except when the diff includes security-critica
 paths (CI workflows, hook registration, permission definitions) which always
 require review. Resolve findings, failures,
 and conflicts; escalate only a genuine decision outside the authorization. Never
-bypass protections with `--admin`, approve your own work, merge red, or waive
+bypass protections with `--admin` (including `agents projects prs merge --admin`) or a
+raw REST/GraphQL merge call, approve your own work, merge red, or waive
 reviewer independence because accounts share an owner; fix the cause of a guard
 rejection. Owner-mode on a shared-identity fleet still requires an independent
 reviewer's verdict.
