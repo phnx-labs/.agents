@@ -4,6 +4,12 @@
 
 ### Fixed
 
+- **`hooks/stop/08-stop-judge.py`** also finds `claude` for sessions launched from a
+  per-account home (`accounts/claude/<id>/.claude/hooks/`), where neither
+  `CLAUDE_CODE_EXECPATH`, the version-home layout, nor PATH applies: the foreground walks
+  its parent processes to the claude that fired the hook and hands that path to the
+  detached judge. Live rows from such sessions read `error` / `no-claude`.
+
 - **`hooks/stop/08-stop-judge.py`** finds its `claude` binary from the installed layout
   (`<version>/node_modules/.bin/claude`, beside the version home it is installed in).
   Hook processes did not inherit `CLAUDE_CODE_EXECPATH` and a version home's claude is
