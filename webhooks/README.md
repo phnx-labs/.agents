@@ -8,15 +8,14 @@ GitHub and Linear deliveries on `/hooks/<source>` and fires any matching
 trackers, and secrets, so they belong in your user layer at `~/.agents/webhooks/`. The slot
 exists so the path resolves consistently across all four layers.
 
-## Webhook, routine, or monitor?
+## Webhook or routine?
 
 | Fires on | Use |
 |---|---|
 | A clock — cron or a one-shot time | [routine](../routines/README.md) |
-| A change you have to poll for | [monitor](../skills/monitors/SKILL.md) |
 | A push from an external service | **webhook** |
 
-Prefer a webhook over a polling monitor when the source can push. It is immediate and costs
+Prefer a webhook over a polling routine when the source can push. It is immediate and costs
 nothing while idle.
 
 ## Running the receiver

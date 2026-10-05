@@ -180,8 +180,8 @@ fi
 #
 # LIVE_WATCHER — a durable watcher was ARMED for this goal: a native
 # ScheduleWakeup / Monitor tool_use (the harness owns the re-invoke) or an
-# `agents monitors add` at a command position (the daemon owns the schedule),
-# each counted only when its paired tool_result came back WITHOUT error —
+# `agents projects prs automerge` without --off at a command position (GitHub
+# auto-merge owns the merge), each counted only when its paired tool_result came back WITHOUT error —
 # invoked is not armed. A background `gh pr checks --watch` is NOT durable: it
 # is a child of the agent process tree and dies with a headless agent
 # (RUSH-2394), so it never counts.
@@ -193,7 +193,7 @@ transcript_facts() {
   python3 - "$TRANSCRIPT_PATH" "${STATE_GOAL_OFFSET:-0}" <<'PY' 2>/dev/null || echo "no -"
 import json, re, sys
 CMD_POS = r'(?:^|[\n;&]\s*|\$\(\s*)'
-MONITORS_ADD = re.compile(CMD_POS + r'agents monitors add\b')
+AUTOMERGE = re.compile(CMD_POS + r'agents projects prs automerge\b(?![^\n;&]*--off)')
 wake_ids = set()
 ok_ids = set()
 last_tool = ''
@@ -221,7 +221,7 @@ try:
                     last_tool = name
                     if name in ('ScheduleWakeup', 'Monitor'):
                         wake_ids.add(b.get('id') or '')
-                    elif MONITORS_ADD.search(str((b.get('input') or {}).get('command', ''))):
+                    elif AUTOMERGE.search(str((b.get('input') or {}).get('command', ''))):
                         wake_ids.add(b.get('id') or '')
                 elif btype == 'tool_result' and not b.get('is_error'):
                     ok_ids.add(b.get('tool_use_id') or '')
@@ -525,8 +525,8 @@ This PR is YOURS until it merges. Keep driving it:
     config, rules) merge immediately — no review, no CI wait. Reviews are
     never the owner's job.
 Only facts clear this check, never wording: the PR merges or closes; a durable
-watcher you armed owns the merge (\`agents monitors add\`, ScheduleWakeup,
-Monitor); or, only when NO agent action can satisfy the requirement (a
+owner you armed takes the merge (\`agents projects prs automerge\`,
+ScheduleWakeup, Monitor); or, only when NO agent action can satisfy the requirement (a
 credential, a repo policy), a filed ask: agents feed post "<ask>" --blocked.
 PRMSG
         if [ "$self_dispatch" = "yes" ]; then
@@ -534,9 +534,9 @@ PRMSG
 You dispatched agents this session — dispatching is not a handoff.
 You own what you spawn, until its PR merges. Either keep driving: re-check each
 child on a bounded cadence (sleep ~300, then `agents sessions preview <id>` /
-`gh pr view <pr>`) until it lands, or arm a durable watcher first
-(`agents monitors add` on each child PR, or ScheduleWakeup) and park quoting
-the armed watcher.
+`gh pr view <pr>`) until it lands, or hand each child PR to GitHub auto-merge
+first (`agents projects prs automerge <project> --repo o/r --number N --sha
+<sha>`, or ScheduleWakeup) and park quoting it.
 DISPATCHMSG
         fi
         record_block open-pr owned-pr-open
@@ -558,8 +558,7 @@ fi
 # PRs sat unmerged until the user asked. The stop contract while teammates are
 # RUNNING: EITHER a live tick — a background command armed THIS turn (after the
 # last wake) whose completion notification has not fired yet — OR durable-
-# watcher evidence (ScheduleWakeup / Monitor / agents monitors add, non-error
-# result). Team detection uses command-position regexes; teammate liveness
+# watcher evidence (ScheduleWakeup / Monitor, non-error result). Team detection uses command-position regexes; teammate liveness
 # reads only the paired tool_result of an actual agents-teams-status
 # invocation, so a session that merely greps FOR these markers cannot trip it.
 # A stale tick from an earlier turn does NOT count: the dead --watch loops above
@@ -571,7 +570,6 @@ CMD_POS = r'(?:^|[\n;&]\s*|\\\$\(\s*)'
 TEAMS_RE = re.compile(CMD_POS + r'agents teams (?:start|create)\b')
 TEAMS_ADD_RE = re.compile(CMD_POS + r'agents teams add\b')
 STATUS_RE = re.compile(CMD_POS + r'agents teams status\b')
-MONITORS_ADD = re.compile(CMD_POS + r'agents monitors add\b')
 BG_START = re.compile(r'Command running in background with ID: (\S+)')
 NOTIF_ID = re.compile(r'<task-id>([^<]+)</task-id>')
 # A RUNNING teammate line, or a nonzero working count in the status header.
@@ -627,7 +625,7 @@ try:
                         team_used = True
                     if STATUS_RE.search(cmd):
                         status_ids.add(b.get('id') or '')
-                    if name in ('ScheduleWakeup', 'Monitor') or MONITORS_ADD.search(cmd):
+                    if name in ('ScheduleWakeup', 'Monitor'):
                         watch_ids.add(b.get('id') or '')
                 elif btype == 'tool_result':
                     rid = b.get('tool_use_id') or ''
@@ -664,8 +662,8 @@ re-invokes you. On every wake while a team runs, drive then re-arm:
   2. Re-arm the next bounded tick BEFORE stopping — a background command
      (run_in_background: true) shaped like
        sleep 300; agents teams status <team>; echo TICK done
-     — or arm a durable watcher (`agents monitors add`, ScheduleWakeup) and
-     park quoting it.
+     — or arm a durable watcher (ScheduleWakeup, Monitor) and park quoting
+     it.
 A status recap with no re-arm is abandonment. `teams start --watch` settles
 only when the WHOLE team settles — a single PR merge never re-invokes you
 through it, so "surface on the next real event" parks forever.
