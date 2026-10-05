@@ -4,6 +4,11 @@
 
 ### Fixed
 
+- **`hooks/stop/08-stop-judge.py`** finds its `claude` binary from the installed layout
+  (`<version>/node_modules/.bin/claude`, beside the version home it is installed in).
+  Hook processes did not inherit `CLAUDE_CODE_EXECPATH` and a version home's claude is
+  not on PATH, so every live run recorded `error` / `no-claude`.
+
 - **`hooks/stop/08-stop-judge.py`** embeds its extraction rubric. The installed agents-cli
   does not copy a `.txt` sidecar into version homes, so every live run would have recorded
   `no-rubric` and judged nothing; `08-stop-judge.txt` is removed.

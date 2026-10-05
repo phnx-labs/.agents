@@ -90,7 +90,7 @@ p.update(json.loads(sys.argv[2])); print(json.dumps(p))' "$t" "$extra" > "$TMP/$
   env -u CLAUDE_CODE_EXECPATH -u CLAUDE_CODE_OAUTH_TOKEN HOME="$home" PATH="$BIN:$PATH" \
     CLAUDE_CODE_ENTRYPOINT="$ep" CLAUDE_CONFIG_DIR="$home/cfg" STUB_LOG="$home/stub.log" \
     STUB_BUNDLES="$FILE_AUTH" STUB_ITEMS='{"items":[]}' "$@" \
-    python3 "$HOOK" < "$TMP/$name.payload" > "$TMP/$name.out" 2>&1
+    python3 "${HOOK_OVERRIDE:-$HOOK}" < "$TMP/$name.payload" > "$TMP/$name.out" 2>&1
   RC=$?
   end=$(python3 -c 'import time;print(int(time.time()*1000))')
   FG_MS=$((end - start))
@@ -332,6 +332,18 @@ check "final message hash" \
 check "manifest names only" "auth,stripe.com|agent-profile" \
   "$(python3 -c 'import json,sys;m=json.load(open(sys.argv[1]));print(",".join(m["bundles"])+"|"+",".join(m["profiles"]))' \
      "$TMP/merge/.agents/.cache/state/hooks/system.stop-judge/manifest.json")"
+
+# Installed layout: hook copied into <version>/home/.claude/hooks/, its claude only at
+# <version>/node_modules/.bin/claude, no CLAUDE_CODE_EXECPATH, no claude on PATH. This is
+# what a live hook sees; before claude_binary() it recorded error/no-claude.
+VER="$TMP/versions/claude/9.9.9"; mkdir -p "$VER/home/.claude/hooks" "$VER/node_modules/.bin"
+cp "$HOOK" "$VER/home/.claude/hooks/08-stop-judge.py"
+cp "$HERE/../../lib/credential_catalog.py" "$VER/home/.claude/hooks/credential_catalog.py"
+cp "$BIN/claude" "$VER/node_modules/.bin/claude"
+NOCLAUDE="$TMP/noclaude"; mkdir -p "$NOCLAUDE"; ln -sf "$BIN/secrets" "$NOCLAUDE/secrets"; ln -sf "$BIN/browser" "$NOCLAUDE/browser"
+HOOK_OVERRIDE="$VER/home/.claude/hooks/08-stop-judge.py" \
+  run_hook installed-layout cli "$WORKED" '{}' STUB_ITEMS="$(item merge_or_approve_pr owner)" PATH="$NOCLAUDE:/usr/bin:/bin"
+check installed-layout "1|merge_or_approve_pr|ok|merge_or_approve_pr|0" "$(row installed-layout)"
 
 echo "08-stop-judge: $pass passed, $fail failed"
 [ "$fail" -eq 0 ]
