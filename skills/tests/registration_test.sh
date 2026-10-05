@@ -59,6 +59,17 @@ if [ -z "$contested" ]; then
 else
   for name in $contested; do
     homes=$(grep "^$name|" "$NAMES_FILE" | cut -d'|' -f2 | tr '\n' ' ')
+    # /plan is a portable alias of swarm:plan, not a second planning contract.
+    # Accept only this exact pair and route; an extra plan definition still fails.
+    if [ "$name" = plan ]; then
+      plan_homes=$(grep '^plan|' "$NAMES_FILE" | cut -d'|' -f2 | sort)
+      expected_plan_homes=$(printf '%s\n' 'plugins/swarm/skills/plan/SKILL.md' 'skills/plan/SKILL.md')
+      if [ "$plan_homes" = "$expected_plan_homes" ] &&
+         grep -Fq 'Invoke the `swarm:plan` skill for' "$REPO/skills/plan/SKILL.md"; then
+        ok 'plan: portable alias routes to canonical swarm:plan'
+        continue
+      fi
+    fi
     case " $ALLOWED_CONTESTED " in
       *" $name "*) ok "$name: contested but allowlisted ($homes)" ;;
       *)           fail "$name: NEW contested bare name - one of these silently wins the flat install slot: $homes" ;;
