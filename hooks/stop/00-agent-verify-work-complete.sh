@@ -173,9 +173,12 @@ fi
 # owner's latest message): a watcher armed for an earlier ask does not cover
 # the current one. With no recorded boundary the offset is 0 (whole transcript).
 #
-# LIVE_WATCHER — a durable watcher was ARMED for this goal (or, in an interactive
-# session, the Stop payload lists running background_tasks the harness will report
-# back on; see load_transcript_facts): a native
+# BG_LIVE — in an INTERACTIVE session, the Stop payload lists in-flight
+# background_tasks; the harness re-invokes the agent when they finish (see
+# load_transcript_facts). Like a --blocked receipt it covers waiting, never a PR
+# with conflicts or red checks. Headless runs are excluded (RUSH-2394).
+#
+# LIVE_WATCHER — a durable watcher was ARMED for this goal: a native
 # ScheduleWakeup / Monitor tool_use (the harness owns the re-invoke) or an
 # `agents monitors add` at a command position (the daemon owns the schedule),
 # each counted only when its paired tool_result came back WITHOUT error —
@@ -229,6 +232,7 @@ except Exception:
 PY
 }
 LIVE_WATCHER=""
+BG_LIVE="no"
 LAST_STRUCT_TOOL=""
 load_transcript_facts() {
   [ -n "$LIVE_WATCHER" ] && return 0
@@ -241,9 +245,10 @@ load_transcript_facts() {
   # background task finishes, so a non-empty `background_tasks` in the Stop payload
   # is a durable watcher there. Headless runs stay excluded: their background
   # children die with the agent process (RUSH-2394).
-  if [ "$LIVE_WATCHER" = "no" ] && [ "${CLAUDE_CODE_ENTRYPOINT:-}" = "cli" ]; then
+  BG_LIVE="no"
+  if [ "${CLAUDE_CODE_ENTRYPOINT:-}" = "cli" ]; then
     if printf '%s' "$INPUT_JSON" | python3 -c 'import json,sys; sys.exit(0 if json.load(sys.stdin).get("background_tasks") else 1)' 2>/dev/null; then
-      LIVE_WATCHER="yes"
+      BG_LIVE="yes"
     fi
   fi
 }
@@ -476,12 +481,13 @@ except Exception:
 
       if [ "$LIVE_WATCHER" = "yes" ]; then
         record_check_ok open-pr passed durable-watcher-armed
-      elif [ "$block_receipt" = "yes" ] && [ -n "$unfit_prs" ]; then
-        # A receipt says the owner was asked; it cannot hand off conflicts or
-        # red checks, which are the agent's own work.
+      elif { [ "$block_receipt" = "yes" ] || [ "$BG_LIVE" = "yes" ]; } && [ -n "$unfit_prs" ]; then
+        # A receipt says the owner was asked and a background task says the agent
+        # will be re-invoked; neither hands off conflicts or red checks, which are
+        # the agent's own work.
         cat >&2 <<UNFITMSG
-STOP — a --blocked receipt is on file, but these open PRs have merge conflicts
-or failing checks:
+STOP — you are waiting (a --blocked receipt or a running background task), but
+these open PRs have merge conflicts or failing checks:
 
 $unfit_prs
 Conflicts and red CI are your own work, never the owner's: rebase onto the base
@@ -492,6 +498,8 @@ UNFITMSG
         exit 2
       elif [ "$block_receipt" = "yes" ]; then
         record_check_ok open-pr passed blocked-receipt-filed
+      elif [ "$BG_LIVE" = "yes" ]; then
+        record_check_ok open-pr passed background-task-running
       elif [ "${PERMISSION_MODE:-}" = "plan" ]; then
         record_check_ok open-pr passed plan-mode
       else
@@ -694,6 +702,8 @@ if echo "$todo_json" | grep -q '"remaining": [1-9]'; then
   load_transcript_facts
   if [ "$LIVE_WATCHER" = "yes" ]; then
     task_reason="durable-watcher-armed"
+  elif [ "$BG_LIVE" = "yes" ]; then
+    task_reason="background-task-running"
   elif [ "$block_receipt" = "yes" ]; then
     task_reason="blocked-receipt-filed"
   elif [ "$LAST_STRUCT_TOOL" = "ExitPlanMode" ] || [ "$LAST_STRUCT_TOOL" = "AskUserQuestion" ]; then
