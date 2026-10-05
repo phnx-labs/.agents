@@ -173,7 +173,9 @@ fi
 # owner's latest message): a watcher armed for an earlier ask does not cover
 # the current one. With no recorded boundary the offset is 0 (whole transcript).
 #
-# LIVE_WATCHER — a durable watcher was ARMED for this goal: a native
+# LIVE_WATCHER — a durable watcher was ARMED for this goal (or, in an interactive
+# session, the Stop payload lists running background_tasks the harness will report
+# back on; see load_transcript_facts): a native
 # ScheduleWakeup / Monitor tool_use (the harness owns the re-invoke) or an
 # `agents monitors add` at a command position (the daemon owns the schedule),
 # each counted only when its paired tool_result came back WITHOUT error —
@@ -235,6 +237,15 @@ load_transcript_facts() {
   LIVE_WATCHER=${facts%% *}
   LAST_STRUCT_TOOL=${facts##* }
   [ "$LIVE_WATCHER" = "yes" ] || LIVE_WATCHER="no"
+  # In an INTERACTIVE session the harness itself re-invokes the agent when a
+  # background task finishes, so a non-empty `background_tasks` in the Stop payload
+  # is a durable watcher there. Headless runs stay excluded: their background
+  # children die with the agent process (RUSH-2394).
+  if [ "$LIVE_WATCHER" = "no" ] && [ "${CLAUDE_CODE_ENTRYPOINT:-}" = "cli" ]; then
+    if printf '%s' "$INPUT_JSON" | python3 -c 'import json,sys; sys.exit(0 if json.load(sys.stdin).get("background_tasks") else 1)' 2>/dev/null; then
+      LIVE_WATCHER="yes"
+    fi
+  fi
 }
 
 # A --blocked feed record filed by THIS session (`agents feed post --blocked`
