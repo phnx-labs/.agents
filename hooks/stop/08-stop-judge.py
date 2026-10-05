@@ -13,8 +13,8 @@ as a machine prompt (CLAUDE_CODE_ENTRYPOINT=sdk-cli, STOP_JUDGE_CHILD=1) so it
 can never re-enter this hook.
 
 One small model call extracts structured items from the agent's final message
-(handoffs, offers, waits, blocker and done claims; rubric embedded below as RUBRIC,
-installed beside this script as its data sidecar). Code, not the model, decides
+(handoffs, offers, waits, blocker and done claims; rubric embedded below as
+RUBRIC). Code, not the model, decides
 would-block/pass from those items plus facts: the tool calls made since the
 owner's latest message, the Stop payload's `background_tasks` / `session_crons`,
 and the names of the secrets bundles on this machine.
