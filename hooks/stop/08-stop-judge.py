@@ -2,7 +2,11 @@
 """stop-judge — Stop hook, LOG-ONLY. Interactive Claude sessions only.
 
 Records, per interactive stop, what a model-based Stop judge WOULD block. It never
-blocks: every path exits 0 and nothing is written to stdout or stderr.
+blocks: every path exits 0 and nothing is written to stdout or stderr. It adds no
+latency to the turn: the foreground process only runs the scope checks, hands
+the payload to a detached child (its own session, stdio on /dev/null) through a
+0600 file in the disposable cache dir, and exits. The child deletes that file
+as soon as it has read it, then does the judging below.
 
 One small model call extracts structured items from the agent's final message
 (handoffs, offers, waits, blocker and done claims; rubric in 08-stop-judge.txt,
@@ -435,19 +439,10 @@ def record(row: dict) -> None:
     os.chmod(path, 0o600)
 
 
-def main() -> None:
-    if os.environ.get("CLAUDE_CODE_ENTRYPOINT") != "cli":
-        return
-    payload = json.load(sys.stdin)
-    if not isinstance(payload, dict) or payload.get("stop_hook_active"):
-        return
-    final = payload.get("last_assistant_message")
-    session_id = payload.get("session_id")
-    transcript = payload.get("transcript_path")
-    if not isinstance(final, str) or not final.strip() or not session_id or not transcript:
-        return
-
-    request, counts, opening = turn_facts(read_records(transcript))
+def judge_stop(payload: dict) -> None:
+    """The detached child's work: snapshot, catalog, model call, decision, row."""
+    final = payload["last_assistant_message"]
+    request, counts, opening = turn_facts(read_records(payload["transcript_path"]))
     caps = capabilities()
     snapshot = {
         "latest_request": request[:1200],
@@ -466,7 +461,7 @@ def main() -> None:
         would_block, reason = decide(counts, [], background_live, caps["bundles"])
         reason = reason if would_block else "unjudged"
     record({
-        "session_key": f"claude:{session_id}",
+        "session_key": f"claude:{payload['session_id']}",
         "ts_ms": int(time.time() * 1000),
         "would_block": int(would_block),
         "reason": reason,
@@ -482,9 +477,54 @@ def main() -> None:
     })
 
 
+def pending_dir() -> Path:
+    path = cache_dir() / "pending"
+    path.mkdir(exist_ok=True, mode=0o700)
+    return path
+
+
+def child(handoff: str) -> None:
+    """Read and delete the handoff file, then judge. Only files in pending/ are accepted."""
+    path = Path(handoff).resolve()
+    if path.parent != pending_dir().resolve():
+        return
+    try:
+        payload = json.loads(path.read_text())
+    finally:
+        path.unlink()
+    judge_stop(payload)
+
+
+def main() -> None:
+    """Foreground: scope checks only, then hand off to a detached child and return."""
+    if os.environ.get("CLAUDE_CODE_ENTRYPOINT") != "cli":
+        return
+    payload = json.load(sys.stdin)
+    if not isinstance(payload, dict) or payload.get("stop_hook_active"):
+        return
+    final = payload.get("last_assistant_message")
+    if (not isinstance(final, str) or not final.strip() or not payload.get("session_id")
+            or not payload.get("transcript_path")):
+        return
+    fd, handoff = tempfile.mkstemp(dir=pending_dir(), prefix="stop-", suffix=".json")
+    with os.fdopen(fd, "w") as handle:
+        json.dump(payload, handle)
+    try:
+        subprocess.Popen(
+            [sys.executable, str(Path(__file__).resolve()), "--judge", handoff],
+            stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            start_new_session=True, close_fds=True,
+        )
+    except OSError:
+        os.unlink(handoff)
+
+
 if __name__ == "__main__":
     try:
-        main()
+        if len(sys.argv) == 3 and sys.argv[1] == "--judge":
+            child(sys.argv[2])
+        else:
+            main()
     except BaseException:  # noqa: BLE001 — log-only: no path may block or wedge a stop
         pass
     sys.exit(0)

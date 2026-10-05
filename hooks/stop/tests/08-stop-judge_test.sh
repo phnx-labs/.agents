@@ -4,7 +4,8 @@
 # stub `claude`, `secrets`, and `browser` executables first on PATH. The stubs
 # stand in for the model and the credential store only, so no test reaches the
 # network or a real model. Each case runs under its own HOME and reads the rows
-# the hook wrote to its real SQLite database.
+# the hook wrote to its real SQLite database. The hook judges in a detached
+# child, so each case times the foreground, then waits for the child's row.
 set -uo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 HOOK="$HERE/../08-stop-judge.py"
@@ -16,6 +17,7 @@ cat > "$BIN/claude" <<'STUB'
 #!/usr/bin/env bash
 printf 'token=%s thinking=%s cwd=%s\n' "${CLAUDE_CODE_OAUTH_TOKEN:-}" "${MAX_THINKING_TOKENS:-}" "$PWD" >> "$STUB_LOG"
 printf '%s\n' "$@" > "$STUB_LOG.argv"
+[ -n "${STUB_SLEEP:-}" ] && sleep "$STUB_SLEEP"
 case "${STUB_MODE:-items}" in
   sleep) sleep 30; exit 0 ;;
   garbage) result='Nothing to extract here, sorry.' ;;
@@ -69,7 +71,8 @@ item() {  # item <kind> <actor> [credential]
 }
 
 # run_hook <case> <entrypoint> <transcript-python> <payload-extra-json> [VAR=value ...]
-# Sets RC, WALL_MS; the case's HOME is $TMP/<case>.
+# Sets RC and FG_MS (foreground wall time). Unless NOWAIT=1, then waits up to 10s
+# for the detached child's row and sets SETTLE_MS (start to row). HOME is $TMP/<case>.
 run_hook() {
   local name="$1" ep="$2" gen="$3" extra="$4"; shift 4
   local home="$TMP/$name" t="$TMP/$name.jsonl" start end
@@ -88,7 +91,26 @@ p.update(json.loads(sys.argv[2])); print(json.dumps(p))' "$t" "$extra" > "$TMP/$
     python3 "$HOOK" < "$TMP/$name.payload" > "$TMP/$name.out" 2>&1
   RC=$?
   end=$(python3 -c 'import time;print(int(time.time()*1000))')
-  WALL_MS=$((end - start))
+  FG_MS=$((end - start))
+  [ "${NOWAIT:-0}" = 1 ] && return
+  python3 - "$home/.agents/.history/hooks/system.stop-judge/state.db" <<'PY'
+import os, sqlite3, sys, time
+deadline = time.time() + 10
+while time.time() < deadline:
+    if os.path.exists(sys.argv[1]):
+        try:
+            if sqlite3.connect(sys.argv[1]).execute("SELECT COUNT(*) FROM judgments").fetchone()[0]:
+                break
+        except sqlite3.Error:
+            pass
+    time.sleep(0.05)
+PY
+  end=$(python3 -c 'import time;print(int(time.time()*1000))')
+  SETTLE_MS=$((end - start))
+}
+
+pending() {  # pending <case> -> handoff files still on disk
+  ls "$TMP/$1/.agents/.cache/state/hooks/system.stop-judge/pending" 2>/dev/null | tr '\n' ' '
 }
 
 row() {  # row <case> -> "would_block|reason|outcome|item_kinds|background_live" of the latest row
@@ -111,16 +133,26 @@ check_silent_exit0() {  # the hook never blocks and never writes to stdout/stder
 }
 
 # Headless runs are machine prompts: skipped, no model call, no DB.
-run_hook headless sdk-cli "$WORKED" '{}' STUB_ITEMS="$(item merge_or_approve_pr owner)"
+NOWAIT=1 run_hook headless sdk-cli "$WORKED" '{}' STUB_ITEMS="$(item merge_or_approve_pr owner)"
 check_silent_exit0 headless
 check headless "no-db" "$(row headless)"
 check "headless no model call" "" "$(cat "$TMP/headless/stub.log" 2>/dev/null)"
 
 # Continuing from a Stop block, or nothing said: skipped.
-run_hook continuing cli "$WORKED" '{"stop_hook_active":true}'
+NOWAIT=1 run_hook continuing cli "$WORKED" '{"stop_hook_active":true}'
 check continuing "no-db" "$(row continuing)"
-run_hook empty-final cli "$WORKED" '{"last_assistant_message":"   "}'
+NOWAIT=1 run_hook empty-final cli "$WORKED" '{"last_assistant_message":"   "}'
 check empty-final "no-db" "$(row empty-final)"
+check "skips leave no handoff" "" "$(pending headless)$(pending continuing)$(pending empty-final)"
+
+# Detached: the foreground returns at once while the model call is still running,
+# and the child's row lands when it finishes. The handoff file is gone after.
+run_hook detached cli "$WORKED" '{}' STUB_SLEEP=5 STUB_ITEMS="$(item merge_or_approve_pr owner)"
+check_silent_exit0 detached
+check "detached foreground fast" yes "$([ "$FG_MS" -lt 500 ] && echo yes || echo "no(${FG_MS}ms)")"
+check "detached row after the model call" yes "$([ "$SETTLE_MS" -ge 5000 ] && echo yes || echo "no(${SETTLE_MS}ms)")"
+check detached "1|merge_or_approve_pr|ok|merge_or_approve_pr|0" "$(row detached)"
+check "detached handoff removed" "" "$(pending detached)"
 
 # No investigation tool since the owner's message (bookkeeping does not count).
 run_hook zero-tools cli "$IDLE" '{}' STUB_ITEMS="$(item done_claim agent)"
@@ -181,7 +213,7 @@ check parse-fail-idle "1|zero-tools|parse-fail||0" "$(row parse-fail-idle)"
 run_hook timeout cli "$WORKED" '{}' STUB_MODE=sleep STOP_JUDGE_TIMEOUT_S=1
 check_silent_exit0 timeout
 check timeout "0|unjudged|timeout||0" "$(row timeout)"
-check "timeout bounded" yes "$([ "$WALL_MS" -lt 5000 ] && echo yes || echo "no(${WALL_MS}ms)")"
+check "timeout bounded" yes "$([ "$SETTLE_MS" -lt 5000 ] && echo yes || echo "no(${SETTLE_MS}ms)")"
 
 # No token in the env and no file-backed auth bundle: no model call.
 run_hook no-auth cli "$WORKED" '{}' STUB_BUNDLES="$NO_AUTH"
@@ -203,6 +235,13 @@ check "auth-first token" "token=tok-alpha" "$(grep -o '^token=[^ ]*' "$TMP/auth-
 run_hook auth-env cli "$WORKED" '{}' CLAUDE_CODE_OAUTH_TOKEN=tok-env
 check "auth-env token" "token=tok-env" "$(grep -o '^token=[^ ]*' "$TMP/auth-env/stub.log")"
 check "auth-env no exec" "" "$(grep 'secrets exec' "$TMP/auth-env/stub.log")"
+
+# Every child consumed its handoff file.
+left=""
+for d in "$TMP"/*/.agents/.cache/state/hooks/system.stop-judge/pending; do
+  [ -n "$(ls "$d")" ] && left="$left ${d#"$TMP"/}"
+done
+check "no handoff left in any case" "" "$left"
 
 # Privacy: rows hold codes and a hash, never message, request, or quote text.
 leaks=""

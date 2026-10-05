@@ -5,8 +5,12 @@
 ### Added
 
 - **`hooks/stop/08-stop-judge.py` measures a model-based Stop judge without
-  enforcing it.** Log-only: it always exits 0. On each interactive Claude stop it
-  makes one `claude-haiku-4-5` extraction call over a code-built snapshot (the
+  enforcing it.** Log-only: it always exits 0, and it adds no latency to the
+  turn. The foreground process only checks scope (interactive, not continuing
+  from a block, a non-empty final message), writes the payload to a 0600 file in
+  the hook's disposable cache dir, starts a detached child (own session, stdio on
+  `/dev/null`), and returns. The child deletes that file once read, then for each
+  interactive Claude stop makes one `claude-haiku-4-5` extraction call over a code-built snapshot (the
   owner's latest request, tool counts since it, the final message, and the names
   of this machine's secrets bundles and browser profiles), and code decides what
   a judge would block: no investigation tool since the owner's message, the owner
