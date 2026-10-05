@@ -13,7 +13,7 @@ check: browser --version
 # Pin the published package. Bumping means editing this tag plus CHANGELOG.
 # Keep in lockstep with agents-cli's cli/src/lib/setup-tool-install.ts pin.
 install:
-  - npm: "@phnx-labs/browser-cli@0.1.5"
+  - npm: "@phnx-labs/browser-cli@0.1.15"
 
 post_install: |
   browser --version

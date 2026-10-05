@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+### Changed
+
+- **`clis/browser.yaml`** pins `@phnx-labs/browser-cli@0.1.15` (was 0.1.5). `browser profiles
+  logins --json` exists from 0.1.14, and 0.1.15 reads Arc/Comet/pinned profiles from their
+  real stores, which the browser half of `10-inject-credentials-catalog.py` needs.
+
 ### Added
 
 - **`hooks/session-start/10-inject-credentials-catalog.py`** and
