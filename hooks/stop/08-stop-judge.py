@@ -319,7 +319,7 @@ def ancestor_claude(pid: int | None = None, depth: int = 8) -> str | None:
         try:
             out = subprocess.run(["ps", "-o", "ppid=,args=", "-p", str(pid)], capture_output=True,
                                  text=True, timeout=2, stdin=subprocess.DEVNULL).stdout.strip()
-        except (OSError, subprocess.SubprocessError):
+        except (OSError, subprocess.SubprocessError, ValueError):  # ValueError: non-UTF-8 argv
             return None
         if not out:
             return None
