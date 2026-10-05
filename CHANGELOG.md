@@ -4,6 +4,16 @@
 
 ### Changed
 
+- **`gh-merge-guard` also denies the other admin-bypass merge paths.** Besides
+  `gh pr merge --admin`, an agent is now refused `agents projects prs merge … --admin`
+  (the CLI's bypass, which only a human's confirm click in AGI Menu passes) and a raw
+  `gh api -X PUT …/pulls/<n>/merge` (any spelling of the method: `-XPUT`,
+  `--method PUT`, `--method=PUT`, lowercase). With `enforce_admins` off, the shared
+  owner account could otherwise merge past pending or red required checks. A `GET`
+  of the merge path and documentation text that mentions either form still pass.
+  `merge-guard_test.sh` now runs with a temporary `HOME`, so a machine whose user
+  layer lists a trusted owner no longer fails the "no allowlist" case.
+
 - **`hooks/stop/00-agent-verify-work-complete.sh` decides only on facts.** Checks
   whose only signal was phrase-matching the final message are deleted: the
   argue-past ramp (a retried stop now always passes), the swarm integration check,

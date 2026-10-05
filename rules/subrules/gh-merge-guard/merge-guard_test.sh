@@ -63,6 +63,10 @@ esac
 STUB
 chmod +x "$STUBTMP/bin/git"
 export PATH="$STUBTMP/bin:$PATH"
+# Hermetic HOME: owner-mode also reads the user-layer ~/.agents/trusted-owner-ids,
+# so a machine that opted in would flip the "no allowlist" case below.
+mkdir -p "$STUBTMP/home"
+export HOME="$STUBTMP/home"
 M="mer""ge"      # -> "merge"
 A="--ad""min"    # -> "--admin"
 pass=0
@@ -313,6 +317,43 @@ FAKE_MG_DIFF_FILES=$'config/settings.yaml\ndata/fixtures.json\nrules/subrules/fo
 # Empty diff (gh pr diff failed) — must NOT fast-path (fail closed).
 FAKE_MG_DIFF_FILES='' \
   check 0 "non-code fast path: empty diff falls through to full review (has APPROVE)" "gh pr $M 80"
+
+# --- Other admin-bypass merge paths (2026-10-05) ----------------------------
+# With enforce_admins off, the shared owner account can merge past pending or red
+# required checks through the CLI's --admin flag or a raw REST merge PUT. Only a
+# human's confirm click in AGI Menu may pass --admin; an agent never may.
+P="projects prs $M"
+check 2 "agents CLI admin merge"            "agents $P rush --repo acme/widgets --number 42 --sha abc123 $A"
+check 2 "ag alias admin merge"              "ag $P rush --repo acme/widgets --number 42 --sha abc123 $A --json"
+check 2 "built CLI path admin merge"        "node cli/dist/index.js $P rush --number 42 $A"
+check 2 "agents CLI admin flag first"       "agents $P rush $A --repo acme/widgets --number 42 --sha abc123"
+check 2 "agents CLI admin chained"          "cd /tmp && agents $P rush --number 42 --sha abc $A"
+check 2 "agents CLI admin via sh -c"        "sh -c 'agents $P rush --number 42 --sha abc $A'"
+check 2 "agents CLI admin quote-obfuscated" "agents $P rush --number 42 --sha abc --ad\"\"min"
+check 0 "agents CLI merge without admin"    "agents $P rush --repo acme/widgets --number 42 --sha abc123 --json"
+check 0 "agents CLI list mentions nothing"  "agents projects prs rush --json"
+check 0 "PR body documents the CLI admin flag" \
+  "gh pr create --body \"agents must never run agents $P rush $A\""
+
+check 2 "raw REST merge -X PUT"             "gh api -X PUT repos/acme/widgets/pulls/42/$M -f merge_method=rebase -f sha=abc"
+check 2 "raw REST merge method after path"  "gh api repos/acme/widgets/pulls/42/$M -X PUT -f sha=abc"
+check 2 "raw REST merge --method PUT"       "gh api --method PUT repos/acme/widgets/pulls/42/$M"
+check 2 "raw REST merge --method=PUT"       "gh api --method=PUT repos/acme/widgets/pulls/42/$M"
+check 2 "raw REST merge -XPUT"              "gh api -XPUT repos/acme/widgets/pulls/42/$M"
+check 2 "raw REST merge lowercase put"      "gh api -X put repos/acme/widgets/pulls/42/$M"
+check 2 "raw REST merge quoted path"        "gh api -X PUT \"repos/acme/widgets/pulls/42/$M\""
+check 2 "raw REST merge variable number"    "gh api -X PUT repos/acme/widgets/pulls/\$N/$M"
+check 2 "raw REST merge chained"            "gh api user && gh api -X PUT repos/acme/widgets/pulls/42/$M"
+check 0 "REST GET of merged state"          "gh api repos/acme/widgets/pulls/42/$M"
+check 0 "REST PUT on another PR endpoint"   "gh api -X PUT repos/acme/widgets/pulls/42/update-branch"
+check 0 "commit message documents the REST merge" \
+  "git commit -m \"guard: deny gh api -X PUT repos/o/r/pulls/1/$M\""
+
+# Fail closed: an unparseable payload carrying either new form is refused.
+printf '%s' "{malformed \"command\":\"agents $P rush $A\"" | "$GUARD" >/dev/null 2>&1
+if [ "$?" -eq 2 ]; then pass=$((pass + 1)); else fail=$((fail + 1)); printf 'FAIL: malformed CLI admin-merge payload must fail closed\n'; fi
+printf '%s' "{malformed \"command\":\"gh api -X PUT repos/a/b/pulls/1/$M\"" | "$GUARD" >/dev/null 2>&1
+if [ "$?" -eq 2 ]; then pass=$((pass + 1)); else fail=$((fail + 1)); printf 'FAIL: malformed REST-merge payload must fail closed\n'; fi
 
 printf -- '---\nmerge-guard: %s passed, %s failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]

@@ -143,6 +143,28 @@ fi
 # documentation tokens — it only collapses forms like `--ad""min` -> `--admin`.
 norm=$(printf '%s' "$scan" | tr -d '\047\042\134')   # remove ' " \
 
+# Two more admin-bypass merge paths (2026-10-05). With `enforce_admins` off, the
+# owner account every agent shares can merge past pending or red required checks
+# through any call GitHub serves as that admin, not only the --admin flag below:
+#   * `agents projects prs merge ... --admin`: the CLI's explicit bypass, meant
+#     for a human's confirm click in AGI Menu, never for an agent;
+#   * a raw `gh api -X PUT .../pulls/<n>/merge`: the REST merge, which also
+#     skips the review-verdict check below. A GET of the same path only reads
+#     merged state and stays allowed.
+# Matched on the same blanked + quote-stripped text, so documentation that
+# mentions them still passes and quote obfuscation still blocks.
+if printf '%s' "$norm" | grep -Eq 'projects[[:space:]]+prs[[:space:]]+merge([[:space:]]|$)' \
+   && printf '%s' "$norm" | grep -Eq -- '--admin([[:space:]=]|$)'; then
+  printf '%s\n' "Blocked: 'agents projects prs merge --admin' bypasses branch protection (it merges past pending or failing required checks). Only a human's confirm click in AGI Menu passes --admin. Get explicit user authorization, then merge WITHOUT --admin so required reviews and checks still apply." >&2
+  exit 2
+fi
+if printf '%s' "$norm" | grep -Eq '(^|[^A-Za-z0-9_-])gh[[:space:]]+api([[:space:]]|$)' \
+   && printf '%s' "$norm" | grep -Eq 'pulls/[^/[:space:]]+/merge([^A-Za-z0-9_]|$)' \
+   && printf '%s' "$norm" | grep -Eiq -- '(-X[[:space:]=]*|--method[[:space:]=]+)PUT([^A-Za-z]|$)'; then
+  printf '%s\n' "Blocked: a raw 'gh api -X PUT .../pulls/<n>/merge' merges past branch protection and the review-verdict check (an admin bypass when enforce_admins is off). Get explicit user authorization, then merge with 'gh pr merge' WITHOUT --admin so required reviews and checks still apply." >&2
+  exit 2
+fi
+
 case "$norm" in
   *"gh pr merge"*)
     case "$norm" in
