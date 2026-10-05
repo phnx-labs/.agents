@@ -68,14 +68,15 @@ hooks:
     script: stop/credential-ask-nudge.py
     timeout: 10
   stop-judge:
-    # LOG-ONLY: never blocks (always exit 0). Interactive Claude only. One small
+    # LOG-ONLY: never blocks (always exit 0) and adds no latency: the judging
+    # runs in a detached child. Interactive Claude only. One small
     # model call extracts handoffs/offers/claims from the final message; code
     # decides what a Stop judge WOULD block and records it (codes, counts,
     # latency, a sha256 of the message; no text) for measurement.
     events:
       - Stop
     script: stop/08-stop-judge.py
-    timeout: 20
+    timeout: 5
   inject-credentials-catalog:
     # Value-free list of secrets bundles and signed-in browser profiles, so an
     # agent self-serves instead of asking the human for a credential.
