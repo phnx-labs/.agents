@@ -16,7 +16,9 @@ BIN="$TMP/bin"; mkdir -p "$BIN"
 cat > "$BIN/claude" <<'STUB'
 #!/usr/bin/env bash
 printf 'token=%s thinking=%s cwd=%s\n' "${CLAUDE_CODE_OAUTH_TOKEN:-}" "${MAX_THINKING_TOKENS:-}" "$PWD" >> "$STUB_LOG"
-printf '%s\n' "$@" > "$STUB_LOG.argv"
+printf 'env ep=%s child=%s acctkey=%s\n' "${CLAUDE_CODE_ENTRYPOINT:-}" "${STOP_JUDGE_CHILD:-}" "${STOP_JUDGE_ACCOUNT_KEY:-}" >> "$STUB_LOG"
+python3 -c 'import json,sys; print(json.dumps(sys.argv[1:]))' "$@" > "$STUB_LOG.argv"
+cat > "$STUB_LOG.stdin"
 [ -n "${STUB_SLEEP:-}" ] && sleep "$STUB_SLEEP"
 case "${STUB_MODE:-items}" in
   sleep) sleep 30; exit 0 ;;
@@ -226,8 +228,25 @@ check "no-auth no model call" "" "$(grep '^token=' "$TMP/no-auth/stub.log")"
 run_hook auth-bundle cli "$WORKED" '{}' STUB_ITEMS="$(item decide_scope owner)"
 check "auth-bundle account token" "token=tok-owner thinking=0 cwd=$TMP/auth-bundle/.agents/.cache/state/hooks/system.stop-judge/cwd" \
   "$(grep '^token=' "$TMP/auth-bundle/stub.log")"
-check "auth-bundle argv" "yes" "$(grep -qx -- '--no-session-persistence' "$TMP/auth-bundle/stub.log.argv" \
-  && grep -qx 'claude-haiku-4-5' "$TMP/auth-bundle/stub.log.argv" && echo yes)"
+# argv pins the isolation flags and carries no message text and no key name: the
+# snapshot goes on stdin, the preferred key name through the env (then unset).
+check "auth-bundle argv" "ok" "$(python3 - "$TMP/auth-bundle/stub.log.argv" "$MARK" <<'PY'
+import json, sys
+a = json.load(open(sys.argv[1]))
+def pair(flag, value): return any(a[i] == flag and a[i + 1] == value for i in range(len(a) - 1))
+bad = [n for n, ok in [
+    ("setting-sources", pair("--setting-sources", "project")), ("tools", pair("--tools", "")),
+    ("model", pair("--model", "claude-haiku-4-5")), ("no-persist", "--no-session-persistence" in a),
+    ("json", pair("--output-format", "json")), ("no-marker", not any(sys.argv[2] in x for x in a)),
+    ("no-snapshot", not any("SNAPSHOT" in x for x in a))] if not ok]
+print(",".join(bad) or "ok")
+PY
+)"
+check "auth-bundle prompt on stdin" "yes" "$(head -c 9 "$TMP/auth-bundle/stub.log.stdin" | grep -q 'SNAPSHOT:' \
+  && grep -q "$MARK" "$TMP/auth-bundle/stub.log.stdin" && echo yes)"
+check "auth-bundle key name not in any argv" "" "$(grep -o 'OWNER_AT_EXAMPLE[A-Z_]*' "$TMP/auth-bundle/stub.log" "$TMP/auth-bundle/stub.log.argv")"
+# The nested claude is marked as a machine prompt and as this hook's child.
+check "auth-bundle judge env" "env ep=sdk-cli child=1 acctkey=" "$(grep '^env ' "$TMP/auth-bundle/stub.log")"
 # Unknown account: the first key.
 run_hook auth-first cli "$WORKED" '{}' CLAUDE_CONFIG_DIR="$TMP/nowhere"
 check "auth-first token" "token=tok-alpha" "$(grep -o '^token=[^ ]*' "$TMP/auth-first/stub.log")"
@@ -235,6 +254,63 @@ check "auth-first token" "token=tok-alpha" "$(grep -o '^token=[^ ]*' "$TMP/auth-
 run_hook auth-env cli "$WORKED" '{}' CLAUDE_CODE_OAUTH_TOKEN=tok-env
 check "auth-env token" "token=tok-env" "$(grep -o '^token=[^ ]*' "$TMP/auth-env/stub.log")"
 check "auth-env no exec" "" "$(grep 'secrets exec' "$TMP/auth-env/stub.log")"
+
+# A credential matches a bundle only through the item's credential/object, on
+# service aliases: generic labels (prod, share, personal, auth) never match.
+BUNDLES_WIDE='[{"name":"auth","backend":"file"},{"name":"prod.db"},{"name":"share"},{"name":"personal"},{"name":"npmjs.com"},{"name":"stripe.com"}]'
+for c in "production database password" "share the Slack invite" "personal preference" "authorize"; do
+  n="cred-$(printf '%s' "$c" | tr -cs 'A-Za-z' '-')"
+  run_hook "$n" cli "$WORKED" '{}' STUB_BUNDLES="$BUNDLES_WIDE" STUB_ITEMS="$(item provide_credential owner "$c")"
+  check "$n" "0|pass|ok|provide_credential|0" "$(row "$n")"
+done
+run_hook cred-npm cli "$WORKED" '{}' STUB_BUNDLES="$BUNDLES_WIDE" STUB_ITEMS="$(item provide_credential owner NPM_TOKEN)"
+check cred-npm "1|provide_credential|ok|provide_credential|0" "$(row cred-npm)"
+run_hook cred-quote-only cli "$WORKED" '{}' STUB_BUNDLES="$BUNDLES_WIDE" \
+  STUB_ITEMS='{"items":[{"kind":"provide_credential","actor":"owner","quote":"paste the Stripe key here","object":"","credential":""}]}'
+check cred-quote-only "0|pass|ok|provide_credential|0" "$(row cred-quote-only)"
+
+# The judge's own nested run, or anything else carrying the child sentinel, is ignored.
+NOWAIT=1 run_hook sentinel cli "$WORKED" '{}' STOP_JUDGE_CHILD=1 STUB_ITEMS="$(item merge_or_approve_pr owner)"
+check_silent_exit0 sentinel
+check "sentinel no handoff dir" "no" "$([ -d "$TMP/sentinel/.agents/.cache/state/hooks/system.stop-judge/pending" ] && echo yes || echo no)"
+check sentinel "no-db" "$(row sentinel)"
+
+# --judge only consumes files from pending/.
+mkdir -p "$TMP/outside"; cp "$TMP/merge.payload" "$TMP/outside/stop-x.json"
+HOME="$TMP/outside" python3 "$HOOK" --judge "$TMP/outside/stop-x.json"; RC=$?
+check "judge outside pending exit" 0 "$RC"
+check "judge outside pending untouched" yes "$([ -f "$TMP/outside/stop-x.json" ] && echo yes)"
+check "judge outside pending no db" "no-db" "$(row outside)"
+
+# An unclaimed handoff older than 5 minutes is swept; a fresh one is left alone.
+P="$TMP/sweep/.agents/.cache/state/hooks/system.stop-judge/pending"; mkdir -p "$P"
+echo '{}' > "$P/stop-old.json"; echo '{}' > "$P/stop-fresh.json"
+python3 -c 'import os,sys,time; t=time.time()-600; os.utime(sys.argv[1],(t,t))' "$P/stop-old.json"
+run_hook sweep cli "$WORKED" '{}'
+check "sweep stale handoff" "stop-fresh.json " "$(pending sweep)"
+rm -f "$P/stop-fresh.json"
+
+# A handoff that cannot be written is removed, not left holding a partial payload.
+mkdir -p "$TMP/dumpfail"
+( ulimit -f 0; env -u CLAUDE_CODE_EXECPATH -u CLAUDE_CODE_OAUTH_TOKEN HOME="$TMP/dumpfail" PATH="$BIN:$PATH" \
+    CLAUDE_CODE_ENTRYPOINT=cli STUB_LOG="$TMP/dumpfail/stub.log" python3 "$HOOK" < "$TMP/merge.payload" ) \
+  > "$TMP/dumpfail.out" 2>&1; RC=$?
+check_silent_exit0 dumpfail
+check "dumpfail no handoff" "" "$(pending dumpfail)"
+
+# At most two judges run at once; a third records skipped-busy without a model call.
+S="$TMP/busy/.agents/.cache/state/hooks/system.stop-judge/slots"; mkdir -p "$S"
+python3 -c '
+import fcntl, sys, time
+held = [open(p, "a") for p in sys.argv[2:]]
+for h in held: fcntl.flock(h, fcntl.LOCK_EX)
+open(sys.argv[1], "w").close(); time.sleep(30)' "$TMP/busy.held" "$S/slot-0.lock" "$S/slot-1.lock" &
+holder=$!
+for _ in $(seq 100); do [ -f "$TMP/busy.held" ] && break; sleep 0.05; done
+run_hook busy cli "$WORKED" '{}' STUB_ITEMS="$(item merge_or_approve_pr owner)"
+kill "$holder" 2>/dev/null; wait "$holder" 2>/dev/null
+check busy "0|unjudged|skipped-busy||0" "$(row busy)"
+check "busy no model call" "" "$(grep '^token=' "$TMP/busy/stub.log" 2>/dev/null)"
 
 # Every child consumed its handoff file.
 left=""

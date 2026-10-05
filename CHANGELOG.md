@@ -7,20 +7,26 @@
 - **`hooks/stop/08-stop-judge.py` measures a model-based Stop judge without
   enforcing it.** Log-only: it always exits 0, and it adds no latency to the
   turn. The foreground process only checks scope (interactive, not continuing
-  from a block, a non-empty final message), writes the payload to a 0600 file in
-  the hook's disposable cache dir, starts a detached child (own session, stdio on
-  `/dev/null`), and returns. The child deletes that file once read, then for each
-  interactive Claude stop makes one `claude-haiku-4-5` extraction call over a code-built snapshot (the
-  owner's latest request, tool counts since it, the final message, and the names
-  of this machine's secrets bundles and browser profiles), and code decides what
-  a judge would block: no investigation tool since the owner's message, the owner
-  asked to merge, publish, or run something, an announced step left untaken with
-  no live background task or session cron, a credential a bundle already covers,
-  an unverified blocker. Owner decisions (scope, taste, destructive sign-off) and
-  done/wait claims never count. Each stop records a row (reason code, item kinds,
-  latency, tokens, outcome `ok|timeout|no-auth|parse-fail|error`, and a sha256 of
-  the final message) in `~/.agents/.history/hooks/system.stop-judge/state.db`; no
-  message text is stored. Auth uses `CLAUDE_CODE_OAUTH_TOKEN`, else the session
+  from a block, a non-empty final message, not the judge's own nested run),
+  sweeps unclaimed handoffs older than 5 minutes, writes the payload to a 0600
+  file in the hook's disposable cache dir (removed again if writing or spawning
+  fails), starts a detached child (own session, stdio on `/dev/null`), and
+  returns. The child deletes that file once read. At most two judges run at once
+  per machine; a third records `skipped-busy`. Each judge makes one
+  `claude-haiku-4-5` extraction call over a code-built snapshot (the owner's
+  latest request, tool counts since it, the final message, and the names of this
+  machine's secrets bundles and browser profiles), passed on stdin so no message
+  text reaches a process listing. Code decides what a judge would block: no
+  investigation tool since the owner's message, the owner asked to merge,
+  publish, or run something, an announced step left untaken with no live
+  background task or session cron, a credential whose named service a bundle
+  covers (matched on service aliases, so generic labels like `prod`, `share`, or
+  `auth` never match), an unverified blocker. Owner decisions (scope, taste,
+  destructive sign-off) and done/wait claims never count. Each stop records a
+  row (reason code, item kinds, latency, tokens, outcome
+  `ok|timeout|no-auth|parse-fail|skipped-busy|error`, and a sha256 of the final
+  message) in `~/.agents/.history/hooks/system.stop-judge/state.db`; no message
+  text is stored. Auth uses `CLAUDE_CODE_OAUTH_TOKEN`, else the session
   account's token from a file-backed `auth` bundle; with neither, the row says
   `no-auth`.
 
