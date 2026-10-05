@@ -301,6 +301,8 @@ payload = {
 }
 if sys.argv[4]:
     payload["permission_mode"] = sys.argv[4]
+if os.environ.get("FIXTURE_BG_TASKS"):
+    payload["background_tasks"] = json.loads(os.environ["FIXTURE_BG_TASKS"])
 print(json.dumps(payload))
 PY
   echo $?
@@ -1023,6 +1025,17 @@ check "open PR + watcher armed before the latest owner message blocks" "$rc" "2"
 arm_wakeup "$TWF" toolu_wf2
 rc=$(FAKE_GH_STATE=OPEN run_hook "$TWF" "Still waiting on CI." false)
 check "open PR + watcher armed after the latest owner message passes" "$rc" "0"
+
+# BG1-3. Interactive sessions: running background_tasks in the Stop payload are a
+# durable watcher (the harness re-invokes the agent when they finish). Headless runs
+# stay excluded (RUSH-2394), and an empty list is no watcher.
+TBG=$(mk_transcript create)
+rc=$(CLAUDE_CODE_ENTRYPOINT=cli FIXTURE_BG_TASKS='[{"id":"b1","status":"running"}]' FAKE_GH_STATE=OPEN run_hook "$TBG" "Merge waiter running in the background." false)
+check "interactive + open PR + running background task passes" "$rc" "0"
+rc=$(CLAUDE_CODE_ENTRYPOINT=sdk-cli FIXTURE_BG_TASKS='[{"id":"b1","status":"running"}]' FAKE_GH_STATE=OPEN run_hook "$TBG" "Merge waiter running in the background." false)
+check "headless + open PR + background task still blocks" "$rc" "2"
+rc=$(CLAUDE_CODE_ENTRYPOINT=cli FIXTURE_BG_TASKS='[]' FAKE_GH_STATE=OPEN run_hook "$TBG" "Nothing running." false)
+check "interactive + open PR + empty background_tasks still blocks" "$rc" "2"
 
 # WF3. Keep-moving: a pre-boundary watcher no longer covers unfinished items.
 TKF=$(mk_tasks watcher-remaining)
