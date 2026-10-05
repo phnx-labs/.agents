@@ -6,7 +6,11 @@ blocks: every path exits 0 and nothing is written to stdout or stderr. It adds n
 latency to the turn: the foreground process only runs the scope checks, hands
 the payload to a detached child (its own session, stdio on /dev/null) through a
 0600 file in the disposable cache dir, and exits. The child deletes that file
-as soon as it has read it, then does the judging below.
+as soon as it has read it, then does the judging below; at most MAX_JUDGES
+children judge at once (flock slots), and the foreground sweeps handoffs no
+child claimed. The model gets the snapshot on stdin, never in argv, and runs
+as a machine prompt (CLAUDE_CODE_ENTRYPOINT=sdk-cli, STOP_JUDGE_CHILD=1) so it
+can never re-enter this hook.
 
 One small model call extracts structured items from the agent's final message
 (handoffs, offers, waits, blocker and done claims; rubric in 08-stop-judge.txt,
@@ -23,6 +27,7 @@ counts, latency, and a sha256 of the final message for later joining.
 """
 from __future__ import annotations
 
+import fcntl
 import hashlib
 import json
 import os
@@ -36,6 +41,9 @@ import tempfile
 import time
 from pathlib import Path
 
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "lib"))
+import credential_catalog  # noqa: E402
+
 HOOK_ID = "system.stop-judge"
 MODEL = "claude-haiku-4-5"
 MODEL_TIMEOUT_S = 12.0
@@ -45,6 +53,9 @@ RETENTION_DAYS = 30
 BUSY_TIMEOUT_MS = 100
 SCHEMA_VERSION = 1
 NO_AUTH_EXIT = 77
+MAX_JUDGES = 2           # concurrent judge children per machine
+STALE_HANDOFF_S = 300    # an unclaimed handoff older than this is swept
+CHILD_SENTINEL = "STOP_JUDGE_CHILD"
 
 # Tool calls that record or schedule work but gather no evidence (as in
 # 07-investigate-first-gate.py).
@@ -92,10 +103,11 @@ HINT = {
 }
 
 # Runs under `secrets exec auth`: exports the session account's setup-token (or
-# the first one) as CLAUDE_CODE_OAUTH_TOKEN, drops the rest, execs the judge.
+# the first one) as CLAUDE_CODE_OAUTH_TOKEN, drops the rest, execs the judge. The
+# preferred key name arrives in STOP_JUDGE_ACCOUNT_KEY, never in argv.
 AUTH_SHIM = r"""
 keys=$(env | sed -n 's/^\(CLAUDE_CODE_OAUTH_TOKEN_[A-Za-z0-9_]*\)=.*/\1/p' | sort)
-k="$1"; shift
+k="${STOP_JUDGE_ACCOUNT_KEY:-}"; unset STOP_JUDGE_ACCOUNT_KEY
 if [ -z "$k" ] || [ -z "$(printenv "$k")" ]; then k=$(printf '%s\n' "$keys" | sed -n 1p); fi
 [ -n "$k" ] || exit 77
 CLAUDE_CODE_OAUTH_TOKEN=$(printenv "$k"); export CLAUDE_CODE_OAUTH_TOKEN
@@ -281,31 +293,41 @@ def judge(snapshot: dict, caps: dict) -> dict:
     except OSError:
         result["detail"] = "no-rubric"
         return result
+    # The snapshot carries message text, so it goes on stdin, never in argv.
     argv = [claude, "-p", "--setting-sources", "project", "--model", MODEL, "--tools", "",
-            "--no-session-persistence", "--system-prompt", rubric, "--output-format", "json",
-            "SNAPSHOT:\n" + json.dumps(snapshot, ensure_ascii=False)]
-    env = dict(os.environ, MAX_THINKING_TOKENS="0")
+            "--no-session-persistence", "--system-prompt", rubric, "--output-format", "json"]
+    prompt = "SNAPSHOT:\n" + json.dumps(snapshot, ensure_ascii=False)
+    # The nested claude is a machine prompt, and must never re-enter this hook.
+    env = dict(os.environ, MAX_THINKING_TOKENS="0", CLAUDE_CODE_ENTRYPOINT="sdk-cli",
+               **{CHILD_SENTINEL: "1"})
     if not env.get("CLAUDE_CODE_OAUTH_TOKEN"):
         # Only a file-backed bundle reads without a Touch ID or passphrase prompt.
         if caps.get("auth_backend") != "file" or not shutil.which("secrets"):
             result["outcome"] = "no-auth"
             return result
-        argv = ["secrets", "exec", "auth", "--", "sh", "-c", AUTH_SHIM, "sh", account_key()] + argv
+        env["STOP_JUDGE_ACCOUNT_KEY"] = account_key()
+        argv = ["secrets", "exec", "auth", "--", "sh", "-c", AUTH_SHIM, "sh"] + argv
     cwd = cache_dir() / "cwd"
     cwd.mkdir(exist_ok=True, mode=0o700)
     started = time.monotonic()
     try:
-        proc = subprocess.Popen(argv, cwd=cwd, env=env, stdin=subprocess.DEVNULL,
+        proc = subprocess.Popen(argv, cwd=cwd, env=env, stdin=subprocess.PIPE,
                                 stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
                                 text=True, start_new_session=True)
     except OSError:
         result["detail"] = "spawn"
         return result
     try:
-        stdout, _ = proc.communicate(timeout=model_timeout())
+        stdout, _ = proc.communicate(input=prompt, timeout=model_timeout())
     except subprocess.TimeoutExpired:
-        os.killpg(proc.pid, signal.SIGKILL)
-        proc.communicate()
+        try:
+            os.killpg(proc.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+        try:
+            proc.communicate(timeout=2)
+        except subprocess.TimeoutExpired:
+            pass  # a descendant that left the group holds the pipe; do not wait on it
         result["outcome"] = "timeout"
         result["latency_ms"] = int((time.monotonic() - started) * 1000)
         return result
@@ -355,12 +377,16 @@ def parse_items(text: str):
 # --- decision (code) --------------------------------------------------------
 
 
-def bundle_for(text: str, bundles: list[str]):
-    words = set(re.findall(r"[a-z0-9]+", text.lower()))
+def bundle_for(item: dict, bundles: list[str]):
+    """The bundle whose service the item's credential/object names. Both sides go
+    through credential_catalog.aliases(), which drops generic labels (prod, share,
+    auth, personal, key, token, ...); a prefix either way matches (NPM_TOKEN ->
+    npmjs.com). The quote is prose and never matched."""
+    words = credential_catalog.aliases(f"{item.get('credential', '')} {item.get('object', '')}")
     for bundle in bundles:
-        stem = re.split(r"[.\-]", bundle.lower())[0]
-        if len(stem) >= 3 and (stem in words or any(w.startswith(stem) for w in words)):
-            return bundle
+        for alias in credential_catalog.aliases(bundle):
+            if any(alias.startswith(w) or w.startswith(alias) for w in words):
+                return bundle
     return None
 
 
@@ -380,7 +406,7 @@ def decide(counts: dict[str, int], items: list[dict], background_live: bool,
                 continue
             return True, kind
         if kind == "provide_credential":
-            if bundle_for(blob, bundles):
+            if bundle_for(item, bundles):
                 return True, kind
             continue
         if kind == "blocker_claim":
@@ -452,7 +478,12 @@ def judge_stop(payload: dict) -> None:
         "capability_manifest": manifest_text(caps),
     }
     background_live = bool(payload.get("background_tasks") or payload.get("session_crons"))
-    verdict = judge(snapshot, caps)
+    slot = claim_slot()  # the flock is held until this process exits
+    if slot is None:
+        verdict = {"outcome": "skipped-busy", "detail": "", "items": [], "latency_ms": None,
+                   "in_tok": None, "out_tok": None}
+    else:
+        verdict = judge(snapshot, caps)
     kinds = [str(it.get("kind")) if it.get("kind") in KINDS else "other" for it in verdict["items"]]
     if verdict["outcome"] == "ok":
         would_block, reason = decide(counts, verdict["items"], background_live, caps["bundles"])
@@ -477,6 +508,33 @@ def judge_stop(payload: dict) -> None:
     })
 
 
+def claim_slot():
+    """An flock on one of MAX_JUDGES slot files, held for this process's life; None
+    when every slot is taken."""
+    slots = cache_dir() / "slots"
+    slots.mkdir(exist_ok=True, mode=0o700)
+    for n in range(MAX_JUDGES):
+        handle = open(slots / f"slot-{n}.lock", "a")
+        try:
+            fcntl.flock(handle, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError:
+            handle.close()
+            continue
+        return handle
+    return None
+
+
+def sweep_stale(pending: Path) -> None:
+    """Unlink handoffs no child claimed: each holds a whole payload, message included."""
+    cutoff = time.time() - STALE_HANDOFF_S
+    for entry in os.scandir(pending):
+        try:
+            if entry.name.startswith("stop-") and entry.stat().st_mtime < cutoff:
+                os.unlink(entry.path)
+        except OSError:
+            continue
+
+
 def pending_dir() -> Path:
     path = cache_dir() / "pending"
     path.mkdir(exist_ok=True, mode=0o700)
@@ -497,7 +555,7 @@ def child(handoff: str) -> None:
 
 def main() -> None:
     """Foreground: scope checks only, then hand off to a detached child and return."""
-    if os.environ.get("CLAUDE_CODE_ENTRYPOINT") != "cli":
+    if os.environ.get("CLAUDE_CODE_ENTRYPOINT") != "cli" or os.environ.get(CHILD_SENTINEL):
         return
     payload = json.load(sys.stdin)
     if not isinstance(payload, dict) or payload.get("stop_hook_active"):
@@ -506,17 +564,20 @@ def main() -> None:
     if (not isinstance(final, str) or not final.strip() or not payload.get("session_id")
             or not payload.get("transcript_path")):
         return
-    fd, handoff = tempfile.mkstemp(dir=pending_dir(), prefix="stop-", suffix=".json")
-    with os.fdopen(fd, "w") as handle:
-        json.dump(payload, handle)
+    pending = pending_dir()
+    sweep_stale(pending)
+    fd, handoff = tempfile.mkstemp(dir=pending, prefix="stop-", suffix=".json")
     try:
+        with os.fdopen(fd, "w") as handle:
+            json.dump(payload, handle)
         subprocess.Popen(
             [sys.executable, str(Path(__file__).resolve()), "--judge", handoff],
             stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
             start_new_session=True, close_fds=True,
         )
-    except OSError:
+    except BaseException:
         os.unlink(handoff)
+        raise
 
 
 if __name__ == "__main__":
