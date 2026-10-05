@@ -12,6 +12,9 @@ before implementation. This is a change proposal; `swarm:spec` documents the
 capability's durable contract. Scale the plan to the uncertainty and impact.
 This skill owns the planning contract for `/plan`, `/swarm:plan`, native plan
 mode, and requests made in ordinary language. Commands only route here.
+Planning includes rendering and inspecting the visual artifact through `artifacts`;
+the user does not need to invoke `/visualize` as well. Honor an explicit request
+for another output format. `/visualize` is for a standalone visual explanation.
 
 ## Choose the depth
 
@@ -42,6 +45,17 @@ in planning. Existing authority to implement does not require a new approval gat
 Use the resolved `artifacts` skill's `references/product-brief.md` for the brief
 and `references/diagram-conventions.md` for technical views. Keep the brief within
 the plan rather than creating another document by default.
+
+Near the beginning, before implementation details, state a short visible list:
+
+- **Goal:** the problem being solved and who benefits.
+- **Expected outcome:** what the user or system will observably do differently.
+- **Success checks:** how each outcome will be verified, including the evidence
+  that would demonstrate it. Do not substitute a task list for acceptance.
+
+Keep this list visible without opening a disclosure. Distinguish proposed outcomes
+from results already verified; use targets only when grounded in the request or
+evidence. Include the list in compact plans too, without adding empty sections.
 
 The reader should understand:
 

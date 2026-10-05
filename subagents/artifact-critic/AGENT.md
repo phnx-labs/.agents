@@ -32,6 +32,11 @@ replace one with another by habit.
 - **Reading order.** The entry view explains the conclusion, consequence and next
   decision. Essential qualifications stay visible. A wall of equally prominent
   tiles, a large empty cover, or source chips obscuring the point is a finding.
+- **Expectations are explicit.** A plan states its goal, observable expected
+  outcome and success checks before implementation detail, without requiring a
+  click. Missing outcomes, task lists presented as acceptance, or proposed results
+  presented as already achieved are blocking findings. Other artifacts state the
+  purpose and what the reader should understand or decide.
 - **Form fits the task.** Tables serve exact lookup or aligned comparisons;
   charts show quantitative patterns; diagrams explain relationships; prose states
   simple claims. Check whether the chosen form makes that task easier. Do not

@@ -6,7 +6,10 @@ Keep it within the existing plan; scale the detail to the decision.
 
 ## Reading order
 
-1. **What this is / who it is for / problem:** a short, concrete statement.
+1. **Goal / expected outcome / success checks:** a short visible list stating the
+   problem and who benefits, what will observably change, and the evidence that
+   will verify each outcome. Keep it before implementation details and outside
+   disclosures, including in compact plans. Label proposed versus verified results.
 2. **Product overview diagram:** show the actor, entry point, main system boundary,
    meaningful handoffs, and outputs. Readable left-to-right or top-to-bottom, with
    recognizable icons and labels. The reader should understand the whole operation

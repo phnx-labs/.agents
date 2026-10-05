@@ -34,6 +34,9 @@ the internal **`swarm:orchestrate`** skill (no command of its own).
 Both produce a reviewable HTML artifact through `artifacts`, including its independent
 presentation review. Independent investigation follows each skill: planning uses it
 when useful or explicitly requested; specification follows the `spec` contract.
+`/plan` already includes visualization; `/visualize` is not an additional required
+step. Every plan opens with its goal, expected outcome and success checks, before
+implementation details. An explicit request for another output format takes precedence.
 
 ## Removed
 
