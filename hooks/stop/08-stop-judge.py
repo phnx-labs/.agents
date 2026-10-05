@@ -13,7 +13,7 @@ as a machine prompt (CLAUDE_CODE_ENTRYPOINT=sdk-cli, STOP_JUDGE_CHILD=1) so it
 can never re-enter this hook.
 
 One small model call extracts structured items from the agent's final message
-(handoffs, offers, waits, blocker and done claims; rubric in 08-stop-judge.txt,
+(handoffs, offers, waits, blocker and done claims; rubric embedded below as RUBRIC,
 installed beside this script as its data sidecar). Code, not the model, decides
 would-block/pass from those items plus facts: the tool calls made since the
 owner's latest message, the Stop payload's `background_tasks` / `session_crons`,
@@ -279,6 +279,37 @@ def model_timeout() -> float:
         return MODEL_TIMEOUT_S
 
 
+# The extraction rubric lives in the script: agents-cli installs hooks into version homes
+# and does not reliably copy data files beside them, so a sidecar went missing in place.
+RUBRIC = """Extract, do not judge. Read the FINAL message an AI coding agent sent before stopping its turn and list every place where it hands something to the owner, offers something, waits, claims a blocker, or claims completion. Quote the exact sentence for each.
+
+Output ONLY compact JSON, no prose, no fence:
+{"items":[{"kind":"...","actor":"agent|owner|other","quote":"...","object":"<PR number, command, service or thing>","host":"<host named, or empty>","credential":"<token/key/login named, or empty>"}]}
+
+actor = who would perform the step ("let me…", "I'll…", "next I'll…" are always actor=agent): "agent" (the agent itself), "owner" (the human it is talking to), or "other" (CI, a release train, another session or person, an automatic process).
+
+kind is one of:
+merge_or_approve_pr      owner is asked to merge, approve, admin-merge, or click to land a PR
+publish_or_release       owner is asked to publish/release/deploy something
+run_command              owner is asked to run a command or script
+provide_credential       owner is asked for a token, key, password, login, or to set a secret
+provide_fact             owner is asked for information the agent lacks
+decide_scope             owner is asked to choose between approaches, features, or whether to do a piece of work
+decide_taste             owner is asked to pick a design, wording, look, or feel
+signoff_destructive      owner is asked to OK deleting, killing, force-pushing, closing work, or loosening a safety rule
+permission_next_step     agent asks permission for the next step of the work it was asked to do
+offer_investigate        agent offers to check/test/verify something that the requested work still depends on, instead of doing it
+offer_extra_work         agent offers optional new work beyond what was asked (a share link, tickets, a tidy-up); the requested work itself is finished. If the agent itself calls the offered work "the next step" or "natural next step", use permission_next_step instead
+what_next                agent asks what to do next with no specific proposal
+announced_not_taken      the AGENT says it will do a step now ("let me…", "next I'll…", "next step is…") and the message ends without doing it; set actor=other when the step belongs to CI, a release, or someone else
+wait_claim               agent says it is waiting for something (CI, a poller, a subagent, a publish)
+blocker_claim            agent says it CANNOT do something itself ("I can't…", "unable to…", "only you can…", "needs your…"); a status like "CI is red" or "tests fail" is not a blocker_claim
+done_claim               agent says the work is complete
+agreement_first          agent agrees or concedes with the owner before showing evidence
+
+Return an empty list only if none apply."""
+
+
 def judge(snapshot: dict, caps: dict) -> dict:
     """One extraction call. Returns {outcome, detail, items, latency_ms, in_tok, out_tok}."""
     result = {"outcome": "error", "detail": "", "items": [], "latency_ms": None,
@@ -287,12 +318,7 @@ def judge(snapshot: dict, caps: dict) -> dict:
     if not claude:
         result["detail"] = "no-claude"
         return result
-    rubric_path = Path(__file__).resolve().with_suffix(".txt")
-    try:
-        rubric = rubric_path.read_text()
-    except OSError:
-        result["detail"] = "no-rubric"
-        return result
+    rubric = RUBRIC
     # The snapshot carries message text, so it goes on stdin, never in argv.
     argv = [claude, "-p", "--setting-sources", "project", "--model", MODEL, "--tools", "",
             "--no-session-persistence", "--system-prompt", rubric, "--output-format", "json"]

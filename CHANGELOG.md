@@ -2,6 +2,12 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- **`hooks/stop/08-stop-judge.py`** embeds its extraction rubric. The installed agents-cli
+  does not copy a `.txt` sidecar into version homes, so every live run would have recorded
+  `no-rubric` and judged nothing; `08-stop-judge.txt` is removed.
+
 ### Added
 
 - **`hooks/stop/08-stop-judge.py` measures a model-based Stop judge without
