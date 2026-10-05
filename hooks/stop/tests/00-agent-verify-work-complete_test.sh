@@ -1,10 +1,16 @@
 #!/usr/bin/env bash
-# Tests for the open-PR abandonment and delivery-chain gates in
-# 00-agent-verify-work-complete.sh.
+# Tests for 00-agent-verify-work-complete.sh. The hook decides only on facts:
 #
-# The gate must block a Stop when the session created a PR that is still OPEN
-# and the final message has no explicit handoff — and must also block when a
-# delivery ends without closing the Linear loop, docs/CHANGELOG, or release.
+#   open-pr      an owned PR is still OPEN and no durable watcher, filed
+#                --blocked receipt, or payload plan mode covers it
+#   live-team    RUNNING teammates with nothing armed to re-invoke the agent
+#   keep-moving  unfinished checklist items with no durable watcher, no
+#                AskUserQuestion/ExitPlanMode as the last tool, no plan mode
+#   delivery     a done-claim or PR finish line on a session with delivery
+#                evidence that has not closed the Linear/docs/release loop
+#
+# Prose in the final message (handoffs, blockers, parking, stand-downs) never
+# clears or trips a check; the removal pins below assert exactly that.
 #
 # Fixtures use the REAL Claude Code transcript shape: tool_use blocks (with
 # the command) paired to tool_result blocks (with the PR URL) by tool_use_id.
@@ -64,10 +70,9 @@ STUB
 chmod +x "$SANDBOX/bin/linear"
 
 # --- agents stub -------------------------------------------------------------
-# The hook's argue-past cap fires a REAL `agents feed post --blocked` (a
-# fail-loud owner delivery) on its third fire. AP5 exercises exactly that
-# branch, so without this stub every test run sends the owner an iMessage
-# (RUSH-3010). Log the invocation so AP5 can assert the post instead.
+# No check posts to the feed any more, but keep a logging stub on PATH so a
+# regression that shells out to `agents` can never reach a real owner feed
+# (RUSH-3010: an earlier test run delivered real iMessages that way).
 cat > "$SANDBOX/bin/agents" <<'STUB'
 #!/usr/bin/env bash
 echo "$*" >> "${AGENTS_STUB_LOG:?}"
@@ -275,11 +280,11 @@ mk_transcript() {
   echo "$t"
 }
 
-run_hook() {   # $1 transcript, $2 last message, $3 stop_hook_active
-  python3 - "$1" "$2" "$3" <<'PY' | bash "$HOOK" >/dev/null 2>"$SANDBOX/stderr"
+run_hook() {   # $1 transcript, $2 last message, $3 stop_hook_active, [$4 permission_mode]
+  python3 - "$1" "$2" "$3" "${4:-}" <<'PY' | bash "$HOOK" >/dev/null 2>"$SANDBOX/stderr"
 import hashlib, json, os, sys
 fixture_id = "fixture-" + hashlib.sha256(sys.argv[1].encode()).hexdigest()[:16]
-print(json.dumps({
+payload = {
     "session_id": fixture_id,
     "launch_id": fixture_id,
     "agent": "claude",
@@ -287,7 +292,10 @@ print(json.dumps({
     "cwd": os.environ["FIXTURE_CWD_REPO"],
     "last_assistant_message": sys.argv[2],
     "stop_hook_active": sys.argv[3] == "true",
-}))
+}
+if sys.argv[4]:
+    payload["permission_mode"] = sys.argv[4]
+print(json.dumps(payload))
 PY
   echo $?
 }
@@ -302,9 +310,10 @@ grep -q "STOP —" "$SANDBOX/stderr" && echo "ok   - block message present" || {
 rc=$(FAKE_GH_STATE=MERGED run_hook "$T" "Merged and cleaned up." false)
 check "merged PR allows stop" "$rc" "0"
 
-# 3. Created PR, OPEN, but explicit handoff in final message -> allow
+# 3. Created PR, OPEN, a prose handoff in the final message -> still blocks.
+#    Naming an owner in prose is not a fact; only a watcher/receipt/plan mode is.
 rc=$(FAKE_GH_STATE=OPEN run_hook "$T" "PR #42 is handed off to the release watcher, which owns the PR from here." false)
-check "open PR with explicit handoff allows stop" "$rc" "0"
+check "open PR with a prose-only handoff blocks" "$rc" "2"
 
 # 4. Handoff words only as a substring of another word -> still blocks
 rc=$(FAKE_GH_STATE=OPEN run_hook "$T" "The build handoffs are documented; waiting on review." false)
@@ -329,15 +338,12 @@ TDM=$(mk_transcript create+dispatch+monarm)
 rc=$(FAKE_GH_STATE=OPEN run_hook "$TDM" "PR #42 is handed off to the armed pr-merge-on-green monitor, which owns the PR from here." false)
 check "dispatch + armed agents monitors add allows stop" "$rc" "0"
 
-# D3. Dispatch marker only inside a grep pattern -> NOT a dispatch; the plain
-#     handoff escape still applies (same anti-false-positive as the swarm gate).
+# D3. Dispatch marker only inside a grep pattern -> NOT a dispatch, so the
+#     block carries no dispatch recipe (command-position anchor).
 TDG=$(mk_transcript create+grepdispatch)
-rc=$(FAKE_GH_STATE=OPEN run_hook "$TDG" "PR #42 is handed off to the release watcher, which owns the PR from here." false)
-check "grep FOR dispatch markers does not suppress the handoff escape" "$rc" "0"
-
-# 4b. Open PR blocked on a genuine external blocker WITH a durable finish path -> allow
-rc=$(FAKE_GH_STATE=OPEN run_hook "$T" "PR #42 is blocked on a GitHub Actions 503 outage failing CI — a ScheduleWakeup will merge on green when CI recovers." false)
-check "external blocker + durable ScheduleWakeup phrasing allows stop" "$rc" "0"
+rc=$(FAKE_GH_STATE=OPEN run_hook "$TDG" "Waiting on CI for PR #42." false)
+check "grep FOR dispatch markers still blocks the open PR" "$rc" "2"
+grep -qi "you own what you spawn" "$SANDBOX/stderr" && { echo "FAIL - grep FOR dispatch markers counted as a dispatch"; fail=1; } || echo "ok   - grep FOR dispatch markers is not a dispatch"
 
 # 4b2. REGRESSION (RUSH-2394): blocked-on + in-process gh pr checks --watch is NOT durable.
 rc=$(FAKE_GH_STATE=OPEN run_hook "$T" "PR #42 is blocked on CI — watcher: background gh pr checks --watch will finish it." false)
@@ -346,34 +352,21 @@ check "external blocker + in-process gh pr checks --watch still blocks (RUSH-239
 # 4c. Open PR blocked on a pending user action (Touch ID / review) WITHOUT a
 #     filed --blocked receipt -> block. An owner-only gate is real, but a
 #     hand-back that never reached the owner's feed/phone is a silent stop
-#     (RUSH-3013 ownership directive); the receipt-pass variant is OWN5 below.
+#     (RUSH-3013 ownership directive); the receipt-pass variant is OWN3 below.
 rc=$(FAKE_GH_STATE=OPEN run_hook "$T" "PR #42 is blocked on your Touch ID to sign the release; awaiting your merge." false)
 check "owner-targeted stop without a filed receipt blocks" "$rc" "2"
 
-# 4d. Bare 'blocked on' with no next-step/watcher -> still blocks (no loophole)
-rc=$(FAKE_GH_STATE=OPEN run_hook "$T" "This is blocked on CI for now." false)
-check "blocked-on without a next-step does not escape" "$rc" "2"
-
-# 4e. Abandonment prose: 'blocked on ...' + 'your review is needed' -> still blocks.
-#     Wanting a human review is not an external blocker the agent can't resolve.
-rc=$(FAKE_GH_STATE=OPEN run_hook "$T" "The PR is blocked on failing tests; your review is needed once they pass." false)
-check "blocked-on + 'your review' still blocks (not an external blocker)" "$rc" "2"
-
-# 4f. Abandonment prose: 'blocked on ...' + 'awaiting your approval' -> still blocks.
-rc=$(FAKE_GH_STATE=OPEN run_hook "$T" "Blocked on the dependency bump — awaiting your approval." false)
-check "blocked-on + 'awaiting your' still blocks" "$rc" "2"
-
-# 4g. Abandonment prose: 'blocked on ...' + bare 'watching' -> still blocks
-#     ('watching' alone does not imply a live gh pr checks --watch process).
-rc=$(FAKE_GH_STATE=OPEN run_hook "$T" "Blocked on flaky tests; I'm watching to see if they stabilize." false)
-check "blocked-on + bare 'watching' still blocks" "$rc" "2"
-
-# 4h. Abandonment prose: 'blocked on ...' + bare 'monitor' (no ScheduleWakeup
-#     tool, not the pr-merge-on-green monitor) -> still blocks. 'I'll monitor CI'
-#     is ordinary prose, not a durable finish path; the nextstep tokens stay
-#     specific so this cannot clear the non-evidence-gated blocker escape.
-rc=$(FAKE_GH_STATE=OPEN run_hook "$T" "Blocked on flaky CI; I'll monitor it and merge once it settles." false)
-check "blocked-on + bare 'monitor' prose still blocks" "$rc" "2"
+# 4d. Former phrase escapes no longer clear an open PR. Every message below
+#     passed (exit 0) under the phrase-matching gate; none carries a fact.
+for prose in \
+  "PR #42 is blocked on a GitHub Actions 503 outage failing CI — a ScheduleWakeup will merge on green when CI recovers." \
+  "PR #42 is open but I cannot push or merge it — plan mode forbids that right now." \
+  "PR #42 CI is green but the reviewer is down. Handed off to the code-review session, which owns the PR from here." \
+  "Not idling — the poller owns the merge and re-invokes me on green." \
+  "Owner-gated: only the owner can approve the branch policy." ; do
+  rc=$(FAKE_GH_STATE=OPEN run_hook "$T" "$prose" false)
+  check "prose escape no longer clears an open PR: ${prose:0:48}" "$rc" "2"
+done
 
 # 5. stop_hook_active -> allow (no loops)
 rc=$(FAKE_GH_STATE=OPEN run_hook "$T" "still waiting" true)
@@ -385,28 +378,26 @@ rc=$(FAKE_GH_STATE=OPEN run_hook "$T2" "Review finished, feedback posted." false
 check "reviewing someone else's PR does not block" "$rc" "0"
 
 # 6a. Positive non-code outcomes must not be converted into code delivery merely
-# because their final message uses completion language inside a Git cwd.
+# because their final message makes a done-claim inside a Git cwd.
 TBROWSER=$(mk_transcript browser)
-rc=$(FAKE_GH_STATE=MERGED run_hook "$TBROWSER" "Done. The external app record is present and the screenshot verifies it." false)
+rc=$(FAKE_GH_STATE=MERGED run_hook "$TBROWSER" "All done. The external app record is present and the screenshot verifies it." false)
 check "browser-only completion does not trigger code delivery" "$rc" "0"
 
 TRESEARCH=$(mk_transcript research)
-rc=$(FAKE_GH_STATE=MERGED run_hook "$TRESEARCH" "Done. The diagnostic found the parser boundary and cited the source." false)
+rc=$(FAKE_GH_STATE=MERGED run_hook "$TRESEARCH" "All done. The diagnostic found the parser boundary and cited the source." false)
 check "read-only diagnostic completion does not trigger code delivery" "$rc" "0"
 
 TTICKET=$(mk_transcript ticket-create)
-rc=$(FAKE_GH_STATE=MERGED run_hook "$TTICKET" "Done. The requested implementation ticket is open with full context." false)
+rc=$(FAKE_GH_STATE=MERGED run_hook "$TTICKET" "All done. The requested implementation ticket is open with full context." false)
 check "ticket creation does not demand closing the requested ticket" "$rc" "0"
 
 TREVIEW=$(mk_transcript review-submit)
-rc=$(FAKE_GH_STATE=OPEN run_hook "$TREVIEW" "Done. I submitted the review; the author's PR remains open." false)
+rc=$(FAKE_GH_STATE=OPEN run_hook "$TREVIEW" "All done. I submitted the review; the author's PR remains open." false)
 check "review-only completion does not inherit merge ownership" "$rc" "0"
 
 # 6b. A tracked repository write is positive delivery evidence even without a
-# PR, so a done claim still receives the delivery/self-audit gates.
+# PR (D8c below drives a done-claim on it into the delivery chain).
 TWRITE=$(mk_transcript repo-write)
-rc=$(FAKE_GH_STATE=MERGED run_hook "$TWRITE" "All done. The widget behavior is complete." false)
-check "repository mutation keeps delivery completion gates active" "$rc" "2"
 
 # 7. Session created pull/42 (merged) AND viewed someone else's pull/99 (open)
 #    -> allow: the viewed PR must not be attributed to this session
@@ -414,102 +405,21 @@ T3=$(mk_transcript create+view)
 rc=$(FAKE_GH_STATE=MERGED run_hook "$T3" "My PR is merged; review of #99 posted." false)
 check "mixed create+review only gates the created PR" "$rc" "0"
 
-# 8. Done-claim gate: PR merged (abandonment gate passes) but the final message
-#    claims done -> the self-audit gate must still fire. Exercises the nested
-#    message.role/message.content extraction on the real transcript shape —
-#    with the old top-level read the turn count was 0 and this never blocked.
+# 8. Done-claim with a merged PR and a clean delivery chain -> allow. The
+#    generic self-audit ("re-check every ask") that used to block every
+#    done-claim is gone; only the delivery chain's concrete demands remain.
 rc=$(FAKE_GH_STATE=MERGED run_hook "$T" "All done. The widget feature is merged." false)
-check "done-claim on real transcript shape blocks for self-audit" "$rc" "2"
-# The reminder asks for a post, but must NOT prescribe --level important: that
-# level is forwarded to the owner's phone by feed.broadcast.owner, and this gate
-# fires on every done-claim regardless of whether the session shipped anything
-# worth a buzz (811 fires / 272 sessions measured 2026-08-23). The level is the
-# agent's call from the outcome; the hook only asks for the record.
-grep -q 'agents feed post' "$SANDBOX/stderr" && echo "ok   - completion asks for a feed post" || { echo "FAIL - completion post not requested"; fail=1; }
-# The recognizer, factored out so the mutation probe below exercises the SAME
-# expression the assertion uses. `[^\n]*` was wrong here: in ERE a bracket
-# expression excludes the literal characters \ and n, so it failed to match the
-# very line it was meant to catch and the guard could never fire.
-_hardcodes_ping() { grep -qE 'agents feed post.*--level important' "$1"; }
-_hardcodes_ping "$SANDBOX/stderr" && { echo "FAIL - reminder still hardcodes --level important"; fail=1; } || echo "ok   - reminder does not hardcode a phone ping"
+check "done-claim with a clean delivery chain allows stop" "$rc" "0"
+grep -qi "you claimed this work is done" "$SANDBOX/stderr" && { echo "FAIL - self-audit message still emitted"; fail=1; } || echo "ok   - no self-audit message"
+if grep -qiE "syntax error|command substitution" "$SANDBOX/stderr"; then echo "FAIL - hook emits a shell syntax error"; fail=1; else echo "ok   - no shell syntax error on the done-claim path"; fi
 
-# Mutation probe: a guard assertion that cannot fail is not an assertion. Feed
-# the recognizer the exact line this PR removed and require it to catch it.
-_mut="$SANDBOX/mutation-probe"
-printf 'update: agents feed post --title "<outcome>" "<delivered + next step>" --level important\n' > "$_mut"
-_hardcodes_ping "$_mut" && echo "ok   - the ping recognizer catches the removed line" || { echo "FAIL - recognizer cannot catch the old hardcode; the guard above is dead"; fail=1; }
-grep -qi "you claimed this work is done" "$SANDBOX/stderr" && echo "ok   - done-claim gate cites the original request" || { echo "FAIL - no done-claim gate message"; fail=1; }
-
-# 8a. The concise completion nudge keeps only the load-bearing instructions.
-grep -qi "verify before stopping" "$SANDBOX/stderr" && echo "ok   - check requires verification before stopping" || { echo "FAIL - check omits verification instruction"; fail=1; }
-grep -qi "Re-check every ask this session" "$SANDBOX/stderr" && echo "ok   - check requires a full-session audit" || { echo "FAIL - check omits the full-session audit"; fail=1; }
-grep -qi "agents feed post" "$SANDBOX/stderr" && echo "ok   - check requests one completion update" || { echo "FAIL - check omits the completion update"; fail=1; }
-
-# 8b. Regression: first_user_msg is extracted via `python3 -c "..."` inside $(...).
-#     A backtick in that python string is re-parsed by bash as a nested command
-#     substitution and throws "command substitution: syntax error" at runtime — the
-#     gate's exit code stays correct, so ONLY a stderr check catches it. The prior
-#     run (line above) exercised that path; assert it left no shell error behind.
-if grep -qiE "syntax error|command substitution" "$SANDBOX/stderr"; then echo "FAIL - hook emits a shell syntax error (backtick inside the python3 -c block)"; fail=1; else echo "ok   - no shell syntax error from the first_user_msg substitution"; fi
-
-# --- swarm integration gate -------------------------------------------------
-# A session that ran an edit-mode swarm (`agents teams start`) may not stop on
-# swarm-completion phrasing that the generic done-list doesn't catch.
+# --- removed phrase-triggered checks (swarm) --------------------------------
+# The swarm integration check fired on wrap-up phrasing alone and was never
+# scored. A swarm session's completion wording must no longer block.
 TS=$(mk_transcript swarm)
-
-# 9. Swarm ran + wrap-up phrasing ("done and merged") not in the generic list
-#    -> the swarm gate must fire (generic done-gate would have exited 0).
-rc=$(FAKE_GH_STATE=MERGED run_hook "$TS" "The factory work you asked for is done and merged. You can now text the fleet." false)
-check "swarm 'done and merged' blocks for integration audit" "$rc" "2"
-grep -q "edit-mode swarm" "$SANDBOX/stderr" && echo "ok   - swarm gate names itself + the seam" || { echo "FAIL - no swarm gate message"; fail=1; }
-
-# 10. Swarm ran + "landed end-to-end" wrap-up -> swarm gate fires.
-rc=$(FAKE_GH_STATE=MERGED run_hook "$TS" "All three tracks landed. AGI Factory end-to-end status: shipped." false)
-check "swarm 'all three tracks landed' blocks" "$rc" "2"
-
-# 11. Swarm ran but the final message is NOT a completion claim -> allow.
-rc=$(FAKE_GH_STATE=MERGED run_hook "$TS" "Track 2 is still running; I'm watching the digest teammate." false)
-check "swarm session without a done-claim allows stop" "$rc" "0"
-
-# 12. NO swarm in the transcript + swarm-only phrasing -> swarm gate must NOT
-#     fire (the generic done-gate may still catch other phrasings, but "all
-#     three tracks landed" is not in that list, so a non-swarm session allows).
-rc=$(FAKE_GH_STATE=MERGED run_hook "$T" "All three tracks landed end-to-end." false)
-check "non-swarm session does not trip the swarm gate" "$rc" "0"
-
-# 13. Swarm ran + done-claim but stop_hook_active -> allow (no loops).
-rc=$(FAKE_GH_STATE=MERGED run_hook "$TS" "The work is done and merged." true)
-check "swarm gate respects stop_hook_active" "$rc" "0"
-
-# 13b. Marker strings appear ONLY inside a grep pattern (searching a transcript),
-#      not as a real `agents teams` invocation -> swarm gate must NOT fire. This
-#      is the false positive that fired on the session hardening this very hook.
-TG=$(mk_transcript grepteams)
-rc=$(FAKE_GH_STATE=MERGED run_hook "$TG" "All three tracks landed end-to-end." false)
-check "grep FOR the marker strings does not trip the swarm gate" "$rc" "0"
-grep -q "edit-mode swarm and are claiming" "$SANDBOX/stderr" && { echo "FAIL - swarm gate false-fired on a grep"; fail=1; } || echo "ok   - no swarm gate on a search-only session"
-
-# --- genuine-user-message extraction (skip harness noise) -------------------
-# A session opened with `j <dir>` (a `!`-prefix bash-input) must NOT have that
-# quoted as "the original request" — the done-claim gate must skip
-# <bash-input>/<bash-stdout> turns and quote the first real prose ask instead.
-NT="$SANDBOX/noise-transcript.jsonl"
-{
-  echo '{"type":"user","message":{"role":"user","content":"<bash-input>j agents-cli</bash-input>"}}'
-  echo '{"type":"user","message":{"role":"user","content":"<bash-stdout>/home/user/src/agents-cli</bash-stdout><bash-stderr></bash-stderr>"}}'
-  echo '{"type":"user","message":{"role":"user","content":"<system-reminder>The user named this session AGI Factory.</system-reminder>"}}'
-  echo '{"type":"user","message":{"role":"user","content":"[Request interrupted by user]"}}'
-  echo '{"type":"user","message":{"role":"user","content":"Please refactor the auth module and add end-to-end tests for the login flow."}}'
-  echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"working"}]}}'
-  echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"step 2"}]}}'
-  echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"step 3"}]}}'
-} > "$NT"
-
-# 14. Done-claim on a noise-led transcript -> blocks, and quotes the REAL ask.
-rc=$(FAKE_GH_STATE=MERGED run_hook "$NT" "All done. The auth refactor is complete." false)
-check "done-claim on noise-led transcript blocks" "$rc" "2"
-grep -q "refactor the auth module" "$SANDBOX/stderr" && echo "ok   - gate quotes the real ask, not the jump command" || { echo "FAIL - gate did not quote the real ask"; fail=1; }
-if grep -qE "bash-input|system-reminder|Request interrupted" "$SANDBOX/stderr"; then echo "FAIL - gate leaked harness noise"; fail=1; else echo "ok   - gate does not leak bash-input/system-reminder/interrupt noise"; fi
+rc=$(FAKE_GH_STATE=MERGED run_hook "$TS" "The factory work you asked for is done and merged. All three tracks landed end-to-end." false)
+check "swarm wrap-up phrasing no longer blocks" "$rc" "0"
+grep -q "edit-mode swarm" "$SANDBOX/stderr" && { echo "FAIL - swarm check still fires"; fail=1; } || echo "ok   - no swarm check message"
 
 # --- inherited-PR gate (Fix A) ----------------------------------------------
 # A session may INHERIT an open PR a prior session created, drive it
@@ -529,9 +439,6 @@ grep -qi "created or worked" "$SANDBOX/stderr" && echo "ok   - inherited-PR gate
 rc=$(FAKE_GH_STATE=MERGED run_hook "$TI" "Merged it and cleaned up the branch." false)
 check "inherited PR that is merged allows stop" "$rc" "0"
 
-# A3. Inherited PR OPEN but explicit handoff -> the existing escape still applies.
-rc=$(FAKE_GH_STATE=OPEN run_hook "$TI" "PR #42 is handed off to the release watcher, which owns the PR from here." false)
-check "inherited open PR with explicit handoff allows stop" "$rc" "0"
 
 # A4. A single incidental `gh pr view` of an unrelated OPEN PR (no create, no
 #     merge/checks) -> must NOT be attributed to this session -> allow.
@@ -555,73 +462,26 @@ rc=$(FAKE_GH_STATE=OPEN run_hook "$TRS" "Merged the PR in acme/widgets." false)
 check "repo-scoped inherited PR still OPEN blocks" "$rc" "2"
 grep -q "acme/widgets/pull/42" "$SANDBOX/stderr" && echo "ok   - repo-scoped gate names the qualified PR URL" || { echo "FAIL - gate did not name qualified PR URL"; fail=1; }
 
-# --- parking / offer-instead-of-do done-gate (Fix B) ------------------------
-# A session that PARKS the obvious next step behind the user ('want me to…',
-# 'on your go', 'say the word') instead of doing it must be challenged, even
-# though those phrases are in neither the done-signal list nor the swarm list.
-# Uses a plain transcript (no PR, no swarm) with >2 assistant turns.
+# --- removed phrase-triggered checks (parking / stand-down) -----------------
+# Parking ('want me to…', 'on your go') and stand-down ('not mine to drive',
+# 'standing clear') idioms routed into the self-audit block by wording alone.
+# With no fact behind them they must no longer block.
 TP=$(mk_transcript plain)
+for prose in \
+  "Want me to build the current main into a .vsix and install it? I can do it on your go." \
+  "Should I proceed with releasing the build now?" \
+  "I've got the disposition clear: #1642 is yours, not mine to drive. I'm standing clear." \
+  "The other session can take it from here — handing it back and standing down." ; do
+  rc=$(FAKE_GH_STATE=OPEN run_hook "$TP" "$prose" false)
+  check "parking/stand-down prose no longer blocks: ${prose:0:40}" "$rc" "0"
+done
 
-# B1. 'want me to … on your go' parking -> the self-audit gate must fire.
-rc=$(FAKE_GH_STATE=OPEN run_hook "$TP" "Want me to build the current main into a .vsix and install it? I can do it on your go." false)
-check "parking 'want me to … on your go' blocks for self-audit" "$rc" "2"
-grep -qi "you claimed this work is done" "$SANDBOX/stderr" && echo "ok   - parking routes through the self-audit GATE" || { echo "FAIL - parking did not reach the self-audit gate"; fail=1; }
-
-# B2. A GENUINE clarifying question that offers alternatives -> must NOT fire
-#     (the agent legitimately cannot pick between the options).
-rc=$(FAKE_GH_STATE=OPEN run_hook "$TP" "Which environment should I target for the deploy — dev or prod?" false)
-check "genuine either/or intent question does not trip parking gate" "$rc" "0"
-
-# B3. 'should I proceed' with no alternatives offered -> parking -> fire.
-rc=$(FAKE_GH_STATE=OPEN run_hook "$TP" "Should I proceed with releasing the build now?" false)
-check "parking 'should I proceed' (no choice offered) blocks" "$rc" "2"
-
-# B4. A plain status report with none of the parking idioms -> must NOT fire.
-rc=$(FAKE_GH_STATE=OPEN run_hook "$TP" "The refactor landed in commit abc123; tests were not run yet." false)
-check "plain status report (no parking idiom) allows stop" "$rc" "0"
-
-# B5. Parking phrasing but only 2 turns (short Q&A) -> must NOT fire (turn gate).
 TSHORT="$SANDBOX/short.jsonl"
 {
   echo '{"type":"user","message":{"role":"user","content":"Can you look at the config and tell me if it is valid?"}}'
   echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"Looking"}]}}'
-  echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"Want me to fix it? Say the word."}]}}'
+  echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"It is valid."}]}}'
 } > "$TSHORT"
-rc=$(FAKE_GH_STATE=OPEN run_hook "$TSHORT" "Want me to fix it? Say the word." false)
-check "parking phrasing in a <=2-turn session does not block" "$rc" "0"
-
-# --- stand-down / ownership-handback (chatbot-mode) -------------------------
-# The agent deliberates about ownership and refuses to drive work it was asked
-# to do ("#1642 is yours, not mine to drive", "handing it back and standing
-# clear"), often citing a sibling session. F1: coordinate-and-continue, never
-# stand-down. These route through the self-audit gate like the parking idioms.
-
-# S1. 'is yours, not mine to drive' stand-down -> the self-audit gate fires.
-rc=$(FAKE_GH_STATE=OPEN run_hook "$TP" "I've got the disposition clear: #1642 is yours, not mine to drive. I'm standing clear." false)
-check "stand-down 'yours not mine to drive' blocks for self-audit" "$rc" "2"
-grep -qi "you claimed this work is done" "$SANDBOX/stderr" && echo "ok   - stand-down routes through the self-audit gate" || { echo "FAIL - stand-down did not reach the self-audit gate"; fail=1; }
-
-# S2. 'handing it back and standing clear' stand-down -> fires.
-rc=$(FAKE_GH_STATE=OPEN run_hook "$TP" "The other session can take it from here — handing it back and standing down." false)
-check "stand-down 'handing it back / standing down' blocks" "$rc" "2"
-
-# S3. LEGIT handoff by naming an owner -> must NOT trip the stand-down patterns.
-rc=$(FAKE_GH_STATE=OPEN run_hook "$TP" "Landed and handed off to the release watcher, which owns the follow-up from here." false)
-check "legit handoff-by-naming-owner does not trip stand-down" "$rc" "0"
-
-# S4. Ordinary use of 'back' (rolled back) -> must NOT fire (no stand-down idiom).
-rc=$(FAKE_GH_STATE=OPEN run_hook "$TP" "Rolled back the migration; the schema is on the prior revision now." false)
-check "ordinary 'rolled back' prose does not trip stand-down" "$rc" "0"
-
-# S5. 'handing it back to you' (to the human) -> fires (the tightened pattern).
-rc=$(FAKE_GH_STATE=OPEN run_hook "$TP" "This one is above my pay grade — handing it back to you to decide." false)
-check "stand-down 'handing it back to you' blocks" "$rc" "2"
-
-# S6. 'handing it back to the main thread' (async prose) -> must NOT fire. This
-#     is the reviewer-found false positive: returning control to a technical
-#     entity is not a stand-down. The pattern now requires a HUMAN target.
-rc=$(FAKE_GH_STATE=OPEN run_hook "$TP" "Each handler now awaits the result before handing it back to the main thread; tests pass." false)
-check "async 'handing it back to the main thread' does not trip stand-down" "$rc" "0"
 
 # --- delivery-chain close-the-loop gate (RUSH-2073) ---------------------------
 # Fixtures for the new delivery gate. The gate must fire on done-claims and on
@@ -724,7 +584,7 @@ exit 1
 STUB
 chmod +x "$SANDBOX/bin/linear"
 rc=$(FAKE_GH_STATE=MERGED FAKE_GIT_BRANCH=feature/RUSH-1234 run_hook "$TD" "All done. The widget is merged." false)
-check "linear probe error fails open to the older self-audit gate" "$rc" "2"
+check "linear probe error fails open (allows stop)" "$rc" "0"
 grep -q "close out the delivery" "$SANDBOX/stderr" && { echo "FAIL - delivery gate did not fail open on linear error"; fail=1; } || echo "ok   - delivery gate fails open on linear error"
 
 cat > "$SANDBOX/bin/linear" <<'STUB'
@@ -753,12 +613,10 @@ grep -q "RUSH-2468" "$SANDBOX/stderr" && echo "ok   - git merge delivery gate ci
 # D11. `linear tasks <id>` (a bare READ — checking state, triaging, incidental
 #      research) must NOT count as "this delivery references the ticket", even
 #      at a genuine merge finish-line. No PR, no branch tie, no done-claim
-#      wording (avoids the older self-audit gate) — a `git merge` sets
-#      delivery_activity and "Merged." supplies the finish-line phrase, so the
-#      delivery gate itself runs; the only thing pointing at RUSH-7777 is the
-#      read command, so it must not fire. Mirrors the existing `gh pr view`
-#      (VIEW is not WORK) distinction above. >=3 assistant turns clears the
-#      short-Q&A skip (turn_count <= 2).
+#      wording — a `git merge` sets delivery_activity and "Merged." supplies the
+#      finish-line phrase, so the delivery gate itself runs; the only thing
+#      pointing at RUSH-7777 is the read command, so it must not fire. Mirrors
+#      the existing `gh pr view` (VIEW is not WORK) distinction above.
 TREAD="$SANDBOX/ticket-read.jsonl"
 {
   echo '{"type":"user","message":{"role":"user","content":"What does the browser skill do?"}}'
@@ -790,69 +648,13 @@ rc=$(FAKE_GH_STATE=MERGED FAKE_LINEAR_STATE=Todo run_hook "$TWRITE" "Merged." fa
 check "'linear update <id>' write still flags an open ticket" "$rc" "2"
 grep -q "RUSH-8888" "$SANDBOX/stderr" && echo "ok   - delivery gate cites the written-to ticket" || { echo "FAIL - delivery gate did not cite the written-to ticket"; fail=1; }
 
-# --- command-handback gate --------------------------------------------------
-# The "No, you release it.." failure: the session wrote a runnable script to a
-# temp path AND the final message tells the user to run it. Fires only when BOTH
-# hold, and exempts a genuine user-only gate (biometric / interactive login).
+# --- removed phrase-triggered checks (command handback) ----------------------
+# The handback check matched 'run it' prose after a /tmp script write; it went
+# 0 for 4 on its own measured demand. It must no longer block.
 THB=$(mk_transcript handback)
-
-# H1. Wrote /tmp/release.sh (Write tool) + "run it when ready" -> block.
 rc=$(FAKE_GH_STATE=MERGED run_hook "$THB" "I've prepared the release at /tmp/release-1.20.82.sh — run it when ready for a single paste." false)
-check "temp-script write + 'run it' handoff blocks" "$rc" "2"
-grep -q "runnable script" "$SANDBOX/stderr" && echo "ok   - handback gate names itself" || { echo "FAIL - no handback gate message"; fail=1; }
-
-# H2. Same temp script, but the final message reports the agent RAN it -> allow
-#     (no directive to the user; running it yourself is the whole point).
-rc=$(FAKE_GH_STATE=MERGED run_hook "$THB" "Ran the release script myself; v1.20.82 is published and verified live." false)
-check "temp-script write but agent ran it allows stop" "$rc" "0"
-
-# H3. Temp script + a directive that names a GENUINE user-only gate -> allow.
-rc=$(FAKE_GH_STATE=MERGED run_hook "$THB" "The signing step needs your Touch ID — run it when you're at the machine to approve the biometric prompt." false)
-check "temp-script handoff exempted for a user-only biometric gate" "$rc" "0"
-
-# H4. Directive to run, but NO temp script was written this session -> allow
-#     (a bare 'run it' with no prepared script is not the hand-back this catches;
-#     avoids nagging ordinary prose). Uses the plain transcript.
-TPL=$(mk_transcript plain)
-rc=$(FAKE_GH_STATE=MERGED run_hook "$TPL" "Once CI is green, run it to cut the tag." false)
-check "'run it' with no temp script written does not fire handback gate" "$rc" "0"
-
-# H5. Temp script + directive but stop_hook_active -> allow (no loops).
-rc=$(FAKE_GH_STATE=MERGED run_hook "$THB" "Run it when ready." true)
-check "handback gate respects stop_hook_active" "$rc" "0"
-
-# H6. Shell-redirect form (cat > /tmp/deploy.sh) + "paste it" -> block.
-THBS=$(mk_transcript handback-shell)
-rc=$(FAKE_GH_STATE=MERGED run_hook "$THBS" "The deploy is scripted at /tmp/deploy.sh — paste it into your shell to ship." false)
-check "shell-redirect temp script + 'paste it' blocks" "$rc" "2"
-
-# --- command-cue precision (false positives observed live) ------------------
-# The session had written helper scripts to /tmp earlier (THB), but the final
-# message is about pasting text into a FORM / sending a MESSAGE, not running a
-# command. RUN alone matched these ('paste that', 'you just paste it'), so the
-# gate false-fired. It must now require a command cue (script/.sh/shell/terminal).
-
-# H7. Temp script written, but final message says paste a blurb into a job
-#     application form (no command cue) -> allow (not a runnable-command handback).
-rc=$(FAKE_GH_STATE=MERGED run_hook "$THB" "Fastest move: paste that blurb into the Mercor application, then hit apply." false)
-check "paste-into-a-form directive does not fire handback gate" "$rc" "0"
-
-# H8. Temp script written, but final message tells the user to send an email
-#     reply (no command cue; 'hit send' is a user-only action) -> allow.
-rc=$(FAKE_GH_STATE=MERGED run_hook "$THB" "The reply's on your clipboard; paste it in, attach the resume, and hit send." false)
-check "send-a-message directive does not fire handback gate" "$rc" "0"
-
-# H9. Command cue present (shell) BUT the directive is to send a message ->
-#     exempt (sending under the user's identity is theirs to do). -> allow.
-rc=$(FAKE_GH_STATE=MERGED run_hook "$THB" "Paste it into your shell if you like, then hit send on the reply." false)
-check "message-send is exempted even with a shell cue" "$rc" "0"
-
-# H10. RECALL GUARD: a plain 'just run it when you're ready' after a temp-script
-#      write names no command cue but IS the canonical handback -> still block.
-#      (Excluding false-positive shapes, rather than demanding a positive command
-#      cue, is what keeps this real case firing.)
-rc=$(FAKE_GH_STATE=MERGED run_hook "$THB" "I've prepared the release; just run it when you're ready." false)
-check "plain 'run it when ready' handback still blocks (recall preserved)" "$rc" "2"
+check "temp-script 'run it' prose no longer blocks" "$rc" "0"
+grep -q "runnable script" "$SANDBOX/stderr" && { echo "FAIL - handback check still fires"; fail=1; } || echo "ok   - no handback check message"
 
 # --- Fix 2 / RUSH-2394: only a DURABLE lander / monitor is a valid stop -------
 # W1. REGRESSION: Open PR + in-process `gh pr checks --watch` (run_in_background)
@@ -878,33 +680,14 @@ check "open PR + ScheduleWakeup monitor allows stop" "$rc" "0"
 rc=$(FAKE_GH_STATE=OPEN run_hook "$T" "agents pr land --detach owns the next step and will merge on green." false)
 check "removed agents-pr-land phrasing WITHOUT a real tool_use still blocks" "$rc" "2"
 
-# --- Fix 3: plan mode / reviewer-down context awareness ---------------------
-# P1. Open PR the session cannot advance because plan mode forbids push/merge.
-rc=$(FAKE_GH_STATE=OPEN run_hook "$T" "PR #42 is open but I cannot push or merge it — plan mode forbids that right now." false)
-check "plan mode (cannot push/merge) allows stop on an open PR" "$rc" "0"
+# --- plan mode is read from the Stop payload, never the prose ----------------
+# P1. permission_mode=plan in the payload: the agent cannot push/merge -> allow.
+rc=$(FAKE_GH_STATE=OPEN run_hook "$T" "PR #42 CI is still running." false plan)
+check "payload permission_mode=plan allows stop on an open PR" "$rc" "0"
 
-# P1b. Incidental mention of 'plan mode' with no can't/forbid cue -> still blocks.
-rc=$(FAKE_GH_STATE=OPEN run_hook "$T" "I sketched a plan mode of attack; PR #42 CI is still running." false)
-check "incidental 'plan mode' phrase without a forbid cue still blocks" "$rc" "2"
-
-# P2. Automated reviewer down + "needs you to click merge" is NOT a valid stop —
-#     agent must spawn a subagent review and merge itself, not hand the merge to the user.
-rc=$(FAKE_GH_STATE=OPEN run_hook "$T" "PR #42 CI is green but prix-cloud is down (no reviewer posted). It now needs you to click merge." false)
-check "reviewer down + needs-you still blocks (spawn subagent review, do not hand off)" "$rc" "2"
-
-# P2b. REGRESSION: 'no ci failures' / 'no ci blocking' is abandonment prose.
-rc=$(FAKE_GH_STATE=OPEN run_hook "$T" "No CI failures detected. Your approval would help get this merged." false)
-check "'no ci failures' + 'your approval' still blocks" "$rc" "2"
-rc=$(FAKE_GH_STATE=OPEN run_hook "$T" "No CI blocking this merge, your sign-off is all that's needed." false)
-check "'no ci blocking' + 'your sign-off' still blocks" "$rc" "2"
-
-# P2c. No automated reviewer configured + needs-you is also not a stop — spawn subagent review.
-rc=$(FAKE_GH_STATE=OPEN run_hook "$T" "This repo has no reviewer configured, so PR #42 now needs you to merge it." false)
-check "'no reviewer configured' + needs-you still blocks (spawn subagent review)" "$rc" "2"
-
-# P2d. Reviewer down but PR explicitly handed to a named owner/session still allows stop.
-rc=$(FAKE_GH_STATE=OPEN run_hook "$T" "PR #42 CI is green but prix-cloud is down. Handed off to the code-review session, which owns the PR from here." false)
-check "reviewer down + explicit named handoff allows stop" "$rc" "0"
+# P1b. Any other mode, plus plan-mode prose -> still blocks (wording is not mode).
+rc=$(FAKE_GH_STATE=OPEN run_hook "$T" "PR #42 is open but plan mode forbids merging." false default)
+check "plan-mode prose under a non-plan payload mode still blocks" "$rc" "2"
 
 # --- Repeated-gate strategy guidance after the 3rd fire on the same item -----
 # A transcript that already carries N prior open-PR fires (real isMeta 'Stop hook
@@ -945,13 +728,14 @@ grep -qi "this is block number" "$SANDBOX/stderr" && { echo "FAIL - repeat guida
 
 # --- Task-list keep-moving gate (RUSH-2113 A + B) ----------------------------
 # The session's OWN checklist is the strongest "stopped too early" signal. A stop
-# with pending / in_progress items and no named owner is premature; a genuine
-# question, plan mode, a named blocker, an explicit handoff, or a LIVE background
-# watcher that owns the remaining step are all legitimate stops.
+# with pending / in_progress items blocks unless a FACT covers it: a durable
+# watcher armed this session, AskUserQuestion/ExitPlanMode as the last tool, or
+# permission_mode=plan in the payload. Questions, handoffs, and blockers in
+# prose do not clear it.
 #
 # Fixtures build the real Claude tool_use shape for the checklist tools
 # (TaskCreate / TaskUpdate, and the snapshot TodoWrite). No PR is created, so
-# ONLY this gate can fire — its block message is tagged "STOP GATE (keep moving)".
+# ONLY this gate can fire.
 mk_tasks() {   # $1 selects checklist state
   local t="$SANDBOX/tasks-$RANDOM.jsonl"
   {
@@ -976,6 +760,15 @@ mk_tasks() {   # $1 selects checklist state
         echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"tw1","name":"ScheduleWakeup","input":{"delaySeconds":300,"reason":"re-check CI and merge PR 42 on green"}}]}}'
         echo '{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"tw1","content":[{"type":"text","text":"wakeup scheduled"}]}]}}'
         ;;
+      ask-remaining)
+        # one item left and the agent's LAST tool call asked the user.
+        echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"tu1","name":"TaskUpdate","input":{"taskId":"1","status":"completed"}}]}}'
+        echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"aq1","name":"AskUserQuestion","input":{"questions":[{"question":"Tabs or spaces?"}]}}]}}'
+        ;;
+      exitplan-remaining)
+        echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"tu1","name":"TaskUpdate","input":{"taskId":"1","status":"completed"}}]}}'
+        echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"ep1","name":"ExitPlanMode","input":{"plan":"wire it up"}}]}}'
+        ;;
     esac
     echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"progress"}]}}'
     echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"more progress"}]}}'
@@ -995,22 +788,33 @@ TKD=$(mk_tasks all-done)
 rc=$(run_hook "$TKD" "The parser is written and the wiring is in place." false)
 check "all checklist items complete allows stop" "$rc" "0"
 
-# E3. Pending checklist but the final message is a genuine question -> allow.
+# E3. Pending checklist + a question asked only in PROSE -> still blocks; the
+#     question has to go through AskUserQuestion to be a structural handoff.
 rc=$(run_hook "$TK" "The parser is written. Which layout should the wiring use, tabs or spaces?" false)
-check "pending checklist + clarifying question allows stop" "$rc" "0"
+check "pending checklist + prose-only question blocks" "$rc" "2"
 
-# E4. Pending checklist + an explicit named handoff -> allow.
-rc=$(run_hook "$TK" "Parser written; the ui session takes over from here and owns the task." false)
-check "pending checklist + explicit handoff allows stop" "$rc" "0"
+# E4. Pending checklist + AskUserQuestion as the last tool call -> allow.
+TKA=$(mk_tasks ask-remaining)
+rc=$(run_hook "$TKA" "Asked which layout to use." false)
+check "pending checklist + AskUserQuestion last tool allows stop" "$rc" "0"
 
-# E5. Pending checklist + a genuine external blocker (biometric) -> allow.
-rc=$(run_hook "$TK" "Parser written. Wiring is blocked on your Touch ID to sign the artifact." false)
-check "pending checklist + named external blocker allows stop" "$rc" "0"
+# E5. Pending checklist + ExitPlanMode as the last tool call -> allow.
+TKP=$(mk_tasks exitplan-remaining)
+rc=$(run_hook "$TKP" "Plan presented for approval." false)
+check "pending checklist + ExitPlanMode last tool allows stop" "$rc" "0"
 
-# E6. Pending checklist + a durable ScheduleWakeup + watcher phrasing -> allow (RUSH-2394).
+# E5b. Pending checklist + payload permission_mode=plan -> allow.
+rc=$(run_hook "$TK" "The parser is written." false plan)
+check "pending checklist + payload plan mode allows stop" "$rc" "0"
+
+# E5c. Pending checklist + prose handoff / blocker -> still blocks.
+rc=$(run_hook "$TK" "Parser written; the ui session takes over from here and owns the task. Wiring is blocked on your Touch ID." false)
+check "pending checklist + prose handoff/blocker still blocks" "$rc" "2"
+
+# E6. Pending checklist + a durable ScheduleWakeup armed -> allow (RUSH-2394).
 TKW=$(mk_tasks watcher-remaining)
-rc=$(run_hook "$TKW" "A ScheduleWakeup owns the merge and will merge on green." false)
-check "pending checklist + durable ScheduleWakeup owns it allows stop" "$rc" "0"
+rc=$(run_hook "$TKW" "Wiring is next." false)
+check "pending checklist + durable ScheduleWakeup armed allows stop" "$rc" "0"
 
 # E7. Durable-watcher PHRASING (even the removed agents pr land command) but no
 # real ScheduleWakeup/Monitor tool_use this session -> still block (evidence-
@@ -1074,40 +878,13 @@ rc_json=$(python3 "$TODO" "$TSNAP")
 rc_json=$(python3 "$TODO" "/no/such/file.jsonl")
 echo "$rc_json" | grep -q '"total": 0' && echo "ok   - todo-progress fails open on a missing transcript" || { echo "FAIL - todo-progress did not fail open ($rc_json)"; fail=1; }
 
-# --- 2026-08-15 hardening: argue-past ramp, errored watchers, evasion replay ---
-
-# AP1. Retried stop restating the ea913c60 evasion verbatim -> block again.
+# --- loop protection: a retried stop always passes ---------------------------
+# The argue-past ramp re-blocked retries by phrase and was never measured. A
+# retry (stop_hook_active=true) now passes whatever it says.
 T=$(mk_transcript create)
 rc=$(FAKE_GH_STATE=OPEN run_hook "$T" "Merged, not released — and that's the correct stopping point, not a gap." true)
-check "argue-past: 'correct stopping point' on retry blocks" "$rc" "2"
-grep -q "stand-down phrase" "$SANDBOX/stderr" && echo "ok   - argue-past names the evasion" || { echo "FAIL - no argue-past message"; fail=1; }
-
-# AP2. Retried stop restating the 6805bf66 evasion -> block again.
-rc=$(FAKE_GH_STATE=OPEN run_hook "$T" "Restating for the gate: RUSH-2719 stays open by design and is not mine to close." true)
-check "argue-past: 'stays open by design / not mine to close' on retry blocks" "$rc" "2"
-
-# AP3. Retried stop citing the permission classifier as a hand-back -> block again.
-rc=$(FAKE_GH_STATE=OPEN run_hook "$T" "The permission classifier bars me from executing it; run the deploy from your terminal." true)
-check "argue-past: 'permission classifier bars me' on retry blocks" "$rc" "2"
-
-# AP4. An ordinary retry with no evasion phrase keeps the old behavior -> allow.
-rc=$(FAKE_GH_STATE=OPEN run_hook "$T" "Continuing: merged the fix and closed the ticket with proof." true)
-check "argue-past: plain retry without evasion phrase still passes" "$rc" "0"
-
-# AP5. Cap: after two prior argue-past fires the retry passes (never wedge).
-TCAP="$SANDBOX/transcript-cap-$RANDOM.jsonl"
-cp "$T" "$TCAP"
-echo '{"type":"user","isMeta":true,"message":{"role":"user","content":"Stop hook feedback: STOP — this stop was already blocked, and the retry restates a stand-down phrase"}}' >> "$TCAP"
-echo '{"type":"user","isMeta":true,"message":{"role":"user","content":"Stop hook feedback: STOP — this stop was already blocked, and the retry restates a stand-down phrase"}}' >> "$TCAP"
-rc=$(FAKE_GH_STATE=OPEN run_hook "$TCAP" "Merged, not released — and that's the correct stopping point." true)
-check "argue-past: capped after two prior fires (never wedges)" "$rc" "0"
-
-# AP6. An honest, EVIDENCED wrap-up that happens to contain a listed phrase —
-#      "nothing needs you" plus a merged-PR URL and quoted health output — must
-#      pass the ramp (reviewer repro: phrase-only matching blocked it and then
-#      filed a false --blocked feed post).
-rc=$(FAKE_GH_STATE=MERGED run_hook "$T" "PR merged: https://github.com/acme/widgets/pull/42 and health check returned 200 OK. Nothing needs you." true)
-check "argue-past: evidenced honest wrap-up passes the ramp" "$rc" "0"
+check "retry restating a former stand-down phrase passes" "$rc" "0"
+grep -q "stand-down phrase" "$SANDBOX/stderr" && { echo "FAIL - argue-past ramp still fires"; fail=1; } || echo "ok   - no argue-past message"
 
 # EW1. Errored ScheduleWakeup arm + watcher phrasing + open PR -> still blocks.
 TE=$(mk_transcript create+monitor-err)
@@ -1143,132 +920,52 @@ rc=$(run_hook "$TGS" "Search finished; no live teams found in that transcript." 
 check "grep FOR status markers does not trip the live-team gate" "$rc" "0"
 grep -q "RUNNING teammates" "$SANDBOX/stderr" && { echo "FAIL - live-team gate false-fired on a grep"; fail=1; } || echo "ok   - no live-team gate on a search-only session"
 
-# LT4. Retry restating the 515b71e1 park phrases without evidence -> argue-past
-#      ramp blocks (the phrase family is in PHRASES and standdown, kept in sync).
-TLP=$(mk_transcript plain)
-rc=$(run_hook "$TLP" "Both watch loops are armed and will re-invoke me when a PR merges. I'll surface on the next real event rather than another status recap." true)
-check "park-phrase family blocks on the argue-past ramp" "$rc" "2"
-grep -q "stand-down phrase" "$SANDBOX/stderr" && echo "ok   - ramp names the stand-down restatement" || { echo "FAIL - ramp message missing"; fail=1; }
-# --- Ownership-is-absolute (RUSH-3013): conflicts are never hand-backable; ------
-# --- the only non-merge exit is an owner-only gate with a checked receipt. ------
+# --- Owned open PR: prose HANDOFF vs an on-disk --blocked receipt ------------
 
-# OWN1. Conflict-shaped handoff never clears the open-PR gate, even with the
-#       accepted handoff phrase present.
+# OWN1. Conflict-shaped handoff never clears the open-PR gate.
 T=$(mk_transcript create)
 rc=$(FAKE_GH_STATE=OPEN run_hook "$T" "Handing this off — merge conflicts with main need resolving before this can land." false)
 check "ownership: conflict-shaped handoff still blocks" "$rc" "2"
 grep -q "This PR is YOURS" "$SANDBOX/stderr" && echo "ok   - ownership-first message present" || { echo "FAIL - ownership message missing"; fail=1; }
+grep -q "feed post" "$SANDBOX/stderr" && echo "ok   - block names the --blocked receipt as the owner-only exit" || { echo "FAIL - block omits the receipt exit"; fail=1; }
 
-# OWN2. HANDOFF sentinel without any receipt: prose alone never passes.
+# OWN2. An owned open PR with only a prose HANDOFF line and no watcher or
+#       receipt -> blocks. The sentinel line is prose, not a fact.
 rc=$(FAKE_GH_STATE=OPEN run_hook "$T" "HANDOFF: the owner — approval only they can grant." false)
 check "ownership: HANDOFF line without receipt blocks" "$rc" "2"
 
-# OWN3. HANDOFF sentinel + --blocked feed receipt on disk -> owner-gated pass.
+# OWN3. The same open PR with a --blocked feed receipt on disk for THIS
+#       session -> passes, whatever the final message says.
 FAKEHOME="$SANDBOX/home"
 SID="fixture-$(printf '%s' "$T" | sha256sum | cut -c1-16)"
 mkdir -p "$FAKEHOME/.agents/.history/feed"
 printf '{"blocked":true}' > "$FAKEHOME/.agents/.history/feed/block-${SID}.json"
-rc=$(HOME="$FAKEHOME" FAKE_GH_STATE=OPEN run_hook "$T" "HANDOFF: repo-admin — branch-policy gate no agent can satisfy; ask filed via feed post --blocked." false)
-check "ownership: HANDOFF + --blocked receipt passes (owner-gated)" "$rc" "0"
+rc=$(HOME="$FAKEHOME" FAKE_GH_STATE=OPEN run_hook "$T" "HANDOFF: the owner — approval only they can grant." false)
+check "ownership: --blocked receipt on disk passes the open PR" "$rc" "0"
+rc=$(HOME="$FAKEHOME" FAKE_GH_STATE=OPEN run_hook "$T" "Waiting for approval." false)
+check "ownership: receipt passes without any HANDOFF wording" "$rc" "0"
 
-# OWN4. A receipt cannot launder an agent-fixable state: conflict reason still blocks.
-rc=$(HOME="$FAKEHOME" FAKE_GH_STATE=OPEN run_hook "$T" "HANDOFF: the owner — merge conflicts with main; please resolve them." false)
-check "ownership: receipt cannot launder a conflict handback" "$rc" "2"
+# OWN4. A receipt filed by a DIFFERENT session does not cover this one.
+TOTHER=$(mk_transcript create)
+rc=$(HOME="$FAKEHOME" FAKE_GH_STATE=OPEN run_hook "$TOTHER" "HANDOFF: the owner — approval only they can grant." false)
+check "ownership: another session's receipt does not cover this PR" "$rc" "2"
 
-# OWN5. Biometric owner-only gate WITH the filed receipt -> allow (4c's pair).
-rc=$(HOME="$FAKEHOME" FAKE_GH_STATE=OPEN run_hook "$T" "PR #42 is blocked on a Touch ID signing step no agent can perform; ask filed via feed post --blocked. HANDOFF: device-holder — Touch ID signing, feed block record filed." false)
-check "ownership: biometric gate + --blocked receipt allows stop" "$rc" "0"
-
-# OWN6. Reviewer repro: HONEST resolved-state narration must not trip the
-#       agent_fixable veto — 'fixed the failing tests and resolved merge
-#       conflicts' is completed work, and the receipted handoff still passes.
-rc=$(HOME="$FAKEHOME" FAKE_GH_STATE=OPEN run_hook "$T" "Fixed the failing tests and resolved merge conflicts with main; CI is green and docs are written. Ask filed via feed post --blocked. HANDOFF: repo-admin — branch-policy gate no agent can satisfy." false)
-check "ownership: resolved-state narration does not trip the fixable veto" "$rc" "0"
-
-# OWN7. Mixed sentence: resolution verb in one sentence does not launder a
-#       LIVE blocker stated in another.
-rc=$(HOME="$FAKEHOME" FAKE_GH_STATE=OPEN run_hook "$T" "Resolved the lint errors. There are still merge conflicts with main. HANDOFF: the owner — please take it from here." false)
-check "ownership: live conflict in its own sentence still blocks" "$rc" "2"
-
-# OWN8. Reviewer repro 2: a comma-joined resolution verb in a NEIGHBORING
-#       clause does not launder a live blocker (clause-scoped check).
-rc=$(HOME="$FAKEHOME" FAKE_GH_STATE=OPEN run_hook "$T" "Addressed feedback on the branch name, merge conflicts with main still need resolving before this can land, filed via feed post --blocked. HANDOFF: the owner - needs to review." false)
-check "ownership: comma-joined resolution verb cannot launder a live conflict" "$rc" "2"
-
-# OWN9. Honest postfix passive — 'merge conflicts with main resolved' — is
-#       completed work in its own clause and must not trip the veto.
-rc=$(HOME="$FAKEHOME" FAKE_GH_STATE=OPEN run_hook "$T" "Merge conflicts with main resolved, CI green. Ask filed via feed post --blocked. HANDOFF: repo-admin — branch-policy gate no agent can satisfy." false)
-check "ownership: postfix 'conflicts resolved' does not trip the veto" "$rc" "0"
-
-# OWN10. Reviewer repro 3a: a subordinating conjunction ('although') between a
-#        resolution verb and a live blocker does not launder it.
-rc=$(HOME="$FAKEHOME" FAKE_GH_STATE=OPEN run_hook "$T" "Already fixed one issue although merge conflicts with main remain, filed via feed post --blocked. HANDOFF: the owner - needs to review." false)
-check "ownership: 'although'-joined resolution verb cannot launder a live conflict" "$rc" "2"
-
-# OWN11. Reviewer repro 3b: same class via 'though' + a different FIXABLE
-#        alternative (red CI with an adverb).
-rc=$(HOME="$FAKEHOME" FAKE_GH_STATE=OPEN run_hook "$T" "Addressed the review comments though ci is still failing on the release branch, filed via feed post --blocked. HANDOFF: the owner - needs to review." false)
-check "ownership: 'though'-joined resolution verb cannot launder red CI" "$rc" "2"
-
-# OWN12. Reviewer repro 4: plain 'and' between the resolution verb and a live
-#        blocker breaks adjacency — no laundering via the commonest conjunction.
-rc=$(HOME="$FAKEHOME" FAKE_GH_STATE=OPEN run_hook "$T" "Fixed the docs and merge conflicts with main remain, filed via feed post --blocked. HANDOFF: the owner - needs to review." false)
-check "ownership: 'and'-joined resolution verb cannot launder a live conflict" "$rc" "2"
-
-# OWN13. Reviewer repro 5: connective adverbs ('also') and any other content
-#        word in the verb-to-phrase gap break adjacency — the gap allowlist is
-#        closed-class function words only.
-rc=$(HOME="$FAKEHOME" FAKE_GH_STATE=OPEN run_hook "$T" "Resolved the doc issue also merge conflicts with main remain outstanding, filed via feed post --blocked. HANDOFF: the owner - needs to review." false)
-check "ownership: 'also'-joined resolution verb cannot launder a live conflict" "$rc" "2"
-
-# OWN14. Allowlist positive: quantified honest coordination stays exempt —
-#        'resolved all the remaining merge conflicts' has a pure function-word gap.
-rc=$(HOME="$FAKEHOME" FAKE_GH_STATE=OPEN run_hook "$T" "Resolved all the remaining merge conflicts with main; CI green. Ask filed via feed post --blocked. HANDOFF: repo-admin — branch-policy gate no agent can satisfy." false)
-check "ownership: function-word gap keeps honest resolution exempt" "$rc" "0"
-
-# OWN15. Reviewer repro 6a: a prefix exemption cannot ignore a live-state word
-#        AFTER the phrase — 'Resolved the merge conflicts ... remain outstanding'
-#        is self-contradictory and the blocker counts as live.
-rc=$(HOME="$FAKEHOME" FAKE_GH_STATE=OPEN run_hook "$T" "Resolved the merge conflicts with main remain outstanding, filed via feed post --blocked. HANDOFF: the owner - needs to review." false)
-check "ownership: live-state word after the phrase voids the prefix exemption" "$rc" "2"
-
-# OWN16. Reviewer repro 6b: same class, different FIXABLE alternative.
-rc=$(HOME="$FAKEHOME" FAKE_GH_STATE=OPEN run_hook "$T" "Fixed the rebase needed against origin still pending, filed via feed post --blocked. HANDOFF: the owner - needs to review." false)
-check "ownership: 'still pending' after the phrase voids the exemption" "$rc" "2"
-
-# OWN17. Reviewer repro 7: a back-referencing live clause past the segment
-#        boundary ('they still block the release') is inside the 160-char
-#        punctuation-blind live window and voids the exemption.
-rc=$(HOME="$FAKEHOME" FAKE_GH_STATE=OPEN run_hook "$T" "Resolved the merge conflicts with main, they still block the release, filed via feed post --blocked. HANDOFF: the owner - please take over." false)
-check "ownership: back-referencing live clause voids the exemption" "$rc" "2"
-
-# OWN18. Reviewer repro 8 (false-positive direction): the HANDOFF clause's own
-#        vocabulary ('needs to review …') must not poison an exemption for an
-#        already-resolved blocker — the clause's span is blanked from the scan.
-rc=$(HOME="$FAKEHOME" FAKE_GH_STATE=OPEN run_hook "$T" "Merge conflicts with main resolved, CI green. Ask filed via feed post --blocked. HANDOFF: the owner - needs to review the pricing policy." false)
-check "ownership: ask-clause wording cannot poison an honest exemption" "$rc" "0"
-
-# OWN19. Reviewer repro 9: a live confession typed AFTER the HANDOFF clause is
-#        still scanned — the sentinel classifies, it does not truncate.
-rc=$(HOME="$FAKEHOME" FAKE_GH_STATE=OPEN run_hook "$T" "Resolved the merge conflicts with main, filed via feed post --blocked. HANDOFF: the owner - needs to review. Still blocking the release though." false)
-check "ownership: live confession after the HANDOFF clause still blocks" "$rc" "2"
-
-# OWN20. Reviewer repro 10: a comma-appended confession on the HANDOFF sentence
-#        still blocks — 'still blocking …' is itself a FIXABLE phrase.
-rc=$(HOME="$FAKEHOME" FAKE_GH_STATE=OPEN run_hook "$T" "Resolved the merge conflicts with main, filed via feed post --blocked. HANDOFF: the owner - needs to review, though it is still blocking the release." false)
-check "ownership: comma-appended confession on the HANDOFF line still blocks" "$rc" "2"
-
-# OWN21. Reviewer repro 11 (the trade-off pair, both directions in one place):
-#        a reason-bearing ask ('needs the credential, which is not available')
-#        must NOT poison a resolved conflict — ask text past the sentinel is
-#        never scanned...
-rc=$(HOME="$FAKEHOME" FAKE_GH_STATE=OPEN run_hook "$T" "Merge conflicts with main resolved, CI green. Ask filed via feed post --blocked. HANDOFF: the owner - needs the credential, which is not available to agents." false)
-check "ownership: reason-bearing ask cannot poison a resolved conflict" "$rc" "0"
-
-# OWN22. ...while a confession appended after that same reason-bearing ask is
-#        still caught, because the confession idiom is FIXABLE on its own.
-rc=$(HOME="$FAKEHOME" FAKE_GH_STATE=OPEN run_hook "$T" "Resolved the merge conflicts with main, filed via feed post --blocked. HANDOFF: the owner - needs the credential, which is not available. Still blocking the release though." false)
-check "ownership: confession after a reason-bearing ask still blocks" "$rc" "2"
+# --- done-claim matching: a list ending in '; done.' is not a claim -----------
+# The bare 'done.' entry matched inside list items and drove repo-mutating
+# sessions into the delivery chain. The setup below blocks on an open ticket
+# the moment a real done-claim is made (positive control), so the list case
+# proves it is the matcher, not the setup, that changed.
+TLIST=$(mk_transcript repo-write)
+rc=$(FAKE_GIT_BRANCH=feature/RUSH-1234 FAKE_LINEAR_STATE=Todo run_hook "$TLIST" "Status:
+- parser: written; done.
+- wiring: written; done!" false)
+check "a list ending '; done.' triggers nothing" "$rc" "0"
+[ -s "$SANDBOX/stderr" ] && { echo "FAIL - '; done.' list produced block text"; fail=1; } || echo "ok   - '; done.' list produces no block text"
+rc=$(FAKE_GIT_BRANCH=feature/RUSH-1234 FAKE_LINEAR_STATE=Todo run_hook "$TLIST" "All done. The widget is complete." false)
+check "positive control: a real done-claim on the same setup reaches the delivery chain" "$rc" "2"
+grep -q "close out the delivery" "$SANDBOX/stderr" && echo "ok   - positive control hit the delivery chain" || { echo "FAIL - positive control did not reach the delivery chain"; fail=1; }
+rc=$(FAKE_GIT_BRANCH=feature/RUSH-1234 FAKE_LINEAR_STATE=Todo run_hook "$TLIST" "Overall done-ness is tracked in the ticket; the widget is half built." false)
+check "done-claim phrases match on word boundaries only" "$rc" "0"
 
 # CAP1/CAP2. Identical-state cap (RUSH-3032 item a): with 2 prior fires in
 # the transcript, the FIRST evaluation of a given state blocks; a SECOND

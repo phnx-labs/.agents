@@ -69,10 +69,9 @@ a thing the user would otherwise have to do themselves after reading you.
    record and the phone delivery. Keep it to 1-4 lines, lead with whatever needs
    them, link the PR or ticket rather than restating it — the harness notifies *you*
    when the turn ends and never notifies them, so a recap that exists only in this
-   window reaches nobody. **If this session already posted one, that was it.** The
-   `verify-work-complete` Stop hook asks for the same single update before it hands
-   off to `/recap`, so a second post here is a second phone buzz for one delivered
-   piece of work — do not repeat it, and do not reach for `agents notify` (deprecated; use `agents feed post --level important`) as a way
+   window reaches nobody. **If this session already posted one, that was it.** A
+   second post here is a second phone buzz for one delivered piece of work — do
+   not repeat it, and do not reach for `agents notify` (deprecated; use `agents feed post --level important`) as a way
    around that. If no update has gone out yet, send this one.
 
 Scale it to the work: a question answered in-session has no ticket to close, no

@@ -161,6 +161,18 @@ defined) and `exit 2`s if the lib is unreachable — a guard that cannot parse a
 git command must refuse, not wave it through. `git-parse-sourcing_test.sh` pins
 this for all three consumers.
 
+## Blocking checks decide on facts, not phrasing
+
+A Stop check that blocks must key on something the transcript structure, the
+hook payload, GitHub, or the disk can prove — a PR's live state, an armed
+watcher's non-error tool_result, a receipt file, `permission_mode`, the
+folded checklist. Regex over the final message is not evidence: it blocks honest
+wording and is cleared by restating the right words. Phrasing may only *select*
+which fact-based check runs (the done-claim detector that gates
+`verify-delivery-chain.py`), never decide a verdict on its own. Record every
+evaluation (`record_block` / `record_check_ok`) so a check's hit rate stays
+measurable before it is kept or extended.
+
 ## Exit codes and streams
 
 - `exit 0` — allow. Anything on stdout is injected into the model's context.

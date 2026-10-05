@@ -19,8 +19,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-from visual_readback import inspect_transcript
-
 LINEAR_BIN = (
     os.environ.get("LINEAR_BIN")
     or shutil.which("linear")
@@ -683,11 +681,9 @@ def main():
     # real delivery with no file diff, and `_release_status` already checks it on
     # independent tag/publish/verify evidence. ANDing is_real_delivery here would
     # silently disable release verification for that ordinary flow.
-    visual = inspect_transcript(transcript_path, goal_offset)
     is_real_delivery = (
         bool(pr_data)
         or (bool(repo_path) and bool(_deliverable_changed_files(repo_path, pr_data)))
-        or visual["visual_delivered"]
     )
 
     user_facing = _looks_user_facing(pr_data, first_user_msg) and is_real_delivery
@@ -711,8 +707,6 @@ def main():
         issues.append("independently-shippable change not released/verified")
     if (ticket_ids or user_facing or shippable) and not evidence_ok:
         issues.append("outcome evidence missing")
-    if visual["visual_delivered"] and not visual["visual_read_back"]:
-        issues.append("visual artifact delivered without image read-back")
 
     if not issues:
         return
@@ -737,9 +731,6 @@ def main():
             lines.append(f"  - Merged but not published ({paths} still under [Unreleased]) — finish the release and verify the registry, or probe the live releaser (process/lease/PR, not a claim).")
         else:
             lines.append("  - Release/live verification incomplete — release, then cite the live version/URL/output.")
-
-    if visual["visual_delivered"] and not visual["visual_read_back"]:
-        lines.append(f"  - Visual delivered without image read-back ({visual['latest_visual'] or 'visual artifact'}) — screenshot it headlessly and view_image it.")
 
     if (ticket_ids or user_facing or shippable) and not evidence_ok:
         lines.append("  - No outcome evidence — cite a screenshot, URL, metric, passing test output, or version check.")
