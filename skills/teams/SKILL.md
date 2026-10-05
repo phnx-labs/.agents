@@ -169,9 +169,9 @@ Every edit-mode brief carries the fixed parts — Mission, Full scope, **Owns**,
 
 **Completion contract:**
 
-> Your task is complete only when your PR is merged, or a durable watcher (`agents monitors add`) owns its merge, or a genuine owner-only block is filed with `agents feed post "<ask>" --blocked`. Naming an owner in prose does not count. If you are waiting on CI or review, keep waiting with a background watch — `(gh pr checks <pr> --watch --fail-fast; echo "CI settled rc=$?")` run in the background, never a `while`/`until` loop — do not stop.
+> Your task is complete only when your PR is merged, or GitHub auto-merge owns it (`agents projects prs automerge <project> --repo o/r --number N --sha <sha>`), or a genuine owner-only block is filed with `agents feed post "<ask>" --blocked`. Naming an owner in prose does not count. If you are waiting on CI or review, keep waiting with a background watch — `(gh pr checks <pr> --watch --fail-fast; echo "CI settled rc=$?")` run in the background, never a `while`/`until` loop — do not stop.
 
-A teammate is done only when its PR is **merged, or watched by a durable monitor, or filed as a genuine `--blocked` ask** — "PR open, CI green, waiting for review" is the top way team output gets stranded (a real 11-teammate run once ended with every PR unmerged). The `verify-work-complete` Stop hook backstops this, but the brief line is what makes teammates drive to merge.
+A teammate is done only when its PR is **merged, or handed to GitHub auto-merge, or filed as a genuine `--blocked` ask** — "PR open, CI green, waiting for review" is the top way team output gets stranded (a real 11-teammate run once ended with every PR unmerged). The `verify-work-complete` Stop hook backstops this, but the brief line is what makes teammates drive to merge.
 
 ## Orchestrator: post at boundaries, verify the seam
 
@@ -189,16 +189,10 @@ orchestrator armed a `while true; do … done &` poll, told the user *"the backg
 poll re-invokes me when the team settles"*, and the loop was **dead** — `ps` showed
 nothing, while four teammates were still RUNNING with no one watching.
 
-### Arm a watcher that survives — then prove it is alive
+### Arm a watcher — then prove it is alive
 
 ```bash
-# Durable (survives this session ending). Note the interval is a SECOND argument to
-# --poll, and --run takes an agent NAME with the prompt in --prompt.
-agents monitors add pr-sweep-done \
-  --poll 'agents teams status my-feature --json' 5m \
-  --run claude --prompt 'Team my-feature settled — verify each PR merged, then land it'
-
-# In-session: background command + a finish-echo, so the harness re-invokes you.
+# Background command + a finish-echo, so the harness re-invokes you.
 ( agents teams start my-feature --watch; echo "TEAM SETTLED rc=$? — next: verify each PR merged" )
 ```
 
@@ -212,18 +206,8 @@ does not exist.
 because the command returned 0. Check the postcondition and quote it:
 
 ```bash
-agents monitors list | grep pr-sweep-done       # registered?
-agents monitors logs pr-sweep-done              # did the ACTION actually run?
 ps -p "$WATCH_PID" >/dev/null && echo alive     # background watcher still running?
 ```
-
-**Registered is not running, and fired is not ran.** `agents monitors runs <name>`
-reporting a fire as `ok` while `agents monitors logs <name>` reports that same run as
-`skipped  (no output captured)` means the action never executed and no agent was
-spawned — the monitor is decorative. Reproduced on agents-cli 1.22.39 on 2026-08-15,
-which is both the installed and the latest published version (RUSH-2681). **While that
-is true, a monitor cannot be the owner of anything** — drive the work in-session and
-treat the monitor as a backstop.
 
 If you cannot show that output, **do not tell the user you are watching.**
 

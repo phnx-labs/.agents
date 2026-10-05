@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
-# Contract tests for pr-verdict.py — the shared merge-guard / pr-merge-on-green
-# verdict. Feeds the same stdin shape the shell callers pipe: three
-# base64-encoded segments (reviews JSON, comments JSON, PR author login)
-# joined by ---AGENTS-SPLIT---. No network.
+# Contract tests for pr-verdict.py — the merge-guard verdict. Feeds the same
+# stdin shape the shell callers pipe: three base64-encoded segments (reviews
+# JSON, comments JSON, PR author login) joined by ---AGENTS-SPLIT---. No network.
 set -u
 DIR=$(cd "$(dirname "$0")" && pwd)
 PY="$DIR/pr-verdict.py"
@@ -99,9 +98,9 @@ check missing "author comparison is case-insensitive" \
 check ok "item with no user field is treated as non-author (not excluded)" \
   '[]' '[{"body":"VERDICT: APPROVE"}]'
 
-# pr-merge-on-green.sh feeds `gh pr view --json reviews,comments` payloads,
-# which key the author as `author.login` (GraphQL shape), not `user.login`
-# (the REST shape merge-guard.sh feeds). Both must be recognized.
+# `gh pr view --json reviews,comments` payloads key the author as
+# `author.login` (GraphQL shape), not `user.login` (the REST shape
+# merge-guard.sh feeds). Both must be recognized.
 check missing "self-authored review in the author.login (GraphQL) shape does not clear" \
   '[{"state":"COMMENTED","author":{"login":"pr-author-bot"},"body":"VERDICT: APPROVE"}]' '[]'
 check missing "self-authored comment in the author.login (GraphQL) shape does not clear" \

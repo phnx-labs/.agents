@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Shared PR verdict check used by merge-guard.sh and pr-merge-on-green.
+"""PR verdict check used by merge-guard.sh.
 
 A PR is merge-clearing when EITHER:
   - a GitHub review has state APPROVED, OR
@@ -179,10 +179,10 @@ def _b64_decode_json(segment: str):
 def _item_login(it: dict) -> str:
     """The item's author login. merge-guard.sh feeds REST API payloads
     (`gh api repos/.../pulls/.../reviews`, `.../issues/.../comments`), which key
-    the author as `user.login`; pr-merge-on-green.sh feeds GraphQL-shaped
-    payloads (`gh pr view --json reviews,comments`), which key it as
-    `author.login` instead. Same data, two different `gh` surfaces — check
-    both rather than requiring callers to normalize first."""
+    the author as `user.login`; GraphQL-shaped payloads
+    (`gh pr view --json reviews,comments`) key it as `author.login` instead.
+    Same data, two different `gh` surfaces — check both rather than requiring
+    callers to normalize first."""
     user = it.get("user") or {}
     if user.get("login"):
         return user["login"]
@@ -194,7 +194,7 @@ def _exclude_self_authored(items, pr_author: str):
     """Drop any review/comment whose author is the PR's own author. An empty
     login on either side never matches a real GitHub username, so this is a
     no-op (nothing excluded) when the caller could not resolve pr_author —
-    the caller-side gate in merge-guard.sh/pr-merge-on-green.sh is what
+    the caller-side gate in merge-guard.sh is what
     decides whether to run the whole verdict check at all in that case."""
     if not isinstance(items, list):
         return []
@@ -308,7 +308,7 @@ def verdict_from_stdin(raw: str) -> str:
     # Base64 segments joined by the plain-text marker. None of the segments can
     # themselves contain "---AGENTS-SPLIT---" post-encoding (see the module
     # docstring), so an unbounded split on the marker always yields exactly the
-    # segments merge-guard.sh/pr-merge-on-green.sh wrote, regardless of what any
+    # segments merge-guard.sh wrote, regardless of what any
     # review or comment body quotes.
     #
     # The 4th segment (owner_mode, "1"/"0") is OPTIONAL and defaults to off: a

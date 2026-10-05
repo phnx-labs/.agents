@@ -77,8 +77,7 @@ _resolve_owner_login() {
     *) return 0 ;;
   esac
   # Guard the substitution so a gh failure (auth refresh, rate limit, network)
-  # degrades to "no owner" instead of aborting a `set -e` caller
-  # (pr-merge-on-green.sh runs under `set -eu`) mid-poll.
+  # degrades to "no owner" instead of aborting a `set -e` caller.
   _om_user=$(_om_gh_user) || _om_user=""
   [ -n "$_om_user" ] || return 0
   _om_id=${_om_user%% *}

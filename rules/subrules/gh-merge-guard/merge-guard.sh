@@ -310,7 +310,7 @@ case "$norm" in
             [ "$_pa_lc" = "$_ol_lc" ] && _owner_mode=1
           fi
         fi
-        # Same verdict as pr-merge-on-green: reuse pr-verdict.py, do not re-inline.
+        # The verdict lives in pr-verdict.py; do not re-inline it here.
         # base64-encode each segment: a review/comment discussing THIS file
         # (as one did, live, reviewing PHNX-3236 itself) can quote the plain
         # marker text verbatim in its own body, and a plain-text split has no

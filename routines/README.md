@@ -3,8 +3,8 @@
 Scheduled agent runs. A routine fires on a **clock** — a cron schedule or a one-shot time.
 The scheduler daemon starts on the first `agents routines add`.
 
-If you want something to fire on a **change** instead of a clock, that is a
-[monitor](../skills/monitors/SKILL.md), not a routine.
+If you want something to fire on a **push** from GitHub or Linear instead of a clock, that
+is a [webhook](../webhooks/README.md) that fires a routine.
 
 ## What ships here
 

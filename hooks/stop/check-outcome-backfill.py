@@ -92,7 +92,7 @@ WRITE_TOOLS = {"write", "edit", "multiedit", "notebookedit"}
 WATCHER_TOOLS = {"schedulewakeup", "monitor"}
 RE_HANDOFF = re.compile(
     r"\b(?:handed off|handing (?:it|this|the pr) (?:off|to)|owns? (?:this|the) pr"
-    r"|takes over from here|pr-merge-on-green|will merge on green)\b", re.I
+    r"|takes over from here|will merge on green)\b", re.I
 )
 
 # Checks whose demand leaves no signature a transcript scan can confirm.

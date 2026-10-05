@@ -19,9 +19,8 @@ skill stays loaded and brings tooling with it.
 | [`sessions`](./sessions/SKILL.md) | Search, browse, read, and move agent transcripts across Claude, Codex, Gemini, and OpenCode |
 | [`cloud`](./cloud/SKILL.md) | Dispatch agent tasks to Rush Cloud, Codex Cloud, or Factory pods |
 | [`routines`](./routines/SKILL.md) | Schedule agents on a cron schedule or one-shot at a specific time |
-| [`monitors`](./monitors/SKILL.md) | Durable event-triggered watchers — watch a source, fire an agent, routine, or notification on change |
 
-`routines` fire on a clock; `monitors` fire on a change. To reach the owner when genuinely
+`routines` fire on a clock; inbound [webhooks](../webhooks/README.md) fire on a push. To reach the owner when genuinely
 blocked, use `agents feed post --blocked` (it opens a needs-you record and delivers
 out-of-band) — after the self-unblock ladder is exhausted.
 

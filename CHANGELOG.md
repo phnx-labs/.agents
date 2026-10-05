@@ -4,6 +4,19 @@
 
 ### Removed
 
+- **`agents monitors` guidance and the built-in `pr-merge-on-green` monitor
+  (PHNX-4241).** agents-cli deletes the `agents monitors` command, its engine, and
+  the loader for `~/.agents/.system/monitors/`, so this layer stops shipping and
+  teaching it: `monitors/` (the monitor, its poll script, test, and fixtures) and
+  `skills/monitors/` are gone, along with their index rows, the `monitor` row in
+  `AGENTS.md`, and the CODEOWNERS entry.
+  `hooks/stop/00-agent-verify-work-complete.sh` no longer counts
+  `agents monitors add` as a durable watcher; only a successful `ScheduleWakeup`
+  or `Monitor` does, and an open PR you own stays yours until it merges.
+  `check-outcome-backfill.py` drops the `pr-merge-on-green` handoff phrase, and
+  `skills/teams/SKILL.md`, `routines/README.md`, `webhooks/README.md`, and
+  `commands/README.md` no longer mention monitors.
+
 - **Five top-level aliases are gone: `/commit`, `/loop`, `/demo`, `/resume`, and
   `/research`.** Type `/work:commit`, `/work:loop`, `/work:demo`, `/work:resume`, and
   `/research:research` instead; the plugin commands and skills are unchanged. Short

@@ -86,7 +86,7 @@ without touching code; `/dispatch` delegates one authorized task;
 
 ## Observe
 
-Machine profiling is [`/fleet:profile`](../plugins/fleet/README.md); durable watchers are the `agents monitors` CLI + the [`monitors` skill](../skills/README.md).
+Machine profiling is [`/fleet:profile`](../plugins/fleet/README.md).
 
 ## Related
 
