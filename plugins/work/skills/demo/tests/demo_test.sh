@@ -5,10 +5,9 @@
 #
 #   1. Wiring — plugins/AGENTS.md warns that a rename leaves dangling alias links that
 #      "route to nothing" (how the last removal broke three skills). This asserts the
-#      top-level /demo alias and the /work:demo command both exist and route to the
-#      `work:demo` skill, so a rename that forgets one fails loud here instead of at
-#      an agent's runtime.
-#   2. Mandate — the whole point of /demo is: real environment (NOT the dev build),
+#      /work:demo command exists and routes to the `work:demo` skill, so a rename that
+#      forgets it fails loud here instead of at an agent's runtime.
+#   2. Mandate — the whole point of /work:demo is: real environment (NOT the dev build),
 #      real logged-in account, REAL representative inputs (NOT toy examples), before/
 #      after with a measured delta, and honest gaps. An edit that softens any of these
 #      guts the skill while still "reading fine." Each is asserted as a load-bearing
@@ -20,7 +19,6 @@ HERE="$(cd "$(dirname "$0")" && pwd)"
 REPO="$(cd "$HERE/../../../../.." && pwd)"
 SKILL="$REPO/plugins/work/skills/demo/SKILL.md"
 CMD="$REPO/plugins/work/commands/demo.md"
-ALIAS="$REPO/commands/demo.md"
 pass=0; fail=0
 ok()  { pass=$((pass + 1)); printf 'ok   - %s\n' "$1"; }
 bad() { fail=$((fail + 1)); printf 'FAIL - %s\n' "$1"; }
@@ -37,14 +35,6 @@ if [ -f "$CMD" ]; then
     || bad "plugins/work/commands/demo.md does not reference the work:demo skill"
 else
   bad "command missing: plugins/work/commands/demo.md"
-fi
-
-if [ -f "$ALIAS" ]; then
-  grep -qi 'work:demo' "$ALIAS" \
-    && ok "top-level /demo alias routes to the work:demo skill" \
-    || bad "commands/demo.md (alias) does not reference the work:demo skill"
-else
-  bad "top-level alias missing: commands/demo.md"
 fi
 
 # -- mandate (load-bearing contract phrases) ----------------------------------

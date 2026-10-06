@@ -48,7 +48,7 @@ authority to execute is sufficient; respect a planning-only request.
 | One engineering task | `run` |
 | Independent parallel surfaces or verification | `teams` |
 | Engineering or mixed work queue | `work:loop` |
-| Research question or data pull | `research:research` (`/research`), or `browser` + `secrets` for one authenticated source |
+| Research question or data pull | `/research:research`, or `browser` + `secrets` for one authenticated source |
 | Hands-on product exploration | `research:product` |
 | Design, content, or UI task | The matching domain skill, with `run`/`teams` when delegated |
 

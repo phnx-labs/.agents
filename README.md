@@ -82,17 +82,17 @@ to type.
 | I want to… | Run | Plugin / notes |
 |---|---|---|
 | **Drain everything overnight** (any project, code *or* browser/outreach) without waiting on me | `/work:loop` | [`work`](plugins/work/README.md) — spreads load across accounts/hosts; **merges on green** behind a non-author review instead of leaving PRs for you |
-| Finish a **queue of engineering tickets** | `/loop` (`/work:loop`) | [`work`](plugins/work/README.md) — worktrees, CI, review, release |
+| Finish a **queue of engineering tickets** | `/work:loop` | [`work`](plugins/work/README.md) — worktrees, CI, review, release |
 | **One** clear task (any kind) to an agent | `/work:dispatch` or `/dispatch` | `work` for kind-agnostic; top-level `/dispatch` leans engineering |
 | Decide keep/cancel/priority on the **whole board** | `/work:loop triage` | Triage mode — forces keep-and-schedule or cancel, never a hedge state |
 | Drive the **current task** to fully delivered | `/finish` | [`sessions`](plugins/sessions/README.md) — never stops at a recap or partial handoff |
-| **Demonstrate** what just landed — real env, before/after, report | `/demo` | [`work`](plugins/work/README.md) — recover intent, drive the shipped surface on real inputs, deliver a report on your screen + the PR |
+| **Demonstrate** what just landed — real env, before/after, report | `/work:demo` | [`work`](plugins/work/README.md) — recover intent, drive the shipped surface on real inputs, deliver a report on your screen + the PR |
 | Fan work across **parallel agents** | `/swarm` (or `/swarm plan` / `spec` / `debug`) | [`swarm`](plugins/swarm/README.md) |
 | Plan a feature with live research, diagrams, mock-ups + blind check | `/swarm plan …` or `/plan` | Swarm plan is multi-agent; `/plan` is single-agent grounded design |
 | Durable **source-of-truth spec** of a capability | `/swarm spec …` | So others do not invent wrong behavior |
 | Debug a non-obvious bug | `/debug` → `swarm:debug` | Blind multi-provider root cause |
 | Resume prior work in **this** window | `/continue` | [`sessions`](plugins/sessions/README.md) |
-| Pick a whole **project's** work back up | `/work:resume` (`/resume`) | Reconstructs its in-flight work, resumes it on workers — [`work`](plugins/work/README.md) |
+| Pick a whole **project's** work back up | `/work:resume` | Reconstructs its in-flight work, resumes it on workers — [`work`](plugins/work/README.md) |
 | Finish many interrupted sessions **headlessly** | `/continue recover` | Mode of sessions continue |
 | How we have been working (analytics) | `/insights` | insights + trends + perf + stats |
 | Pull ranked, **snippet-level** context from past sessions on a topic | `/recall` | [`sessions`](plugins/sessions/README.md) — layered CLI discovery + a bundled fallback that recovers assistant answers the index never stores |
@@ -163,7 +163,7 @@ not point the whole night at a single Claude account on one machine.
 ```
 
 The same loop handles engineering queues through review, merge, and the repository
-release process. `/loop` is the short alias. Use `/commit` (`/work:commit`) when the
+release process. Use `/work:commit` when the
 requested outcome is cohesive commits and a verified push.
 
 ### 3. Schedule it (cron)

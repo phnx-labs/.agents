@@ -1,6 +1,6 @@
 ---
 name: loop
-description: "Deliver a ticket, branch, PR, or queue across coding and non-coding work, including unattended and multi-project drains. Triage mode decides which board items to keep and schedule or cancel. Use for /loop, /work:loop, landing work, overnight drains, or board triage."
+description: "Deliver a ticket, branch, PR, or queue across coding and non-coding work, including unattended and multi-project drains. Triage mode decides which board items to keep and schedule or cancel. Use for /work:loop, landing work, overnight drains, or board triage."
 argument-hint: "[ticket | branch/PR | project/filter | checklist | --todos | all | overnight | triage [scope]]"
 user-invocable: true
 ---

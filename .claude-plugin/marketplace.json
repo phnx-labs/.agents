@@ -11,7 +11,7 @@
       "name": "code",
       "source": "./plugins/code",
       "description": "Assess code health, review changes, refactor, and preserve useful project knowledge.",
-      "version": "0.16.0",
+      "version": "0.17.1",
       "author": {
         "name": "Muqsit Nawaz",
         "email": "contact@trp.so"
@@ -21,7 +21,7 @@
       "name": "work",
       "source": "./plugins/work",
       "description": "Dispatch tasks, resume projects, deliver queues, commit cohesive changes, and demonstrate delivery across coding and non-coding work.",
-      "version": "0.9.0",
+      "version": "0.9.1",
       "author": {
         "name": "Muqsit Nawaz",
         "email": "contact@trp.so"
@@ -30,8 +30,8 @@
     {
       "name": "research",
       "source": "./plugins/research",
-      "description": "research \u2014 get the real, evidenced answer, not one model's guess. `/research` (`/research:research`) answers a hard research question across DISTINCT engines blind to each other \u2014 Codex on web search, Grok on X/Twitter community chatter (its privileged data), Antigravity on Google, Perplexity on a broad browser-driven Deep Research report (the dedicated Deep-research mode, never Computer/Control-browser), Claude on deep-read + reconciliation \u2014 cross-checks every claim (single-sourced = a lead, not a fact) and promotes the cited result to the project's durable-artifacts home. `/research:product` explores a PRODUCT hands-on and proves every claim visually: it composes research:research for the public intel (claimed features + sentiment), then signs up / installs and DRIVES the real product through each user journey with `agents browser`/`computer` + `secrets`, screenshotting every step, recording a short clip of the headline flow, and putting landing-page CLAIMS next to what the product ACTUALLY did \u2014 output is a favicon/logo-tagged, journey-diagrammed, screenshot-strip visual artifact, never one idle screenshot and a wall of text.",
-      "version": "0.1.1",
+      "description": "research \u2014 get the real, evidenced answer, not one model's guess. `/research:research` answers a hard research question across DISTINCT engines blind to each other \u2014 Codex on web search, Grok on X/Twitter community chatter (its privileged data), Antigravity on Google, Perplexity on a broad browser-driven Deep Research report (the dedicated Deep-research mode, never Computer/Control-browser), Claude on deep-read + reconciliation \u2014 cross-checks every claim (single-sourced = a lead, not a fact) and promotes the cited result to the project's durable-artifacts home. `/research:product` explores a PRODUCT hands-on and proves every claim visually: it composes research:research for the public intel (claimed features + sentiment), then signs up / installs and DRIVES the real product through each user journey with `agents browser`/`computer` + `secrets`, screenshotting every step, recording a short clip of the headline flow, and putting landing-page CLAIMS next to what the product ACTUALLY did \u2014 output is a favicon/logo-tagged, journey-diagrammed, screenshot-strip visual artifact, never one idle screenshot and a wall of text.",
+      "version": "0.1.2",
       "author": {
         "name": "Muqsit Nawaz",
         "email": "contact@trp.so"
