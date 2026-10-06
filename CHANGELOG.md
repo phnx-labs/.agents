@@ -4,6 +4,12 @@
 
 ### Fixed
 
+- **`main-branch-guard` runs once per tool call.** It was registered twice: in
+  `agents.yaml` (through `hooks/pre-tool-use/main-branch-guard.sh`) and again in
+  `rules/subrules/truly-agentic-git-workflow/hooks.yaml`. Wherever the subrule's hooks were
+  folded in, every Bash/Write/Edit call ran the guard twice. The subrule no longer registers
+  it.
+
 - **`hooks/stop/07-investigate-first-gate.py`** counts a concession only when it opens a
   sentence and is not quoted. A reply that merely named the check (the "You're right" opener
   check) or mentioned the phrase mid-sentence was blocked as if it had conceded.
