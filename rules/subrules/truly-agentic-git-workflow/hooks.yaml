@@ -1,18 +1,11 @@
-# Hook bundled with the truly-agentic-git-workflow subrule. agents-cli may fold
-# this into a composed project manifest; the system layer also registers the
-# same guard explicitly in agents.yaml so installed version homes cannot miss
-# it. The script resolves relative to this directory.
+# Hooks bundled with the truly-agentic-git-workflow subrule. agents-cli
+# collectSubruleHooks folds them into the manifest and rewrites script: to an
+# absolute path under this dir.
 #
-# One entry, one script, one combined matcher: the guard fires on Bash (to block
-# `git commit|add`) and on the file tools (to block create/update/delete), and
-# dispatches internally on tool_name.
-# Co-located with this subrule (NOT under hooks/<event>/). agents-cli
-# collectSubruleHooks rewrites script: to an absolute path under this dir.
-main-branch-guard:
-  script: main-branch-guard.sh
-  events: [PreToolUse]
-  matcher: "Bash|Write|Edit|MultiEdit|NotebookEdit"
-  timeout: 5
+# main-branch-guard.sh lives here too but is NOT registered here: agents.yaml
+# registers it once, through hooks/pre-tool-use/main-branch-guard.sh, which
+# execs this copy. Registering it in both places ran the guard twice on every
+# tool call wherever the subrule's hooks were folded in.
 
 # Nudges (satisfiable block, exit 2) when a `gh pr create|edit` body has no proof
 # of a run (no screenshot/recording/asset) and no no-run declaration. Inspects the

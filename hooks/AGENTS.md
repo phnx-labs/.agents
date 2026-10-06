@@ -84,6 +84,8 @@ Rule-enforcing guards ship under `rules/subrules/<rule>/` with a local `hooks.ya
 (relative `script:` → absolute path at register time via `collectSubruleHooks`). They
 are **not** moved into `hooks/<event>/`. Moving them would double-fire and desync from
 the rule text. When you change a subrule guard, edit that subrule dir only.
+The one exception is `main-branch-guard`: `../agents.yaml` registers it through the
+`pre-tool-use/main-branch-guard.sh` wrapper, so its subrule `hooks.yaml` must not list it.
 
 ## Execution order is NOT guaranteed — never depend on it
 

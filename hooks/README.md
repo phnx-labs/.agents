@@ -159,7 +159,9 @@ dir and namespaces the manifest key as `<rule>__<hook>`. Do not copy these into
 |---|---|---|
 | `gh-merge-guard` | `merge-guard` | PreToolUse (Bash; skips explicit plan-mode events) |
 | `plan-presentation` | `plan-html-reminder`, `plan-html-stop-reminder` | PreToolUse (ExitPlanMode), Stop (cross-harness backstop); authoring contract lives in `skills/artifacts/SKILL.md` |
-| `truly-agentic-git-workflow` | `main-branch-guard`, `pr-description-reminder` | PreToolUse (`pr-description-reminder` skips explicit plan-mode events) |
+| `truly-agentic-git-workflow` | `pr-description-reminder` | PreToolUse (skips explicit plan-mode events) |
+
+`main-branch-guard` lives in `rules/subrules/truly-agentic-git-workflow/` but is registered once, from `../agents.yaml`, through `pre-tool-use/main-branch-guard.sh`.
 
 ## Manifest schema (`hooks:` in `../agents.yaml`)
 
