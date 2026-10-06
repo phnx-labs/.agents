@@ -63,6 +63,9 @@
 
 ### Changed
 
+- **`clis/secrets.yaml` pins secrets-cli 0.1.9.** 0.1.9 makes `secrets unlock a b c`
+  ask for Touch ID once instead of once per bundle (phnx-labs/secrets-cli#18).
+
 - **`clis/secrets.yaml` pins secrets-cli 0.1.8, up from 0.1.4.** 0.1.8 makes
   `secrets unlock --durable` survive sleep and restart. With agents-cli's
   host-CLI pin upgrade (phnx-labs/agi-cli#3750), the pin is now a floor that
