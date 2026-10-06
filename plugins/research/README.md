@@ -8,7 +8,7 @@ depth from one source.**
 
 | Command | Use when |
 | --- | --- |
-| `/research` (`/research:research`) | **A hard research question** answered across DISTINCT engines blind to each other — Codex (web search), Grok (X/Twitter community), Antigravity (Google), Perplexity (broad browser-driven **Deep Research** — the dedicated mode, never Computer/Control-browser), Claude (deep-read + reconcile). Cross-checks every claim (single-sourced = a lead, not a fact) and promotes the cited result to the project's durable-artifacts home (`.agents/artifacts/` by default). |
+| `/research:research` | **A hard research question** answered across DISTINCT engines blind to each other — Codex (web search), Grok (X/Twitter community), Antigravity (Google), Perplexity (broad browser-driven **Deep Research** — the dedicated mode, never Computer/Control-browser), Claude (deep-read + reconcile). Cross-checks every claim (single-sourced = a lead, not a fact) and promotes the cited result to the project's durable-artifacts home (`.agents/artifacts/` by default). |
 | `/research:product` | **Explore a PRODUCT hands-on and prove every claim visually.** Composes `research:research` for the public intel (claimed features + sentiment), then signs up / installs and **drives** the real product through each user journey with `agents browser`/`computer` + `secrets` — screenshotting every step, recording a short clip of the headline flow, and putting landing-page **claims** next to what the product **actually did**. Output is a favicon/logo-tagged, journey-diagrammed, screenshot-strip visual artifact — never one idle screenshot and a wall of text. `--compare a,b,c` explores a set on the same journeys. |
 
 ## Skills
@@ -21,13 +21,13 @@ depth from one source.**
 ## How the pieces fit
 
 ```
-/research          → one question, many engines (blind), one cited answer          [text truth]
+/research:research → one question, many engines (blind), one cited answer          [text truth]
 /research:product  → one product, driven end-to-end, claims proven visually          [shown truth]
 ```
 
-- **`/research` vs `/research:product`** — `/research` answers *what is true* about a topic from
+- **`/research:research` vs `/research:product`** — `/research:research` answers *what is true* about a topic from
   many engines and cites it. `/research:product` answers *does this product actually do what it
-  says* by **using it** and showing the flow. Product exploration **starts** by running `/research`
+  says* by **using it** and showing the flow. Product exploration **starts** by running `/research:research`
   for the claimed surface, then drives the product to verify it.
 
 ## Conventions

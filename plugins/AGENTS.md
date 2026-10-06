@@ -55,9 +55,10 @@ copies of one rubric is the drift the reviewer itself is built to catch.
 
 ## The canonical definition lives in the plugin
 
-`/commit` and `/loop` are thin aliases of `/work:commit` and `/work:loop`. The
-canonical behavior lives in the work plugin skills. Top-level and plugin commands
-only route to those skills with `$ARGUMENTS`; never copy behavior into an alias.
+A top-level alias such as `/finish` (`/sessions:finish`) only routes to the plugin skill
+with `$ARGUMENTS`; the canonical behavior lives in the plugin skill, never copied into an
+alias. Most plugin commands have no top-level alias: `/work:commit`, `/work:loop`,
+`/work:demo`, `/work:resume`, and `/research:research` are reached only by their prefix.
 
 ## What belongs here vs in extras
 

@@ -368,7 +368,7 @@ const html = `<!doctype html>
           \` : ""}
           \${f.fix_one_line ? \`<div class="finding-fix"><span class="label">Fix:</span>\${esc(f.fix_one_line)}</div>\` : ""}
           <div class="finding-actions">
-            <button data-action="loop">Copy as /loop task</button>
+            <button data-action="loop">Copy as /work:loop task</button>
             <button data-action="linear">Copy Linear cmd</button>
             <button data-action="fileline">Copy file:line</button>
             <span style="flex:1"></span>

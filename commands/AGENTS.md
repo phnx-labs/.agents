@@ -36,9 +36,12 @@ rule still references the old `/name`. `grep -rn "/<oldname>"` from the repo roo
 
 ## Aliases point at the canonical definition
 
-`/commit` and `/loop` are thin aliases of `/work:commit` and `/work:loop`. The
-canonical behavior lives in the work plugin skills. Top-level and plugin commands
-only route to those skills with `$ARGUMENTS`; never copy behavior into an alias.
+A top-level alias such as `/finish` or `/continue` is a thin route to a plugin skill
+(`/sessions:finish`, `/sessions:continue`). The canonical behavior lives in the plugin
+skill; the alias only invokes it with `$ARGUMENTS`; never copy behavior into an alias.
+Keep a short top-level name only for a command people type often. Everything else is
+reached through its plugin prefix (`/work:commit`, `/work:loop`, `/work:demo`,
+`/work:resume`, `/research:research`).
 
 ## Namespacing
 

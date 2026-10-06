@@ -1,6 +1,6 @@
 ---
 name: demo
-description: "Demonstrate landed work instead of just claiming it shipped. Recover the ORIGINAL intent (not the diff), exercise the shipped thing in its REAL environment — the installed/deployed artifact, never the dev build — drive it on the real surface with `agents browser`/`agents computer` signed in as the owner on REAL representative inputs (never toy examples), put before/after side by side with a measured delta, then deliver an analyzed HTML report on the owner's screen and attach it to the PR. Triggers on: /demo, /work:demo, 'show me a demo', 'prove it works', 'test it in prod', 'how does it look side by side', 'did we ship all of it', 'demo what we just shipped', after any landing/merge/release."
+description: "Demonstrate landed work instead of just claiming it shipped. Recover the ORIGINAL intent (not the diff), exercise the shipped thing in its REAL environment — the installed/deployed artifact, never the dev build — drive it on the real surface with `agents browser`/`agents computer` signed in as the owner on REAL representative inputs (never toy examples), put before/after side by side with a measured delta, then deliver an analyzed HTML report on the owner's screen and attach it to the PR. Triggers on: /work:demo, 'show me a demo', 'prove it works', 'test it in prod', 'how does it look side by side', 'did we ship all of it', 'demo what we just shipped', after any landing/merge/release."
 argument-hint: "[empty = demo what THIS session just landed | <ticket|PR|session-id|what was shipped>]"
 allowed-tools: Bash(agents *), Bash(gh *), Bash(git *), Bash(linear *), Bash(rg *), Bash(fd *), Bash(ls *), Bash(cat *), Bash(jq *), Bash(curl *), Bash(python3 *), Bash(artifacts *), Bash(scp *), Read(*), Write(*), Edit(*), Task(*), WebFetch(*)
 user-invocable: true
@@ -10,7 +10,7 @@ user-invocable: true
 
 An agent that lands a feature and stops at *"it's merged / shipped / released"* has
 done **half** the job. The code compiling and the PR merging is not a demonstration
-that the thing the owner **asked for** actually works. `/demo` is the missing capstone:
+that the thing the owner **asked for** actually works. `/work:demo` is the missing capstone:
 you take the original intent, run the shipped thing against **real** inputs in its
 **real** environment, put before and after side by side, and hand the owner a report —
 so they never have to type *"show me a demo.."* themselves.
@@ -191,5 +191,5 @@ Concrete, not a slogan. Name real files, flags, numbers, error strings.
 
 ---
 
-Changing this skill? Read [`../../AGENTS.md`](../../AGENTS.md) and keep the top-level
-`/demo` alias (`commands/demo.md`) and `/work:demo` command in sync.
+Changing this skill? Read [`../../AGENTS.md`](../../AGENTS.md) and keep the
+`/work:demo` command (`plugins/work/commands/demo.md`) routing to this skill.

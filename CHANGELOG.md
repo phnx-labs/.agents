@@ -2,6 +2,17 @@
 
 ## [Unreleased]
 
+### Removed
+
+- **Five top-level aliases are gone: `/commit`, `/loop`, `/demo`, `/resume`, and
+  `/research`.** Type `/work:commit`, `/work:loop`, `/work:demo`, `/work:resume`, and
+  `/research:research` instead; the plugin commands and skills are unchanged. Short
+  top-level names are kept only for commands people type often. All-time explicit
+  invocations from `agents sessions stats` were `/commit` 0 (since the rename), `/loop` 0,
+  `/demo` 1, `/resume` 2, `/research` 0. READMEs, AGENTS.md files, skill triggers, the
+  plugin and marketplace descriptions, and the `code:review` report's copy button now name
+  the prefixed command (PHNX-4247). Plugins `work` 0.9.1, `research` 0.1.2, `code` 0.17.1.
+
 ### Changed
 
 - **`code:health` reports open with a map of the component.** The Summary now starts with a
