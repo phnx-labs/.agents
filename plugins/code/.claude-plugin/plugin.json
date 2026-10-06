@@ -1,6 +1,6 @@
 {
   "name": "code",
-  "version": "0.16.0",
+  "version": "0.17.0",
   "description": "Assess code health, review changes, refactor, and preserve useful project knowledge.",
   "author": {
     "name": "Muqsit Nawaz",

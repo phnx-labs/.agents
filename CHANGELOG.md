@@ -2,6 +2,14 @@
 
 ## [Unreleased]
 
+### Changed
+
+- **`code:health` reports open with a map of the component.** The Summary now starts with a
+  bird's-eye paragraph and a C4 container view drawn from the traced code, following the
+  `artifacts` diagram conventions: a dashed system boundary, labeled arrows, a legend, retired
+  paths in dashed red, and numbered markers tied to the findings. Before, the skill only said
+  to use diagrams where they help. Plugin `code` 0.17.0.
+
 ### Fixed
 
 - **`main-branch-guard` runs once per tool call.** It was registered twice: in

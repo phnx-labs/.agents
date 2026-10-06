@@ -76,10 +76,22 @@ partial coverage plainly; do not refresh stale findings as if they were checked.
 
 Use Summary, Findings and Evidence sections: size versus budget and the human maintenance
 burden first, ranked reductions next, reproducible measurements and verification limits
-last. Keep it concise and use diagrams where they explain relationships. Use `artifacts`
-to validate and render, and `browser` to inspect the result. These component-root outputs
-are intentional repository documentation, so use a linked worktree and the repository's
-PR flow rather than the default external artifact directory. Keep assessment and render
+last. Keep it concise.
+
+Open the Summary with a bird's-eye paragraph (what the component does, the shape problem in
+one sentence), then a C4 container view (level 2) following the `artifacts` skill's
+[diagram conventions](../../../../skills/artifacts/references/diagram-conventions.md): the
+component's containers inside a dashed system boundary, the people and external systems
+it talks to outside it, every arrow labeled with what flows and over what protocol, and a
+legend. Draw it from the code you traced (routes, clients, database access), not from docs
+or intent. Mark retired or unused paths with a dashed red outline, put a numbered marker
+on each element a finding concerns with the same number as that finding, and caption the
+figure with the assessed commit and anything omitted. A level-3 component view of the
+largest container is worth adding when one file or module dominates it.
+
+Use `artifacts` to validate and render, and `browser` to inspect the result. These
+component-root outputs are intentional repository documentation, so use a linked worktree
+and the repository's PR flow rather than the default external artifact directory. Keep assessment and render
 review evidence in the body or PR, not extra frontmatter or a separate metadata file.
 Report incomplete rendering or visual checks honestly; do not publish externally by default.
 
