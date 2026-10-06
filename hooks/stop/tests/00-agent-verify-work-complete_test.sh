@@ -116,7 +116,7 @@ mk_transcript() {
     echo '{"type":"user","message":{"role":"user","content":"Please implement the widget and open a PR for it"}}'
     echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"text","text":"Working on it"}]}}'
     case "$1" in
-      create|create+view|create+watch|create+nativemon|create+monitor|create+monitor-err|create+dispatch|create+dispatch+monarm|create+dispatch+amoff|create+grepdispatch)
+      create|create+view|create+watch|create+nativemon|create+monitor|create+monitor-err|create+dispatch|create+dispatch+automerge|create+grepdispatch)
         echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_create1","name":"Bash","input":{"command":"cd /repo && gh pr create --title widget"}}]}}'
         echo '{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_create1","content":[{"type":"text","text":"https://github.com/acme/widgets/pull/42\n"}]}]}}'
         ;;
@@ -151,7 +151,7 @@ mk_transcript() {
         ;;
     esac
     case "$1" in
-      create+dispatch|create+dispatch+monarm|create+dispatch+amoff)
+      create+dispatch|create+dispatch+automerge)
         # The session DISPATCHED a child agent (dispatch-shaped: --no-follow).
         # The f045b577 failure shape: dispatch, then stop on the word "handoff".
         echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_disp1","name":"Bash","input":{"command":"agents run claude \"Mission: finish PR 42\" --mode auto --name widget-child --timeout 120m --no-follow"}}]}}'
@@ -159,16 +159,11 @@ mk_transcript() {
         ;;
     esac
     case "$1" in
-      create+dispatch+monarm)
-        # Dispatch AND the child PR handed to GitHub auto-merge — the recipe
-        # the block message teaches. Non-error result required.
-        echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_monarm1","name":"Bash","input":{"command":"agents projects prs automerge widgets --repo acme/widgets --number 42 --sha abc123"}}]}}'
-        echo '{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_monarm1","content":[{"type":"text","text":"auto-merge enabled"}]}]}}'
-        ;;
-      create+dispatch+amoff)
-        # Auto-merge turned OFF is the opposite of a handoff.
-        echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_amoff1","name":"Bash","input":{"command":"agents projects prs automerge widgets --repo acme/widgets --number 42 --off"}}]}}'
-        echo '{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_amoff1","content":[{"type":"text","text":"auto-merge disabled"}]}]}}'
+      create+dispatch+automerge)
+        # Dispatch AND GitHub auto-merge enabled on the child PR. Auto-merge
+        # never re-invokes the owner, so it is not a durable watcher.
+        echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_am1","name":"Bash","input":{"command":"agents projects prs automerge widgets --repo acme/widgets --number 42 --sha abc123"}}]}}'
+        echo '{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_am1","content":[{"type":"text","text":"auto-merge enabled"}]}]}}'
         ;;
       create+grepdispatch)
         # The dispatch marker appears ONLY inside a grep pattern — must NOT
@@ -343,18 +338,13 @@ TD=$(mk_transcript create+dispatch)
 rc=$(FAKE_GH_STATE=OPEN run_hook "$TD" "RUSH-42 is dispatched to session child01; completion contract = PR merged or named handoff. I'm done unless it surfaces a blocker." false)
 check "dispatch + handoff phrase without a watcher blocks" "$rc" "2"
 grep -qi "you own what you spawn" "$SANDBOX/stderr" && echo "ok   - block message teaches you-own-what-you-spawn" || { echo "FAIL - no dispatch-ownership message"; fail=1; }
-grep -qi "agents projects prs automerge" "$SANDBOX/stderr" && echo "ok   - block message names the watcher recipe" || { echo "FAIL - block message omits the watcher recipe"; fail=1; }
+grep -qi "ScheduleWakeup, Monitor" "$SANDBOX/stderr" && echo "ok   - block message names the watcher recipe" || { echo "FAIL - block message omits the watcher recipe"; fail=1; }
 
-# D2. Same dispatch but a successful `agents projects prs automerge` -> allow.
-#     Also locks in automerge counting as durable watcher evidence at all.
-TDM=$(mk_transcript create+dispatch+monarm)
-rc=$(FAKE_GH_STATE=OPEN run_hook "$TDM" "PR #42 is handed to GitHub auto-merge, which owns the PR from here." false)
-check "dispatch + enabled automerge allows stop" "$rc" "0"
-
-# D2b. `automerge --off` disarms auto-merge, so it is not watcher evidence.
-TDO=$(mk_transcript create+dispatch+amoff)
-rc=$(FAKE_GH_STATE=OPEN run_hook "$TDO" "PR #42 is handed to GitHub auto-merge, which owns the PR from here." false)
-check "dispatch + automerge --off still blocks" "$rc" "2"
+# D2. Same dispatch with GitHub auto-merge enabled on the PR -> still blocks.
+#     Auto-merge is not a watcher: the PR stays the owner's until it merges.
+TDA=$(mk_transcript create+dispatch+automerge)
+rc=$(FAKE_GH_STATE=OPEN run_hook "$TDA" "PR #42 is handed to GitHub auto-merge, which owns the PR from here." false)
+check "dispatch + automerge without a watcher still blocks" "$rc" "2"
 
 # D3. Dispatch marker only inside a grep pattern -> NOT a dispatch, so the
 #     block carries no dispatch recipe (command-position anchor).

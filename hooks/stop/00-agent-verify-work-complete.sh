@@ -179,10 +179,9 @@ fi
 # with conflicts or red checks. Headless runs are excluded (RUSH-2394).
 #
 # LIVE_WATCHER — a durable watcher was ARMED for this goal: a native
-# ScheduleWakeup / Monitor tool_use (the harness owns the re-invoke) or an
-# `agents projects prs automerge` without --off at a command position (GitHub
-# auto-merge owns the merge), each counted only when its paired tool_result came back WITHOUT error —
-# invoked is not armed. A background `gh pr checks --watch` is NOT durable: it
+# ScheduleWakeup / Monitor tool_use (the harness owns the re-invoke), counted
+# only when its paired tool_result came back WITHOUT error — invoked is not
+# armed. A background `gh pr checks --watch` is NOT durable: it
 # is a child of the agent process tree and dies with a headless agent
 # (RUSH-2394), so it never counts.
 #
@@ -192,8 +191,6 @@ fi
 transcript_facts() {
   python3 - "$TRANSCRIPT_PATH" "${STATE_GOAL_OFFSET:-0}" <<'PY' 2>/dev/null || echo "no -"
 import json, re, sys
-CMD_POS = r'(?:^|[\n;&]\s*|\$\(\s*)'
-AUTOMERGE = re.compile(CMD_POS + r'agents projects prs automerge\b(?![^\n;&]*--off)')
 wake_ids = set()
 ok_ids = set()
 last_tool = ''
@@ -220,8 +217,6 @@ try:
                     name = b.get('name') or ''
                     last_tool = name
                     if name in ('ScheduleWakeup', 'Monitor'):
-                        wake_ids.add(b.get('id') or '')
-                    elif AUTOMERGE.search(str((b.get('input') or {}).get('command', ''))):
                         wake_ids.add(b.get('id') or '')
                 elif btype == 'tool_result' and not b.get('is_error'):
                     ok_ids.add(b.get('tool_use_id') or '')
@@ -525,8 +520,8 @@ This PR is YOURS until it merges. Keep driving it:
     config, rules) merge immediately — no review, no CI wait. Reviews are
     never the owner's job.
 Only facts clear this check, never wording: the PR merges or closes; a durable
-owner you armed takes the merge (\`agents projects prs automerge\`,
-ScheduleWakeup, Monitor); or, only when NO agent action can satisfy the requirement (a
+watcher you armed re-invokes you to finish it (ScheduleWakeup, Monitor); or,
+only when NO agent action can satisfy the requirement (a
 credential, a repo policy), a filed ask: agents feed post "<ask>" --blocked.
 PRMSG
         if [ "$self_dispatch" = "yes" ]; then
@@ -534,9 +529,8 @@ PRMSG
 You dispatched agents this session — dispatching is not a handoff.
 You own what you spawn, until its PR merges. Either keep driving: re-check each
 child on a bounded cadence (sleep ~300, then `agents sessions preview <id>` /
-`gh pr view <pr>`) until it lands, or hand each child PR to GitHub auto-merge
-first (`agents projects prs automerge <project> --repo o/r --number N --sha
-<sha>`, or ScheduleWakeup) and park quoting it.
+`gh pr view <pr>`) until it lands, or arm a durable watcher first
+(ScheduleWakeup, Monitor) and park quoting the armed watcher.
 DISPATCHMSG
         fi
         record_block open-pr owned-pr-open
