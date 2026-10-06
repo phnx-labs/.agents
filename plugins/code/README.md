@@ -6,7 +6,7 @@ knowledge. Shared delivery and Git workflows live in the [work plugin](../work/R
 | Command | Capability | Source |
 |---|---|---|
 | `/code:review` | Review session/named PRs, or run a read-only repository diagnostic. | [Command](commands/review.md) · [Skill](skills/review/SKILL.md) |
-| `/code:health` | Assess human maintainability and reduction opportunities; maintain component-root HEALTH.md and HEALTH.html. | [Command](commands/health.md) · [Skill](skills/health/SKILL.md) |
+| `/code:health` | Map a component (C4 container view with findings marked), assess human maintainability and reduction opportunities; maintain component-root HEALTH.md and HEALTH.html. | [Command](commands/health.md) · [Skill](skills/health/SKILL.md) |
 | `/code:refactor` | Check current code health, then simplify; `quality` scopes cleanup and `--scan-only` stays read-only. | [Command](commands/refactor.md) · [Skill](skills/refactor/SKILL.md) |
 | `/code:learn` | Update durable, non-obvious project knowledge; refine existing workflow guidance when warranted. | [Command](commands/learn.md) · [Skill](skills/learn/SKILL.md) |
 
