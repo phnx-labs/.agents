@@ -50,6 +50,17 @@ a_text('You are right. Your instructions say to use the artifacts skill.')
 a_tool('t1','Skill'); res('t1'); a_tool('t2'); res('t2')
 a_text('Redoing the plan with the CLI now.')"
 
+# A concession merely MENTIONED (quoted, or mid-sentence) is not an opener.
+_case agree-first-quoted-mention allow cli "$LIB
+u('OK')
+a_text('Recap: the no-investigation block and the \"You are right\" opener check are live.')
+a_tool('t1'); res('t1'); a_text('done')"
+
+_case agree-first-mid-sentence allow cli "$LIB
+u('why did it block?')
+a_text('It flagged that I said you are right too early; checking the transcript.')
+a_tool('t1','Read'); res('t1'); a_text('found it')"
+
 # Retry after an agree-first block: the opener is still on screen, cannot be deleted.
 _case agree-first-retry-passes allow cli "$LIB
 u('use our artifact CLI')

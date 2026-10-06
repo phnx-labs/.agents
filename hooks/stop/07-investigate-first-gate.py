@@ -35,6 +35,26 @@ CONCEDE = re.compile(
     re.I,
 )
 
+QUOTES = "\"'`\u201c\u201d\u2018\u2019"
+
+
+def concession(text: str):
+    """First concession that OPENS a sentence and is not quoted.
+
+    A real opener reads "You're right. ..." or "Fair point - ...". A phrase merely
+    mentioned, e.g. the "You're right" opener check, or mid-sentence, is not one.
+    """
+    for match in CONCEDE.finditer(text):
+        before = text[:match.start()].rstrip()
+        after = text[match.end():match.end() + 1]
+        if (before and before[-1] in QUOTES) or after in QUOTES:
+            continue
+        before = before.rstrip("*_#>-• ")
+        if not before or before[-1] in ".!?:\n":
+            return match
+    return None
+
+
 # User records the owner did not type.
 SYNTHETIC = re.compile(
     r"^\s*(?:<(?:system-reminder|task-notification|local-command-stdout|local-command-stderr"
@@ -130,7 +150,7 @@ def main() -> int:
         return 2
 
     already_flagged = any("agree-first" in p for p in prior)
-    match = CONCEDE.search(" ".join(opening)[:600])
+    match = concession("\n".join(opening)[:600])
     if match and not already_flagged:
         print(
             f"{MARKER} agree-first: you opened with \"{match.group(0)}\" before any evidence "
