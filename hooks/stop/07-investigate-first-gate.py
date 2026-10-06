@@ -28,12 +28,41 @@ BOOKKEEPING = {
 
 # Closed list of concession openers.
 CONCEDE = re.compile(
-    r"\b(?:you'?re (?:absolutely |exactly |totally |completely )?(?:right|correct)"
+    r"\b(?:you['\u2019]?re (?:absolutely |exactly |totally |completely )?(?:right|correct)"
     r"|you are (?:absolutely |exactly |totally |completely )?(?:right|correct)"
     r"|good catch|fair point|my mistake|i was wrong|i should(?: have|'ve)"
     r"|agreed\b|absolutely[.,!])",
     re.I,
 )
+
+QUOTES = "\"'`\u201c\u201d\u2018\u2019"
+
+
+# What may precede a concession and still leave it the sentence's opener: list markers,
+# emphasis, brackets, emoji, and a few filler words ("Yes, you're right", "Ah, good catch").
+LEAD_IN = re.compile(
+    r"^(?:[\W\d_]|(?:ah|oh|ok|okay|yes|yeah|yep|sorry|thanks|well|hmm|indeed|so|looks like|seems like)\b)*$",
+    re.I,
+)
+
+
+def concession(text: str):
+    """First concession that OPENS a sentence and is not quoted.
+
+    A real opener reads "You're right. ...", "Yes, you're right", "- Good catch". A phrase
+    merely mentioned (the "You're right" opener check) or inside a clause
+    ("I said you're right too early") is not one.
+    """
+    for match in CONCEDE.finditer(text):
+        before = text[:match.start()]
+        after = text[match.end():match.end() + 1]
+        if (before.rstrip() and before.rstrip()[-1] in QUOTES) or (after and after in QUOTES):
+            continue
+        sentence = re.split(r"[.!?:\n]", before)[-1]
+        if LEAD_IN.match(sentence):
+            return match
+    return None
+
 
 # User records the owner did not type.
 SYNTHETIC = re.compile(
@@ -130,7 +159,7 @@ def main() -> int:
         return 2
 
     already_flagged = any("agree-first" in p for p in prior)
-    match = CONCEDE.search(" ".join(opening)[:600])
+    match = concession("\n".join(opening)[:600])
     if match and not already_flagged:
         print(
             f"{MARKER} agree-first: you opened with \"{match.group(0)}\" before any evidence "
