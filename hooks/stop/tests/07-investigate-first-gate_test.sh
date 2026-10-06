@@ -61,6 +61,37 @@ u('why did it block?')
 a_text('It flagged that I said you are right too early; checking the transcript.')
 a_tool('t1','Read'); res('t1'); a_text('found it')"
 
+# Real openers still block: lead-in words, list markers, curly apostrophe, no punctuation.
+_case agree-first-unpunctuated block cli "$LIB
+u('check it')
+a_text(\"You're right\")
+a_tool('t1'); res('t1'); a_text('done')"
+
+_case agree-first-bullet block cli "$LIB
+u('check it')
+a_text(\"- You're right, I missed the second hook.\")
+a_tool('t1'); res('t1'); a_text('done')"
+
+_case agree-first-yes-lead-in block cli "$LIB
+u('check it')
+a_text(\"Yes, you're right. I used the wrong CLI.\")
+a_tool('t1'); res('t1'); a_text('done')"
+
+_case agree-first-ah-lead-in block cli "$LIB
+u('check it')
+a_text(\"Ah, good catch. Fixing it.\")
+a_tool('t1'); res('t1'); a_text('done')"
+
+_case agree-first-curly-apostrophe block cli "$LIB
+u('check it')
+a_text(\"You’re right. Checking now.\")
+a_tool('t1'); res('t1'); a_text('done')"
+
+_case agree-first-numbered block cli "$LIB
+u('check it')
+a_text(\"1) Good catch, the path was wrong.\")
+a_tool('t1'); res('t1'); a_text('done')"
+
 # Retry after an agree-first block: the opener is still on screen, cannot be deleted.
 _case agree-first-retry-passes allow cli "$LIB
 u('use our artifact CLI')

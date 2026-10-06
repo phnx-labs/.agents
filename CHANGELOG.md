@@ -7,6 +7,8 @@
 - **`hooks/stop/07-investigate-first-gate.py`** counts a concession only when it opens a
   sentence and is not quoted. A reply that merely named the check (the "You're right" opener
   check) or mentioned the phrase mid-sentence was blocked as if it had conceded.
+  A sentence opener still counts after a list marker, emphasis, emoji, or a filler word
+  ("Yes, you're right", "Ah, good catch"), and `You’re` with a curly apostrophe now matches.
 
 - **`hooks/stop/00-agent-verify-work-complete.sh`** counts a non-empty `background_tasks`
   in an interactive session's Stop payload as a live watcher: the harness re-invokes the
