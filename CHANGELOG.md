@@ -28,6 +28,16 @@
 
 ### Changed
 
+- **`hooks/session-start/03-linear-inject-tasks-context.sh`: business goals reach
+  every session.** The brief now opens with `## Goals`, the Active Linear
+  initiatives in rank order, each with its brief (the initiative's content, else
+  its description) and linked projects, plus one line telling the agent to rank
+  work by goal over ticket priority. Projects are tagged `goal N` or `not under a
+  goal` and goal-linked ones sort first. Milestones that are 100% done are hidden
+  (`all N done` instead) and past-due ones are marked `**overdue**`. Initiatives
+  were never queried before, so the only goal an agent saw was a hand-written rule
+  file that had drifted from the real strategy.
+
 - **`code:health` reports open with a map of the component.** The Summary now starts with a
   bird's-eye paragraph and a C4 container view drawn from the traced code, following the
   `artifacts` diagram conventions: a dashed system boundary, labeled arrows, a legend, retired

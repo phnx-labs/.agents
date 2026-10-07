@@ -9,6 +9,8 @@
 #     Touch ID / broker path)
 #   - depth goes to the cwd's project; every other project collapses to one line
 #   - injection lists projects with milestones + top open tickets
+#   - Active initiatives render first as ranked Goals; finished milestones are
+#     hidden and past-due ones flagged
 #   - active cycle is grouped by project
 #   - Your Tasks is routed by Linear's native delegate, per AGENT_SELF, and a
 #     leftover agent:* label confers no ownership
@@ -65,6 +67,12 @@ export CURL_PAYLOAD="$SANDBOX/payload.json"
 cat > "$CURL_PAYLOAD" <<'JSON'
 {
   "data": {
+    "initiatives": {
+      "nodes": [
+        {"name": "Retired goal", "description": "Retired.", "content": null, "status": "Canceled", "targetDate": null, "sortOrder": 0, "projects": {"nodes": []}},
+        {"name": "Example goal - ship v1", "description": "Short line.", "content": "Win: ship v1.\n\nNot now: the side quest.", "status": "Active", "targetDate": "2030-01-01", "sortOrder": 1, "projects": {"nodes": [{"name": "Rush App"}]}}
+      ]
+    },
     "users": {
       "nodes": [
         {"displayName": "Muqsit", "email": "m@example.com", "active": true, "app": false, "guest": false},
@@ -82,7 +90,9 @@ cat > "$CURL_PAYLOAD" <<'JSON'
             "projectMilestones": {
               "nodes": [
                 {"name": "Factory converts strategy to shipped outcomes", "targetDate": "2026-09-15", "progress": 0.1, "sortOrder": 1},
-                {"name": "Factory reliability — self-heals", "targetDate": "2026-09-30", "progress": 0.0, "sortOrder": 2}
+                {"name": "Factory reliability — self-heals", "targetDate": "2099-09-30", "progress": 0.0, "sortOrder": 2},
+                {"name": "Fleet reliability — green CI", "targetDate": "2026-08-12", "progress": 1.0, "sortOrder": 3},
+                {"name": "Nearly there milestone", "targetDate": "2099-01-01", "progress": 0.996, "sortOrder": 4}
               ]
             },
             "issues": {
@@ -576,5 +586,33 @@ out=$(cd "$SANDBOX/work/unclaimed" && LINEAR_CLI_CONFIG="$SANDBOX/config.json" \
 check_contains "no match keeps Agents CLI expanded"   "$out" "### Agents CLI"
 check_contains "no match keeps Rush App expanded"     "$out" "### Rush App"
 check_absent   "no match stars nothing"               "$out" "★ this directory"
+
+# --- Goals: Active initiatives first, ranked, with brief + projects -----------
+out=$(LINEAR_CLI_CONFIG="$SANDBOX/config.json" CURL_PAYLOAD="$SANDBOX/payload-rich.json" \
+  env -u LINEAR_API_KEY -u LINEAR_TEAM_ID bash "$HOOK" 2>/dev/null)
+check_contains "goals section rendered"               "$out" "## Goals (1, ranked)"
+check_contains "goal heading carries rank + target"   "$out" "### 1. Example goal - ship v1 · by 2030-01-01"
+check_contains "goal brief prefers content"           "$out" "Not now: the side quest."
+check_absent   "short description not duplicated"     "$out" "Short line."
+check_contains "goal lists its projects"              "$out" "**Projects:** Rush App"
+check_absent   "canceled initiative hidden"           "$out" "Retired goal"
+first_section=$(printf '%s\n' "$out" | grep -m1 '^## ')
+check_contains "goals render before everything else"  "$first_section" "## Goals"
+check_contains "linked project tagged with its goal"  "$out" "**Rush App** — 50% · started · goal 1"
+check_contains "unlinked project flagged"             "$out" "### Agents CLI ★ this directory — 84% · backlog · not under a goal"
+check_absent   "done milestone hidden"                "$out" "Fleet reliability — green CI"
+check_contains "past-due milestone flagged"           "$out" "Factory converts strategy to shipped outcomes by 2026-09-15 · 10% · **overdue**"
+check_absent   "future milestone not flagged"         "$out" "self-heals by 2099-09-30 · 0% · **overdue**"
+check_contains "closing line ranks by goal"           "$out" "advances the top goal"
+check_contains "99.6% milestone still shown"          "$out" "Nearly there milestone"
+
+# initiatives.nodes null must not take the whole brief down with it.
+python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); d["data"]["initiatives"]={"nodes": None}; json.dump(d,open(sys.argv[2],"w"))' \
+  "$SANDBOX/payload-rich.json" "$SANDBOX/payload-null-inits.json"
+out=$(LINEAR_CLI_CONFIG="$SANDBOX/config.json" CURL_PAYLOAD="$SANDBOX/payload-null-inits.json" \
+  env -u LINEAR_API_KEY -u LINEAR_TEAM_ID bash "$HOOK" 2>/dev/null)
+check_absent   "null initiatives: no failure line"    "$out" "Linear query failed"
+check_absent   "null initiatives: no goals section"   "$out" "## Goals"
+check_contains "null initiatives: projects survive"   "$out" "## Projects ("
 
 exit $fail
