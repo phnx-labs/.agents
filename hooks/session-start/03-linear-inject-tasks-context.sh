@@ -1,6 +1,7 @@
 #!/bin/bash
 # SessionStart hook: inject Linear context at start —
-#   team/agents · every project (milestones + top open tickets) · active cycle.
+#   goals (active initiatives) · team/agents · every project (open milestones +
+#   top open tickets) · active cycle.
 #
 # Credentials: ONLY the Linear CLI's plaintext config at
 #   ~/.linear-cli/config.json  (apiKey + teamId, 0600, written by `linear setup`)
@@ -12,6 +13,9 @@
 # LINEAR_CLI_CONFIG env var overrides the config path for tests.
 #
 # Layout of the injection (token-budgeted brief, not a full board dump):
+#   0. Goals — Active Linear initiatives, ranked, each with its brief and
+#      projects. Initiatives are the business goals; there is no other goal
+#      store, so a stale goal is fixed in Linear, not in a rule file.
 #   1. Team & Agents
 #   2. Projects — every non-canceled/completed project, cwd-matched first,
 #      each with milestones + top open tickets (priority-sorted)
@@ -140,10 +144,14 @@ if not os.environ.get("LINEAR_TEAM_ID") and c.get("teamId"):
 fi
 export LINEAR_API_KEY LINEAR_TEAM_ID
 
-# One round trip: users, every team project (milestones + top open issues),
-# and the active-cycle board with project on each issue. Build the JSON body
+# One round trip: active-goal initiatives, users, every team project
+# (milestones + top open issues), and the active-cycle board with project on
+# each issue. Build the JSON body
 # in Python to sidestep GraphQL-in-bash quoting.
 QUERY='{
+  initiatives(first: 5, filter: { status: { eq: "Active" } }) {
+    nodes { name description content status targetDate sortOrder projects(first: 20) { nodes { name } } }
+  }
   users(first: 250) { nodes { displayName name email active app guest } }
   team(id: "'"$LINEAR_TEAM_ID"'") {
     projects(first: 50) {
@@ -254,6 +262,8 @@ CWD_PROJECT = (os.environ.get('CWD_PROJECT_NAME') or '').strip()
 def norm(s):
     return re.sub(r'[^a-z0-9]', '', (s or '').lower())
 
+TODAY = __import__('datetime').date.today().isoformat()
+
 PRIORITY = {0: 'None', 1: 'Urgent', 2: 'High', 3: 'Medium', 4: 'Low'}
 
 def pri_rank(n):
@@ -318,6 +328,32 @@ try:
 
     team = data.get('data', {}).get('team') or {}
 
+    # -- Goals (Active initiatives) ----------------------------------------
+    inits = (data.get('data', {}).get('initiatives') or {}).get('nodes') or []
+    goals = [i for i in inits if (i.get('status') or '').lower() == 'active']
+    goals.sort(key=lambda i: (i.get('sortOrder') if isinstance(i.get('sortOrder'), (int, float)) else 0,
+                              i.get('targetDate') or '9999', i.get('name') or ''))
+    goal_of = {}
+    for rank, g in enumerate(goals, 1):
+        for gp in (g.get('projects') or {}).get('nodes') or []:
+            goal_of.setdefault(norm(gp.get('name')), rank)
+    if goals:
+        print(f'## Goals ({len(goals)}, ranked)')
+        print('_Linear initiatives. Rank work by these: the task that moves goal 1 beats a higher-priority ticket that moves none. If what you are about to do advances no goal, say so before starting._')
+        print()
+        for rank, g in enumerate(goals, 1):
+            gname = g.get('name') or 'unnamed'
+            td = ' · by ' + g['targetDate'] if g.get('targetDate') else ''
+            print(f'### {rank}. {gname}{td}')
+            brief = (g.get('content') or g.get('description') or '').strip()
+            if len(brief) > 1500:
+                brief = brief[:1500].rstrip() + '...'
+            if brief:
+                print(brief)
+            gps = [gp.get('name') for gp in (g.get('projects') or {}).get('nodes') or [] if gp.get('name')]
+            print('**Projects:** ' + (', '.join(gps) if gps else '_(none linked)_'))
+            print()
+
     # -- Team & Agents ----------------------------------------------------
     users = (data.get('data', {}).get('users') or {}).get('nodes', [])
     humans, agents = [], []
@@ -376,9 +412,10 @@ try:
 
     # cwd-matched project first, then the rest alphabetically.
     focus = [p for p in live_projects if is_cwd_match(p)]
+    # Goal-linked projects next (by goal rank), then the rest alphabetically.
     rest = sorted(
         [p for p in live_projects if not is_cwd_match(p)],
-        key=lambda p: (p.get('name') or '').lower(),
+        key=lambda p: (goal_of.get(norm(p.get('name')), 99), (p.get('name') or '').lower()),
     )
     ordered = focus + rest
 
@@ -399,6 +436,10 @@ try:
             name = p.get('name') or 'unnamed'
             pct = pct_str(p.get('progress')) or '?'
             state = p.get('state') or ''
+            if goals and norm(name) in goal_of:
+                state += f' · goal {goal_of[norm(name)]}'
+            elif goals:
+                state += ' · not under a goal'
             # \`focus and\` keeps the no-focus case on the full listing, matching
             # the cycle section below — one rule, both sections.
             if focus and not is_cwd_match(p):
@@ -411,7 +452,12 @@ try:
             star = ' ★ this directory' if is_cwd_match(p) else ''
             print(f'### {name}{star} — {pct} · {state}')
 
-            ms = (p.get('projectMilestones') or {}).get('nodes', [])
+            # Finished milestones are history, not direction: only open ones are
+            # shown, and a past target date is flagged rather than left to read
+            # as current.
+            all_ms = (p.get('projectMilestones') or {}).get('nodes', [])
+            ms = [m for m in all_ms
+                  if not (isinstance(m.get('progress'), (int, float)) and m['progress'] >= 1.0)]
             if ms:
                 # sortOrder ascending when present; else targetDate then name
                 def ms_key(m):
@@ -426,7 +472,10 @@ try:
                     mpct = pct_str(m.get('progress'))
                     mpct_s = f' · {mpct}' if mpct else ''
                     td = f' by {m[\"targetDate\"]}' if m.get('targetDate') else ''
-                    print(f'- {m.get(\"name\", \"?\")}{td}{mpct_s}')
+                    late = ' · **overdue**' if m.get('targetDate') and m['targetDate'] < TODAY else ''
+                    print(f'- {m.get(\"name\", \"?\")}{td}{mpct_s}{late}')
+            elif all_ms:
+                print(f'**Milestones:** _(all {len(all_ms)} done)_')
             else:
                 print('**Milestones:** _(none)_')
 
@@ -627,9 +676,9 @@ try:
 
     print('---')
     if mine:
-        print('Pick your highest-priority task. Projects above carry milestones + open work; cycle section is this sprint only.')
+        print('Pick the task that advances the top goal; ticket priority breaks ties. Projects above carry open milestones + work; cycle section is this sprint only.')
     else:
-        print('Nothing is delegated to you. Use the Projects section (milestones + top open) to pick work, or claim from the cycle-by-project list.')
+        print('Nothing is delegated to you. Pick work that advances the top goal from the Projects section, or claim from the cycle-by-project list.')
 
 except Exception as e:
     print(f'Linear query failed: {e}')
