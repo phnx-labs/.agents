@@ -81,10 +81,16 @@ and differ only in approvals: `edit` requests them on demand, while `auto` is
 `approval_policy=never`, so it never prompts and a sandbox-denied command fails
 instead of raising a dialog. Use `--mode auto` for anything unattended; a prompt
 nobody answers is an agent that has stopped. When no configured run default exists,
-omitting `--mode` for Codex uses `edit`. Explicit `--mode plan` remains
+omitting `--mode` for Codex uses `edit`, the policy its launcher applies. Explicit `--mode plan` remains
 filesystem-read-only while retaining network access. `agents run codex --mode skip` instead bypasses approvals
 **and** removes the sandbox. Harnesses without a native bypass flag reject
 direct-exec `skip`.
+
+**Omitting `--mode` passes no permission flag.** Unless `--mode` is given or a
+default is configured (`agents config set 'run.claude@*.mode' auto`), the harness's
+own settings decide (Claude's `permissions.defaultMode`), exactly as when it is
+launched directly. That is also what lets a passthrough verb reach the harness:
+`agents run claude#work -- rc`. Pass `--mode plan` when a run must be read-only.
 
 **`plan` is not universally read-only.** Agents without a native read-only mode
 (including Antigravity, Cursor, and Kiro) warn and degrade `plan` to their safest native
