@@ -32,6 +32,9 @@ new defaults. Review-only requests remain assessments.
 | [Data visualization](skills/design/dataviz.md) | Charts, comparisons, and data stories |
 | [Decks](skills/design/deck.md) | Presentation design in the requested format |
 | [Flow diagnosis](skills/design/anticipate.md) | Dead ends, recovery, and next actions |
+| [Vocabulary](skills/design/vocabulary.md) | Names for 146 interaction and design moves, with how to ask for each and what it costs |
+| [Composition](skills/design/composition.md) | How the moves become one cohesive page: thesis, register, signature, pacing, motion budget |
+| [Research](skills/design/research.md) | Recording and analysing reference sites; [record-sites.mjs](skills/design/scripts/record-sites.mjs) captures each walkthrough |
 
 ## Checkers
 
