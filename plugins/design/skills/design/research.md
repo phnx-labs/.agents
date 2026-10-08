@@ -21,9 +21,11 @@ each URL resolves before recording.
 ## 2 · Record a walkthrough of each
 
 `scripts/record-sites.mjs` beside this file drives Playwright Chromium at 1440 x 900: a
-pointer sweep over the hero, hovers on the first links, sixteen wheel ticks down and back
-up. Per site it saves `walkthrough.mp4`, three stills, `fingerprint.json` (libraries and
-techniques detected in the page) and `contact-sheet.jpg` (a frame every 2.5 s).
+pointer sweep over the hero, hovers on the first links, sixteen wheel ticks down, then one
+jump back to the top. Per site it saves `walkthrough.mp4`, three stills, `fingerprint.json`
+(libraries and techniques detected in the page; `null` means a cross-origin stylesheet
+could not be read, not that the technique is absent) and `contact-sheet.jpg` (25 frames
+spread over the recording).
 
 ```
 printf '01-linear\thttps://linear.app/\n02-ghostty\thttps://ghostty.org/\n' > sites.tsv
@@ -34,7 +36,8 @@ node <design-skill-dir>/scripts/record-sites.mjs sites.tsv research-out --concur
 Run it on a worker machine rather than the user's laptop. Recording is software-rendered,
 so heavy WebGL sites may capture only a loader or a blank canvas. Record that as the
 capture quality instead of describing what the site probably does. Each site is capped at
-110 s so a page that blocks the renderer cannot stall the run.
+110 s so a page that blocks the renderer cannot stall the run. A URL that fails to load is
+reported as failed and the script exits non-zero; re-running retries only the failed sites.
 
 ## 3 · Analyse with the vocabulary
 
