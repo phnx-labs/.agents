@@ -5,7 +5,7 @@ UserPromptSubmit hook: expands $skill-name tokens into skill path + description.
 Syntax:
   $higgsfield             -- fuzzy: finds any skill dir named "higgsfield"
   $browser/higgsfield     -- relative: matches path ending in browser/higgsfield
-  $browser/domain-skills/higgsfield  -- deeper relative path
+  $browser/references/sites  -- deeper relative path
 
 Search order (first match wins per token):
   {cwd}/.agents/skills/  →  ~/.agents/skills/  →  ~/.agents-system/skills/
