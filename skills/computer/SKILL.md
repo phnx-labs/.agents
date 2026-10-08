@@ -14,7 +14,7 @@ The standalone `@phnx-labs/computer-cli` package owns desktop execution and nati
 
 Use `agents computer …` for agent-driven actions. This is a thin adapter to the installed `computer` executable, not a second desktop engine. Agents resolves fleet devices, supplies its app permissions and session context, and records returned action events in its feed and session database. Bare `computer …` works independently, but its own action ledger does not automatically populate Agents' history. Do not switch to it to bypass an Agents policy denial.
 
-Inspect recorded activity with `agents computer sessions --json` or `agents sessions --computer --json`. Browser activity stays in `agents browser sessions --json` and `agents sessions --browser --json`; the computer extraction does not replace browser tracking.
+Inspect recorded activity with `computer sessions --json`. Browser activity stays in `browser sessions --json`; the computer extraction does not replace browser tracking.
 
 When you need exact flags, run `agents computer <verb> --help`.
 
