@@ -115,13 +115,16 @@ async function record(browser, slug, url) {
         execFileSync("ffmpeg", ["-y", "-loglevel", "error", "-i", mp4, "-vf", `fps=${(25 / secs).toFixed(4)},scale=480:-1,tile=5x5:padding=4:color=black`, "-frames:v", "1", join(dir, "contact-sheet.jpg")], { timeout: 120000 });
       } catch (e) { failed = `ffmpeg: ${e.message.split("\n")[0]}`; }
     } else if (!failed) failed = "no recording was produced";
-    if (failed && raw && existsSync(raw)) unlinkSync(raw);
+    // A failed site leaves no recording behind, so the skip check lets a re-run retry it.
+    if (failed) for (const f of [raw, join(dir, "walkthrough.webm"), join(dir, "walkthrough.mp4")]) if (f && existsSync(f)) unlinkSync(f);
     if (failed) { failures.push(slug); log(`failed ${slug}: ${failed}`); }
     else log(`done ${slug} ${Math.round((Date.now() - t0) / 1000)}s`);
   }
 }
 
-const browser = await chromium.launch({ executablePath: chromiumPath, args: ["--no-sandbox", "--enable-unsafe-swiftshader", "--use-angle=swiftshader", "--ignore-gpu-blocklist"] });
+// Chromium's sandbox needs Linux user namespaces, which some workers disable; macOS and Windows keep it.
+const sandboxArgs = process.platform === "linux" ? ["--no-sandbox"] : [];
+const browser = await chromium.launch({ executablePath: chromiumPath, args: [...sandboxArgs, "--enable-unsafe-swiftshader", "--use-angle=swiftshader", "--ignore-gpu-blocklist"] });
 const queue = [...sites];
 await Promise.all(Array.from({ length: concurrency }, async () => { while (queue.length) { const [slug, url] = queue.shift(); await record(browser, slug, url); } }));
 await browser.close();
