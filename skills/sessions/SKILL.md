@@ -173,8 +173,8 @@ agents sessions import --from-host yosemite-s0 --from-host mac-mini   # repeatab
 ## Live Tailing
 
 ```bash
-# Live-tail a session file (Claude and Codex only)
-agents sessions tail <session-id>
+# Live-tail a session file (Claude and Codex only) -- the standalone sessions CLI
+sessions tail <session-id>
 # Press Ctrl+C to stop
 
 # Or the unified viewer: resolves a session id OR a device-dispatch run (from

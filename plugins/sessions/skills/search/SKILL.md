@@ -11,7 +11,7 @@ user-invocable: true
 Recall is not "run one CLI query and paste the result." The index that backs
 `agents sessions "<q>"` only covers **user turns + title/topic/project**
 (`session_text`, bm25) and, separately, **tool activity**
-(`tool_call_text`, trigram, needs `--include tools --query`). **Assistant
+(`tool_call_text`, trigram, searched with the standalone `sessions --include tools --query`). **Assistant
 answers are never indexed.** A session can be 665 messages long with only a
 43-character title in the index — the actual answer the user wants is buried
 in an assistant turn the index cannot see. Follow this procedure in order;
@@ -46,9 +46,9 @@ layer alone is often enough for "did I already touch this file/ticket."
 **Layer 2 — tool activity (commands run, files touched, diffs, errors):**
 
 ```bash
-agents sessions --include tools --query 'input:<term>' --all --json
+sessions --include tools --query 'input:<term>' --all --json
 # or, to require several distinct calls in the same session:
-agents sessions --include tools --query 'program:git input:<term>' --query 'program:gh output:<term2>' --all --json
+sessions --include tools --query 'program:git input:<term>' --query 'program:gh output:<term2>' --all --json
 ```
 
 Use this when the ask is about *what ran* (a command, a test, an error
