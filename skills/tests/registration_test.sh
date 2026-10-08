@@ -20,11 +20,11 @@ FAIL=0
 # Bare names that are legitimately declared twice. Each needs a reason, because every
 # entry here is a slot whose winner is decided by install order rather than by design.
 #
-#   browser — the user layer MUST shadow the system copy: agents-cli resolves browser
-#             domain-skills from a hardcoded ~/.agents/skills/browser/domain-skills
-#             with no system-layer fallback, and resolveDomainSkill swallows a miss
-#             silently. Documented in ~/.agents/CLAUDE.md (RUSH-2497). Remove this
-#             entry when that resolver searches user -> system.
+#   browser — both layers hold the skill browser-cli ships (skills/browser in
+#             phnx-labs/browser-cli), byte-identical; the user layer is installed
+#             with `agents skills add gh:phnx-labs/browser-cli --names browser`.
+#             Remove this entry when agents-cli installs it from the package
+#             (PHNX-4283).
 #   learn   — top-level `learn` (post-session reflection) vs code:learn (learn the
 #             codebase). Different jobs; the bare name resolves to the top-level one.
 #   run     — top-level `run` (one agent) vs swarm:run (fan out). Different jobs.

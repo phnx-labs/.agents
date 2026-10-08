@@ -1,73 +1,77 @@
 ---
 name: browser
-description: Drive a browser to automate websites — fill forms, click buttons, take screenshots, scrape pages. Uses the standalone `browser` CLI (or `agents browser`).
-argument-hint: "[url]"
-allowed-tools: Bash(browser*), Bash(agents browser*), Bash(sleep*)
-user-invocable: true
+description: Drive the user's real browser from the command line with the `browser` CLI — open sites they are signed into, navigate, click, type, read pages, take screenshots, capture console and network traffic, and show pages to the user. Use for any task that needs a website or web app, including logged-in sites, form filling, scraping, testing a web app, and opening a report or page for the user to look at.
+allowed-tools: Bash(browser:*)
 ---
 
-# Browser Automation
+# browser
 
-The standalone `@phnx-labs/browser-cli` package owns browser execution (process
-management, tabs, CDP/BiDi/Apple Events, network capture, remote-over-SSH).
-`agents browser` is a thin adapter to the installed `browser` binary — it adds
-Agents' device resolution, permissions, and session/feed recording; bare
-`browser …` works independently. Install it with `agents clis install browser`
-or `agents setup browser` (the engine is not bundled with Agents CLI);
-`browser --version` checks the installed engine.
+`browser` drives real browsers (Chrome-family over CDP, Firefox over BiDi, Arc natively) with the user's own profiles, cookies and logins.
 
-Routes to specialized subskills based on the target.
+## Use the user's browser
 
-## Routing Table
+Start without `--profile` or `--device`:
 
-| Target | Subskill | When to Use |
-|---|---|---|
-| Websites, web apps | `browser-use.md` | Any HTTP/HTTPS URL in a regular browser |
-
-## Configured browser and viewer
-
-Use `agents browser start` for automation. The CLI resolves `browser.device`
-when a fleet hub is configured, otherwise this machine, then that machine's
-`browser.profile`. `agents browser use` reports the default; `agents browser
-profiles list` lists discovered profiles and their devices. Follow the live
-session configuration, never a hardcoded browser or host.
-
-Use `agents browser show <url|file>` on the user's interactive host for pages
-they should read. It resolves `browser.viewer`, then `browser.profile`; `os`
-selects the OS default browser. Viewer tabs are not owned by an automation task. The CLI may report a fallback
-to the OS browser when the configured profile cannot open viewer tabs; do not
-claim it opened the selected profile without checking the result (`--json`).
-Deliver local files to that host before opening them.
-
-To drive another device explicitly, use `agents browser start --device <host>`
-and omit `--profile` so the target resolves its own configuration. Later commands
-use the task bound at start. Check the installed command help for supported options. Remote driving requires the owner's remote-control
-consent on the target; do not bypass a refusal through SSH.
-
-Profiles reflect the installed browser's capabilities. Inspect the selected
-profile before choosing capture or interaction commands. A missing capability
-is not a reason to silently switch the user's configured browser or create a
-fresh profile without their logins.
-
-## Decision Tree
-
-```
-What are you automating?
-└── Web page / web app → browser-use.md
-    └── Specific site with known quirks? → domain-skills/<site>/
+```bash
+browser start --url https://example.com
 ```
 
-## Adding a new domain-skill
+A bare start opens the browser the user configured as their default. When the machine is set to drive another device's browser, the start runs there. `browser use` prints the default. Pass `--profile` or `--device` only when the user asks for a different browser.
 
-When you need to drive a site that doesn't have a `domain-skills/<site>/` entry yet:
+Do not create profiles, launch a headless browser, or switch to another machine's browser to work around an error. Sites block remote and cloud browsers, and those browsers do not have the user's logins. Report the error instead.
 
-1. **Check upstream first.** [browser-use/awesome-prompts](https://github.com/browser-use/awesome-prompts) is a community library of agent prompts for popular sites — often a faster starting point than writing selectors from scratch. Adapt their snippets into our `SKILL.md` format (frontmatter `description:` + body); credit upstream in the body.
-2. **Scaffold the directory:** `domain-skills/<site>/SKILL.md` plus any helper scripts under `scripts/`.
-3. **Match by directory name** (e.g. `slack` resolves both `slack.com` and `app.slack.com`), or set an explicit `domains:` array in the frontmatter for cross-host coverage:
-   ```yaml
-   ---
-   description: Drive <site>...
-   domains: [mail.google.com, gmail.com]
-   ---
-   ```
-4. **Auto-discovery:** `agents browser start --url <url>` now auto-loads the matching `SKILL.md` and surfaces its contents on stderr so an agent driving the task has site-specific guidance before clicking anything. Pass `--no-skills` to opt out.
+## Workflow
+
+```bash
+browser start --url https://example.com    # stdout is the task name
+browser refs --task <task>                 # interactive elements, numbered
+browser click 3 --task <task>              # act on a ref
+browser done --task <task>                 # close the task's tabs
+```
+
+Everything else (typing, waiting, evaluating JavaScript, screenshots, console and network capture) is in `browser --help`.
+
+- Pass `--task <task>` on every call. Each shell is new, so an exported variable is gone by the next call.
+- Refs are numbers from the latest `refs` output. They change when the page changes, so run `refs` again after each action.
+- `browser start --url` prints the site guide for that site when one exists (`--- site guide: … ---`). Read it before you click.
+
+## Flags: read the help, never guess
+
+```bash
+browser <command> --help      # options for one command
+browser help --json           # every command, argument and option
+```
+
+An `unknown option` error means the flag does not exist. Read that command's `--help`.
+
+## Show the user a page
+
+```bash
+browser show https://example.com
+browser show ./report.html
+```
+
+`show` opens it in the user's configured viewer and binds no task. Add `--json` to see which browser actually opened it.
+
+## Arc
+
+When the task's profile is an Arc profile, read `references/arc.md` first. Arc has no screenshots and runs only synchronous JavaScript, and the agent's tab sits in the user's own Arc window.
+
+## When something fails
+
+- `browser status` lists the service and running tasks.
+- Service unresponsive, or IPC requests time out: `browser stop --service`, then retry the command.
+- `nothing is speaking CDP on port …`: that profile's browser is not running. Tell the user; do not switch browsers.
+- `Task "…" not found`: the task ended. Start a new one.
+
+## Reference documents
+
+```bash
+browser skills list            # this skill's documents
+browser skills get arc         # references/arc.md
+browser skills get slack       # a site guide, references/sites/slack.md
+```
+
+- `references/arc.md`: Arc limits and how to share the user's window safely.
+- `references/sites/<site>.md`: per-site selectors and gotchas (higgsfield, linkedin, perplexity, slack).
+- `scripts/slack/*.js`: page scripts for `browser evaluate --file`, used by the Slack guide.

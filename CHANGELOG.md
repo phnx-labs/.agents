@@ -4,6 +4,17 @@
 
 ### Added
 
+- **One browser skill, shipped by browser-cli (PHNX-4283).** `skills/browser` is now the
+  skill `@phnx-labs/browser-cli` ships (`SKILL.md`, `references/arc.md`,
+  `references/sites/*.md`, `scripts/slack/*.js`), replacing the hand-maintained
+  `SKILL.md` + `browser-use.md`. It lists no flags; agents read `browser <command> --help`
+  and `browser help --json`. Install it into a user layer with
+  `agents skills add gh:phnx-labs/browser-cli --names browser`.
+- **The SessionStart topology hook states one browser rule and reads no browser config.**
+  It used to make three `agents` calls with 3 s timeouts (config, profiles, the hub's
+  config) that often timed out and ended with "Do not assume a particular browser". It now
+  says: run a bare `browser start --url <url>`; the CLI resolves the configured browser.
+
 - **Design craft references in the `design` plugin.** Three on-demand references beside
   `design-core.md`, from recording and analysing 35 award-winning and developer-tool
   sites: `vocabulary.md` names 146 interaction and design moves (how to ask for each,
