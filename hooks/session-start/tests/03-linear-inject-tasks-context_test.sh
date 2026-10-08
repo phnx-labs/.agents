@@ -89,10 +89,10 @@ cat > "$CURL_PAYLOAD" <<'JSON'
             "progress": 0.84,
             "projectMilestones": {
               "nodes": [
-                {"name": "Factory converts strategy to shipped outcomes", "targetDate": "2026-09-15", "progress": 0.1, "sortOrder": 1},
+                {"name": "Factory converts strategy to shipped outcomes", "targetDate": "2026-09-15", "progress": 10, "sortOrder": 1},
                 {"name": "Factory reliability — self-heals", "targetDate": "2099-09-30", "progress": 0.0, "sortOrder": 2},
-                {"name": "Fleet reliability — green CI", "targetDate": "2026-08-12", "progress": 1.0, "sortOrder": 3},
-                {"name": "Nearly there milestone", "targetDate": "2099-01-01", "progress": 0.996, "sortOrder": 4}
+                {"name": "Fleet reliability — green CI", "targetDate": "2026-08-12", "progress": 100, "sortOrder": 3},
+                {"name": "Nearly there milestone", "targetDate": "2099-01-01", "progress": 99.6, "sortOrder": 4}
               ]
             },
             "issues": {
@@ -605,6 +605,7 @@ check_contains "past-due milestone flagged"           "$out" "Factory converts s
 check_absent   "future milestone not flagged"         "$out" "self-heals by 2099-09-30 · 0% · **overdue**"
 check_contains "closing line ranks by goal"           "$out" "advances the top goal"
 check_contains "99.6% milestone still shown"          "$out" "Nearly there milestone"
+check_contains "part-done milestone (percent scale) shown" "$out" "Factory converts strategy to shipped outcomes"
 
 # initiatives.nodes null must not take the whole brief down with it.
 python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); d["data"]["initiatives"]={"nodes": None}; json.dump(d,open(sys.argv[2],"w"))' \

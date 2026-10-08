@@ -454,10 +454,11 @@ try:
 
             # Finished milestones are history, not direction: only open ones are
             # shown, and a past target date is flagged rather than left to read
-            # as current.
+            # as current. Linear reports milestone progress in percent (0-100),
+            # unlike project progress (0-1), so done means 100.
             all_ms = (p.get('projectMilestones') or {}).get('nodes', [])
             ms = [m for m in all_ms
-                  if not (isinstance(m.get('progress'), (int, float)) and m['progress'] >= 1.0)]
+                  if not (isinstance(m.get('progress'), (int, float)) and m['progress'] >= 100)]
             if ms:
                 # sortOrder ascending when present; else targetDate then name
                 def ms_key(m):
