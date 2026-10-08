@@ -13,7 +13,9 @@ static HTML or removing its router and dependencies.
 
 ## 2 · Visual quality
 
-Make hierarchy, alignment, density, typography, and spacing support the task. Reuse the
+Make hierarchy, alignment, density, typography, and spacing support the task. Name moves
+precisely with `vocabulary.md` beside this file, and when composing a page or a full
+surface, read `composition.md` for how the pieces become one page. Reuse the
 product's scales and patterns. Introduce new defaults only where no suitable pattern
 exists, or where the requested redesign explicitly changes it. Explain consequential
 changes rather than imposing a favorite palette, font, radius, or layout.
@@ -42,7 +44,8 @@ limits of screenshot-only evidence; do not invent their behavior.
 ## 5 · Reference work
 
 Start with the product's own examples and the user's references. Browse relevant current
-examples when exploring a new direction or when existing guidance is insufficient.
+examples when exploring a new direction or when existing guidance is insufficient; for a
+new direction or a page from scratch, record and analyse references with `research.md`.
 Inspect them before borrowing a specific choice; explain its relevance to the task.
 Do not require competitor browsing for every small refinement.
 

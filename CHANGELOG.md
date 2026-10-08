@@ -2,6 +2,18 @@
 
 ## [Unreleased]
 
+### Added
+
+- **Design craft references in the `design` plugin.** Three on-demand references beside
+  `design-core.md`, from recording and analysing 35 award-winning and developer-tool
+  sites: `vocabulary.md` names 146 interaction and design moves (how to ask for each,
+  its cost, and how many of the sites used it, plus measured spacing from live sites);
+  `composition.md` covers how the moves become one cohesive page (thesis, register, one
+  signature moment, pacing, a motion budget on three clocks, continuity, the first
+  frame); `research.md` is the method, with `scripts/record-sites.mjs` to record each
+  reference site's walkthrough, stills, fingerprint and contact sheet. `design-core.md`
+  points every design workflow at them.
+
 ### Removed
 
 - **`agents monitors` guidance and the built-in `pr-merge-on-green` monitor

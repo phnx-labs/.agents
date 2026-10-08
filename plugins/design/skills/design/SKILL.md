@@ -23,6 +23,8 @@ its part. Reuse context and observations across the work. Clarify only an ambigu
 changes the deliverable; do not ask the user to choose a command.
 
 For diagrams, charts/data stories, and decks, read `design-core.md` and then the matching
-`diagram.md`, `dataviz.md`, or `deck.md` beside this file. Diagnose a flow's next step with
+`diagram.md`, `dataviz.md`, or `deck.md` beside this file. To name a move, read
+`vocabulary.md`; to compose a whole page, `composition.md`; to gather references,
+`research.md` (with `scripts/record-sites.mjs`). Diagnose a flow's next step with
 `anticipate.md`; use `design:prototype` when implementing the interaction is requested.
 These references load on demand, not with every design task.
