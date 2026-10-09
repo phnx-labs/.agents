@@ -175,6 +175,19 @@ which fact-based check runs (the done-claim detector that gates
 evaluation (`record_block` / `record_check_ok`) so a check's hit rate stays
 measurable before it is kept or extended.
 
+## A Stop hook cannot undo an auto mode denial
+
+When Claude Code's auto mode classifier refuses a call (`[Merge Without Review]`,
+`[Secret-Store Writes]`, `[Production Deploy]`, …), the agent hands the command
+back to the owner. A Stop hook that sends it back to "do it yourself" fails: the
+retry is refused again, and the denial text tells the agent to leave the action
+for the user. `no-permission-stop-guard` (0 of 111 replayed stops) and the
+command-handback check in `verify-work-complete` (0 of 4 demands met) were both
+removed for this reason. A PreToolUse `allow` does not bypass the classifier
+either. What does: a narrow `permissions.allow` rule for the exact command, which
+auto mode keeps and approves without the classifier. Fix a hand-back of that kind
+in `permissions/groups/`, not here.
+
 ## Exit codes and streams
 
 - `exit 0` — allow. Anything on stdout is injected into the model's context.
