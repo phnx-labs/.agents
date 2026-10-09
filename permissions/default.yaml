@@ -169,6 +169,9 @@ allow:
   - "Bash(git diff-tree:*)"
   - "Bash(git for-each-ref:*)"
   - "Bash(git symbolic-ref:*)"
+  # Merging a PR. Without this narrow rule, auto mode refuses it as
+  # [Merge Without Review] and the agent hands the merge to the owner.
+  - "Bash(gh pr merge:*)"
   # Security tooling — SSH client, GPG, SSL inspection (read-only).
   - "Bash(ssh:*)"
   - "Bash(scp:*)"
