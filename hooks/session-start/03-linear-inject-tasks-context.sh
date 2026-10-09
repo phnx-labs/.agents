@@ -15,7 +15,11 @@
 # Layout of the injection (token-budgeted brief, not a full board dump):
 #   0. Goals — Active Linear initiatives, ranked, each with its brief and
 #      projects. Initiatives are the business goals; there is no other goal
-#      store, so a stale goal is fixed in Linear, not in a rule file.
+#      store, so a stale goal is fixed in Linear, not in a rule file. Below
+#      them: the company week goal (the active cycle's name), and the API-key
+#      owner's "Weekly goal" and today's "Daily goal" issues with their
+#      sub-issues as to-dos. Claude Code previews only the first 2 KB of hook
+#      output, so this block stays first and short.
 #   1. Team & Agents
 #   2. Projects — every non-canceled/completed project, cwd-matched first,
 #      each with milestones + top open tickets (priority-sorted)
@@ -144,13 +148,33 @@ if not os.environ.get("LINEAR_TEAM_ID") and c.get("teamId"):
 fi
 export LINEAR_API_KEY LINEAR_TEAM_ID
 
-# One round trip: active-goal initiatives, users, every team project
-# (milestones + top open issues), and the active-cycle board with project on
-# each issue. Build the JSON body
+# One round trip: active-goal initiatives, the key owner's week and day goal
+# issues, users, every team project (milestones + top open issues), and the
+# active-cycle board with project on each issue. Build the JSON body
 # in Python to sidestep GraphQL-in-bash quoting.
+# The day goal is due on the LOCAL calendar day, the same day the python block
+# below reads as TODAY.
+export TODAY=$(date +%F)
 QUERY='{
   initiatives(first: 5, filter: { status: { eq: "Active" } }) {
     nodes { name description content status targetDate sortOrder projects(first: 20) { nodes { name } } }
+  }
+  viewer { name displayName }
+  myDayGoal: issues(first: 1, filter: {
+    assignee: { isMe: { eq: true } }
+    labels: { name: { eqIgnoreCase: "Daily goal" } }
+    dueDate: { eq: "'"$TODAY"'" }
+    state: { type: { neq: "canceled" } }
+  }) {
+    nodes { identifier title children(first: 25) { nodes { identifier title state { type } } } }
+  }
+  myWeekGoals: issues(first: 5, filter: {
+    assignee: { isMe: { eq: true } }
+    labels: { name: { eqIgnoreCase: "Weekly goal" } }
+    state: { type: { neq: "canceled" } }
+    or: [{ cycle: { isActive: { eq: true } } }, { dueDate: { gte: "'"$TODAY"'" } }]
+  }) {
+    nodes { identifier title dueDate cycle { isActive } }
   }
   users(first: 250) { nodes { displayName name email active app guest } }
   team(id: "'"$LINEAR_TEAM_ID"'") {
@@ -262,7 +286,7 @@ CWD_PROJECT = (os.environ.get('CWD_PROJECT_NAME') or '').strip()
 def norm(s):
     return re.sub(r'[^a-z0-9]', '', (s or '').lower())
 
-TODAY = __import__('datetime').date.today().isoformat()
+TODAY = os.environ.get('TODAY') or __import__('datetime').date.today().isoformat()
 
 PRIORITY = {0: 'None', 1: 'Urgent', 2: 'High', 3: 'Medium', 4: 'Low'}
 
@@ -337,22 +361,71 @@ try:
     for rank, g in enumerate(goals, 1):
         for gp in (g.get('projects') or {}).get('nodes') or []:
             goal_of.setdefault(norm(gp.get('name')), rank)
+    # Always printed: even with no initiative, the day-goal line is the nudge
+    # to set one. Claude Code previews only the first 2 KB of hook output, so
+    # the brief is capped hard enough that the week and day lines below still
+    # land inside that preview.
+    print(f'## Goals ({len(goals)}, ranked)' if goals else '## Goals')
     if goals:
-        print(f'## Goals ({len(goals)}, ranked)')
         print('_Linear initiatives. Rank work by these: the task that moves goal 1 beats a higher-priority ticket that moves none. If what you are about to do advances no goal, say so before starting._')
+    print()
+    for rank, g in enumerate(goals, 1):
+        gname = g.get('name') or 'unnamed'
+        td = ' · by ' + g['targetDate'] if g.get('targetDate') else ''
+        print(f'### {rank}. {gname}{td}')
+        brief = (g.get('content') or g.get('description') or '').strip()
+        if len(brief) > 900:
+            brief = brief[:900].rsplit(None, 1)[0] + '...'
+        if brief:
+            print(brief)
+        gps = [gp.get('name') for gp in (g.get('projects') or {}).get('nodes') or [] if gp.get('name')]
+        print('**Projects:** ' + (', '.join(gps) if gps else '_(none linked)_'))
         print()
-        for rank, g in enumerate(goals, 1):
-            gname = g.get('name') or 'unnamed'
-            td = ' · by ' + g['targetDate'] if g.get('targetDate') else ''
-            print(f'### {rank}. {gname}{td}')
-            brief = (g.get('content') or g.get('description') or '').strip()
-            if len(brief) > 1500:
-                brief = brief[:1500].rstrip() + '...'
-            if brief:
-                print(brief)
-            gps = [gp.get('name') for gp in (g.get('projects') or {}).get('nodes') or [] if gp.get('name')]
-            print('**Projects:** ' + (', '.join(gps) if gps else '_(none linked)_'))
-            print()
+
+    def short(s, cap=100):
+        s = (s or '').replace(chr(10), ' ').strip()
+        return s if len(s) <= cap else s[:cap].rstrip() + '...'
+
+    # An unnamed cycle reads 'Cycle N' in Linear: that means no week goal set.
+    cycle = team.get('activeCycle')
+    week_name = ((cycle or {}).get('name') or '').strip()
+    if week_name and not re.fullmatch(r'Cycle \d+', week_name):
+        print(f'**This week (company):** {short(week_name)}')
+
+    viewer = data['data'].get('viewer') or {}
+    human = viewer.get('displayName') or viewer.get('name') or 'you'
+
+    # The Weekly goal belongs to the active cycle: either it sits in that cycle
+    # or it is due inside it (due = cycle end date).
+    c_start = ((cycle or {}).get('startsAt') or '')[:10]
+    c_end = ((cycle or {}).get('endsAt') or '')[:10]
+    def in_cycle(i):
+        if (i.get('cycle') or {}).get('isActive'):
+            return True
+        due = i.get('dueDate') or ''
+        return bool(cycle and due and c_start <= due <= c_end)
+    week_goal = next((i for i in (data['data'].get('myWeekGoals') or {}).get('nodes') or [] if in_cycle(i)), None)
+    if week_goal:
+        print(f'**This week ({human}):** {short(week_goal.get(\"title\"))} ({week_goal.get(\"identifier\")})')
+
+    day_goal = next(iter((data['data'].get('myDayGoal') or {}).get('nodes') or []), None)
+    if day_goal:
+        # Linear lists children newest first; show them in the order they were added.
+        todos = sorted((t for t in (day_goal.get('children') or {}).get('nodes') or []
+                        if (t.get('state') or {}).get('type') != 'canceled'),
+                       key=lambda t: int(re.sub(r'\D', '', t.get('identifier') or '') or 0))
+        done = sum(1 for t in todos if (t.get('state') or {}).get('type') == 'completed')
+        tally = f' · {done}/{len(todos)} done' if todos else ''
+        print(f'**Today ({human}):** {short(day_goal.get(\"title\"))} ({day_goal.get(\"identifier\")}){tally}')
+        TODO_CAP = 8
+        for t in todos[:TODO_CAP]:
+            box = 'x' if (t.get('state') or {}).get('type') == 'completed' else ' '
+            print(f'- [{box}] {t.get(\"identifier\")} {short(t.get(\"title\"), 80)}')
+        if len(todos) > TODO_CAP:
+            print(f'- _+{len(todos) - TODO_CAP} more to-dos_')
+    else:
+        print('No daily goal set for today — ask the owner or run \`linear goals set day\`')
+    print()
 
     # -- Team & Agents ----------------------------------------------------
     users = (data.get('data', {}).get('users') or {}).get('nodes', [])
@@ -498,7 +571,6 @@ try:
         print()
 
     # -- Active-sprint board (Your Tasks, then by project) ----------------
-    cycle = team.get('activeCycle')
     if not cycle:
         print('No active sprint in Linear.')
         sys.exit(0)

@@ -11,6 +11,9 @@
 #   - injection lists projects with milestones + top open tickets
 #   - Active initiatives render first as ranked Goals; finished milestones are
 #     hidden and past-due ones flagged
+#   - under them: the company week goal (named cycle only), the key owner's
+#     Weekly and Daily goal with to-dos, or a nudge when no day goal is set,
+#     all inside the first 2 KB that Claude Code previews
 #   - active cycle is grouped by project
 #   - Your Tasks is routed by Linear's native delegate, per AGENT_SELF, and a
 #     leftover agent:* label confers no ownership
@@ -22,8 +25,8 @@ SANDBOX="$(mktemp -d)"
 trap 'rm -rf "$SANDBOX"' EXIT
 
 fail=0
-check_contains() { if printf '%s' "$2" | grep -qF "$3"; then echo "ok   - $1"; else echo "FAIL - $1: output missing [$3]"; fail=1; fi; }
-check_absent()   { if printf '%s' "$2" | grep -qF "$3"; then echo "FAIL - $1: output contains [$3]"; fail=1; else echo "ok   - $1"; fi; }
+check_contains() { if printf '%s' "$2" | grep -qF -- "$3"; then echo "ok   - $1"; else echo "FAIL - $1: output missing [$3]"; fail=1; fi; }
+check_absent()   { if printf '%s' "$2" | grep -qF -- "$3"; then echo "FAIL - $1: output contains [$3]"; fail=1; else echo "ok   - $1"; fi; }
 
 # --- stubs -------------------------------------------------------------------
 mkdir -p "$SANDBOX/bin"
@@ -613,7 +616,69 @@ python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); d["data"]["initiati
 out=$(LINEAR_CLI_CONFIG="$SANDBOX/config.json" CURL_PAYLOAD="$SANDBOX/payload-null-inits.json" \
   env -u LINEAR_API_KEY -u LINEAR_TEAM_ID bash "$HOOK" 2>/dev/null)
 check_absent   "null initiatives: no failure line"    "$out" "Linear query failed"
-check_absent   "null initiatives: no goals section"   "$out" "## Goals"
+check_absent   "null initiatives: no ranked goals"    "$out" "## Goals ("
 check_contains "null initiatives: projects survive"   "$out" "## Projects ("
+
+# --- Goals: week and day goals under the company goal --------------------------
+# The rich fixture has an unnamed cycle ("Cycle 23") and no goal issues: no
+# company week line, no personal lines, and the one-line nudge for a day goal.
+out=$(LINEAR_CLI_CONFIG="$SANDBOX/config.json" CURL_PAYLOAD="$SANDBOX/payload-rich.json" \
+  env -u LINEAR_API_KEY -u LINEAR_TEAM_ID bash "$HOOK" 2>/dev/null)
+check_absent   "unnamed cycle: no company week line"  "$out" "This week (company)"
+check_absent   "no week goal: no personal week line"  "$out" "This week (Muqsit)"
+check_contains "no day goal: one nudge line"          "$out" "No daily goal set for today — ask the owner or run \`linear goals set day\`"
+check_contains "day-goal query is due today"          "$(cat "$CURL_ARGS" 2>/dev/null)" "dueDate: { eq: \\\"$(date +%F)\\\" }"
+
+# A named cycle, a Weekly goal in it, and today's Daily goal with to-dos. The
+# brief is long enough that it must be trimmed for the goal lines to land in the
+# 2 KB Claude Code previews.
+python3 - "$SANDBOX/payload-rich.json" "$SANDBOX/payload-goals.json" <<'PY'
+import json, sys
+d = json.load(open(sys.argv[1]))
+d["data"]["initiatives"]["nodes"][1]["content"] = "Win: ship v1. " + "Example brief sentence that runs long. " * 60
+d["data"]["team"]["activeCycle"]["name"] = "Example week goal: demo ships"
+d["data"]["viewer"] = {"name": "Muqsit", "displayName": "muqsit"}
+d["data"]["myWeekGoals"] = {"nodes": [
+    {"identifier": "RUSH-500", "title": "Last week's goal", "dueDate": "2000-01-01", "cycle": {"isActive": False}},
+    {"identifier": "RUSH-501", "title": "Example weekly goal", "dueDate": "2026-08-11", "cycle": {"isActive": True}},
+]}
+d["data"]["myDayGoal"] = {"nodes": [{"identifier": "RUSH-510", "title": "Example daily goal", "children": {"nodes": [
+    {"identifier": "RUSH-513", "title": "Third to-do", "state": {"type": "unstarted"}},
+    {"identifier": "RUSH-512", "title": "Dropped to-do", "state": {"type": "canceled"}},
+    {"identifier": "RUSH-511", "title": "First to-do", "state": {"type": "completed"}},
+]}}]}
+json.dump(d, open(sys.argv[2], "w"))
+PY
+out=$(LINEAR_CLI_CONFIG="$SANDBOX/config.json" CURL_PAYLOAD="$SANDBOX/payload-goals.json" \
+  env -u LINEAR_API_KEY -u LINEAR_TEAM_ID bash "$HOOK" 2>/dev/null)
+head2k=$(printf '%s' "$out" | head -c 2048)
+check_contains "named cycle: company week line"       "$head2k" "**This week (company):** Example week goal: demo ships"
+check_contains "week goal: active-cycle issue"        "$head2k" "**This week (muqsit):** Example weekly goal (RUSH-501)"
+check_absent   "week goal: past issue skipped"        "$out"    "Last week's goal"
+check_contains "day goal: title and tally"            "$head2k" "**Today (muqsit):** Example daily goal (RUSH-510) · 1/2 done"
+check_contains "day goal: done to-do checked"         "$head2k" "- [x] RUSH-511 First to-do"
+check_contains "day goal: open to-do unchecked"       "$head2k" "- [ ] RUSH-513 Third to-do"
+check_absent   "day goal: canceled to-do hidden"      "$out"    "Dropped to-do"
+check_absent   "day goal: no nudge line"              "$out"    "No daily goal set"
+check_contains "long brief is trimmed"                "$head2k" "brief sentence..."
+first_todo=$(printf '%s' "$out" | grep -n "RUSH-511" | head -1 | cut -d: -f1)
+last_todo=$(printf '%s' "$out" | grep -n "RUSH-513" | head -1 | cut -d: -f1)
+if [ -n "$first_todo" ] && [ -n "$last_todo" ] && [ "$first_todo" -lt "$last_todo" ]; then
+  echo "ok   - to-dos listed in creation order"
+else
+  echo "FAIL - to-dos out of creation order (511 at $first_todo, 513 at $last_todo)"; fail=1
+fi
+team_at=$(printf '%s' "$out" | grep -n "^## Team" | head -1 | cut -d: -f1)
+if [ -n "$team_at" ] && [ "$last_todo" -lt "$team_at" ]; then
+  echo "ok   - goal lines sit inside the Goals block"
+else
+  echo "FAIL - goal lines fall outside the Goals block"; fail=1
+fi
+
+# No initiative still yields a Goals block, so the day-goal nudge is never lost.
+out=$(LINEAR_CLI_CONFIG="$SANDBOX/config.json" CURL_PAYLOAD="$SANDBOX/payload-null-inits.json" \
+  env -u LINEAR_API_KEY -u LINEAR_TEAM_ID bash "$HOOK" 2>/dev/null)
+check_contains "no initiative: bare Goals header"     "$(printf '%s\n' "$out" | grep -m1 '^## ')" "## Goals"
+check_contains "no initiative: day-goal nudge"        "$out" "No daily goal set for today"
 
 exit $fail
