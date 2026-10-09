@@ -4,6 +4,14 @@
 
 ### Added
 
+- **`hooks/session-start/03-linear-inject-tasks-context.sh`: week and today goals in
+  the Goals block (PHNX-4291).** Under the company goal it now prints "This week
+  (company)" (the active cycle's name, omitted when unnamed `Cycle N`), the API-key
+  owner's "Weekly goal" issue for the active cycle, and today's "Daily goal" issue with
+  its sub-issues as `[x]`/`[ ]` to-dos. With no Daily goal it prints one line pointing
+  at `linear goals set day`. Same single GraphQL request, no `linear` CLI call. The
+  initiative brief is capped at 900 characters so these lines land in the first 2 KB
+  that Claude Code previews.
 - **One browser skill, shipped by browser-cli (PHNX-4283).** `skills/browser` is now the
   skill `@phnx-labs/browser-cli` ships (`SKILL.md`, `references/arc.md`,
   `references/sites/*.md`, `scripts/slack/*.js`), replacing the hand-maintained
