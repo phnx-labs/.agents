@@ -10,7 +10,7 @@
   owner's "Weekly goal" issue for the active cycle, and today's "Daily goal" issue with
   its sub-issues as `[x]`/`[ ]` to-dos. With no Daily goal it prints one line pointing
   at `linear goals set day`. Same single GraphQL request, no `linear` CLI call. The
-  initiative brief is capped at 900 characters so these lines land in the first 2 KB
+  initiative briefs share one 900-character budget so these lines land in the first 2 KB
   that Claude Code previews.
 - **One browser skill, shipped by browser-cli (PHNX-4283).** `skills/browser` is now the
   skill `@phnx-labs/browser-cli` ships (`SKILL.md`, `references/arc.md`,

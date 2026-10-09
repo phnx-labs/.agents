@@ -168,7 +168,7 @@ QUERY='{
   }) {
     nodes { identifier title children(first: 25) { nodes { identifier title state { type } } } }
   }
-  myWeekGoals: issues(first: 5, filter: {
+  myWeekGoals: issues(first: 25, filter: {
     assignee: { isMe: { eq: true } }
     labels: { name: { eqIgnoreCase: "Weekly goal" } }
     state: { type: { neq: "canceled" } }
@@ -369,13 +369,16 @@ try:
     if goals:
         print('_Linear initiatives. Rank work by these: the task that moves goal 1 beats a higher-priority ticket that moves none. If what you are about to do advances no goal, say so before starting._')
     print()
+    # One 900-character budget shared by every initiative, not 900 each: two
+    # full briefs would push the week and day lines past the preview.
+    brief_cap = 900 // max(len(goals), 1)
     for rank, g in enumerate(goals, 1):
         gname = g.get('name') or 'unnamed'
         td = ' · by ' + g['targetDate'] if g.get('targetDate') else ''
         print(f'### {rank}. {gname}{td}')
         brief = (g.get('content') or g.get('description') or '').strip()
-        if len(brief) > 900:
-            brief = brief[:900].rsplit(None, 1)[0] + '...'
+        if len(brief) > brief_cap:
+            brief = brief[:brief_cap].rsplit(None, 1)[0] + '...'
         if brief:
             print(brief)
         gps = [gp.get('name') for gp in (g.get('projects') or {}).get('nodes') or [] if gp.get('name')]

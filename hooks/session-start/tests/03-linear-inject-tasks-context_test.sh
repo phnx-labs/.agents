@@ -675,6 +675,20 @@ else
   echo "FAIL - goal lines fall outside the Goals block"; fail=1
 fi
 
+# Five Active initiatives with long briefs share one budget, so the day line
+# still lands inside the 2 KB preview.
+python3 -c '
+import json, sys
+d = json.load(open(sys.argv[1]))
+g = d["data"]["initiatives"]["nodes"][1]
+d["data"]["initiatives"]["nodes"] = [dict(g, name=f"Example goal {i}", sortOrder=i) for i in range(5)]
+json.dump(d, open(sys.argv[2], "w"))
+' "$SANDBOX/payload-goals.json" "$SANDBOX/payload-many-goals.json"
+out=$(LINEAR_CLI_CONFIG="$SANDBOX/config.json" CURL_PAYLOAD="$SANDBOX/payload-many-goals.json" \
+  env -u LINEAR_API_KEY -u LINEAR_TEAM_ID bash "$HOOK" 2>/dev/null)
+check_contains "five initiatives: all ranked"         "$out" "### 5. Example goal 4"
+check_contains "five initiatives: day line in 2 KB"   "$(printf '%s' "$out" | head -c 2048)" "- [ ] RUSH-513 Third to-do"
+
 # No initiative still yields a Goals block, so the day-goal nudge is never lost.
 out=$(LINEAR_CLI_CONFIG="$SANDBOX/config.json" CURL_PAYLOAD="$SANDBOX/payload-null-inits.json" \
   env -u LINEAR_API_KEY -u LINEAR_TEAM_ID bash "$HOOK" 2>/dev/null)
