@@ -190,7 +190,7 @@ _ensure_worktree() {
   # Name: <harness>-<yyyy-mm-dd>-<hhmm>-<session8>. Each part earns its place —
   # the harness says who made it, the timestamp sorts chronologically and says
   # when, and the session chunk makes it unique AND resolvable: the worktree can
-  # be traced straight back with `agents sessions <session8>`.
+  # be traced straight back with `sessions <session8>`.
   # AGENTS_AGENT_NAME and AGENTS_SESSION_ID are both exported by buildExecEnv.
   _who=${AGENTS_AGENT_NAME:-agent}
   _sid=$(printf '%s' "${AGENTS_SESSION_ID:-$$}" | tr -cd 'A-Za-z0-9' | cut -c1-8)

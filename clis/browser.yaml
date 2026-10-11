@@ -3,8 +3,7 @@ description: |
   Phoenix Labs Browser CLI — drives real browsers (Chrome/Brave/Edge/Chromium/
   Comet over CDP, Firefox over WebDriver BiDi, Arc over Apple Events), local or
   remote-over-SSH, through its own local IPC service. The engine ships separately
-  from agents-cli (PHNX-4101). Call `browser` directly; the `agents browser` adapter
-  is being removed (PHNX-4227). Binary is `browser`.
+  from agents-cli (PHNX-4101). Call `browser` directly. Binary is `browser`.
 homepage: https://github.com/phnx-labs/browser-cli
 
 check: browser --version
@@ -17,5 +16,4 @@ install:
 post_install: |
   browser --version
   agents setup browser
-  Call browser directly (agents browser is being removed, PHNX-4227). The engine
-  is not bundled with Agents CLI — this installs it.
+  Call `browser` directly. The engine is not bundled with Agents CLI — this installs it.

@@ -42,7 +42,7 @@ whose "0" is a telemetry artifact (`mq`, `docs`, `cloud`, `monitors`, `learn`).
 You asked for two things. First: a stronger search inside the `sessions` plugin — a
 skill (plus a command and a top-level alias) that makes an agent pull *all relevant*
 prior-session context on a topic, quickly, **without overloading context**, using
-`agents sessions` but falling back to a script when it is flaky — and to verify what
+`sessions` but falling back to a script when it is flaky — and to verify what
 the session index actually covers. Second: a complete report on which commands and
 skills the fleet actually uses over ~100 days, since `agents insights` may not answer
 it well. This plan carries both, because they share one root: **the session index is
@@ -145,7 +145,7 @@ How the session index and search work today, and where the two blind spots are.
   <rect x="230" y="150" width="160" height="70" rx="8" fill="#14181a" stroke="#3a4a2f" stroke-width="1.5"/><text x="244" y="180" fill="#e8f0dd" font-size="13" font-family="ui-sans-serif,system-ui" font-weight="600">discover.ts</text><text x="244" y="200" fill="#9fb08f" font-size="11" font-family="ui-monospace,monospace">userTexts.join()</text>
   <rect x="470" y="60" width="180" height="80" rx="8" fill="#14181a" stroke="#3a4a2f" stroke-width="1.5"/><text x="484" y="90" fill="#e8f0dd" font-size="13" font-family="ui-sans-serif,system-ui" font-weight="600">session_text (FTS)</text><text x="484" y="110" fill="#9fb08f" font-size="11" font-family="ui-monospace,monospace">label·topic·project</text><text x="484" y="126" fill="#9fb08f" font-size="11" font-family="ui-monospace,monospace">content = USER turns</text>
   <rect x="470" y="230" width="180" height="80" rx="8" fill="#14181a" stroke="#3a4a2f" stroke-width="1.5"/><text x="484" y="260" fill="#e8f0dd" font-size="13" font-family="ui-sans-serif,system-ui" font-weight="600">tool_call_text (FTS)</text><text x="484" y="280" fill="#9fb08f" font-size="11" font-family="ui-monospace,monospace">tool·input·output</text><text x="484" y="296" fill="#9fb08f" font-size="11" font-family="ui-monospace,monospace">success out ≤ 1 KiB</text>
-  <rect x="710" y="60" width="170" height="80" rx="8" fill="#14181a" stroke="#3a4a2f" stroke-width="1.5"/><text x="724" y="90" fill="#e8f0dd" font-size="13" font-family="ui-sans-serif,system-ui" font-weight="600">agents sessions «q»</text><text x="724" y="110" fill="#9fb08f" font-size="11" font-family="ui-monospace,monospace">ftsSearch → session_text</text><text x="724" y="126" fill="#9fb08f" font-size="11" font-family="ui-monospace,monospace">ONLY · no snippet</text>
+  <rect x="710" y="60" width="170" height="80" rx="8" fill="#14181a" stroke="#3a4a2f" stroke-width="1.5"/><text x="724" y="90" fill="#e8f0dd" font-size="13" font-family="ui-sans-serif,system-ui" font-weight="600">sessions «q»</text><text x="724" y="110" fill="#9fb08f" font-size="11" font-family="ui-monospace,monospace">ftsSearch → session_text</text><text x="724" y="126" fill="#9fb08f" font-size="11" font-family="ui-monospace,monospace">ONLY · no snippet</text>
   <path d="M170,185 L228,185" stroke="#a3e635" stroke-width="2" fill="none" marker-end="url(#a)"/>
   <path d="M390,175 C430,160 440,120 468,110" stroke="#a3e635" stroke-width="2" fill="none" marker-end="url(#a)"/>
   <path d="M390,195 C430,230 440,260 468,268" stroke="#a3e635" stroke-width="2" fill="none" marker-end="url(#a)"/>
@@ -157,7 +157,7 @@ How the session index and search work today, and where the two blind spots are.
 </svg>
 <figcaption>Two blind spots: assistant reasoning is never written to any index, and the
 bare query reads only <code>session_text</code>, so tool activity and answers are
-invisible to <code>agents sessions "…"</code>.</figcaption>
+invisible to <code>sessions "…"</code>.</figcaption>
 </figure>
 
 Verified against the code and the live DB:
@@ -181,7 +181,7 @@ A skill plus a bundled `recall.py` that (1) **finds** candidates from both index
 (2) **recovers** assistant answers the index lacks by grepping the candidate
 transcripts directly (the files hold every role), (3) **extracts** only ±N lines around
 matches, capped, and (4) emits a compact digest — bounded output, context-safe. It
-prefers `agents sessions --json` and falls back to direct SQLite when the CLI fans out
+prefers `sessions --json` and falls back to direct SQLite when the CLI fans out
 over the network and stalls.
 
 ```diff
@@ -229,7 +229,7 @@ fold `quality` into `/code:refactor`; drop the redundant `sessions:*` command do
 |---|---|
 | `/sessions:search «query»` | **new** — ranked, snippet-level cross-session recall |
 | `/recall «query»` | **new** top-level alias → `sessions:search` |
-| `agents sessions "«q»"` | now finds sessions by **assistant answers** and returns snippets |
+| `sessions "«q»"` | now finds sessions by **assistant answers** and returns snippets |
 | `/code:refactor` | gains a "quality" small-change mode (duplicate code, bad abstraction, missing pattern) |
 | `/code:prune`, `/code:score`, `/work:output` | **removed** |
 | `/code:quality` | **removed** (already sourceless) — folded into `/code:refactor` |
@@ -239,8 +239,8 @@ fold `quality` into `/code:refactor`; drop the redundant `sessions:*` command do
 
 <figure class="artifact-figure artifact-behavior">
   <section data-state="current" data-evidence="mockup">
-    <h4>Today — <code>agents sessions "how did we fix the daemon race"</code></h4>
-    <pre>$ agents sessions "how did we fix the daemon race" --all
+    <h4>Today — <code>sessions "how did we fix the daemon race"</code></h4>
+    <pre>$ sessions "how did we fix the daemon race" --all
 (no results)
 
 # the fix WAS discussed — but only in assistant turns,
@@ -271,7 +271,7 @@ The task checklist is created in the harness and tracked against PHNX-3229.
   0 full transcripts. Re-run the exact negative control from this investigation
   (`"rendering correctly now"`) and confirm it now resolves.
 - **Index:** after the extractor bump, a mid-conversation assistant phrase matches via
-  `agents sessions "…"`; `scan_ledger.extractor_version` forces a backfill on read.
+  `sessions "…"`; `scan_ledger.extractor_version` forces a backfill on read.
 - **Prune:** `agents inspect --commands` on a synced box no longer lists the removed
   commands; README/manifest counts match disk; the usage scan re-run shows no orphaned
   references.

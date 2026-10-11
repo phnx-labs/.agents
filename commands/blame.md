@@ -36,7 +36,7 @@ The regression shipped because **no test caught it**. Find out why, in the same 
 ## Step 5: Attribute — who, and which session
 
 - `git blame` the culprit lines; `git show -s --format='%an <%ae> %cI' <sha>` for author + time; find the PR (`gh pr list --search <sha>` / the merge commit).
-- Cross-reference the fleet: `agents sessions --since <window>` / `agents sessions "<topic>"` to find the session behind the change, then `agents sessions preview <id>` for its **task, PR, and what it was doing**. Name the agent + session, its stated task, and — crucially — **whether that PR flagged the test removal** or slipped it in silently. That is how you tell an honest tradeoff from an unnoticed regression.
+- Cross-reference the fleet: `sessions --since <window>` / `sessions "<topic>"` to find the session behind the change, then `sessions preview <id>` for its **task, PR, and what it was doing**. Name the agent + session, its stated task, and — crucially — **whether that PR flagged the test removal** or slipped it in silently. That is how you tell an honest tradeoff from an unnoticed regression.
 
 ## Step 6: Report — culprit + evidence, zero changes
 

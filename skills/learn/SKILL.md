@@ -128,7 +128,7 @@ Reconstruct what actually happened, from evidence, not impression.
 - **Where was the friction?** Retries, dead-ends, manual workarounds, a five-call detour that should have been one, a thing you had to rediscover live, a correction the user gave you. Each friction point is a candidate lesson — cite the concrete moment (a quoted user line, a tool-call sequence, a file:line).
 - **What's the improvable surface?** `agents inspect <user|system|project> --json` lists the skills/commands/rules/plugins you could touch. **Read** the specific skills the session leaned on before proposing any change — you cannot improve, or avoid downgrading, what you have not read.
 
-If `$ARGUMENTS` names a session id or a topic, pull it with `agents sessions` and reflect across that instead of the current conversation.
+If `$ARGUMENTS` names a session id or a topic, pull it with `sessions` and reflect across that instead of the current conversation.
 
 ## Phase 2 — Check the plugins for their own learning guidance
 

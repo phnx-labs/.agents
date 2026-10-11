@@ -115,7 +115,7 @@ can't make. If nothing does, say so plainly in one line. This section is governe
 the filters below.
 
 **One obvious next task on the tracker, no ambiguity?** That's not a bullet to
-list — claim it via the `tickets` skill (check open PRs and `agents sessions --active`
+list — claim it via the `tickets` skill (check open PRs and `agents ps`
 for in-flight duplicates first, so it's safer than grabbing the top ticket blind) and keep going instead of ending the
 turn on a recommendation the user has to act on.
 
@@ -190,10 +190,10 @@ only. It must never resume or continue that session, attach to its process, inje
 into it, inherit or reuse its session ID, or treat any historical task state as the
 state of this receiving session.
 
-### 1. Resolve the session with `agents sessions`
+### 1. Resolve the session with `sessions`
 
 Resolve every selector form with exactly
-`agents sessions --resolve "$ARGUMENTS" --json`. This is the metadata-only resolver
+`sessions --resolve "$ARGUMENTS" --json`. This is the metadata-only resolver
 for full IDs, session-ID prefixes, and keywords; it searches the fleet by default
 without parsing or rendering transcript events. Do not use a positional sessions
 query, `--preview`, `--markdown`, or `--json` without `--resolve` in this receiving
@@ -220,8 +220,8 @@ full ID and source machine as input locators, not as this session's identity or 
 Spawn one isolated subagent in read-only/plan mode. Give it only the resolved full
 session ID, the resolved source machine, and the output contract below. The
 subagent, not this receiving agent, must run
-`agents sessions <full-id> --markdown --device <machine>` and
-`agents sessions <full-id> --artifacts --device <machine>`, read the raw transcript,
+`sessions --device <machine> --markdown <full-id>` and
+`sessions --device <machine> artifacts <full-id>`, read the raw transcript,
 and return a concise structured summary. It must not edit files, run task work,
 resume or focus the session, contact external systems, or include raw transcript
 passages in its response.

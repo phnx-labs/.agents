@@ -1,5 +1,5 @@
 ---
-description: Alias for /sessions:insights — how you and your agents work; orchestrates insights + trends + perf + sessions stats
+description: Alias for /sessions:insights — how you and your agents work; orchestrates insights + mix + perf + resources
 ---
 
 **`/insights` is an alias of `/sessions:insights`.** There is one insights procedure,

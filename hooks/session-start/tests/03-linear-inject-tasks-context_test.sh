@@ -5,7 +5,7 @@
 #   - credentials come from the Linear CLI's plaintext config.json
 #     (LINEAR_CLI_CONFIG fixture); env vars still win
 #   - the hook resolves the cwd's project via `agents projects`, but NEVER
-#     touches `agents secrets` or the standalone `secrets` CLI (no keychain /
+#     touches `secrets` or the standalone `secrets` CLI (no keychain /
 #     Touch ID / broker path)
 #   - depth goes to the cwd's project; every other project collapses to one line
 #   - injection lists projects with milestones + top open tickets
@@ -34,10 +34,9 @@ mkdir -p "$SANDBOX/bin"
 # agents: the hook resolves the cwd's project through `agents projects`, so the
 # binary IS invoked — what must never happen is a SECRETS-shaped invocation,
 # which is the path that can reach the keychain, pop Touch ID, or block on the
-# broker. Any `agents secrets …` or bare `secrets …` call is recorded and fails
-# the run; the
+# broker. Any `secrets …` call is recorded and fails the run; the
 # read-only `projects` subcommands answer from ~/.agents/projects/*.yaml.
-# (08-inject-repo-inflight.sh already shells `agents sessions --active` from
+# (08-inject-repo-inflight.sh already shells `agents ps` from
 # SessionStart on the same budget, so calling the CLI here is established.)
 #
 # `view` deliberately answers with no match by default: these fixtures set the
@@ -58,7 +57,7 @@ STUB
 # The secrets engine now also ships as the standalone `secrets` executable
 # (PHNX-3989). A SessionStart hook must never reach it in EITHER spelling, so the
 # bare `secrets` command is stubbed to record and fail exactly like the
-# `agents secrets` twin above; the same assertion (section 7) covers both.
+# `secrets` twin above; the same assertion (section 7) covers both.
 cat > "$SANDBOX/bin/secrets" <<'STUB'
 #!/usr/bin/env bash
 echo "secrets-invoked: $*" >> "$AGENTS_CALLS"; exit 1
@@ -546,13 +545,13 @@ fi
 
 # --- 7. no secrets-shaped invocation (no keychain / Touch ID path) ------------
 # The narrow invariant: credentials come from the plaintext Linear CLI config,
-# never from `agents secrets` or the standalone `secrets` CLI, so a SessionStart
+# never from `secrets` or the standalone `secrets` CLI, so a SessionStart
 # hook can never pop biometry or block on the broker. Both spellings are stubbed
 # to record into $AGENTS_CALLS. Read-only `agents projects` calls are expected.
 if [ -f "$AGENTS_CALLS" ]; then
   echo "FAIL - hook reached the secrets path: $(cat "$AGENTS_CALLS")"; fail=1
 else
-  echo "ok   - secrets never invoked (neither agents secrets nor bare secrets)"
+  echo "ok   - secrets never invoked"
 fi
 
 # --- 8. a project def resolves the focus project, and scopes the brief ---------

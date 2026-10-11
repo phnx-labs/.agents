@@ -14,7 +14,7 @@
 # same project as its main checkout. Only agents whose derived live activity is
 # `working` are shown — idle, waiting-on-user, orphaned, abandoned, and closed
 # sessions are dropped (the `activity`/`status` fields come straight from
-# `agents sessions --active --json`, not guessed). Shown agents are ranked
+# `agents ps --json`, not guessed). Shown agents are ranked
 # most-recently-active first and capped, with a "+N more" summary beyond the cap.
 #
 # Fail-open everywhere: no git repo, no gh, no agents CLI, network down,
@@ -176,10 +176,10 @@ fi
 # load silently dropped this whole section (the `|| true` makes a timeout
 # indistinguishable from "nothing is running"). Raised to 8s, still inside the
 # manifest-level `timeout: 10` backstop. The real fix is making
-# `agents sessions --active --local` faster; this stops the silent data loss meanwhile.
+# `agents ps --local` faster; this stops the silent data loss meanwhile.
 CAP=5
 if command -v agents >/dev/null 2>&1; then
-  (_to 8 agents sessions --active --json --local 2>/dev/null | ROOTS="$roots" python3 -c '
+  (_to 8 agents ps --json --local 2>/dev/null | ROOTS="$roots" python3 -c '
 import json, os, sys
 self_sid, cap = sys.argv[1], int(sys.argv[2])
 # Every root the project binds, not just the one repo the caller sits in.

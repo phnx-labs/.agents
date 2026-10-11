@@ -36,7 +36,7 @@ def parse_args(argv):
         description="Rank prior sessions on a topic and pull capped, snippet-level context from them.",
     )
     p.add_argument("terms", nargs="+", help="search terms (ticket ids, filenames, symbols, keywords)")
-    p.add_argument("--all", action="store_true", help="no-op placeholder for parity with `agents sessions --all`; recall.py already searches every project/device-local session by default")
+    p.add_argument("--all", action="store_true", help="no-op placeholder for parity with `sessions --all`; recall.py already searches every project/device-local session by default")
     p.add_argument("--project", default=None, help="only sessions whose project name contains this (case-insensitive)")
     p.add_argument("--since", default=None, help="only sessions newer than this: 7d, 12h, 30m, 2w, or an ISO date")
     p.add_argument("--limit", type=int, default=8, help="max candidate sessions to open and grep (default: 8)")
@@ -356,7 +356,7 @@ def build_digest(candidates, terms, context, max_snippets):
             "project": c["project"],
             "date": (c["timestamp"] or "")[:10],
             "topic": (c["topic"] or "")[:120],
-            "resume": f"agents sessions resume {c['shortId']}",
+            "resume": f"agents run --resume {c['shortId']}",
         }
 
         if not os.path.exists(path):

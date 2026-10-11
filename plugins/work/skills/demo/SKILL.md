@@ -1,8 +1,8 @@
 ---
 name: demo
-description: "Demonstrate landed work instead of just claiming it shipped. Recover the ORIGINAL intent (not the diff), exercise the shipped thing in its REAL environment — the installed/deployed artifact, never the dev build — drive it on the real surface with `browser`/`agents computer` signed in as the owner on REAL representative inputs (never toy examples), put before/after side by side with a measured delta, then deliver an analyzed HTML report on the owner's screen and attach it to the PR. Triggers on: /work:demo, 'show me a demo', 'prove it works', 'test it in prod', 'how does it look side by side', 'did we ship all of it', 'demo what we just shipped', after any landing/merge/release."
+description: "Demonstrate landed work instead of just claiming it shipped. Recover the ORIGINAL intent (not the diff), exercise the shipped thing in its REAL environment — the installed/deployed artifact, never the dev build — drive it on the real surface with `browser`/`computer` signed in as the owner on REAL representative inputs (never toy examples), put before/after side by side with a measured delta, then deliver an analyzed HTML report on the owner's screen and attach it to the PR. Triggers on: /work:demo, 'show me a demo', 'prove it works', 'test it in prod', 'how does it look side by side', 'did we ship all of it', 'demo what we just shipped', after any landing/merge/release."
 argument-hint: "[empty = demo what THIS session just landed | <ticket|PR|session-id|what was shipped>]"
-allowed-tools: Bash(agents *), Bash(gh *), Bash(git *), Bash(linear *), Bash(rg *), Bash(fd *), Bash(ls *), Bash(cat *), Bash(jq *), Bash(curl *), Bash(python3 *), Bash(artifacts *), Bash(scp *), Read(*), Write(*), Edit(*), Task(*), WebFetch(*)
+allowed-tools: Bash(agents *), Bash(browser*), Bash(computer*), Bash(gh *), Bash(git *), Bash(linear *), Bash(rg *), Bash(fd *), Bash(ls *), Bash(cat *), Bash(jq *), Bash(curl *), Bash(python3 *), Bash(artifacts *), Bash(scp *), Read(*), Write(*), Edit(*), Task(*), WebFetch(*)
 user-invocable: true
 ---
 
@@ -74,7 +74,7 @@ fail: the agent forgets it can actually open the product and drive it.
 
 - **`browser`** — open the real web app, click through it, upload, fill forms,
   screenshot. Headless on your box; drive the owner's box with `browser start --device <interactive-box>` (the device binds at start).
-- **`agents computer`** — the native desktop, element mode: real clicks on a real app.
+- **`computer`** — the native desktop, element mode: real clicks on a real app.
 
 **Sign in as the owner — use the real, logged-in account.**
 
@@ -85,7 +85,7 @@ fail: the agent forgets it can actually open the product and drive it.
   ```bash
   agents ssh <interactive-box> browser profiles logins
   ```
-- Where a native login is needed, `agents computer` can select the owner's normal
+- Where a native login is needed, `computer` can select the owner's normal
   account and sign in. If a credential is needed, it's in `secrets` — inject it,
   don't stop.
 - Demonstrate on the **real account**, never a logged-out or throwaway session. A demo

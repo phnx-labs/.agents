@@ -75,7 +75,7 @@ You are not limited to reading the landing page. Get **inside** the product:
   login wall** rather than silently creating accounts). Never fake being inside.
 - **CLI/installable product** → install it for real on a fleet box and run it end-to-end
   (`agents run` / a worker), quoting actual output — the eve exploration did this part right.
-- Drive with **`browser`** (web) or **`agents computer`** (native desktop, element mode),
+- Drive with **`browser`** (web) or **`computer`** (native desktop, element mode),
   signed in. If a step needs a secret, inject it from `secrets` — don't stop.
 
 ## 4. Drive every journey — screenshot each step, record the headline flow

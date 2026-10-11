@@ -27,7 +27,7 @@ auto-dispatch) were each a thin `agents __daemon-tick <name>` cron wrapper
 (RUSH-2353). None of that housekeeping belongs at system level, so RUSH-2495
 takes it out of routines entirely as a hard cut: `tmux-reconcile`,
 `launch-health`, and `auto-dispatch` are deleted outright; `session-cache-warm`
-is dropped because `agents sessions --active` self-refreshes on read; and
+is dropped because `agents ps` self-refreshes on read; and
 `watchdog`, `device-probe`, `usage-refresh`, and `fleet-cache-warm` move to
 plain daemon-core timers inside the daemon, not routines every install pulls.
 

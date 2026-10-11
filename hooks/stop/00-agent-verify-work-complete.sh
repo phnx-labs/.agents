@@ -528,7 +528,7 @@ PRMSG
           cat >&2 <<'DISPATCHMSG'
 You dispatched agents this session — dispatching is not a handoff.
 You own what you spawn, until its PR merges. Either keep driving: re-check each
-child on a bounded cadence (sleep ~300, then `agents sessions preview <id>` /
+child on a bounded cadence (sleep ~300, then `sessions preview <id>` /
 `gh pr view <pr>`) until it lands, or arm a durable watcher first
 (ScheduleWakeup, Monitor) and park quoting the armed watcher.
 DISPATCHMSG

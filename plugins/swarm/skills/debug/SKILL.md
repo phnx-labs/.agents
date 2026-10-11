@@ -2,7 +2,7 @@
 name: debug
 description: "Debug end to end with swarm verification — clarify intent vs observed, check the feature's spec for the gap that let it slip, trace the data path, attribute regressions to the agent/session that caused them, have independent agents (different providers, blind) confirm the root cause, then close the loop with a viewable artifact, a ticket, and a dispatched fix. Use for any 'here's what I saw, here's what I expected' problem. Triggers on: 'debug', 'swarm debug', 'root cause', 'why is this happening', 'what was my intent vs what happened', 'confirm the bug', 'independent debug'."
 argument-hint: "[symptom, error, screenshot, or 'intended X but got Y']"
-allowed-tools: Bash(agents teams*), Bash(agents run*), Bash(agents sessions*), Bash(agents view*), Bash(rg*), Bash(fd*), Bash(ls*), Bash(git log*), Bash(git diff*), Bash(git show*), Read(*), Grep(*), Glob(*), Write(*), WebSearch(*), WebFetch(*)
+allowed-tools: Bash(agents teams*), Bash(agents run*), Bash(sessions*), Bash(agents view*), Bash(rg*), Bash(fd*), Bash(ls*), Bash(git log*), Bash(git diff*), Bash(git show*), Read(*), Grep(*), Glob(*), Write(*), WebSearch(*), WebFetch(*)
 user-invocable: true
 ---
 
@@ -32,7 +32,7 @@ Before diagnosing, find the capability's contract and its tests. "Why did it sli
 - Record both:
   1. **Was this behavior specified and tested?** Quote the requirement / test (file:line), or state plainly that none exists.
   2. **If it was — why did it slip?** (the test asserts the wrong thing; the spec is silent on this edge; the path has no coverage). **If it wasn't** — the missing spec/test *is* part of the finding, not an afterthought.
-- Decide whether the bug is a **regression**. If it is, invoke `/blame` as the read-only attribution primitive rather than duplicating its forensic steps. Record the culprit commit/PR and `file:line` diff, the removed/skipped/weakened test (or previously uncovered behavior), the change's author, the responsible agent + session from `agents sessions preview <id>`, and whether that PR flagged the loss or let it slip silently.
+- Decide whether the bug is a **regression**. If it is, invoke `/blame` as the read-only attribution primitive rather than duplicating its forensic steps. Record the culprit commit/PR and `file:line` diff, the removed/skipped/weakened test (or previously uncovered behavior), the change's author, the responsible agent + session from `sessions preview <id>`, and whether that PR flagged the loss or let it slip silently.
 
 Need a full source-of-truth spec, not just the gap? That's `swarm:spec` — invoke it and come back. Here you only need the gap that explains the slip.
 

@@ -10,7 +10,7 @@
 #              command ("/learn"), tool name ("WebSearch"), or any keyword.
 #   --all      search every project/repo, not just the current one.
 #   --since    only sessions newer than this (e.g. 90d, 30d) — passed to
-#              `agents sessions`. All matches are returned regardless; this
+#              `sessions`. All matches are returned regardless; this
 #              only bounds the candidate set for speed.
 #   --limit    cap the candidate session count (default 400).
 #
@@ -54,9 +54,9 @@ PREFIX="${TARGET_BARE%%:*}"
 #    Branch on --since rather than expanding a possibly-empty array, which
 #    trips `set -u` on bash 3.2 (the macOS default).
 if [ -n "$SINCE" ]; then
-  candidates="$(agents sessions ${ALL} --since "$SINCE" --limit "$LIMIT" --json 2>/dev/null || echo '[]')"
+  candidates="$(sessions ${ALL} --since "$SINCE" --limit "$LIMIT" --json 2>/dev/null || echo '[]')"
 else
-  candidates="$(agents sessions ${ALL} --limit "$LIMIT" --json 2>/dev/null || echo '[]')"
+  candidates="$(sessions ${ALL} --limit "$LIMIT" --json 2>/dev/null || echo '[]')"
 fi
 
 # 2) For each candidate, inspect its transcript for real usage of the target.

@@ -2,7 +2,7 @@
 name: continue
 description: "Resume previous agent work in this session — load a prior transcript (or a group of them), verify what actually landed, and finish the remaining work here. Reattach only when the session is genuinely still live and interactive. Also covers post-crash multi-session recovery (prefer finishing headlessly over resurrecting terminals). Triggers on: /continue, 'pick up where I left off', 'resume that session', 'continue the auth work', crash recovery that finishes work rather than reopening windows."
 argument-hint: "[session-id | topic | empty] [--device <machine>] [recover]"
-allowed-tools: Bash(agents sessions*), Bash(agents *), Bash(git *), Bash(gh *), Bash(rg *), Bash(fd *), Bash(ls *), Bash(cat *), Bash(jq *), Bash(sysctl *), Bash(uptime *), Read(*), Write(*), Edit(*), Task(*), AskUserQuestion(*)
+allowed-tools: Bash(sessions*), Bash(agents *), Bash(git *), Bash(gh *), Bash(rg *), Bash(fd *), Bash(ls *), Bash(cat *), Bash(jq *), Bash(sysctl *), Bash(uptime *), Read(*), Write(*), Edit(*), Task(*), AskUserQuestion(*)
 user-invocable: true
 ---
 
@@ -11,7 +11,7 @@ user-invocable: true
 Pick up where a previous session left off and **finish the work in this window**.
 
 Typically invoked as `/continue <session-id>` (UUID or short prefix) — the form the
-`agents sessions` picker emits when resuming across versions. Arguments may also be a
+`sessions` picker emits when resuming across versions. Arguments may also be a
 name, a topic, several ids, empty, or a recover-style crash sweep. A generated
 cross-device handoff may append `--device <machine>`.
 
@@ -62,16 +62,16 @@ they want the work continued here.)
 
 1. **Resolve the session id (if one was given).**
    - Id (UUID or short prefix) → use it directly.
-   - Topic / name / keyword → `agents sessions "<query>"` (add `--device <machine>` when a
-     source machine was supplied). Multiple candidates → most recent, or ask once.
+   - Topic / name / keyword → `sessions "<query>"` (add `--device <machine>` on the
+     `sessions` command when a source machine was supplied). Multiple candidates → most recent, or ask once.
    - Nothing + live-session signal → attach picker in step 2.
    - Nothing + no signal → Step 1: load the most recent prior session and resume here
      (never open a focus picker on bare `/continue` with no live signal).
 
 2. **Try to attach** (only after the live-signal check).
-   - With id: `agents sessions focus <id> --attach-only` (append `--device <machine>` when
+   - With id: `agents ps focus <id> --attach-only` (append `--device <machine>` when
      the caller supplied a source machine).
-   - No id but live signal: `agents sessions focus --attach-only` (picker; cancel → Step 1).
+   - No id but live signal: `agents ps focus --attach-only` (picker; cancel → Step 1).
    - `--attach-only` means "join the live pane/tab or fail"; it never silently opens a new
      copy.
    - Preserve an explicit `--device` scope when the caller supplied one.
@@ -82,7 +82,7 @@ they want the work continued here.)
    - **Non-zero:** not attachable → transcript path below.
 
 4. **Ambiguity.** If focus reports multiple canonical sessions, inspect with
-   `agents sessions` or pass more of the UUID/tmux alias. Never choose an ambiguous alias
+   `sessions` or pass more of the UUID/tmux alias. Never choose an ambiguous alias
    suffix automatically.
 
 ### Step 1: Load the prior session
@@ -91,13 +91,13 @@ Default path whenever you did not reattach.
 
 | Input | Command |
 |------|---------|
-| Session ID (UUID or displayed 8-character prefix) | `agents sessions preview <id>` |
-| Session ID plus source machine | `agents sessions preview <id> --device <machine>` |
-| Only a topic / name / keyword | `agents sessions "<query>"` → pick id → `agents sessions preview <id>` (+ `--device` when supplied) |
-| Nothing | Most recent prior session from `agents sessions`; interactive picker only if you truly need one and have a TTY |
+| Session ID (UUID or displayed 8-character prefix) | `sessions preview <id>` |
+| Session ID plus source machine | `sessions --device <machine> preview <id>` |
+| Only a topic / name / keyword | `sessions "<query>"` → pick id → `sessions preview <id>` (`sessions --device <machine> preview <id>` when supplied) |
+| Nothing | Most recent prior session from `sessions`; interactive picker only if you truly need one and have a TTY |
 
 Default render is a concise summary (header, original prompt, tool groupings, final
-response). Escalate to `agents sessions <id> --markdown` only when the preview leaves a
+response). Escalate to `sessions <id> --markdown` only when the preview leaves a
 real gap. Narrow with `--include user,assistant` or `--last 5` if needed.
 
 ### Step 2: Assess current state
@@ -139,7 +139,7 @@ project context.
 When `$ARGUMENTS` lists several sessions (ids, a shared topic, a team) and the intent is
 **finish the work**, not reopen windows:
 
-1. Resolve each id via `agents sessions` (parallel read-only subagents are fine for the
+1. Resolve each id via `sessions` (parallel read-only subagents are fine for the
    *read* step).
 2. Classify each: still live → reattach only on a genuine live signal; interrupted →
    continue here or headlessly; already done → skip.
@@ -157,10 +157,10 @@ finish **headlessly**; hand back only what truly needs the user. Recovery finish
 
 Mindset (mechanics are yours):
 
-- **Canonical lifecycle first.** `agents sessions resume <id-or-tmux-alias>` resolves
+- **Canonical lifecycle first.** `agents run --resume <id-or-tmux-alias>` resolves
   owner, rechecks liveness, attaches an alive pane, then falls through to native resume.
   Use `focus --attach-only` only when recovery must refuse to start a continuation.
-- **Don't resume what's already done.** Interrupted-mid-task only. `agents sessions` sees
+- **Don't resume what's already done.** Interrupted-mid-task only. `sessions` sees
   every version home; raw transcripts are append-only.
 - **Read cheaply, in parallel.** Read-only subagents to understand sessions — do not
   relaunch them just to find out what they were doing.
@@ -184,5 +184,5 @@ Mindset (mechanics are yours):
 - Do not `focus`/attach a rate-limited, crashed, or limit-hit session — read and continue here
 - Do not spawn a new copy when the session is still live in tmux/Ghostty — reattach instead
 - Do not drop a supplied `--device` locator then claim the remote transcript is missing
-- Do not hand-traverse `~/.agents/versions/.../projects/` — use `agents sessions`
+- Do not hand-traverse `~/.agents/versions/.../projects/` — use `sessions`
 - Do not reopen a swarm of Ghostty windows to "recover" — finish the work headlessly instead
