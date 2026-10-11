@@ -33,7 +33,6 @@ Files concatenate in alphabetical order, so the number prefix controls order.
 | [`12-self.yaml`](./groups/12-self.yaml) | Agent self-operations — the one exact `kill -TERM $PPID` the `self` plugin (`/self:close`) uses to SIGTERM its own harness |
 | [`15-misc-bash.yaml`](./groups/15-misc-bash.yaml) | Everything else shell |
 | [`30-paths.yaml`](./groups/30-paths.yaml) | Blanket allows plus Write and Edit path rules |
-| [`40-ask.yaml`](./groups/40-ask.yaml) | Ask rules that prompt even when a broader allow matches: `git push`, `gh pr merge`, `npm publish`, `helm upgrade`, `kubectl apply` |
 | [`99-deny.yaml`](./groups/99-deny.yaml) · [`99-deny-sandbox.yaml`](./groups/99-deny-sandbox.yaml) | Deny lists. Deny always beats allow |
 
 ## Presets
@@ -42,7 +41,7 @@ A preset is a named bundle listing which groups to include.
 
 | Preset | For |
 |---|---|
-| [`default.yaml`](./presets/default.yaml) | The laptop bundle: bash, path, and deny groups, plus `00-local` and `40-ask` |
+| [`default.yaml`](./presets/default.yaml) | The laptop bundle: bash, path, and deny groups, plus `00-local` |
 | [`sandbox.yaml`](./presets/sandbox.yaml) | Header plus `99-deny-sandbox` only. Allow rules do not apply under `--dangerously-skip-permissions` |
 
 Select one at sync time with `AGENTS_PERMISSION_PRESET=sandbox`.

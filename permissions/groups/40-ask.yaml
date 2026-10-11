@@ -1,9 +1,0 @@
-# Prompts that should stop even when a broader allow already matches.
-# On Claude, ask is evaluated before allow. 09-git allows git push and
-# gh pr merge; 07-k8s allows kubectl:* and helm:*. These five still prompt.
-ask:
-  - "Bash(git push:*)"
-  - "Bash(gh pr merge:*)"
-  - "Bash(npm publish:*)"
-  - "Bash(helm upgrade:*)"
-  - "Bash(kubectl apply:*)"
