@@ -112,7 +112,7 @@ No PR, no tracked file, everything under `/tmp/.../scratchpad/` — so `is_real_
 
 ## Root cause 2 — the render capability was sitting right there, already configured
 
-**Verified live, on both worker boxes, while writing this plan.** A bare `agents browser start --task X --url file://…` then `agents browser screenshot` renders headlessly on `yosemite-s0` and `yosemite-s1` with no `--profile` and no browser binary named — I ran it on each and looked at both PNGs (1467x901, headless Brave). **No config change is needed on s0 or s1; they already resolve to `brave-local`.** The agent simply never tried.
+**Verified live, on both worker boxes, while writing this plan.** A bare `browser start --task X --url file://…` then `browser screenshot` renders headlessly on `yosemite-s0` and `yosemite-s1` with no `--profile` and no browser binary named — I ran it on each and looked at both PNGs (1467x901, headless Brave). **No config change is needed on s0 or s1; they already resolve to `brave-local`.** The agent simply never tried.
 
 On `yosemite-s1`, the box it ran on the whole time:
 
@@ -124,9 +124,9 @@ FOUND brave-browser -> /usr/bin/brave-browser
 
 And the SessionStart hook injects this into **every** session on the fleet:
 
-> Browser: a bare `agents browser start` on any machine uses THAT machine's configured profile — never pass --profile and never name a browser binary; the machine knows.
+> Browser: a bare `browser start` on any machine uses THAT machine's configured profile — never pass --profile and never name a browser binary; the machine knows.
 
-Three commands would have closed the loop. It hand-rolled a binary hunt instead — because **`ui-work-discipline.md` never names `agents browser`.** It names Vite, Storybook, and `/preview` routes, none of which exist for a one-off mockup. The rule pointed nowhere useful.
+Three commands would have closed the loop. It hand-rolled a binary hunt instead — because **`ui-work-discipline.md` never names `browser`.** It names Vite, Storybook, and `/preview` routes, none of which exist for a one-off mockup. The rule pointed nowhere useful.
 
 **The one real config gap is on `zion`, not the workers.** zion's default profile is `comet-local` — a *visible* browser. So the fleet-wide guidance "never pass `--profile`; the machine knows" produces a window in your face on the one machine you are sitting at. I hit this while rendering this plan and had to fall back to Chrome headless. Two fixes, both cheap: give zion a headless default profile, and change that guidance to "never pass `--profile` **on a worker**; on the interactive host, render headless."
 
@@ -149,7 +149,7 @@ Identical at `plan-html-reminder.sh:45-46` and `no-permission-stop-guard.sh:42`.
 scp .agents/artifacts/$DATE/plan-<slug>.html <host>:/tmp/ && agents ssh <host> 'open /tmp/plan-<slug>.html'
 ```
 
-Meanwhile `ui-work-discipline.md:7` bans focus theft for `agents computer` but says nothing about `open <file>` on your Mac.
+Meanwhile `ui-work-discipline.md:7` bans focus theft for `computer` but says nothing about `open <file>` on your Mac.
 
 ---
 
@@ -163,7 +163,7 @@ At `verify-delivery-chain.py:566` and `verify-work-state.py:283`, treat this as 
 
 **No directory allowlist anywhere.** The `.agents/artifacts/yyyy-mm-dd/` layout is a convention agents follow inconsistently — they also write into a project's own `.agents/` subdir, into `/tmp` scratchpads, and into the repo under test. Any path-based rule inherits that inconsistency and silently misses the cases it did not enumerate. `verify-work-state.py:283`'s current `/tmp` exclusion is exactly that mistake in the other direction.
 
-"Authored" must cover more than a `Write` tool call: a `> file.html` redirect, `artifacts render`, and `agents browser screenshot` all produce artifacts with no `Write` record. Coverage that misses those covers only hand-rolled HTML — the one path the rule already discourages.
+"Authored" must cover more than a `Write` tool call: a `> file.html` redirect, `artifacts render`, and `browser screenshot` all produce artifacts with no `Write` record. Coverage that misses those covers only hand-rolled HTML — the one path the rule already discourages.
 
 This switches on the **existing, already-trusted** Stop delivery gate for the whole failure class — reusing its evidence machinery, its repeated-fire de-escalation (`00-agent-verify-work-complete.sh:70-117`), and its 20 s budget. It is a one-line-class change inside a gate that demonstrably fires (`gate_events`: `keep-moving` 137, `open-pr` 94, `delivery` 28).
 
@@ -179,7 +179,7 @@ Modeled on `pre-tool-use/10-mq-read-nudge.py` ("Advisory only: it NEVER blocks")
 
 ### D. Rule repairs
 
-- Name `agents browser start` / `navigate file://…` / `screenshot -o` as the first-line render method, ahead of Vite and Storybook.
+- Name `browser start` / `navigate file://…` / `screenshot -o` as the first-line render method, ahead of Vite and Storybook.
 - Invert the focus default: **render where you are running; `open` on the interactive host only when the user asked, and never before you have looked.**
 - Soften `plan-presentation`'s "Open it proactively, every time" to render-always, open-on-request.
 
@@ -193,7 +193,7 @@ No new CLI surface. The changes are internal to hooks and rules.
 
 | Surface | Change |
 | --- | --- |
-| Stop hook feedback | New gate message on a visual claim with no read-back, naming the `agents browser` remedy |
+| Stop hook feedback | New gate message on a visual claim with no read-back, naming the `browser` remedy |
 | PreToolUse stdout | Advisory nudge at ship time, once per artifact |
 | `rules/rules.yaml` | `ui-work-discipline` added to the `default` preset |
 | Agent-visible rule text | `ui-work-discipline.md` rewritten; `plan-presentation` amended |
@@ -215,9 +215,9 @@ Every item below is a measured finding from the adversarial review, not a hypoth
 | Risk | Evidence | Mitigation |
 | --- | --- | --- |
 | **False positives dominate** | Original design: 13 blocks / 1 allow across 66 transcripts; 12 in the most disciplined session | Dropped the blocking PreToolUse design (A/B/C instead) |
-| **Blocks its own remediation** | The blocked command *contains* `agents browser start --url file://…` — the guard's advice sits inside the command it denies | Change C is advisory (`exit 0`) |
+| **Blocks its own remediation** | The blocked command *contains* `browser start --url file://…` — the guard's advice sits inside the command it denies | Change C is advisory (`exit 0`) |
 | **Duplicate side effects** | `gh pr comment …; agents feed post …; open …` — `exit 2` kills the line; the retry double-posts | Never `exit 2` on a trailing clause of a compound command |
-| **The sanctioned path is uncovered** | `artifacts render` output has no `Write` record, so rule 5 skips it — coverage was hand-rolled HTML only, the path the rule already forbids | Widen "authored" to include `artifacts render` and `agents browser screenshot` |
+| **The sanctioned path is uncovered** | `artifacts render` output has no `Write` record, so rule 5 skips it — coverage was hand-rolled HTML only, the path the rule already forbids | Widen "authored" to include `artifacts render` and `browser screenshot` |
 | **Guard-vs-guard conflict** | `plan-html-reminder.sh:208` prints the exact `scp … && agents ssh … 'open …'` the guard would deny; hooks run concurrently so ordering cannot fix it | Amend that remediation text in the same change |
 | **The read-back signal is path-blind** | The image `tool_result` carries no path; reading *your* pasted screenshot — which the rule mandates — clears the gate | Pair `tool_use_id` → `file_path` (Change B) |
 | **Codex wedge** | Fail-closed on a harness with no image blocks = permanently unsatisfiable | Explicit documented fail-open, per `pr-description-reminder.sh:14-22` |

@@ -13,9 +13,9 @@ These are **host tools**, not agents. They are the binaries a skill shells out t
 | [`mq`](./mq.yaml) | Structure-aware query for large files — extract one section instead of reading the whole file into context |
 | [`jq`](./jq.yaml) | JSON processing. Several hooks depend on it and **fail closed** without it |
 | [`linear-cli`](./linear-cli.yaml) | Linear issue tracker CLI, behind `/tickets` |
-| [`secrets`](./secrets.yaml) | Standalone secrets CLI (`@phnx-labs/secrets-cli`). agents-cli no longer ships the engine; `agents secrets` passthroughs to this binary |
-| [`browser`](./browser.yaml) | Standalone browser engine (`@phnx-labs/browser-cli`); call `browser` directly; the `agents browser` adapter is being removed (PHNX-4227) |
-| [`computer`](./computer.yaml) | Standalone desktop engine (`@phnx-labs/computer-cli`); `agents computer` adds permissions, fleet resolution and session tracking |
+| [`secrets`](./secrets.yaml) | Standalone secrets CLI (`@phnx-labs/secrets-cli`). agents-cli no longer ships the engine; call `secrets` directly |
+| [`browser`](./browser.yaml) | Standalone browser engine (`@phnx-labs/browser-cli`); call `browser` directly |
+| [`computer`](./computer.yaml) | Standalone desktop engine (`@phnx-labs/computer-cli`); call `computer` directly |
 | [`term`](./term.yaml) | Standalone PTY engine (`@phnx-labs/term-cli`); the interactive-terminal tool the setup-token mint behind `agents accounts add`/`login` spawns (`agents pty` was removed, PHNX-4091). `agents setup term` installs it |
 
 ## Using them

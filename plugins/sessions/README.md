@@ -13,9 +13,9 @@ bodies) still get the full procedure.
 | --- | --- |
 | `sessions:continue` | Resume one (or a group of) prior session(s) **in this window** — load transcript, verify what landed, finish the work. Reattach only on a genuine live interactive signal. Also the engine behind post-crash **finish-headlessly** recovery (`/continue recover`). |
 | `sessions:finish` | Drive the **current** task to fully delivered — verify E2E, docs, commit, PR, release checklist, close the ticket. The anti-stopping driver: never ends at a recap, blocker, or partial handoff. |
-| `sessions:insights` | Analyze how you and your agents work. **Conductor** over `agents insights`, `agents insights mix`, `agents insights perf`, and `agents sessions stats` — returns evidence-backed actions. No separate `/trends` or `/perf` plugin commands. |
+| `sessions:insights` | Analyze how you and your agents work. **Conductor** over `agents insights`, `agents insights mix`, `agents insights perf`, and `agents insights resources` — returns evidence-backed actions. No separate `/trends` or `/perf` plugin commands. |
 | `sessions:fork` | Fork a session into a NEW same-harness sibling seeded with a recap of the source — cross-device and cross-harness, the "git branch" of sessions (the original is untouched). Bare = fork the current session; `<id>` = fork a specific one. |
-| `sessions:search` | Pull ranked, snippet-level context from prior sessions on a topic — layered `agents sessions` discovery plus the bundled [`recall.py`](./skills/search/recall.py) fallback that recovers assistant answers the index never stores (it only holds user turns + title/topic/project). |
+| `sessions:search` | Pull ranked, snippet-level context from prior sessions on a topic — layered `sessions` discovery plus the bundled [`recall.py`](./skills/search/recall.py) fallback that recovers assistant answers the index never stores (it only holds user turns + title/topic/project). |
 
 ## Commands
 
@@ -39,7 +39,7 @@ Only `continue` and `search` keep a plugin-namespaced command door;
 | `/recall` | `sessions:search` |
 
 The low-level browse/search skill remains the top-level [`sessions`](../../skills/sessions/SKILL.md)
-skill (`agents sessions` CLI). This plugin does not replace it — it adds lifecycle +
+skill (`sessions` CLI). This plugin does not replace it — it adds lifecycle +
 analytics verbs on top.
 
 ## How the five verbs differ
@@ -60,7 +60,7 @@ search            →  pull ranked, snippet-level context from PAST sessions on 
 
 ## Requirements
 
-- [`agents-cli`](https://github.com/phnx-labs/agents-cli) on `$PATH` with `agents sessions`,
+- [`agents-cli`](https://github.com/phnx-labs/agents-cli) on `$PATH` with `sessions`,
   `agents insights`, `agents insights mix`, `agents insights perf` available for the surfaces you invoke.
 - `python3` (stdlib only) on `$PATH` for `sessions:search`'s `recall.py` fallback.
 

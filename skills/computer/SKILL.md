@@ -1,8 +1,8 @@
 ---
 name: computer
-description: Drive desktop apps with the standalone Computer CLI through Agents' tracked adapter — screenshot windows, click, type, drag, read text. Triggers on automating native or Electron apps, remote Windows or VNC desktops, "computer use", or capturing an app window.
+description: Drive desktop apps with the standalone Computer CLI — screenshot windows, click, type, drag, read text. Triggers on automating native or Electron apps, remote Windows or VNC desktops, "computer use", or capturing an app window.
 argument-hint: "[bundle-id]"
-allowed-tools: Bash(agents computer*), Bash(sleep*)
+allowed-tools: Bash(computer*), Bash(sleep*)
 user-invocable: true
 ---
 
@@ -10,13 +10,7 @@ user-invocable: true
 
 The standalone `@phnx-labs/computer-cli` package owns desktop execution and native helpers. It supports local macOS Accessibility and capture, remote Windows over SSH, and VNC desktops. The interaction recipes below describe macOS. For websites use the `browser` skill. Electron desktop apps are this skill's job too; the engine reports when an AX action cannot reach a webview (see Electron apps below).
 
-## Keep actions attached to the agent session
-
-Use `agents computer …` for agent-driven actions. This is a thin adapter to the installed `computer` executable, not a second desktop engine. Agents resolves fleet devices, supplies its app permissions and session context, and records returned action events in its feed and session database. Bare `computer …` works independently, but its own action ledger does not automatically populate Agents' history. Do not switch to it to bypass an Agents policy denial.
-
-Inspect recorded activity with `computer sessions --json`. Browser activity stays in `browser sessions --json`; the computer extraction does not replace browser tracking.
-
-When you need exact flags, run `agents computer <verb> --help`.
+Use `computer …` for agent-driven desktop actions. Inspect recorded activity with `computer sessions --json`. Browser activity stays in `browser sessions --json`. When you need exact flags, run `computer <verb> --help`.
 
 ## Focus safety — do not steal the user's screen (read first)
 
@@ -25,23 +19,23 @@ The user is usually working on the same Mac. **Element mode does not take over t
 - **Element mode (focus-safe, default):** `describe` → `click --id @eN` / `type --id` / `focus --id` / `ax-action`. These fire Accessibility actions (AXPress / set-AXValue) that **do not activate the app and do not move the cursor** — the user keeps typing in their own window while you act. `--raise` is *ignored* in element mode (element actions don't need the app frontmost), so it can't hijack focus.
 - **Capture is always focus-safe:** `screenshot --window-id <n>` grabs any window across Spaces **without raising it**.
 - **`--raise` and coordinate mode (`--x/--y`) STEAL the screen:** `--raise` brings the app forward and takes keyboard focus; coordinate clicks warp the physical cursor and need the app frontmost. Reserve them for AX-opaque surfaces (VM guests, Chromium/canvas/games) or when the user is away — never to drive an ordinary AppKit app the user can see. The CLI prints a `note:` whenever a verb will cost the user their focus or cursor.
-- **To only *view* a webview (VS Code / Electron), use a browser or the repo's preview harness — not this skill.** Reach for `agents computer` on Electron only for what a browser can't do (window reload, AX text extraction when Screen Recording is denied).
+- **To only *view* a webview (VS Code / Electron), use a browser or the repo's preview harness — not this skill.** Reach for `computer` on Electron only for what a browser can't do (window reload, AX text extraction when Screen Recording is denied).
 
 ## Preflight
 
 Install the standalone command with `agents clis install computer` if it is missing. Agents' setup wizard also installs it; the engine is not bundled with Agents CLI. `computer --version` checks the installed engine. Helper setup and macOS permissions remain separate from npm installation.
 
 ```bash
-agents computer status     # installed? daemon running? trust granted? policy?
-agents computer setup      # one-time install to /Applications (then: start)
-agents computer start      # boot the daemon (writes policy + peers, launchctl)
+computer status     # installed? daemon running? trust granted? policy?
+computer setup      # one-time install to /Applications (then: start)
+computer start      # boot the daemon (writes policy + peers, launchctl)
 ```
 
 The daemon only drives **allow-listed** apps. `permission_denied` or `bundle not in allow list` means the target is missing from policy:
 
 ```bash
 # After an authorized change to the existing Computer(<bundle-id>) permissions group
-agents computer reload
+computer reload
 ```
 
 Find a bundle id: `osascript -e 'id of app "AppName"'`.
@@ -51,12 +45,12 @@ Find a bundle id: `osascript -e 'id of app "AppName"'`.
 Every interaction follows **observe → act → verify**. Never chain actions blind. The default loop is **focus-safe — no `raise`**, so the user keeps their screen:
 
 ```bash
-agents computer apps                                   # 1. what's running (allow-listed)
-agents computer screenshot --bundle <id> --list --json # 2. enumerate windows (focus-free)
-agents computer screenshot --bundle <id> --window-id <n> --out /tmp/s.jpg
-agents computer describe --bundle <id>                 # 3. AX tree (element ids @eN)
-agents computer click --bundle <id> --id @e7           # 4. act (AXPress — no focus steal)
-agents computer screenshot ... --out /tmp/s2.jpg       # 5. VERIFY — re-capture, compare
+computer apps                                   # 1. what's running (allow-listed)
+computer screenshot --bundle <id> --list --json # 2. enumerate windows (focus-free)
+computer screenshot --bundle <id> --window-id <n> --out /tmp/s.jpg
+computer describe --bundle <id>                 # 3. AX tree (element ids @eN)
+computer click --bundle <id> --id @e7           # 4. act (AXPress — no focus steal)
+computer screenshot ... --out /tmp/s2.jpg       # 5. VERIFY — re-capture, compare
 ```
 
 Add `raise` **only** when the target genuinely must be frontmost — an AX-opaque surface (VM guest) or key-window-restricted keystrokes (see Focus safety). Raising takes the user's foreground; don't do it to drive an app you can already reach by element id.
@@ -115,33 +109,33 @@ Mouse clicks are HID-tap synthesized and need the target **visible on the active
 | `element_not_found` (raise) | No AX window matched | `screenshot --list`, use the exact title substring |
 | `element_stale` / dead `@eN` | UI changed since `describe` | Re-run `describe`, use fresh ids |
 | `bundle not in allow list` | Policy block | Add `Computer(<id>)` to a permissions group, `reload` |
-| `rpc_timeout` | Daemon hung or stopped | `agents computer status`; `stop` + `start` |
+| `rpc_timeout` | Daemon hung or stopped | `computer status`; `stop` + `start` |
 | `ok:true` but screenshot unchanged | Event posted, app ignored it | Wrong coords (re-derive from a fresh capture) or window not key — raise, re-capture, retry |
 | Typed text partially landed (VM guests) | Mid-stream focus blip | `key esc` to clear, retype with `--require-frontmost` |
 
 ## Worked Example: Drive a Windows VM (fully AX-opaque)
 
 ```bash
-agents computer raise --bundle com.parallels.desktop.console --title "Windows 11" --json
-agents computer screenshot --bundle com.parallels.desktop.console --list --json   # find window_id
-agents computer screenshot --bundle com.parallels.desktop.console --window-id <n> --out /tmp/vm.jpg
+computer raise --bundle com.parallels.desktop.console --title "Windows 11" --json
+computer screenshot --bundle com.parallels.desktop.console --list --json   # find window_id
+computer screenshot --bundle com.parallels.desktop.console --window-id <n> --out /tmp/vm.jpg
 # read /tmp/vm.jpg, pick a pixel target, map: global = origin + pixel/scale
-agents computer click --bundle com.parallels.desktop.console --x 507 --y 960
-agents computer type-text --bundle com.parallels.desktop.console --raise --require-frontmost --text "powershell"
-agents computer key --bundle com.parallels.desktop.console --keys enter --require-frontmost
-agents computer screenshot --bundle com.parallels.desktop.console --window-id <n> --out /tmp/vm2.jpg  # verify
+computer click --bundle com.parallels.desktop.console --x 507 --y 960
+computer type-text --bundle com.parallels.desktop.console --raise --require-frontmost --text "powershell"
+computer key --bundle com.parallels.desktop.console --keys enter --require-frontmost
+computer screenshot --bundle com.parallels.desktop.console --window-id <n> --out /tmp/vm2.jpg  # verify
 ```
 
 ## Electron apps (VS Code / VSCodium / Cursor and any other Electron bundle)
 
 **First: if you only need to SEE a webview, open it in a browser — do not drive the Electron host at all.** Most VS Code/Electron webviews (dashboards, panels) can be rendered standalone via a dev/preview harness (Vite `bun run dev`, a `/preview` route) and screenshotted from a browser, which never touches the user's focus. Driving the app below to *view* a webview installs the extension and steals the screen for nothing.
 
-**To actually OPERATE a webview** (click a real control, type into a React input): AX won't do it — `agents computer` accepts the action but the web app ignores it, so a reported `clicked`/`typed` is a no-op (the CLI now prints a `note:` steering you here). Drive it over **CDP**, which fires real DOM events and does not need the app frontmost:
+**To actually OPERATE a webview** (click a real control, type into a React input): AX won't do it — `computer` accepts the action but the web app ignores it, so a reported `clicked`/`typed` is a no-op (the CLI now prints a `note:` steering you here). Drive it over **CDP**, which fires real DOM events and does not need the app frontmost:
 
 ```bash
 codium --remote-debugging-port=9222 <folder>     # relaunch WITH the debug port (VS Code: `code`, Cursor: `cursor`)
-agents browser profiles create vscodium --browser custom --electron -e cdp://localhost:9222
-agents browser --electron navigate --url "…"      # then click/type via `agents browser` — focus-safe
+browser profiles create vscodium --browser custom --electron -e cdp://localhost:9222
+browser -p vscodium navigate --url "…"      # then click/type via `browser` — focus-safe
 ```
 
 The debug port opens **only at launch** — you cannot attach to an app already running without it. An already-open editor must be relaunched (state loss); warn the user first.
@@ -150,7 +144,7 @@ CDP is the reliable way to operate a webview. But you often must drive these via
 
 - **AX survives a denied Screen Recording grant.** `get-text` and `describe` read the accessibility tree (incl. webview text) with no ScreenCaptureKit. Only `screenshot` needs Screen Recording. When captures time out with "denied Screen Recording permission," **verify with `get-text`**, not screenshots — grep its output for the strings the UI should render.
 - **Reload a window to activate a freshly-installed extension.** Installing writes to disk; the running window keeps its old extension host until reloaded. Command palette → **"Developer: Reload Window"**. Every open window has its own host — reload each. An editor running with **zero windows** needs one first: `code -n <folder>`.
-- **Use System Events keystrokes for the palette, not `agents computer key`, after a cross-window raise.** `osascript` System Events posts to the frontmost process coherently; `agents computer key` can race the raise and land in the wrong window. Pattern that works:
+- **Use System Events keystrokes for the palette, not `computer key`, after a cross-window raise.** `osascript` System Events posts to the frontmost process coherently; `computer key` can race the raise and land in the wrong window. Pattern that works:
   ```bash
   osascript <<'EOF'
   tell application "VSCodium" to activate
@@ -166,7 +160,7 @@ CDP is the reliable way to operate a webview. But you often must drive these via
   end tell
   EOF
   ```
-  List windows to pick a title: `osascript -e 'tell application "System Events" to tell process "Code" to get name of windows'`. The `cmd+\`` "next window" chord is **not** a valid `agents computer key` chord — raise by title instead.
+  List windows to pick a title: `osascript -e 'tell application "System Events" to tell process "Code" to get name of windows'`. The `cmd+\`` "next window" chord is **not** a valid `computer key` chord — raise by title instead.
 - **`type-text`, not `type`, into the palette.** The palette field rejects `type --id` with `AXValue not settable`. `type-text` synthesizes keystrokes into the focused field and works.
 - **Webview buttons (the Floor/Bench/Panel tabs, etc.) ignore both AXPress and coordinate clicks.** `click --id` does an AXPress that doesn't fire the React onClick; coordinate clicks miss because the iframe coordinate space and Retina scale don't line up with AX `bounds`. Drive webview state through the command palette or a keybinding, not by clicking webview chrome.
 - **`@eN` ids are per-`describe` snapshots.** They go stale as the UI changes — re-`describe` immediately before you act, never reuse ids across calls.

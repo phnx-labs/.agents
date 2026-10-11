@@ -54,8 +54,8 @@ contract 'measure|measured|quantif|delta' \
   "quantify the improvement (measured delta)"
 contract 'gap|missing|partial' \
   "surface honest gaps"
-contract '`browser`|agents computer' \
-  "reach for browser / agents computer"
+contract '`browser`|computer' \
+  "reach for browser / computer"
 
 printf '\n%d passed, %d failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ] || { echo "DEMO SKILL CONTRACT FAILED"; exit 1; }

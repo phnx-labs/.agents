@@ -10,7 +10,7 @@
 #      (proof it extracted capped snippets, not full transcripts).
 #   2. Assistant-recovery proof: a phrase that exists ONLY in an assistant
 #      turn of a real recent Claude session is invisible to the standard
-#      `agents sessions "<phrase>"` search (assistant text is not indexed),
+#      `sessions "<phrase>"` search (assistant text is not indexed),
 #      but recall.py recovers it via transcript grep once the session is a
 #      candidate through an indexed neighboring term.
 #   3. Cross-harness: a real Codex session with a real indexed term gets a
@@ -109,7 +109,7 @@ fi
 
 echo
 echo "--- test 2: assistant-only recovery — agents CLI blind, recall.py sees it ---"
-# session_text (what the bare `agents sessions "<q>"` query reads) only ever
+# session_text (what the bare `sessions "<q>"` query reads) only ever
 # holds user turns + title/topic/project — never assistant text or tool I/O.
 # So a token an assistant TYPED that also shows up in that same session's
 # TOOL activity (tool_call_text, a separate index) is: (a) discoverable by
@@ -241,12 +241,12 @@ else
   echo "fixture sentence: $FIXTURE_SENTENCE"
 
   if command -v agents >/dev/null 2>&1; then
-    CLI_OUT=$(agents sessions "$FIXTURE_TOKEN" --all --local --json 2>/dev/null)
+    CLI_OUT=$(sessions "$FIXTURE_TOKEN" --all --local --json 2>/dev/null)
     CLI_HITS=$(printf '%s' "$CLI_OUT" | python3 -c "import json,sys; d=json.load(sys.stdin); print(len(d) if isinstance(d,list) else 0)" 2>/dev/null || echo "?")
     if [ "$CLI_HITS" = "0" ]; then
-      ok "agents sessions '<assistant-typed token>' returns 0 hits (session_text has no assistant/tool text)"
+      ok "sessions '<assistant-typed token>' returns 0 hits (session_text has no assistant/tool text)"
     else
-      bad "agents sessions unexpectedly returned $CLI_HITS hit(s) for an assistant-only token"
+      bad "sessions unexpectedly returned $CLI_HITS hit(s) for an assistant-only token"
     fi
   else
     echo "SKIP - agents CLI not on PATH, skipping the CLI side of the before/after"

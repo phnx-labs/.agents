@@ -22,7 +22,7 @@ already indexes, with no API key, hosted dashboard, or transcript upload.
 - Generated output versus token burn from sanitized project session metrics; shipped PR and
   commit attribution from `agents insights output` when the installed CLI exposes JSON.
 - Repeated workflow friction and behavioral opportunities from `agents insights`.
-- Explicit skill/command use and dead weight from `agents sessions stats`.
+- Explicit skill/command use and dead weight from `agents insights resources`.
 - Hook and CLI command latency, hook blocks, and retry loops from `agents insights perf`.
 
 The report paginates through every indexed session for the repository as its census. It
@@ -39,7 +39,7 @@ four real screenshots of the rendered report for desktop and mobile verification
 
 ## Requirements
 
-- `agents` with `sessions` and `insights` (latency lives at `agents insights perf`).
+- `sessions` CLI plus `agents insights` (latency lives at `agents insights perf`).
 - `artifacts` for Markdown-to-HTML rendering.
 - A browser reachable through `browser` to open and inspect the result.
 

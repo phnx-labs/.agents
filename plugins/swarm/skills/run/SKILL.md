@@ -2,7 +2,7 @@
 name: run
 description: "Run any task across a swarm — the generic fan-out mode (also the default for top-level /swarm). Decompose an arbitrary goal into independent tracks, spawn a mixed team via agents teams, monitor, synthesize. Prefer specialized modes when they fit: plan, spec, debug. Triggers on: 'swarm', 'swarm run', '/swarm', 'fan this out', 'distribute this across agents', 'parallelize this task'."
 argument-hint: "[task, goal, or scope to distribute across the swarm]"
-allowed-tools: Bash(agents teams*), Bash(agents run*), Bash(agents sessions*), Bash(agents view*), Bash(git status*), Bash(git log*), Bash(git diff*), Bash(git show*), Bash(rg*), Bash(fd*), Bash(ls*), Read(*), Grep(*), Glob(*), WebSearch(*), WebFetch(*)
+allowed-tools: Bash(agents teams*), Bash(agents run*), Bash(sessions*), Bash(agents view*), Bash(git status*), Bash(git log*), Bash(git diff*), Bash(git show*), Bash(rg*), Bash(fd*), Bash(ls*), Read(*), Grep(*), Glob(*), WebSearch(*), WebFetch(*)
 user-invocable: true
 ---
 

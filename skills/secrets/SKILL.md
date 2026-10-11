@@ -2,16 +2,15 @@
 name: secrets
 description: "Manage named bundles of environment variables backed by macOS Keychain. Create bundles, add secrets, and inject them into agent runs. Use this skill when working with credentials, API keys, or sensitive configuration."
 argument-hint: "[list|view|create|add|remove|import|export]"
-allowed-tools: Bash(secrets*), Bash(agents secrets*)
+allowed-tools: Bash(secrets*)
 user-invocable: true
 ---
 
 # Secrets Skill
 
 Manage named bundles of environment variables backed by macOS Keychain via the
-standalone `secrets` CLI (npm `@phnx-labs/secrets-cli`). It is the same engine
-that used to ship inside `agents secrets`, now published on its own — the verbs
-are unchanged, only the executable name dropped the `agents` prefix.
+standalone `secrets` CLI (npm `@phnx-labs/secrets-cli`). The verbs live on
+that binary; run `secrets --help` for the current surface.
 
 - **Bundle** — a named container for secrets (e.g. "production", "x.com")
 - **Secret** — a key-value pair inside a bundle

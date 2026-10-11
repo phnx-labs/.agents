@@ -96,7 +96,7 @@ so and stop.
 5. **Fleet SSH key** — install the shared Ed25519 from its `secrets` bundle so
    git and node-to-node SSH work (explicit auth — see the hard line).
 6. **Non-interactive PATH** — ensure agents-cli resolves in a *non-login* shell (fleet
-   tooling like `agents sessions` uses `bash -lc` but a bare box may lack the shim). If `agents ssh <target> 'agents --version'` fails while a login shell
+   tooling like `sessions` uses `bash -lc` but a bare box may lack the shim). If `agents ssh <target> 'agents --version'` fails while a login shell
    works, add the fleet-path block to the shell env (`~/.zshenv` on zsh) — the same shim
    the working nodes carry. (No sudo; only affects new shells.)
 7. **Register the device + sync the registry** — `agents devices add`/`sync` so the
@@ -159,7 +159,7 @@ requirement. Copying native OAuth material is not a fallback.
 ### DISCOVER first — the CLI surface moves
 
 Confirm the current verbs before running: `claude setup-token --help`, `term
---help`, `agents computer --help` / `browser --help`, `agents accounts --help`.
+--help`, `computer --help` / `browser --help`, `agents accounts --help`.
 Treat the keystrokes below as the map, not gospel.
 
 ### Recipe — native device OAuth in a target account slot
@@ -216,7 +216,7 @@ Do not copy the resulting native credential between machines.
    Read the exact device URL and code from the PTY. Keep the PTY alive while authorizing.
 
 3. **Authorize with a browser already signed into the intended provider account.** Use
-   `browser` for trusted clicks, or `agents computer` element mode when driving a
+   `browser` for trusted clicks, or `computer` element mode when driving a
    native browser. Confirm the page names the expected email before Allow/Continue. Do
    not authorize when the displayed account is wrong; sign out or choose the correct
    browser identity first.
@@ -257,11 +257,11 @@ pty recipe below only when that mint step needs a hand.
    ```
    printf '%s' "$URL" | ssh <mac> 'cat > /tmp/oauth_url.txt'
    ssh <mac> 'open "$(cat /tmp/oauth_url.txt)"'
-   ssh <mac> 'agents computer get-text'          # find: "Paste this into Claude Code: <code>#<state>"
+   ssh <mac> 'computer get-text'          # find: "Paste this into Claude Code: <code>#<state>"
    ```
    Resolve `<mac>` from `agents devices` (the online macOS node — never hardcode).
    The `#<state>` suffix must match the `state=` in the URL you generated — that is
-   how you confirm you grabbed the right code. `agents computer` element mode is
+   how you confirm you grabbed the right code. `computer` element mode is
    focus-safe (no `--raise`, no cursor move); or use `browser` with a
    logged-in CDP profile.
 

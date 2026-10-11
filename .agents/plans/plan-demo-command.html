@@ -239,13 +239,13 @@ fleet box. <strong>Never the dev build or the worktree</strong> — the verify h
 bans "builds/merges/proxies are not proof," and a demo of the dev build is the
 same lie. State which environment and why.</li>
 <li><strong>Drive it end-to-end on the real surface — reach for the tools, hard.</strong> You are
-not limited to the terminal. You have <strong><code>agents browser</code></strong> (open the web app,
-click through it, upload, screenshot) and <strong><code>agents computer</code></strong> (native desktop,
+not limited to the terminal. You have <strong><code>browser</code></strong> (open the web app,
+click through it, upload, screenshot) and <strong><code>computer</code></strong> (native desktop,
 element mode) — <em>use</em> them, don't describe what they'd show. The skill spells this
 out so no agent forgets it exists:<ul>
 <li><strong>Sign in as the user.</strong> The fleet's interactive box already has a browser profile
 logged into the owner's services (the SessionStart host context names it) —
-<code>agents browser profiles logins --device &lt;interactive-box&gt;</code> lists which. Where a native login is needed, <code>agents computer</code>
+<code>browser profiles logins --device &lt;interactive-box&gt;</code> lists which. Where a native login is needed, <code>computer</code>
 can select the owner's normal account and sign in. Demonstrate on the <strong>real,
 logged-in account</strong>, never a logged-out or throwaway session.</li>
 <li><strong>Use REAL, representative inputs — never toy examples.</strong> Upload / paste / feed
@@ -277,7 +277,7 @@ tab, <strong>attach the report + captures to the PR</strong>, and post a feed mi
 Close with an honest status line that distinguishes <em>merged / released /
 installed / verified-in-prod</em> — never overclaim.</li>
 </ol>
-<p class="artifact-callout artifact-callout-warn">The heaviest reminder in the skill: <strong>you have <code>agents browser</code> and <code>agents computer</code> — open the real web app, sign in with the owner's normal account (the interactive box's profile is already logged in), and upload / drive <em>real, representative inputs</em>, not toy examples.</strong> Then compare before vs after on that same real input and <strong>show the improvement clearly</strong> — a measured delta, or an honest "no change." A demo on a logged-out toy example is theater, not proof.</p>
+<p class="artifact-callout artifact-callout-warn">The heaviest reminder in the skill: <strong>you have <code>browser</code> and <code>computer</code> — open the real web app, sign in with the owner's normal account (the interactive box's profile is already logged in), and upload / drive <em>real, representative inputs</em>, not toy examples.</strong> Then compare before vs after on that same real input and <strong>show the improvement clearly</strong> — a measured delta, or an honest "no change." A demo on a logged-out toy example is theater, not proof.</p>
 
 <h2 id="proposed-changes">Proposed Changes</h2><p>New skill + command + top-level alias, then the three-places-agree bookkeeping. No
 existing behavior changes — this is additive.</p>

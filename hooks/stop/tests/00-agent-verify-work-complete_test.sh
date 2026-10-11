@@ -237,8 +237,8 @@ mk_transcript() {
         echo '{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_sh1","content":[{"type":"text","text":"wrote /tmp/deploy.sh"}]}]}}'
         ;;
       browser)
-        echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_b1","name":"Bash","input":{"command":"agents browser open https://example.test/app"}}]}}'
-        echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_b2","name":"Bash","input":{"command":"agents browser screenshot"}}]}}'
+        echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_b1","name":"Bash","input":{"command":"browser open https://example.test/app"}}]}}'
+        echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_b2","name":"Bash","input":{"command":"browser screenshot"}}]}}'
         ;;
       research)
         echo '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","id":"toolu_r1","name":"Read","input":{"file_path":"/repo/src/widget.ts"}}]}}'

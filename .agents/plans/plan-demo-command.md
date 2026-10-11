@@ -222,13 +222,13 @@ The `work:demo` skill is these seven steps, in order:
    bans "builds/merges/proxies are not proof," and a demo of the dev build is the
    same lie. State which environment and why.
 3. **Drive it end-to-end on the real surface — reach for the tools, hard.** You are
-   not limited to the terminal. You have **`agents browser`** (open the web app,
-   click through it, upload, screenshot) and **`agents computer`** (native desktop,
+   not limited to the terminal. You have **`browser`** (open the web app,
+   click through it, upload, screenshot) and **`computer`** (native desktop,
    element mode) — *use* them, don't describe what they'd show. The skill spells this
    out so no agent forgets it exists:
    - **Sign in as the user.** The fleet's interactive box already has a browser profile
      logged into the owner's services (the SessionStart host context names it) —
-     `agents browser profiles logins --device <interactive-box>` lists which. Where a native login is needed, `agents computer`
+     `browser profiles logins --device <interactive-box>` lists which. Where a native login is needed, `computer`
      can select the owner's normal account and sign in. Demonstrate on the **real,
      logged-in account**, never a logged-out or throwaway session.
    - **Use REAL, representative inputs — never toy examples.** Upload / paste / feed
@@ -258,7 +258,7 @@ The `work:demo` skill is these seven steps, in order:
    Close with an honest status line that distinguishes *merged / released /
    installed / verified-in-prod* — never overclaim.
 
-<p class="artifact-callout artifact-callout-warn">The heaviest reminder in the skill: <strong>you have <code>agents browser</code> and <code>agents computer</code> — open the real web app, sign in with the owner's normal account (the interactive box's profile is already logged in), and upload / drive <em>real, representative inputs</em>, not toy examples.</strong> Then compare before vs after on that same real input and <strong>show the improvement clearly</strong> — a measured delta, or an honest "no change." A demo on a logged-out toy example is theater, not proof.</p>
+<p class="artifact-callout artifact-callout-warn">The heaviest reminder in the skill: <strong>you have <code>browser</code> and <code>computer</code> — open the real web app, sign in with the owner's normal account (the interactive box's profile is already logged in), and upload / drive <em>real, representative inputs</em>, not toy examples.</strong> Then compare before vs after on that same real input and <strong>show the improvement clearly</strong> — a measured delta, or an honest "no change." A demo on a logged-out toy example is theater, not proof.</p>
 
 ## Proposed Changes
 

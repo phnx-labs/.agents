@@ -196,7 +196,7 @@ const html = `<!doctype html>
     try { await navigator.clipboard.writeText(text); const o = btn.textContent; btn.classList.add("copied"); btn.textContent = "\\u2713 copied"; setTimeout(()=>{ btn.classList.remove("copied"); btn.textContent=o; },1200); }
     catch(e){ btn.textContent = "\\u2717 failed"; }
   };
-  const openCmd = (f) => "agents sessions " + (f.session_short || f.session_id) + " --markdown";
+  const openCmd = (f) => "sessions " + (f.session_short || f.session_id) + " --markdown";
   const fixText = (f) => "Fix for \\"" + f.title + "\\" (" + (f.fix_target||"target") + "): " + f.proposed_fix;
 
   const card = (f, i) => {

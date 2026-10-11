@@ -2,7 +2,7 @@
 name: resume
 description: "Pick a whole PROJECT's work back up. Best-effort auto-detects the project from the CWD (GitHub repo + subdirectory → Linear project), reconstructs its in-flight work (live + interrupted sessions, open PRs, worktrees, open/doing tickets), presents it not-progressing-first, then OFFLOADS each item to a role=worker device — never the interactive/personal box. Not sessions:continue (one transcript) and not work:loop (deliver a selected queue). Triggers on: /work:resume, 'pick this project back up', 'resume the work on <project>', 'what was in flight here', 'get this project moving again'."
 argument-hint: "[project name | empty = auto-detect from CWD | --all] [--here]"
-allowed-tools: Bash(agents *), Bash(git *), Bash(gh *), Bash(linear *), Bash(rg *), Bash(fd *), Bash(ls *), Bash(cat *), Bash(jq *), Read(*), Task(*), AskUserQuestion(*)
+allowed-tools: Bash(agents *), Bash(sessions*), Bash(git *), Bash(gh *), Bash(linear *), Bash(rg *), Bash(fd *), Bash(ls *), Bash(cat *), Bash(jq *), Read(*), Task(*), AskUserQuestion(*)
 user-invocable: true
 ---
 
@@ -70,8 +70,8 @@ sessions just to see what they were doing):
 
 | Source | How | Answers |
 |---|---|---|
-| Live sessions | `agents sessions --active` (scope to the project's repos) | what's running **now** — never duplicate it |
-| Interrupted sessions | `agents sessions "<project/topic>"`, read the tail | mid-task threads that stalled |
+| Live sessions | `agents ps` (scope to the project's repos) | what's running **now** — never duplicate it |
+| Interrupted sessions | `sessions "<project/topic>"`, read the tail | mid-task threads that stalled |
 | Open PRs | `gh pr list` on the project repo(s) | up for review / CI state |
 | Local worktrees | `ls .agents/worktrees/` + `git -C <wt> status/log` | unlanded local work |
 | Tickets | `linear tasks --project <name>` (or the `tickets` skill) | open/doing, the goal spine |
@@ -95,7 +95,7 @@ do worker-only spawning; the orchestrating session only launches and monitors.
   out of the pool.
 - **A single item:** `agents run --device auto` (single worker pick) or `work:dispatch` for a
   ticket with no session.
-- **Monitor to landed from here.** Watch with a bounded check / `agents sessions --active`;
+- **Monitor to landed from here.** Watch with a bounded check / `agents ps`;
   never hold compute on the local machine.
 - **`--here` (escape hatch, off by default):** continue one thread in this session via
   `sessions:continue` — **only** when this box is not `role=personal`. On the personal laptop
@@ -114,6 +114,6 @@ and update its ticket with proof. In flight is not done.
 - Do not reopen terminal windows — the crash-window skill was removed. For crash recovery
   that finishes work headlessly, that's `sessions:continue recover`; this skill finishes the
   *work*, on workers.
-- Do not duplicate a live session — check `agents sessions --active` first.
+- Do not duplicate a live session — check `agents ps` first.
 - Best-effort identification: proceed on the most likely project; don't stall on a fuzzy match.
 - Reconstruction is read-only; spawning happens only in step 4, only on workers.

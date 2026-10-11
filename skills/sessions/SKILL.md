@@ -2,48 +2,48 @@
 name: sessions
 description: "Search, browse, read, and move agent conversation transcripts across Claude, Codex, Gemini, and OpenCode. Use this skill to find previous sessions, recover context, inspect what agents have done, or export/import sessions as portable bundles over the SSH fleet."
 argument-hint: "[search query or session ID]"
-allowed-tools: Bash(agents sessions*)
+allowed-tools: Bash(sessions*)
 user-invocable: true
 ---
 
 # Sessions Skill
 
-Search and browse agent conversation transcripts. This skill teaches you how to use the `agents sessions` CLI effectively.
+Search and browse agent conversation transcripts. This skill teaches you how to use the `sessions` CLI effectively.
 
 ## Basic Usage
 
 ```bash
 # Interactive picker: browse and search recent sessions
-agents sessions
+sessions
 
-# List sessions from current project
-agents sessions | head -20
+# List sessions from current project (skip the TTY picker)
+sessions --no-interactive | head -20
 
 # Search sessions by text
-agents sessions "add auth middleware"
+sessions "add auth middleware"
 
 # Filter by project across all directories
-agents sessions --project agents-cli --all
+sessions --project agents-cli --all
 ```
 
 ## Resume & Fork (session lifecycle)
 
-`agents sessions resume` and `agents sessions fork` are the canonical lifecycle path —
+`agents run --resume` and `agents fork` are the canonical lifecycle path —
 the `sessions` plugin skills drive them: `/continue` and `/recover` → `sessions:continue`,
 `/fork` → `sessions:fork`. Prefer those skills over hand-rolling resume flags.
 
 ```bash
 # Resume — reopen the SAME conversation by canonical id (from any device)
-agents sessions resume 019fd114                 # reopen one, full context
-agents sessions resume 019fd114 --device zion   # scope identity to the owning device
-agents sessions resume                          # picker: multi-select into tabs/splits
+agents run --resume 019fd114                 # reopen one, full context
+agents run --resume 019fd114 --device zion   # scope identity to the owning device
+agents run --resume                          # picker: multi-select into tabs/splits
 agents run claude --resume                      # same picker, filtered to Claude
-agents run claude#work --resume                 # same as sessions resume --agent claude --account work
+agents run claude#work --resume                 # picker filtered to that Claude account
 
 # Fork — copy a session under a NEW id so the two diverge (original untouched)
-agents sessions fork 4f3a9c21                    # prints: Forked <src> -> <new-id>
-agents sessions fork 4f3a9c21 --name "try redis" # label the branch
-agents sessions resume <new-id>                  # then continue the fork
+agents fork 4f3a9c21                    # prints: Forked <src> -> <new-id>
+agents fork 4f3a9c21 --name "try redis" # label the branch
+agents run --resume <new-id>                  # then continue the fork
 ```
 
 - **resume vs fork:** `resume` continues the *same* thread; `fork` copies it under a new id so the two branches diverge without touching the original. Fork is a file copy of the transcript — no re-run, no tokens; the new session carries full context natively.
@@ -60,6 +60,9 @@ model on the account is unavailable.
 
 ## Filters
 
+Historical search (the `sessions` CLI). `sessions --active` and the old status
+flags exit 2; the live roster is `agents ps`.
+
 | Filter | Example | Description |
 |--------|---------|-------------|
 | `--agent` | `--agent claude` | Filter by agent type |
@@ -68,49 +71,47 @@ model on the account is unavailable.
 | `--since` | `--since 2h` | Only sessions newer than this |
 | `--until` | `--until 2026-01-01` | Only sessions older than this |
 | `--limit` | `--limit 10` | Maximum sessions to return |
-| `--active` | `--active` | Only currently running sessions |
-| `--working` | `--working` | Live sessions actively doing work |
-| `--idle` | `--idle` | Live sessions stopped between turns |
-| `--waiting` | `--waiting` | Live sessions waiting on the user |
-| `--orphan` | `--orphan` | Live agents whose terminal client disappeared |
-| `--crashed` | `--crashed` | Sessions whose terminal and process disappeared uncleanly |
 | `--teams` | `--teams` | Include team-spawned sessions |
+| `--host` / `--device` | `--device zion` | Read another machine's index over SSH |
 
-Every live-state flag implies `--active`. The remaining lifecycle filters are
-`--closed`, `--abandoned`, `--queued`, and `--unknown`; `--orphaned` is
-accepted as an alias of `--orphan`. Several status flags form a union.
-`--working` is narrower than `--active`: it excludes idle, waiting, and
-lifecycle-failure rows.
+Live roster (`agents ps`). Status flags take `--status <state>`:
 
-The interactive listing and live-state filters already fold in every registered
-online device. Use `--local` to opt out. Non-interactive historical queries
-stay local unless given `--device`. `--all` does not control
-devices; it widens historical directory and time scope.
+| Command | Description |
+|--------|-------------|
+| `agents ps` | Currently running sessions (fleet-wide) |
+| `agents ps --status working` | Actively producing work |
+| `agents ps --status idle` | Stopped between turns |
+| `agents ps --status waiting` | Waiting on the user |
+| `agents ps --status orphaned` | Agent outlived its terminal client |
+| `agents ps --status crashed` | Terminal and process disappeared uncleanly |
+| `agents ps --json --local` | This machine only, machine-readable |
+
+`--all` widens historical directory and time scope. It does not control devices.
 
 ## Reading Sessions
 
 ```bash
 # Render session as markdown
-agents sessions --markdown <session-id>
+sessions --markdown <session-id>
 
 # Output as JSON
-agents sessions --json <session-id>
+sessions --json <session-id>
 
 # Include only specific roles
-agents sessions --markdown --include user,assistant <session-id>
+sessions --markdown --include user,assistant <session-id>
 
 # Show only first/last N turns
-agents sessions --markdown --last 10 <session-id>
+sessions --markdown --last 10 <session-id>
 ```
 
 ## Artifacts
 
 ```bash
 # List all files written or edited during a session
-agents sessions --artifacts <session-id>
+sessions artifacts <session-id>
 
 # Read a specific artifact
-agents sessions --artifact <filename> <session-id>
+sessions artifacts <session-id> <filename>
 ```
 
 ## Sharing a session with a human
@@ -119,19 +120,18 @@ When someone asks you to send them a session, publish it as a link instead of pa
 the transcript or handing over a `.jsonl` path:
 
 ```bash
-agents sessions share <id>                   # → https://share.agents-cli.sh/<you>/session-<shortid>
-agents sessions share <id> --public          # also list it in your public gallery
-agents sessions share <id> --reasoning fold  # keep the reasoning in collapsible sections
-agents sessions share <id> --expire never    # a link that does not decay (default: 30d)
+sessions share <id>                   # → https://share.agents-cli.sh/<you>/session-<shortid>
+sessions share <id> --reasoning fold  # keep the reasoning in collapsible sections
+sessions share <id> --expire 7d       # auto-expire window (30d, 12h, or a date)
 ```
 
-It renders the same redacted document `agents sessions render` writes, wraps it in a
+It renders the same redacted document `sessions render` writes, wraps it in a
 self-contained page, and publishes it to your share endpoint. The slug is
 `session-<shortid>`, so re-sharing one session updates one URL and keeps the prior page
 as a revision (`artifacts share revisions <slug>`). One session per link.
 
 - **Unlisted by default** — kept out of your public gallery and out of `artifacts
-  share list`. `--public` opts in.
+  share list`.
 - **Unlisted is not access control.** R2 reads are public: anyone with the exact URL reads
   the page. Never describe such a link as private, encrypted, or access-restricted.
 - **Redacted** — credential-shaped values, known secret values, and local home paths, plus
@@ -150,20 +150,20 @@ Bundle sessions into a portable archive and restore them on another machine — 
 ```bash
 # Export sessions into a portable bundle (by id, query, or the same
 # selection flags as the picker — --since / -a / --project …)
-agents sessions export <id...> -o bundle.tar
-agents sessions export --since 1d -a -o today.tar     # everything from the last day
-agents sessions export <id> --stdout | ...            # pipe straight into an import
-agents sessions export <id> -o secure.tar --encrypt   # seal each transcript body (AES-256-GCM)
+sessions export <id...> -o bundle.tar
+sessions export --since 1d -a -o today.tar     # everything from the last day
+sessions export <id> --stdout | ...            # pipe straight into an import
+sessions export <id> -o secure.tar --encrypt   # seal each transcript body (AES-256-GCM)
 
 # Import a bundle into the local store, deduping against what you already have
-agents sessions import bundle.tar                 # keep local on conflict (default)
-agents sessions import bundle.tar --dry-run       # show what would land, write nothing
-agents sessions import bundle.tar --overwrite     # replace local files that differ
-agents sessions import secure.tar --decrypt       # key optional if the r2.backups sync key is set
+sessions import bundle.tar                 # keep local on conflict (default)
+sessions import bundle.tar --dry-run       # show what would land, write nothing
+sessions import bundle.tar --overwrite     # replace local files that differ
+sessions import secure.tar --decrypt       # key optional if the r2.backups sync key is set
 
 # Pull sessions live from a remote peer over SSH — no file, no cloud
-agents sessions import --from-host yosemite-s0
-agents sessions import --from-host yosemite-s0 --from-host mac-mini   # repeatable
+sessions import --from-host yosemite-s0
+sessions import --from-host yosemite-s0 --from-host mac-mini   # repeatable
 ```
 
 - Export **redacts secrets** from transcript bodies before writing the bundle; `--encrypt` additionally seals each body.
@@ -185,7 +185,8 @@ agents logs <id> -f       # follow a live one
 
 ## Tips
 
-- Use `--active` for the full live roster, or a direct status flag such as `--working`, `--idle`, `--orphan`, or `--crashed`
+- Use `agents ps` for the live roster, or `agents ps --status working` / `idle` / `orphaned` / `crashed`
 - Use `--teams` to see what team-spawned agents are doing
 - Use `--since 1h` for recent activity
-- Combine filters: `agents sessions --project myapp --since 1d --agent claude`
+- Combine filters: `sessions --project myapp --since 1d --agent claude`
+- For a trajectory: `sessions trace <id>` (compact tool-call timeline)

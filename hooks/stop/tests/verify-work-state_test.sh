@@ -46,7 +46,7 @@ mk_transcript() {
   printf '%s' "$file"
 }
 
-browser=$(mk_transcript browser '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","name":"Bash","input":{"command":"agents browser screenshot"}}]}}')
+browser=$(mk_transcript browser '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","name":"Bash","input":{"command":"browser screenshot"}}]}}')
 out=$(eval_payload "{\"session_id\":\"native-1\",\"agent\":\"claude\",\"transcript_path\":\"$browser\"}")
 check "browser work is non-delivery" "$(printf '%s' "$out" | python3 -c 'import json,sys; print(json.load(sys.stdin)["delivery_evidence"])')" "False"
 check "browser context is classified" "$(printf '%s' "$out" | python3 -c 'import json,sys; print(json.load(sys.stdin)["context_kind"])')" "browser-external"
@@ -91,7 +91,7 @@ check "shipped scratch visual is not repository delivery" "$(printf '%s' "$out" 
 scoped="$SANDBOX/scoped.jsonl"
 printf '%s\n' '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","name":"Edit","input":{"file_path":"/repo/old.ts"}}]}}' > "$scoped"
 printf '{"session_id":"scoped-1","agent":"claude","prompt":"now inspect the browser","transcript_path":"%s"}' "$scoped" | python3 "$STATE" record-prompt >/dev/null
-printf '%s\n' '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","name":"Bash","input":{"command":"agents browser screenshot"}}]}}' >> "$scoped"
+printf '%s\n' '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","name":"Bash","input":{"command":"browser screenshot"}}]}}' >> "$scoped"
 out=$(eval_payload "{\"session_id\":\"scoped-1\",\"agent\":\"claude\",\"transcript_path\":\"$scoped\"}")
 check "new goal excludes prior repository mutation" "$(printf '%s' "$out" | python3 -c 'import json,sys; print(json.load(sys.stdin)["delivery_evidence"])')" "False"
 check "new goal keeps its own browser evidence" "$(printf '%s' "$out" | python3 -c 'import json,sys; print(json.load(sys.stdin)["context_kind"])')" "browser-external"

@@ -90,7 +90,7 @@ fi
 # This check has TWO parts, both checked before we allow the plan to be presented:
 #   (A) a fresh plan HTML was rendered (browser-reviewable), and
 #   (B) for a MULTI-STEP plan, a task checklist was created (the acceptance rubric
-#       that then shows in `agents sessions` and drives the watchdog/feed).
+#       that then shows in `sessions` and drives the watchdog/feed).
 # Either missing -> block ONCE with a message naming what's missing. Both self-
 # terminating: the agent renders the HTML / creates the checklist and re-calls
 # ExitPlanMode, which now passes.
@@ -310,7 +310,7 @@ fi
   if [ "$checklist_ok" != 1 ]; then
     echo "* Create a task checklist for this plan — it has multiple steps."
     echo "  Call TaskCreate for each step (subject + description); the checklist becomes the"
-    echo "  acceptance rubric and shows up in \`agents sessions\`. Planning items are local:"
+    echo "  acceptance rubric and shows up in \`sessions\`. Planning items are local:"
     echo "  link existing tickets, but do not create or claim tracker work just to plan."
     echo "  Refresh discovery and claim/create only when execution starts (see conventions)."
   fi

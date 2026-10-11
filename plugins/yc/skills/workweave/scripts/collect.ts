@@ -118,10 +118,10 @@ async function allSessions(project: string): Promise<SessionRow[]> {
   const byId = new Map<string, SessionRow>();
   let until: string | undefined;
   for (;;) {
-    const command = ["agents", "sessions", "--project", project, "--all", "--limit", "1000", "--json"];
+    const command = ["sessions", "--project", project, "--all", "--limit", "1000", "--json"];
     if (until) command.push("--until", until);
     const page = await run(command);
-    if (!Array.isArray(page)) throw new Error("agents sessions returned a non-array census");
+    if (!Array.isArray(page)) throw new Error("sessions returned a non-array census");
     for (const value of page) {
       if (!value || typeof value !== "object" || Array.isArray(value)) continue;
       const id = typeof value.id === "string" ? value.id : null;
@@ -231,8 +231,8 @@ async function main(): Promise<void> {
   tokenRatio: ["agents", "insights", "token-ratio", "--days", String(days), "--json"],
   sessionVolume: ["agents", "insights", "session-volume", "--days", String(days), "--json"],
   shippedOutput: ["agents", "insights", "output", "--since", since, "--by", "project", "--json"],
-  resources: ["agents", "sessions", "stats", "--project", project, "--since", since, "--json"],
-  unusedResources: ["agents", "sessions", "stats", "--project", project, "--since", since, "--zero", "--json"],
+  resources: ["agents", "insights", "resources", "--project", project, "--since", since, "--json"],
+  unusedResources: ["agents", "insights", "resources", "--project", project, "--since", since, "--zero", "--json"],
   hooks: ["agents", "perf", "hooks", "--days", String(days), "--project", project, "--json"],
   commands: ["agents", "perf", "commands", "--days", String(days), "--project", project, "--json"],
   friction: ["agents", "perf", "friction", "--days", String(days), "--json"],

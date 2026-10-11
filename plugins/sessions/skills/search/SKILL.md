@@ -1,15 +1,15 @@
 ---
 name: search
-description: "Pull ALL relevant prior-session context on a topic — fast, ranked, snippet-level, without loading full transcripts. `agents sessions \"<q>\"` alone misses assistant answers (not indexed) and returns whole-session refs, not snippets. This skill layers CLI discovery with a bundled fallback script that recovers what the index misses. Triggers on: /sessions:search, /recall, 'find what I said about X before', 'did we already solve this', 'pull context from a past session', 'search my sessions for'."
+description: "Pull ALL relevant prior-session context on a topic — fast, ranked, snippet-level, without loading full transcripts. `sessions \"<q>\"` alone misses assistant answers (not indexed) and returns whole-session refs, not snippets. This skill layers CLI discovery with a bundled fallback script that recovers what the index misses. Triggers on: /sessions:search, /recall, 'find what I said about X before', 'did we already solve this', 'pull context from a past session', 'search my sessions for'."
 argument-hint: "<topic, ticket id, filename, symbol, or keywords>"
-allowed-tools: Bash(agents sessions*), Bash(python3 *), Read(*)
+allowed-tools: Bash(sessions*), Bash(python3 *), Read(*)
 user-invocable: true
 ---
 
 # sessions:search
 
 Recall is not "run one CLI query and paste the result." The index that backs
-`agents sessions "<q>"` only covers **user turns + title/topic/project**
+`sessions "<q>"` only covers **user turns + title/topic/project**
 (`session_text`, bm25) and, separately, **tool activity**
 (`tool_call_text`, trigram, searched with the standalone `sessions --include tools --query`). **Assistant
 answers are never indexed.** A session can be 665 messages long with only a
@@ -37,7 +37,7 @@ before trying at least one layer below.
 **Layer 1 — user turns + titles (fastest, whole-session refs):**
 
 ```bash
-agents sessions "<terms>" --all --json
+sessions "<terms>" --all --json
 ```
 
 Read `topic`/`label` per hit to judge relevance before going further. This
@@ -112,8 +112,8 @@ Your final answer to the user is a **ranked digest**, not raw tool output:
 - Lead with the most relevant 1-3 hits, each as: what session, when, why it
   matched, the 1-3 line answer/snippet, and the resume hint.
 - If a hit clearly needs deeper reading (the snippet is ambiguous), offer —
-  don't auto-run — `agents sessions --markdown <id> --include assistant` or
-  `agents sessions resume <id>` to actually pick the work back up.
+  don't auto-run — `sessions --markdown <id> --include assistant` or
+  `agents run --resume <id>` to actually pick the work back up.
 - Never read a full transcript file yourself as a substitute for this
   procedure; that is exactly the "loading the whole session to answer one
   question" cost this skill exists to avoid.

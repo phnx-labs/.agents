@@ -59,6 +59,16 @@
 
 ### Changed
 
+- **Fleet guidance uses the standalone CLIs (PHNX-4227).** `agents browser`,
+  `agents computer`, `agents secrets`, and `agents sessions` are gone from
+  skills, commands, hooks, rules, and CLI manifests. Call `browser`, `computer`,
+  `secrets`, and `sessions` directly. Live roster is `agents ps`; resume is
+  `agents run --resume`; fork is `agents fork`; attach is `agents ps focus`;
+  a session trajectory is `sessions trace`. `session-start/08-inject-repo-inflight`
+  now probes `agents ps --json --local`. Resource stats go through
+  `agents insights resources`; index backfill is `agents daemon index backfill`.
+  Plugin `sessions` 0.4.3.
+
 - **`hooks/session-start/03-linear-inject-tasks-context.sh`: business goals reach
   every session.** The brief now opens with `## Goals`, the Active Linear
   initiatives in rank order, each with its brief (the initiative's content, else

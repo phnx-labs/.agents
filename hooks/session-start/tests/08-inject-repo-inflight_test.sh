@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Tests for 08-inject-repo-inflight.sh — the SessionStart in-flight injection.
 # gh and agents are stubbed via PATH shims; no network, no real session state.
-# The agents stub emits the real `agents sessions --active --json` row shape
+# The agents stub emits the real `agents ps --json` row shape
 # (activity/status/pidAlive/lastActivityMs/prLink/ticketId/topic).
 
 HERE="$(cd "$(dirname "$0")" && pwd)"

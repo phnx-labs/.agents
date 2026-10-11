@@ -2,7 +2,7 @@
 name: orchestrate
 description: "Fan a task out across a swarm of parallel coding agents via `agents teams` — the engine behind every /swarm:* command. Build a distribution plan with boundary contracts, spawn a mixed team (claude/codex/antigravity), monitor, and synthesize. Use whenever a task is wide enough that one agent would serialize 4+ independent edits, or when you want independent agents to verify a conclusion instead of trusting one. Triggers on: 'swarm', 'fan out', 'spin up a team', 'parallel agents', 'distribute this', 'independent verification'."
 argument-hint: "[task, plan, or question to distribute across the swarm]"
-allowed-tools: Bash(agents teams*), Bash(agents run*), Bash(agents sessions*), Bash(git status*), Bash(git log*), Bash(git diff*), Bash(rg*), Bash(fd*), Bash(ls*), Read(*), Grep(*), Glob(*), WebSearch(*), WebFetch(*)
+allowed-tools: Bash(agents teams*), Bash(agents run*), Bash(sessions*), Bash(git status*), Bash(git log*), Bash(git diff*), Bash(rg*), Bash(fd*), Bash(ls*), Read(*), Grep(*), Glob(*), WebSearch(*), WebFetch(*)
 user-invocable: true
 ---
 
