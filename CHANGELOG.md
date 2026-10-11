@@ -4,8 +4,7 @@
 
 ### Added
 
-- **`permissions/groups/40-ask.yaml` prompts before five commands that a broader allow already covers.** `git push`, `gh pr merge`, `npm publish`, `helm upgrade`, and `kubectl apply`. Included from `presets/default.yaml` only. On Claude, ask is evaluated before allow, so these prompt even though `09-git` allows push and `gh pr merge` and `07-k8s` allows `kubectl:*` and `helm:*`. The sandbox preset does not include this group.
-
+- **No fleet-wide ask group yet.** agents-cli can now sync `ask:` rules (phnx-labs/agi-cli#3905), but none ship here: a device without `AGENTS_PERMISSION_PRESET` syncs every group, and in a headless `-p` run under bypass a matching ask rule denies instead of prompting, so `git push` and `gh pr merge` would fail for every dispatched worker. Add ask rules per device or in the user layer instead.
 - **`hooks/session-start/03-linear-inject-tasks-context.sh`: week and today goals in
   the Goals block (PHNX-4291).** Under the company goal it now prints "This week
   (company)" (the active cycle's name, omitted when unnamed `Cycle N`), the API-key

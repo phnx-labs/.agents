@@ -17,5 +17,4 @@ includes:
   - 11-ci
   - 15-misc-bash
   - 30-paths
-  - 40-ask
   - 99-deny
