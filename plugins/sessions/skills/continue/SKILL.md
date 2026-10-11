@@ -157,9 +157,9 @@ finish **headlessly**; hand back only what truly needs the user. Recovery finish
 
 Mindset (mechanics are yours):
 
-- **Canonical lifecycle first.** `agents run --resume <id-or-tmux-alias>` resolves
-  owner, rechecks liveness, attaches an alive pane, then falls through to native resume.
-  Use `focus --attach-only` only when recovery must refuse to start a continuation.
+- **Canonical lifecycle first.** Attach to a still-running session with
+  `agents ps focus <id> --attach-only`. Recover a stopped session with
+  `agents run --resume <id>` — it does not attach a live pane.
 - **Don't resume what's already done.** Interrupted-mid-task only. `sessions` sees
   every version home; raw transcripts are append-only.
 - **Read cheaply, in parallel.** Read-only subagents to understand sessions — do not

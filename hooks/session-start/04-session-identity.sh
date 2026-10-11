@@ -230,7 +230,7 @@ if can_write:
 # ---------------------------------------------------------------------------
 # 2) Per-pid session registry (former 08-register-session-pid.sh)
 # Records the live session id into ~/.agents/.cache/terminals/by-pid/<pid>.json
-# so `ag sessions --active` can map a ps-discovered pid to its EXACT session
+# so `agents ps` can map a ps-discovered pid to its EXACT session
 # instead of guessing the newest transcript in the cwd. The ancestor walk reads
 # /proc (Linux) — exactly the headless/no-extension hosts where the guess
 # collapses N co-located agents onto one row. Without /proc the direct harness

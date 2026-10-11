@@ -245,7 +245,7 @@ element mode) — <em>use</em> them, don't describe what they'd show. The skill 
 out so no agent forgets it exists:<ul>
 <li><strong>Sign in as the user.</strong> The fleet's interactive box already has a browser profile
 logged into the owner's services (the SessionStart host context names it) —
-<code>browser profiles logins --device &lt;interactive-box&gt;</code> lists which. Where a native login is needed, <code>computer</code>
+<code>agents ssh &lt;interactive-box&gt; browser profiles logins</code> lists which. Where a native login is needed, <code>computer</code>
 can select the owner's normal account and sign in. Demonstrate on the <strong>real,
 logged-in account</strong>, never a logged-out or throwaway session.</li>
 <li><strong>Use REAL, representative inputs — never toy examples.</strong> Upload / paste / feed

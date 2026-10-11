@@ -75,6 +75,9 @@ fi
 if [ "$1" = "projects" ] && [ "$2" = "list" ]; then
   printf '%s\n' "${AGENTS_PROJECTS_JSON:-[]}"; exit 0
 fi
+if [ "$1" != "ps" ]; then
+  echo "stub: expected ps --json --local, got: $*" >&2; exit 1
+fi
 case "$*" in
   *--json*--local*|*--local*--json*) : ;;
   *) echo "stub: expected --json --local, got: $*" >&2; exit 1 ;;
@@ -141,6 +144,11 @@ check_contains "worktree cwd still sees main-checkout agent" "$out" "wrk11111"
 # the summary hint names the most-active of the overflow.
 cat > "$SANDBOX/bin/agents" <<'STUB'
 #!/usr/bin/env bash
+if [ "$1" != "ps" ]; then echo "stub: expected ps --json --local, got: $*" >&2; exit 1; fi
+case "$*" in
+  *--json*--local*|*--local*--json*) : ;;
+  *) echo "stub: expected --json --local, got: $*" >&2; exit 1 ;;
+esac
 rows=""
 # lastActivityMs descending so ids map to rank: c7 (7000) is most active … c1 (1000) least.
 for n in 1 2 3 4 5 6 7; do
@@ -197,6 +205,11 @@ if [ "\$1" = "projects" ] && [ "\$2" = "list" ]; then
   echo '[{"name":"proj","root":"$REPO","linear":{"projectId":"lin_1","name":"Wide Project"},"repos":[{"slug":"o/a","path":"$REPO"},{"slug":"o/b","path":"$SECOND"}]}]'
   exit 0
 fi
+if [ "\$1" != "ps" ]; then echo "stub: expected ps --json --local, got: \$*" >&2; exit 1; fi
+case "\$*" in
+  *--json*--local*|*--local*--json*) : ;;
+  *) echo "stub: expected --json --local, got: \$*" >&2; exit 1 ;;
+esac
 cat <<EOF
 [
   {"sessionId": "inrepo11-0000", "kind": "claude", "cwd": "$REPO", "status": "running", "activity": "working", "pidAlive": true, "lastActivityMs": 100, "topic": "agent in the first repo"},
