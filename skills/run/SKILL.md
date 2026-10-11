@@ -257,11 +257,9 @@ agents run claude "profile this build" --device gpu-box   # run there, follow li
 agents run kimi "..." --device gpu-box --no-follow        # detach
 
 agents devices ps              # list dispatched runs
-agents logs --device gpu-box   # pick a run on that host and view its log
-agents logs <id> -f          # re-attach to a running one and follow
 ```
 
-`agents logs [id]` is the unified viewer over device-dispatch runs and local session transcripts; scope it to one machine with `--host <name>`. See `agents devices --help`.
+Device-dispatch run stdout has no replacement in `sessions tail` or `agents events`. `sessions tail <id>` follows a Claude/Codex session transcript; `agents events --include runs` lists dispatched-run outcomes. Neither prints a run's output. See `agents devices --help`.
 
 **`--remote-cwd <dir>` — the working directory on the host, used verbatim.** It is an `agents run` flag **only**: `agents teams add` rejects it with a hard error (a teammate's directory is `--worktree <role>` or `--cwd <dir>` instead — see the `teams` skill). Resolve the path **on the remote**: a bare `~`/`$HOME` expands on your local box (`/Users/you`) and silently targets a path that doesn't exist on the remote (`/home/you`), so pass a valid remote absolute path or single-quote so `$HOME` expands there. For codex, point it at a real git repo on the target box (it refuses to start outside a trusted git dir).
 

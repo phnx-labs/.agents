@@ -1,6 +1,6 @@
 {
   "name": "fleet",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "fleet \u2014 fleet-wide operations across every machine registered with `agents devices`. `/fleet:onboard <device>` brings a bare new device up to fleet parity (agents-cli, agent CLIs, DotAgent repos, shared SSH key, PATH shim, device registration) and mints its agent auth in the same flow \u2014 the token-minting recipes are folded into the command itself. `/fleet:profile [menubar|daemon|doctor|sessions]` profiles a sluggish machine, attributes the load to agents-cli surfaces, and files a GitHub issue. Discovery-first, additive, idempotent, credentials via sanctioned paths only, never copied host-to-host.",
   "author": {
     "name": "Muqsit Nawaz",

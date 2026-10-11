@@ -63,11 +63,14 @@
   `agents computer`, `agents secrets`, and `agents sessions` are gone from
   skills, commands, hooks, rules, and CLI manifests. Call `browser`, `computer`,
   `secrets`, and `sessions` directly. Live roster is `agents ps`; resume is
-  `agents run --resume`; fork is `agents fork`; attach is `agents ps focus`;
-  a session trajectory is `sessions trace`. `session-start/08-inject-repo-inflight`
+  `agents run --resume`; fork is `agents fork` (stays in agents — Batch C
+  un-hides it as the canonical command; the standalone sessions CLI has
+  neither fork nor resume); attach is `agents ps focus`; a session
+  trajectory is `sessions trace`. `session-start/08-inject-repo-inflight`
   now probes `agents ps --json --local`. Resource stats go through
   `agents insights resources`; index backfill is `agents daemon index backfill`.
-  Plugin `sessions` 0.4.3.
+  Plugins `fleet` 0.3.1, `research` 0.1.3, `swarm` 0.5.7, `work` 0.9.2,
+  `yc` 0.1.1, `sessions` 0.4.3.
 
 - **`hooks/session-start/03-linear-inject-tasks-context.sh`: business goals reach
   every session.** The brief now opens with `## Goals`, the Active Linear

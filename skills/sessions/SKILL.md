@@ -28,27 +28,31 @@ sessions --project agents-cli --all
 
 ## Resume & Fork (session lifecycle)
 
-`agents run --resume` and `agents fork` are the canonical lifecycle path —
-the `sessions` plugin skills drive them: `/continue` and `/recover` → `sessions:continue`,
+`agents ps focus --attach-only` joins a still-running session; `agents run --resume`
+recovers a stopped one; `agents fork` branches a recap-seeded sibling. The `sessions`
+plugin skills drive them: `/continue` and `/recover` → `sessions:continue`,
 `/fork` → `sessions:fork`. Prefer those skills over hand-rolling resume flags.
 
 ```bash
-# Resume — reopen the SAME conversation by canonical id (from any device)
-agents run --resume 019fd114                 # reopen one, full context
-agents run --resume 019fd114 --device zion   # scope identity to the owning device
-agents run --resume                          # picker: multi-select into tabs/splits
-agents run claude --resume                      # same picker, filtered to Claude
-agents run claude#work --resume                 # picker filtered to that Claude account
+# Attach — join a still-running session (live pane/tab); fails if it is not live
+agents ps focus 019fd114 --attach-only
+agents ps focus 019fd114 --attach-only --device zion
 
-# Fork — copy a session under a NEW id so the two diverge (original untouched)
-agents fork 4f3a9c21                    # prints: Forked <src> -> <new-id>
+# Recover — reopen a STOPPED conversation by canonical id (from any device)
+agents run --resume 019fd114                 # recover one, full context
+agents run --resume 019fd114 --device zion   # recover on the owning device
+agents run --resume                          # picker of stopped sessions
+agents run claude --resume                   # picker filtered to Claude
+agents run claude#work --resume              # picker filtered to that Claude account
+
+# Fork — branch a recap-seeded sibling under a NEW id (original untouched)
+agents fork 4f3a9c21                    # resolve, recap, launch
 agents fork 4f3a9c21 --name "try redis" # label the branch
-agents run --resume <new-id>                  # then continue the fork
 ```
 
-- **resume vs fork:** `resume` continues the *same* thread; `fork` copies it under a new id so the two branches diverge without touching the original. Fork is a file copy of the transcript — no re-run, no tokens; the new session carries full context natively.
+- **attach vs resume vs fork:** attach joins a live pane; `resume` recovers the *same* stopped thread; `fork` launches a recap-seeded same-harness sibling under a new id so the two branches diverge without touching the original. The fork is not a transcript copy — `agents fork` seeds `agents run` with a recap (label, cwd, ticket, last state, changed files) and costs the recap's tokens.
 - **Resume a remote session on its owning device** — pass `--device <machine>` so identity resolves on the box that owns the session instead of being masked as an unknown command locally.
-- **Native fork supports claude today.** For other harnesses, branch by starting a fresh agent and seeding it with `/continue <id>` — the source stays put.
+- **Fork works for every harness.** There is no claude-only gate; the sibling is handed the recap as plain text, so it never has to reach a transcript that may live on another box.
 
 Resume uses the conversation's account and native context with the installed
 harness binary. A recorded vendor version is provenance, not an account selector.
@@ -149,9 +153,9 @@ Bundle sessions into a portable archive and restore them on another machine — 
 
 ```bash
 # Export sessions into a portable bundle (by id, query, or the same
-# selection flags as the picker — --since / -a / --project …)
+# selection flags as the picker — --since / --project …)
 sessions export <id...> -o bundle.tar
-sessions export --since 1d -a -o today.tar     # everything from the last day
+sessions export --since 1d -o today.tar        # everything from the last day
 sessions export <id> --stdout | ...            # pipe straight into an import
 sessions export <id> -o secure.tar --encrypt   # seal each transcript body (AES-256-GCM)
 
@@ -173,14 +177,9 @@ sessions import --from-host yosemite-s0 --from-host mac-mini   # repeatable
 ## Live Tailing
 
 ```bash
-# Live-tail a session file (Claude and Codex only) -- the standalone sessions CLI
+# Live-tail a session file (Claude and Codex only)
 sessions tail <session-id>
 # Press Ctrl+C to stop
-
-# Or the unified viewer: resolves a session id OR a device-dispatch run (from
-# `agents run --device`), and -f follows either
-agents logs <id>          # show the transcript / run log
-agents logs <id> -f       # follow a live one
 ```
 
 ## Tips

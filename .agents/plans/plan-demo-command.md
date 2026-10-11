@@ -228,7 +228,7 @@ The `work:demo` skill is these seven steps, in order:
    out so no agent forgets it exists:
    - **Sign in as the user.** The fleet's interactive box already has a browser profile
      logged into the owner's services (the SessionStart host context names it) —
-     `browser profiles logins --device <interactive-box>` lists which. Where a native login is needed, `computer`
+     `agents ssh <interactive-box> browser profiles logins` lists which. Where a native login is needed, `computer`
      can select the owner's normal account and sign in. Demonstrate on the **real,
      logged-in account**, never a logged-out or throwaway session.
    - **Use REAL, representative inputs — never toy examples.** Upload / paste / feed
