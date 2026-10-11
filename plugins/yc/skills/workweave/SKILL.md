@@ -1,7 +1,7 @@
 ---
 name: workweave
 description: "Render a fast, private WorkWeave-style engineering-intelligence report from every locally indexed agent session for the current repository. Reuses agents sessions, insights, output, cost, resource stats, hook/command latency, and guard-friction engines; writes Markdown + HTML and opens the result. Triggers on: /yc:workweave, workweave report, project agent analytics, engineering intelligence dashboard, chart our agent sessions."
-allowed-tools: Bash(agents sessions*), Bash(agents insights*), Bash(agents browser*), Bash(artifacts *), Bash(git *), Bash(jq *), Bash(mkdir *), Bash(date *), Bash(bun *), Read(*), Write(*)
+allowed-tools: Bash(agents sessions*), Bash(agents insights*), Bash(browser*), Bash(artifacts *), Bash(git *), Bash(jq *), Bash(mkdir *), Bash(date *), Bash(bun *), Read(*), Write(*)
 ---
 
 # yc:workweave

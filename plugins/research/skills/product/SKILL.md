@@ -75,7 +75,7 @@ You are not limited to reading the landing page. Get **inside** the product:
   login wall** rather than silently creating accounts). Never fake being inside.
 - **CLI/installable product** → install it for real on a fleet box and run it end-to-end
   (`agents run` / a worker), quoting actual output — the eve exploration did this part right.
-- Drive with **`agents browser`** (web) or **`agents computer`** (native desktop, element mode),
+- Drive with **`browser`** (web) or **`agents computer`** (native desktop, element mode),
   signed in. If a step needs a secret, inject it from `secrets` — don't stop.
 
 ## 4. Drive every journey — screenshot each step, record the headline flow
@@ -87,7 +87,7 @@ This is the step the weak report skipped. For **each journey** from §1:
   reads as a filmstrip of the flow. Zoom / crop to the decisive interaction so a reader sees
   *what happened*, not a full-window thumbnail.
 - **Record a short screen clip** of the 1–2 headline journeys (`--record on`, default for
-  `standard`/`deep`). Capture it with the always-available surface — `agents browser`'s screen
+  `standard`/`deep`). Capture it with the always-available surface — `browser`'s screen
   capture, or `ffmpeg` on the recorded frames — and trim to 10–20s; that clip of the core loop
   is worth more than any paragraph. If the extras `create` plugin is installed, polish it with
   `create:edit`/`animator` (trim, caption, speed) — **optional, never required**: with no extras,
@@ -140,7 +140,7 @@ back through §4.
 - **Show it on the owner's interactive box** in one reused tab:
   ```bash
   ROOT_DATE=$(date +%F); scp "$ARTIFACT.html" <interactive-box>:/tmp/
-  agents browser navigate --device <interactive-box> --url file:///tmp/<file>.html
+  browser start --device <interactive-box> --url file:///tmp/<file>.html
   ```
 - **Promote the durable output** to the project's artifacts home
   (`.agents/artifacts/<YYYY-MM-DD>/product-<slug>.{md,html}` by default) with the captures beside
@@ -167,7 +167,7 @@ back through §4.
 - Public intel (claims + sentiment) → `research:research` (`agents run codex|grok|antigravity`).
 - Get in + drive the surface → the `browser` skill (web) / `computer` skill (native) + `secrets`.
 - Real-surface discipline (signed in, real inputs, capture every step) → the `demo` skill.
-- Clip the headline flow → `agents browser` screen capture / `ffmpeg` (always available); polish
+- Clip the headline flow → `browser` screen capture / `ffmpeg` (always available); polish
   with `create:edit`/`animator` only if the extras `create` plugin is installed.
 - Render the visual artifact + diagrams → the `artifacts` skill; publish → `share`.
 - A wall only the owner can clear (paid signup, an enterprise gate) → `agents feed post "<ask>" --blocked`.

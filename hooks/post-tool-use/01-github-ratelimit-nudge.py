@@ -141,7 +141,7 @@ def main():
     note = (
         "[github rate-limited] Don't sit idle waiting for the reset or hand it to a background "
         "agent to retry later. Do it now another way: the logged-in browser on this device "
-        "(`agents browser`), or the authenticated REST API (`gh api`)."
+        "(`browser`), or the authenticated REST API (`gh api`)."
     )
     print(json.dumps({"hookSpecificOutput": {"hookEventName": "PostToolUse", "additionalContext": note}}))
 

@@ -56,12 +56,12 @@ Options:
 Log in once to a profile — the session persists. Every future task is already authenticated:
 
 \`\`\`bash
-agents browser profiles create social --browser chrome
-agents browser start setup --profile social
+browser profiles create social --browser chrome
+browser start setup --profile social
 # Log in manually, then stop
 
 # Next time — already logged in
-agents browser start post --profile social
+browser start post --profile social
 \`\`\`
 ```
 

@@ -341,7 +341,7 @@ def extract_evidence(transcript_path: str, start_offset: int = 0) -> dict[str, A
                             evidence["tickets_observed"].append(ticket_id)
                 if re.search(r"\b(?:deploy|release|publish)\b", command) and not re.search(r"\b(?:grep|rg|cat|read)\b", command):
                     evidence["deployment_started"] = True
-                if "browser" in name or re.search(r"\bagents\s+browser\s+(?:open|click|type|screenshot|snapshot|done)\b", command):
+                if "browser" in name or re.search(r"(?:^|[\s;&|(])(?:agents\s+)?browser\s+(?:open|click|type|screenshot|snapshot|done)\b", command):
                     evidence["browser_acted"] = True
                 if re.search(r"\b(?:screenshot|curl|health|test|vitest|pytest|bun test|go test)\b", lowered):
                     evidence["verification_observed"] = True

@@ -1,6 +1,6 @@
 ---
 name: demo
-description: "Demonstrate landed work instead of just claiming it shipped. Recover the ORIGINAL intent (not the diff), exercise the shipped thing in its REAL environment — the installed/deployed artifact, never the dev build — drive it on the real surface with `agents browser`/`agents computer` signed in as the owner on REAL representative inputs (never toy examples), put before/after side by side with a measured delta, then deliver an analyzed HTML report on the owner's screen and attach it to the PR. Triggers on: /work:demo, 'show me a demo', 'prove it works', 'test it in prod', 'how does it look side by side', 'did we ship all of it', 'demo what we just shipped', after any landing/merge/release."
+description: "Demonstrate landed work instead of just claiming it shipped. Recover the ORIGINAL intent (not the diff), exercise the shipped thing in its REAL environment — the installed/deployed artifact, never the dev build — drive it on the real surface with `browser`/`agents computer` signed in as the owner on REAL representative inputs (never toy examples), put before/after side by side with a measured delta, then deliver an analyzed HTML report on the owner's screen and attach it to the PR. Triggers on: /work:demo, 'show me a demo', 'prove it works', 'test it in prod', 'how does it look side by side', 'did we ship all of it', 'demo what we just shipped', after any landing/merge/release."
 argument-hint: "[empty = demo what THIS session just landed | <ticket|PR|session-id|what was shipped>]"
 allowed-tools: Bash(agents *), Bash(gh *), Bash(git *), Bash(linear *), Bash(rg *), Bash(fd *), Bash(ls *), Bash(cat *), Bash(jq *), Bash(curl *), Bash(python3 *), Bash(artifacts *), Bash(scp *), Read(*), Write(*), Edit(*), Task(*), WebFetch(*)
 user-invocable: true
@@ -72,7 +72,7 @@ yet, say so and demo the strongest thing that IS live, flagged as such.
 **You are not limited to the terminal. Use your tools — hard.** This is where most demos
 fail: the agent forgets it can actually open the product and drive it.
 
-- **`agents browser`** — open the real web app, click through it, upload, fill forms,
+- **`browser`** — open the real web app, click through it, upload, fill forms,
   screenshot. Headless on your box; drive the owner's box with `--device <interactive-box>`.
 - **`agents computer`** — the native desktop, element mode: real clicks on a real app.
 
@@ -83,7 +83,7 @@ fail: the agent forgets it can actually open the product and drive it.
   don't hardcode a device). List what it's signed into before assuming you're logged
   out:
   ```bash
-  agents browser profiles logins --device <interactive-box>
+  agents ssh <interactive-box> browser profiles logins
   ```
 - Where a native login is needed, `agents computer` can select the owner's normal
   account and sign in. If a credential is needed, it's in `secrets` — inject it,
@@ -100,7 +100,7 @@ fail: the agent forgets it can actually open the product and drive it.
   scale** and say so explicitly. Small toy inputs hide the exact failures a demo exists
   to catch.
 
-**Capture every meaningful step** — `agents browser screenshot`, a short recording, or
+**Capture every meaningful step** — `browser screenshot`, a short recording, or
 quoted output for non-visual surfaces. These captures are the evidence in the report.
 
 ## Step 4 — Put it side by side, and measure the delta
@@ -156,7 +156,7 @@ Concrete, not a slogan. Name real files, flags, numbers, error strings.
 ## Step 7 — Deliver it where the owner will see it
 
 - **Inspect headlessly first** — both themes, desktop + mobile widths, no console errors.
-  (That headless read-back is what `agents browser` is for; it is not how you show the owner.)
+  (That headless read-back is what `browser` is for; it is not how you show the owner.)
 - **Open it in the owner's DEFAULT browser on their interactive box** — the browser they
   actually use, which needs no fleet browser profile (the SessionStart host context names
   that box):

@@ -16,7 +16,7 @@ hooks:
     timeout: 5
   github-ratelimit-nudge:
     # Advisory only: fires AFTER a GitHub call that came back rate-limited, and
-    # reminds once per session to act now (agents browser / gh api) instead of
+    # reminds once per session to act now (browser / gh api) instead of
     # sitting idle for the reset or deferring to a background agent.
     events: [PostToolUse]
     matcher: Bash

@@ -185,7 +185,7 @@ The kind changes the content contract, not the rendering pipeline.
 
 8. Deliver a durable, obvious entry point. When the user asks to see it, open
    the finished HTML on their interactive machine with the configured viewer
-   (`agents browser show <path-or-url> --json`). Check the result for the actual
+   (`browser show <path-or-url> --json`). Check the result for the actual
    viewer or fallback. If rendering elsewhere, copy the self-contained HTML and
    any linked companion files into a dated durable artifact directory there;
    never write into a primary checkout. Give the exact entry link in the reply.
