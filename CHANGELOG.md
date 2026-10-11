@@ -4,6 +4,8 @@
 
 ### Added
 
+- **`permissions/groups/40-ask.yaml` prompts before five commands that a broader allow already covers.** `git push`, `gh pr merge`, `npm publish`, `helm upgrade`, and `kubectl apply`. Included from `presets/default.yaml` only. On Claude, ask is evaluated before allow, so these prompt even though `09-git` allows push and `gh pr merge` and `07-k8s` allows `kubectl:*` and `helm:*`. The sandbox preset does not include this group.
+
 - **`hooks/session-start/03-linear-inject-tasks-context.sh`: week and today goals in
   the Goals block (PHNX-4291).** Under the company goal it now prints "This week
   (company)" (the active cycle's name, omitted when unnamed `Cycle N`), the API-key
@@ -34,6 +36,8 @@
   points every design workflow at them.
 
 ### Removed
+
+- **WebFetch domain allow groups `20-webfetch-dev`, `21-webfetch-cloud`, `22-webfetch-social`, and `25-webfetch-misc` (1,819 rules).** Under Claude auto mode the classifier decides fetches. Rush pods run bypass mode, where allow rules have no effect. `presets/sandbox.yaml` is now `00-header` plus `99-deny-sandbox` only. The dangling `16-mcp` include is gone from both presets; that group was deleted in `bb36eba`.
 
 - **`agents monitors` guidance and the built-in `pr-merge-on-green` monitor
   (PHNX-4241).** agents-cli deletes the `agents monitors` command, its engine, and

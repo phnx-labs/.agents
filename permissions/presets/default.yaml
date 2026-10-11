@@ -16,10 +16,6 @@ includes:
   - 10-security
   - 11-ci
   - 15-misc-bash
-  - 16-mcp
-  - 20-webfetch-dev
-  - 21-webfetch-cloud
-  - 22-webfetch-social
-  - 25-webfetch-misc
   - 30-paths
+  - 40-ask
   - 99-deny
