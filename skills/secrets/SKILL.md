@@ -89,7 +89,7 @@ secrets exec x.com --keys GETONRUSH_USERNAME,GETONRUSH_PASSWORD -- ./login-helpe
 ```
 
 For browser logins, bind the bundle to a profile so it injects at browser start:
-`agents browser profiles create x --browser chrome --secrets x.com`.
+`browser profiles create x --browser chrome --secrets x.com`.
 
 ## 1Password
 

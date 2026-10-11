@@ -41,6 +41,6 @@ four real screenshots of the rendered report for desktop and mobile verification
 
 - `agents` with `sessions` and `insights` (latency lives at `agents insights perf`).
 - `artifacts` for Markdown-to-HTML rendering.
-- A browser reachable through `agents browser` to open and inspect the result.
+- A browser reachable through `browser` to open and inspect the result.
 
 Changing something here? Read [`../AGENTS.md`](../AGENTS.md).

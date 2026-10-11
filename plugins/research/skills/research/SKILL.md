@@ -65,7 +65,7 @@ single engine's blind spot becomes the answer's blind spot.
 Deep Research is a **dedicated mode**, NOT the Computer / Control-browser / Orchestrator mode.
 Driving it wrong (submitting the question through computer-use) produces nothing usable. Do this:
 
-1. `agents browser start --profile <perplexity-or-grok-profile> --task research --url <site>`
+1. `browser start --profile <perplexity-or-grok-profile> --task research --url <site>`
    (a signed-in profile from the injected browser list — never guess `default`).
 2. **Open a new tab / new thread**, then click the **Search** control's caret to open its
    dropdown and select **"Deep research"** (the telescope / "In-depth reports, files, and apps"
@@ -74,7 +74,7 @@ Driving it wrong (submitting the question through computer-use) produces nothing
 3. Type the **broad** brief (Perplexity's job is width — give it the whole question, not one
    angle) and submit.
 4. **Monitor to completion** — Deep Research takes minutes and runs asynchronously. Poll the tab
-   (`agents browser screenshot` / `refs`) on a bounded loop; do not declare done while it's still
+   (`browser screenshot` / `refs`) on a bounded loop; do not declare done while it's still
    "researching."
 5. **Export** the finished report (PDF / markdown / the cited sources) and save it into the run's
    artifact dir. Capture the **source list** — that's the cross-check ammunition for §4.

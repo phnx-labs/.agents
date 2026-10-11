@@ -159,7 +159,7 @@ requirement. Copying native OAuth material is not a fallback.
 ### DISCOVER first — the CLI surface moves
 
 Confirm the current verbs before running: `claude setup-token --help`, `term
---help`, `agents computer --help` / `agents browser --help`, `agents accounts --help`.
+--help`, `agents computer --help` / `browser --help`, `agents accounts --help`.
 Treat the keystrokes below as the map, not gospel.
 
 ### Recipe — native device OAuth in a target account slot
@@ -216,7 +216,7 @@ Do not copy the resulting native credential between machines.
    Read the exact device URL and code from the PTY. Keep the PTY alive while authorizing.
 
 3. **Authorize with a browser already signed into the intended provider account.** Use
-   `agents browser` for trusted clicks, or `agents computer` element mode when driving a
+   `browser` for trusted clicks, or `agents computer` element mode when driving a
    native browser. Confirm the page names the expected email before Allow/Continue. Do
    not authorize when the displayed account is wrong; sign out or choose the correct
    browser identity first.
@@ -262,7 +262,7 @@ pty recipe below only when that mint step needs a hand.
    Resolve `<mac>` from `agents devices` (the online macOS node — never hardcode).
    The `#<state>` suffix must match the `state=` in the URL you generated — that is
    how you confirm you grabbed the right code. `agents computer` element mode is
-   focus-safe (no `--raise`, no cursor move); or use `agents browser` with a
+   focus-safe (no `--raise`, no cursor move); or use `browser` with a
    logged-in CDP profile.
 
 3. **Complete the mint:**

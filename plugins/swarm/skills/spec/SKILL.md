@@ -2,7 +2,7 @@
 name: spec
 description: "Write the durable source-of-truth specification for a capability so other agents and humans do not invent wrong behavior — describe how it actually behaves in plain language: what it is for, what it does, the sharp cases, and what must not change, grounded in the real code. Includes mock-ups for any UI/flow, blind-verified by a swarm. Not a change plan. Triggers on: 'swarm spec', '/swarm spec', 'specify this capability', 'source-of-truth spec', 'how does this behave', 'what does this guarantee'."
 argument-hint: "[capability or system to specify]"
-allowed-tools: Bash(agents teams*), Bash(agents run*), Bash(agents view*), Bash(agents browser*), Bash(agents computer*), Bash(rg*), Bash(fd*), Bash(ls*), Bash(git log*), Bash(git diff*), Read(*), Grep(*), Glob(*), Write(*), WebSearch(*), WebFetch(*)
+allowed-tools: Bash(agents teams*), Bash(agents run*), Bash(agents view*), Bash(browser*), Bash(agents computer*), Bash(rg*), Bash(fd*), Bash(ls*), Bash(git log*), Bash(git diff*), Read(*), Grep(*), Glob(*), Write(*), WebSearch(*), WebFetch(*)
 user-invocable: true
 ---
 

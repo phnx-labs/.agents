@@ -14,8 +14,8 @@ replace one with another by habit.
 ## Ground the review before you judge
 
 1. **Look at the rendered page, never the Markdown alone.** Open the HTML with
-   `agents browser start --url file://<path>.html`, screenshot every distinct region
-   (`agents browser screenshot -o <png>`), and read each capture with `view_image`.
+   `browser start --url file://<path>.html`, screenshot every distinct region
+   (`browser screenshot -o <png>`), and read each capture with `view_image`.
    Scroll long sections into view and let them settle. A Markdown table reads as a
    grid in the source and as three parallel paragraphs on the page; judge the page.
 2. **Read what the artifact is for.** The frontmatter `kind`, `title`, `summary`, and

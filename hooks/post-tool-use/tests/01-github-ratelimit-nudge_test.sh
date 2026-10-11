@@ -20,7 +20,7 @@ out=$(run '{"tool_name":"Bash","session_id":"s1","tool_input":{"command":"gh api
 
 # 3. Primary API rate limit on gh stderr, new session -> nudges.
 out=$(run '{"tool_name":"Bash","session_id":"s2","tool_input":{"command":"gh api repos/o/r"},"tool_response":{"stdout":"","stderr":"gh: API rate limit exceeded for user ID 5.","exit_code":1}}')
-printf '%s' "$out" | grep -q "agents browser" || bad "primary gh rate limit did not nudge"; ok
+printf '%s' "$out" | grep -q "browser" || bad "primary gh rate limit did not nudge"; ok
 
 # 4. curl 403 body on stdout (curl exits 0) to api.github.com -> nudges (structured, short).
 out=$(run '{"tool_name":"Bash","session_id":"s3","tool_input":{"command":"curl https://api.github.com/repos/o/r"},"tool_response":{"stdout":"{\"message\":\"API rate limit exceeded for 1.2.3.4\",\"documentation_url\":\"https://docs.github.com/rest\"}","stderr":""}}')

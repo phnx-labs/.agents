@@ -9,14 +9,14 @@ depth from one source.**
 | Command | Use when |
 | --- | --- |
 | `/research:research` | **A hard research question** answered across DISTINCT engines blind to each other — Codex (web search), Grok (X/Twitter community), Antigravity (Google), Perplexity (broad browser-driven **Deep Research** — the dedicated mode, never Computer/Control-browser), Claude (deep-read + reconcile). Cross-checks every claim (single-sourced = a lead, not a fact) and promotes the cited result to the project's durable-artifacts home (`.agents/artifacts/` by default). |
-| `/research:product` | **Explore a PRODUCT hands-on and prove every claim visually.** Composes `research:research` for the public intel (claimed features + sentiment), then signs up / installs and **drives** the real product through each user journey with `agents browser`/`computer` + `secrets` — screenshotting every step, recording a short clip of the headline flow, and putting landing-page **claims** next to what the product **actually did**. Output is a favicon/logo-tagged, journey-diagrammed, screenshot-strip visual artifact — never one idle screenshot and a wall of text. `--compare a,b,c` explores a set on the same journeys. |
+| `/research:product` | **Explore a PRODUCT hands-on and prove every claim visually.** Composes `research:research` for the public intel (claimed features + sentiment), then signs up / installs and **drives** the real product through each user journey with `browser`/`computer` + `secrets` — screenshotting every step, recording a short clip of the headline flow, and putting landing-page **claims** next to what the product **actually did**. Output is a favicon/logo-tagged, journey-diagrammed, screenshot-strip visual artifact — never one idle screenshot and a wall of text. `--compare a,b,c` explores a set on the same journeys. |
 
 ## Skills
 
 | Skill | Role |
 | --- | --- |
 | `research:research` | Multi-modal research: frame the question into angles, fan out across engines that each see a different slice **blind to each other**, cross-check claims across sources (single-sourced = a lead to verify), and synthesize one cited artifact. Composes `run` + `teams` + `browser` + `artifacts`. |
-| `research:product` | Hands-on product exploration: install/sign up, drive every user journey, capture each step + a clip, verify landing-page claims against real behavior, and render a highly-visual artifact (favicon/logo identity, per-journey flow diagrams, screenshot strips, claims-vs-reality table). Composes `research:research` (intel) + `browser`/`computer` + `secrets` + `demo` (real-surface discipline) + `artifacts` (render); the clip uses `agents browser`/`ffmpeg`, polished with `create:edit`/`animator` only when the extras `create` plugin is installed. |
+| `research:product` | Hands-on product exploration: install/sign up, drive every user journey, capture each step + a clip, verify landing-page claims against real behavior, and render a highly-visual artifact (favicon/logo identity, per-journey flow diagrams, screenshot strips, claims-vs-reality table). Composes `research:research` (intel) + `browser`/`computer` + `secrets` + `demo` (real-surface discipline) + `artifacts` (render); the clip uses `browser`/`ffmpeg`, polished with `create:edit`/`animator` only when the extras `create` plugin is installed. |
 
 ## How the pieces fit
 

@@ -172,11 +172,11 @@ if devices:
     interactive = next((d.get("name") for d in devices if d.get("interactive")), None)
     if interactive:
         lines.append(f"The user sits at **{interactive}** (interactive host). Deliver visual artifacts there. "
-                     "Use `agents browser show <url|file>` on that host to open the configured viewer; "
+                     "Use `browser show <url|file>` on that host to open the configured viewer; "
                      "viewer tabs remain available to the user after the agent task ends.")
     else:
         lines.append("To show the user a visual artifact, first identify their interactive host, "
-                     "then use `agents browser show <url|file>` there.")
+                     "then use `browser show <url|file>` there.")
 
     # Operator config for this machine (newer CLIs only): caps and notes set via
     # `agents devices config` (the retired `configure`/`note` verbs forward there).

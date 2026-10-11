@@ -54,7 +54,7 @@ contract 'measure|measured|quantif|delta' \
   "quantify the improvement (measured delta)"
 contract 'gap|missing|partial' \
   "surface honest gaps"
-contract 'agents browser|agents computer' \
+contract 'browser|agents computer' \
   "reach for agents browser / agents computer"
 
 printf '\n%d passed, %d failed\n' "$pass" "$fail"

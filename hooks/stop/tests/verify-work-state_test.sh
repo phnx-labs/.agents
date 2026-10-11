@@ -51,6 +51,10 @@ out=$(eval_payload "{\"session_id\":\"native-1\",\"agent\":\"claude\",\"transcri
 check "browser work is non-delivery" "$(printf '%s' "$out" | python3 -c 'import json,sys; print(json.load(sys.stdin)["delivery_evidence"])')" "False"
 check "browser context is classified" "$(printf '%s' "$out" | python3 -c 'import json,sys; print(json.load(sys.stdin)["context_kind"])')" "browser-external"
 
+bare_browser=$(mk_transcript bare-browser '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","name":"Bash","input":{"command":"browser screenshot -o /tmp/x.png"}}]}}')
+out=$(eval_payload "{\"session_id\":\"native-2\",\"agent\":\"claude\",\"transcript_path\":\"$bare_browser\"}")
+check "standalone browser CLI is classified" "$(printf '%s' "$out" | python3 -c 'import json,sys; print(json.load(sys.stdin)["context_kind"])')" "browser-external"
+
 research=$(mk_transcript research '{"type":"assistant","message":{"role":"assistant","content":[{"type":"tool_use","name":"Read","input":{"file_path":"/repo/a.ts"}}]}}')
 out=$(eval_payload "{\"session_id\":\"research-1\",\"agent\":\"codex\",\"transcript_path\":\"$research\"}")
 check "read-only work is non-delivery" "$(printf '%s' "$out" | python3 -c 'import json,sys; print(json.load(sys.stdin)["context_kind"])')" "research-diagnostic"
