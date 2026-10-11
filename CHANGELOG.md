@@ -35,6 +35,10 @@
 
 ### Removed
 
+- **`webhooks/` (PHNX-4227).** agents-cli removed its webhook receiver
+  (`webhooks serve`, `daemon webhooks`, `daemon funnel`) and webhook handlers, so the
+  layer slot that documented them is gone. A trigger routine fires from
+  `agents routines webhook --source <github|linear> --event <name>`.
 - **`agents monitors` guidance and the built-in `pr-merge-on-green` monitor
   (PHNX-4241).** agents-cli deletes the `agents monitors` command, its engine, and
   the loader for `~/.agents/.system/monitors/`, so this layer stops shipping and
