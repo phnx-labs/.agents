@@ -73,7 +73,7 @@ yet, say so and demo the strongest thing that IS live, flagged as such.
 fail: the agent forgets it can actually open the product and drive it.
 
 - **`browser`** — open the real web app, click through it, upload, fill forms,
-  screenshot. Headless on your box; drive the owner's box with `--device <interactive-box>`.
+  screenshot. Headless on your box; drive the owner's box with `browser start --device <interactive-box>` (the device binds at start).
 - **`agents computer`** — the native desktop, element mode: real clicks on a real app.
 
 **Sign in as the owner — use the real, logged-in account.**
