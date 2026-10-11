@@ -34,6 +34,8 @@ and reads later as a mystery regression.
 ```
 
 Deny rules use the same syntax under a `deny:` key. **Deny beats allow**, always.
+Ask rules use the same syntax under an `ask:` key. On Claude, ask is evaluated
+before allow, so an ask rule prompts even when a broader allow also matches.
 
 ## Cross-agent translation
 
@@ -43,6 +45,7 @@ Deny rules use the same syntax under a `deny:` key. **Deny beats allow**, always
 | `"Read"` | same | n/a — no read gating | n/a |
 | `"WebFetch(domain:x.com)"` | same | n/a | `network_access: true` |
 | `deny: "Bash(sudo:*)"` | same | `{ "sudo *": "deny" }` | forbidden prefix rule in `.codex/rules/agents-deny.rules` |
+| `ask: "Bash(git push:*)"` | `permissions.ask` | `{ "git push:*": "ask" }` | prompt prefix rule in `.codex/rules/agents-ask.rules` |
 
 Codex permission resources still translate allows coarsely, while denies become
 forbidden prefix rules. Native launches use agents-cli's named `agents-plan` and
@@ -57,9 +60,9 @@ syntax can still widen on Codex — check the translation before relying on a na
 |---|---|
 | `00` | Header, plus `00-local.yaml` (gitignored, machine-specific) |
 | `01-15` | Bash allows, ordered core → per-language → tooling → misc |
-| `20-29` | WebFetch domain allowlists |
 | `30` | Blanket allows plus Write and Edit path rules |
-| `99` | Deny lists — `99-deny.yaml` and the stricter `99-deny-sandbox.yaml` |
+| `40` | Ask rules. A new category: prompts that should fire even when an allow matches |
+| `99` | Deny lists — `99-deny.yaml` and the sandbox deny list `99-deny-sandbox.yaml` |
 
 ## Rules for anything checked in
 
