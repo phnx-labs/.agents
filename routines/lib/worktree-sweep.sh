@@ -53,6 +53,11 @@ now=$(date +%s)
 swept=0
 parked=0
 held=0
+# Stop starting new worktrees after 15 minutes, inside the routine's 20-minute
+# timeout: a box with 500 worktrees finishes the rest the next night instead of
+# being killed mid-run with nothing reported.
+BUDGET_SECONDS=900
+out_of_time() { [ $(( $(date +%s) - now )) -ge "$BUDGET_SECONDS" ]; }
 
 wtlist=$(mktemp) && cwds=$(mktemp) && changed=$(mktemp) && parkidx=$(mktemp) ||
   { echo "could not create temp file — skipping"; exit 0; }
@@ -76,10 +81,11 @@ mtime_of() { stat -c %Y "$1" 2>/dev/null || stat -f %m "$1" 2>/dev/null; }
 # The working directory of every process this user can see, one per line. A
 # process sitting inside a worktree (an agent's shell, a dev server, a test run)
 # is the strongest "in use" signal there is, and it holds no matter how long the
-# files have been untouched: an agent can idle for days between turns.
+# files have been untouched: an agent can idle for days between turns. One fork:
+# GNU readlink takes every /proc entry at once.
 snapshot_cwds() {
   if [ -d /proc/self ]; then
-    for _p in /proc/[0-9]*; do readlink "$_p/cwd" 2>/dev/null; done > "$cwds"
+    readlink /proc/[0-9]*/cwd > "$cwds" 2>/dev/null
   elif command -v lsof >/dev/null 2>&1; then
     lsof -a -d cwd -Fn 2>/dev/null | sed -n 's/^n//p' > "$cwds"
   else
@@ -87,30 +93,66 @@ snapshot_cwds() {
   fi
 }
 # Exact path or a path below it: `fix-110` must not claim a shell in `fix-1103`.
-in_use() { awk -v p="$1" '$0 == p || index($0, p "/") == 1 { f = 1 } END { exit !f }' "$cwds"; }
+# /proc and lsof report physical paths, so the worktree is matched both as found
+# and with symlinks resolved (macOS /tmp is /private/tmp).
+in_use() {
+  _phys=$(cd "$1" 2>/dev/null && pwd -P) || _phys=$1
+  awk -v p="$1" -v q="$_phys" '
+    $0 == p || index($0, p "/") == 1 || $0 == q || index($0, q "/") == 1 { f = 1 }
+    END { exit !f }' "$cwds"
+}
 
-# Newest moment anyone touched this worktree: the directory itself, a commit or
-# checkout (the per-worktree HEAD, its reflog, ORIG_HEAD) and every changed or
-# untracked path. The worktree directory's own mtime alone moves only when a
-# top-level entry is added or removed, so an agent editing src/ for a week read
-# as idle. `index` is left out on purpose: `git status`, including this sweep's
-# own, rewrites it, which would make every worktree look touched every night.
-last_activity() {
-  _wt=$1
-  _new=$(mtime_of "$_wt") || return 1
-  _gd=$(git -C "$_wt" rev-parse --absolute-git-dir 2>/dev/null) || return 1
+# True when anyone touched the worktree after <cutoff>, or when that cannot be
+# judged (fails closed: an unjudgeable tree is held). Reads the directory, a
+# commit or checkout (the per-worktree HEAD, its reflog, ORIG_HEAD), and every
+# changed or untracked file listed in $changed (`status -uall`, so a file deep in
+# an untracked directory counts, not just the directory). The worktree
+# directory's own mtime alone moves only when a top-level entry is added or
+# removed, so an agent editing src/ for a week read as idle. `index` is left out
+# on purpose: `git status`, including this sweep's own, rewrites it, which would
+# make every worktree look touched every night. Stops at the first recent path.
+recently_touched() {
+  _wt=$1; _cut=$2
+  _m=$(mtime_of "$_wt") || return 0
+  [ "$_m" -gt "$_cut" ] && return 0
   for _f in "$_gd/HEAD" "$_gd/logs/HEAD" "$_gd/ORIG_HEAD"; do
     [ -e "$_f" ] || continue
-    _m=$(mtime_of "$_f") && [ "$_m" -gt "$_new" ] && _new=$_m
+    _m=$(mtime_of "$_f") || return 0
+    [ "$_m" -gt "$_cut" ] && return 0
   done
-  git -C "$_wt" status --porcelain 2>/dev/null > "$changed" || return 1
   while IFS= read -r _l; do
-    _p=${_l#???}; _p=${_p#\"}; _p=${_p%\"}
+    _xy=${_l%"${_l#??}"}; _p=${_l#???}
     case $_p in *' -> '*) _p=${_p#* -> } ;; esac
-    [ -e "$_wt/$_p" ] || continue
-    _m=$(mtime_of "$_wt/$_p") && [ "$_m" -gt "$_new" ] && _new=$_m
+    if [ -e "$_wt/$_p" ] || [ -L "$_wt/$_p" ]; then
+      _m=$(mtime_of "$_wt/$_p") || return 0
+      [ "$_m" -gt "$_cut" ] && return 0
+    else
+      # A deleted file has no mtime. Anything else that does not resolve is a
+      # name git C-quoted (a quote, backslash or newline in it): unjudgeable.
+      case $_xy in *D*) ;; *) return 0 ;; esac
+    fi
   done < "$changed"
-  printf '%s' "$_new"
+  return 1
+}
+
+# Why the work in an idle worktree cannot be saved whole into one commit, or
+# empty when it can. Each case is something `worktree remove --force` would
+# destroy that a commit of the tree does not carry, so each one HOLDS:
+#   - an untracked directory with its own .git (with -uall, the only entries
+#     ending in "/"): `git add -A` records it as a bare gitlink, not its files;
+#   - submodules: only the recorded commit is kept, never their edits or their
+#     unpushed commits, and their git dirs live under the worktree's admin dir;
+#   - ignored local config (.env*): ignored files are not committed, and these
+#     are the ones a person cannot regenerate.
+unparkable() {
+  if grep -q '/$' "$changed"; then printf '%s' 'nested-repo'; return; fi
+  if [ -e "$_wt/.gitmodules" ] || git -C "$_wt" ls-files -s 2>/dev/null | grep -q '^160000'; then
+    printf '%s' 'has-submodules'; return
+  fi
+  if git -C "$_wt" ls-files -o -i --exclude-standard --directory 2>/dev/null | grep -qE '(^|/)\.env'; then
+    printf '%s' 'ignored-local-config'; return
+  fi
+  printf '%s' ''
 }
 
 # Every reason a worktree must be left exactly as it is, `park:<why>` when it is
@@ -127,25 +169,46 @@ last_activity() {
 blockers_for() {
   _wt=$1; _ref=$2; _grace=$3
   in_use "$_wt" && { printf '%s' 'in-use'; return; }
-  _last=$(last_activity "$_wt") || { printf '%s' 'activity-unreadable'; return; }
-  [ $(( (now - _last) / 86400 )) -lt "$_grace" ] && { printf '%s' 'within-grace'; return; }
-  if ! _st=$(git -C "$_wt" status --porcelain 2>/dev/null); then
-    printf '%s' 'status-unreadable'; return
-  fi
-  if [ -n "$_st" ]; then
-    # Parking stores the changes as git objects; a tree this large is almost
-    # always build output nobody ignored, and copying it into .git defeats the
-    # point of reclaiming the disk.
-    [ "$(printf '%s\n' "$_st" | wc -l)" -gt 2000 ] && { printf '%s' 'too-many-changes-to-park'; return; }
+  _gd=$(git -C "$_wt" rev-parse --absolute-git-dir 2>/dev/null) || { printf '%s' 'status-unreadable'; return; }
+  [ -e "$_gd/locked" ] && { printf '%s' 'locked'; return; }
+  # A merge, rebase, cherry-pick, revert or bisect in progress lives in the admin
+  # dir and goes with the checkout; the operation could not be resumed.
+  for _s in MERGE_HEAD CHERRY_PICK_HEAD REVERT_HEAD BISECT_LOG rebase-merge rebase-apply; do
+    [ -e "$_gd/$_s" ] && { printf '%s' 'operation-in-progress'; return; }
+  done
+  git -C "$_wt" -c core.quotepath=off status --porcelain -uall > "$changed" 2>/dev/null ||
+    { printf '%s' 'status-unreadable'; return; }
+  _n=$(wc -l < "$changed")
+  # Parking stores the changes as git objects; a tree this large is almost always
+  # build output nobody ignored, and copying it into .git defeats the point of
+  # reclaiming the disk. Checked before the activity scan, which stats each path.
+  [ "$_n" -gt 2000 ] && { printf '%s' 'too-many-changes-to-park'; return; }
+  recently_touched "$_wt" $((now - _grace * 86400)) && { printf '%s' 'within-grace'; return; }
+  if [ "$_n" -gt 0 ]; then
+    _why=$(unparkable); [ -n "$_why" ] && { printf '%s' "$_why"; return; }
     printf '%s' 'park:uncommitted-changes'; return
   fi
   if ! _ch=$(git -C "$_wt" cherry "$_ref" HEAD 2>/dev/null); then
     printf '%s' 'merge-state-unknown'; return
   fi
   if [ -n "$_ch" ] && [ "$(printf '%s\n' "$_ch" | grep -c '^+')" -ne 0 ]; then
+    _why=$(unparkable); [ -n "$_why" ] && { printf '%s' "$_why"; return; }
     printf '%s' 'park:unmerged-commits'; return
   fi
   printf '%s' ''
+}
+
+# The tree the worktree holds right now, tracked edits and untracked files
+# included, written through a throwaway index. `fresh` starts the index from
+# HEAD; without it the index from the previous call is reused, so the check right
+# before removal only rehashes files whose stat changed.
+worktree_tree() {
+  if [ "${2:-}" = fresh ]; then
+    rm -f "$parkidx"
+    GIT_INDEX_FILE=$parkidx git -C "$1" read-tree HEAD 2>/dev/null || return 1
+  fi
+  GIT_INDEX_FILE=$parkidx git -C "$1" add -A . 2>/dev/null &&
+    GIT_INDEX_FILE=$parkidx git -C "$1" write-tree 2>/dev/null
 }
 
 # Snapshot an idle worktree's work into refs/wip/<name> in the repo and print the
@@ -153,32 +216,26 @@ blockers_for() {
 # HEAD, built in a throwaway index so neither the branch nor the worktree's own
 # index moves. The ref lives in the shared object store, so it outlives the
 # checkout, is never pushed, and `git worktree add <path> refs/wip/<name>` brings
-# the work back. Ignored files are not kept: by definition they are build output.
-# The tree the worktree holds right now, tracked edits and untracked files
-# included, written through a throwaway index.
-worktree_tree() {
-  rm -f "$parkidx"
-  GIT_INDEX_FILE=$parkidx git -C "$1" read-tree HEAD 2>/dev/null &&
-    GIT_INDEX_FILE=$parkidx git -C "$1" add -A . 2>/dev/null &&
-    GIT_INDEX_FILE=$parkidx git -C "$1" write-tree 2>/dev/null
-}
-
+# the work back. A ref already holding the same tree (a run cut off before the
+# removal) is reused, so an interrupted sweep does not mint a new ref nightly.
 park() {
   _repo=$1; _wt=$2; _name=$3
+  git check-ref-format "refs/wip/$_name" 2>/dev/null || return 1
   _head=$(git -C "$_wt" rev-parse -q --verify HEAD 2>/dev/null) || return 1
   _tip=$_head
-  if [ -n "$(git -C "$_wt" status --porcelain 2>/dev/null)" ]; then
-    _tree=$(worktree_tree "$_wt") || return 1
+  _tree=$(worktree_tree "$_wt" fresh) || return 1
+  if [ "$_tree" != "$(git -C "$_wt" rev-parse "$_head^{tree}" 2>/dev/null)" ]; then
     _tip=$(git -C "$_wt" -c user.name=worktree-sweep -c user.email=worktree-sweep@localhost \
       commit-tree "$_tree" -p "$_head" \
       -m "wip: $_name, parked by worktree-sweep on $(hostname -s 2>/dev/null) $(date -u +%Y-%m-%dT%H:%M:%SZ)" 2>/dev/null) || return 1
   fi
   _wipref="refs/wip/$_name"
-  git -C "$_repo" rev-parse -q --verify "$_wipref" >/dev/null 2>&1 && _wipref="$_wipref-$now"
+  if _old=$(git -C "$_repo" rev-parse -q --verify "$_wipref^{tree}" 2>/dev/null); then
+    [ "$_old" = "$_tree" ] && { printf '%s' "$_wipref"; return 0; }
+    _wipref="$_wipref-$now"
+  fi
   git -C "$_repo" update-ref "$_wipref" "$_tip" 2>/dev/null || return 1
-  # The ref must hold exactly the tree just read, or the removal below would lose
-  # whatever differs.
-  [ "$(git -C "$_repo" rev-parse "$_wipref^{tree}" 2>/dev/null)" = "$(git -C "$_repo" rev-parse "$_tip^{tree}" 2>/dev/null)" ] || return 1
+  [ "$(git -C "$_repo" rev-parse "$_wipref^{tree}" 2>/dev/null)" = "$_tree" ] || return 1
   printf '%s' "$_wipref"
 }
 
@@ -189,6 +246,7 @@ sweep_repo() {
   [ -d "$wtdir" ] || return 0
 
   for wt in "$wtdir"/*/; do
+    out_of_time && return 0
     [ -d "$wt" ] || continue
     wt=${wt%/}
     name=$(basename "$wt")
@@ -321,6 +379,7 @@ find "$SEARCH_HOME" -maxdepth 7 \
 
 snapshot_cwds
 while IFS= read -r wtdir; do
+  out_of_time && { echo "stopped after ${BUDGET_SECONDS}s; the rest waits for the next run"; break; }
   repo=$(dirname "$(dirname "$wtdir")")
   # `.git` is a DIRECTORY in a normal checkout but a FILE inside a linked
   # worktree, so test existence, not directory-ness, or nested cases are skipped.
