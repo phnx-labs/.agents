@@ -320,10 +320,21 @@ publish_blocker() { # <repo> <commit> <ref> -> a reason, or nothing
 publish_park() { # <repo> <wipref> <ref> <name> <orig-branch>
   _slug=$(git -C "$1" config --get remote.origin.url | sed -E 's#^(https://github\.com/|git@github\.com:|ssh://git@github\.com/)##; s#\.git$##')
   _wipb="wip/$host/$4"
+  # A settled outcome (published, or refused for what the work is or where it
+  # lives) is recorded in refs/wip-checked/, so the retry pass below does not
+  # re-judge it every night. A network failure is not recorded: it is retried.
+  _checked="refs/wip-checked/${2#refs/wip/}"
   _b=$(publish_blocker "$1" "$2" "$3")
-  [ -n "$_b" ] && { echo "not published ($_b), kept locally in $2"; return 0; }
-  _priv=$($TO gh repo view -R "$_slug" --json isPrivate -q .isPrivate 2>/dev/null)
-  [ "$_priv" = true ] || { echo "not published ($_slug is not confirmed private), kept locally in $2"; return 0; }
+  [ -n "$_b" ] && { git -C "$1" update-ref "$_checked" "$2" 2>/dev/null; echo "not published ($_b), kept locally in $2"; return 0; }
+  # `gh repo view` takes the repository as an argument; it has no -R. With -R
+  # every repo read as not private and nothing was ever published.
+  _priv=$($TO gh repo view "$_slug" --json isPrivate -q .isPrivate 2>/dev/null)
+  case $_priv in
+    true) ;;
+    false) git -C "$1" update-ref "$_checked" "$2" 2>/dev/null
+           echo "not published ($_slug is not private), kept locally in $2"; return 0 ;;
+    *) echo "not published ($_slug visibility unknown, retried next run), kept locally in $2"; return 0 ;;
+  esac
   # A later tree with the same name gets its own branch rather than a rejected
   # non-fast-forward push onto the first one's PR.
   if ! $TO git -C "$1" push -q origin "$2:refs/heads/$_wipb" >/dev/null 2>&1; then
@@ -341,7 +352,7 @@ publish_park() { # <repo> <wipref> <ref> <name> <orig-branch>
 
 Unfinished work, not ready for review. Close it if the work is obsolete." 2>/dev/null | tail -n 1)
   case $_url in
-    https://*) echo "published: $_url" ;;
+    https://*) git -C "$1" update-ref "$_checked" "$2" 2>/dev/null; echo "published: $_url" ;;
     *) echo "PUBLISH FAILED (PR not opened; pushed $_wipb), kept locally in $2" ;;
   esac
 }
@@ -586,6 +597,19 @@ sweep_repo() {
     fi
   done
   git -C "$repo" worktree prune >/dev/null 2>&1 || true
+
+  # Parked work a previous run did not settle (gh unreachable, or the -R bug in
+  # 532e520 that read every repo as not private) is published now. Each ref is
+  # judged once per content: refs/wip-checked/<name> records the outcome.
+  if [ "$PRESERVE" = 1 ] && [ "$DRY_RUN" != 1 ]; then
+    git -C "$repo" for-each-ref --format='%(refname) %(objectname)' refs/wip/ 2>/dev/null |
+      while read -r _wr _ws; do
+        out_of_time && break
+        _wn=${_wr#refs/wip/}
+        [ "$(git -C "$repo" rev-parse -q --verify "refs/wip-checked/$_wn" 2>/dev/null)" = "$_ws" ] && continue
+        echo "$_wn: $(publish_park "$repo" "$_wr" "$ref" "$_wn" "(parked earlier)")"
+      done
+  fi
 }
 
 # Which repos this routine may touch, as extended-regex patterns matched against

@@ -531,7 +531,9 @@ cat > "$FAKEGH/gh" <<'GH'
 #!/bin/sh
 case "$1 $2" in
   "auth status") exit 0 ;;
-  "repo view") echo "${FAKE_GH_PRIVATE:-false}" ;;
+  # Like the real gh: the repository is an argument, and -R is an error.
+  "repo view") case "$3" in -*|'') echo "unknown shorthand flag" >&2; exit 1 ;; esac
+               echo "${FAKE_GH_PRIVATE:-false}" ;;
   "pr list") : ;;
   "pr create") echo "https://example.invalid/pull/1" ;;
   *) exit 1 ;;
@@ -547,7 +549,7 @@ echo work > "$(WT r pubpublic)/work.txt"
 age "$(WT r pubpublic)"
 out=$(FAKE_GH_PRIVATE=false psweep)
 check "--preserve still PARKS locally first" "$(git -C "$P/r" show refs/wip/pubpublic:work.txt 2>/dev/null)" "work"
-case "$out" in *"pubpublic: not published (phnx-labs/wtsweep-fixture-r is not confirmed private)"*)
+case "$out" in *"pubpublic: not published (phnx-labs/wtsweep-fixture-r is not private)"*)
     ok "nothing is published unless gh confirms the repo private";;
   *) bad "no private-repo refusal: $(printf '%s\n' "$out" | grep pubpublic)";; esac
 wip_on_origin pubpublic && bad "pushed to a repo not confirmed private" || ok "no wip branch for a repo not confirmed private"
@@ -614,6 +616,13 @@ out=$(FAKE_GH_PRIVATE=true psweep)
 case "$out" in *"pubok: published: https://example.invalid/pull/1"*) ok "a clean parked tree on a private repo is PUBLISHED as a draft PR";;
   *) bad "clean tree not published: $(printf '%s\n' "$out" | grep pubok)";; esac
 check "the published branch carries the work" "$("$REALGIT" -C "$P/r.git" show "wip/$HOST/pubok:work.txt" 2>/dev/null)" "work"
+# Parked work no run settled (the -R bug read every repo as not private) is
+# published by the retry pass; a settled ref is not judged again.
+git -C "$P/r" update-ref refs/wip/unsettled "$(git -C "$P/r" rev-parse refs/wip/pubpublic)"
+out2=$(FAKE_GH_PRIVATE=true psweep)
+case "$out2" in *"unsettled: published: https://example.invalid/pull/1"*) ok "the retry pass publishes parked work no run settled";;
+  *) bad "unsettled parked work was not retried: $(printf '%s\n' "$out2" | grep unsettled)";; esac
+case "$out2" in *"pubpublic: published"*) bad "a settled (refused) ref was judged again";; *) ok "a settled ref is not judged again";; esac
 for pair in "suspect file names:pubsecret" "suspect file contents:pubinline" "suspect file contents:pubspace" \
             "suspect file contents:pubhist" "suspect file names:pubhistenv" "a file over 5 MB:pubbig" \
             "suspect file contents:pubmany" "suspect file contents:pubmerge" "suspect file names:pubmergeenv"; do
