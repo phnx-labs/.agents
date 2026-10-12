@@ -1,4 +1,10 @@
-# Built-in routine: reclaim PR-bound agent worktrees whose work has landed.
+# Built-in routine: reclaim PR-bound agent worktrees whose work has landed, and
+# park idle ones that still hold work. Idle means no process has its working
+# directory inside the worktree and nothing in it (files, commits, checkouts)
+# changed for --grace-days; its work is saved to refs/wip/<name> in the repo
+# before the checkout goes, so `git worktree add <path> refs/wip/<name>` brings
+# it back. Without parking, 420 of 428 worktrees on yosemite-s0 were held forever
+# (2026-10-12: 255 uncommitted, 165 unmerged) and yosemite-m1 sat at 96% disk.
 #
 # Why this exists (PHNX-3503): worktree law puts every tracked change in
 # <repo>/.agents/worktrees/<slug>/, and nothing ever removed one. `gh pr merge

@@ -44,8 +44,15 @@ git_q -C "$REPO" commit -m init
 git_q -C "$REPO" push -u origin main
 mkdir -p "$REPO/.agents/worktrees"
 
-# Backdate a worktree past the grace window (the sweep reads dir mtime).
-age() { touch -d '30 days ago' "$1" 2>/dev/null || touch -t 202601010000 "$1"; }
+# Backdate a worktree past the grace window: the directory, every file in it, and
+# its per-worktree HEAD and reflog, which is everything the sweep reads as activity.
+backdate() { touch -h -d '30 days ago' "$@" 2>/dev/null || touch -h -t 202601010000 "$@"; }
+age() {
+  find "$1" -exec sh -c 'touch -h -d "30 days ago" "$@" 2>/dev/null || touch -h -t 202601010000 "$@"' _ {} +
+  gd=$(git -C "$1" rev-parse --absolute-git-dir 2>/dev/null) || return 0
+  for f in "$gd/HEAD" "$gd/logs/HEAD" "$gd/ORIG_HEAD"; do [ -e "$f" ] && backdate "$f"; done
+  return 0
+}
 
 new_wt() { # <name> <branch>
   git_q -C "$REPO" worktree add -b "$2" "$REPO/.agents/worktrees/$1" origin/main
@@ -90,6 +97,24 @@ age "$REPO/.agents/worktrees/dirty"
 # --- fixture 4: fresh but merged -> held by the grace window ----------------
 new_wt fresh feat/fresh
 
+# --- fixture 4b: idle by directory age, but a file was edited just now --------
+# The directory mtime moves only when a top-level entry is added or removed, so
+# an agent editing an existing file read as idle. It must be held, not parked.
+new_wt editing feat/editing
+echo draft > "$REPO/.agents/worktrees/editing/a.txt"
+age "$REPO/.agents/worktrees/editing"
+echo "still typing" > "$REPO/.agents/worktrees/editing/a.txt"
+
+# --- fixture 4c: everything old, but a process sits inside -------------------
+# An agent can idle for days between turns; its shell's cwd is the tell.
+new_wt occupied feat/occupied
+echo wip > "$REPO/.agents/worktrees/occupied/w.txt"
+age "$REPO/.agents/worktrees/occupied"
+(cd "$REPO/.agents/worktrees/occupied/" && exec sleep 300) &
+OCCUPANT=$!
+trap 'kill "$OCCUPANT" 2>/dev/null; rm -rf "$BASE"' EXIT
+sleep 1
+
 # --- fixture 5+6: prefix pair, both merged, to pin boundary matching --------
 new_wt fix-110 feat/fix-110
 new_wt fix-1103 feat/fix-1103
@@ -108,10 +133,14 @@ out=$("$SH" "$SWEEP" --home "$BASE" --grace-days 3 --dry-run 2>&1)
 
 case "$out" in *"would reclaim: merged"*) ok "dry-run reclaims the rebase-merged worktree (patch-id, not ancestry)";;
   *) bad "dry-run missed the rebase-merged worktree: $out";; esac
-case "$out" in *"held (unmerged-commits): unpushed"*) ok "dry-run holds unpushed work";;
-  *) bad "dry-run did not hold unpushed work: $out";; esac
-case "$out" in *"held (uncommitted-changes): dirty"*) ok "dry-run holds a dirty tree";;
-  *) bad "dry-run did not hold the dirty tree: $out";; esac
+case "$out" in *"would park (unmerged-commits): unpushed"*) ok "dry-run parks idle unpushed work";;
+  *) bad "dry-run did not plan to park idle unpushed work: $out";; esac
+case "$out" in *"would park (uncommitted-changes): dirty"*) ok "dry-run parks an idle dirty tree";;
+  *) bad "dry-run did not plan to park the idle dirty tree: $out";; esac
+case "$out" in *"held (within-grace): editing"*) ok "dry-run holds a tree whose file was edited just now (not the dir mtime)";;
+  *) bad "dry-run did not hold the recently edited tree: $out";; esac
+case "$out" in *"held (in-use): occupied"*) ok "dry-run holds a tree a process is sitting in";;
+  *) bad "dry-run did not hold the occupied tree: $out";; esac
 case "$out" in *"held (within-grace): fresh"*) ok "dry-run holds a worktree inside the grace window";;
   *) bad "dry-run did not hold the fresh worktree: $out";; esac
 
@@ -122,8 +151,19 @@ case "$out" in *"held (within-grace): fresh"*) ok "dry-run holds a worktree insi
 out=$("$SH" "$SWEEP" --home "$BASE" --grace-days 3 2>&1)
 
 [ ! -d "$REPO/.agents/worktrees/merged" ] && ok "merged worktree removed" || bad "merged worktree survived"
-[ -d "$REPO/.agents/worktrees/unpushed" ] && ok "UNPUSHED WORK PRESERVED" || bad "unpushed work was destroyed"
-[ -d "$REPO/.agents/worktrees/dirty" ]    && ok "dirty tree preserved"     || bad "dirty tree was destroyed"
+[ ! -d "$REPO/.agents/worktrees/unpushed" ] && ok "idle unpushed checkout reclaimed" || bad "idle unpushed checkout survived"
+check "UNPUSHED WORK PARKED: refs/wip/unpushed is the branch tip" \
+  "$(git -C "$REPO" rev-parse -q --verify refs/wip/unpushed 2>/dev/null)" "$(git -C "$REPO" rev-parse feat/unpushed)"
+[ ! -d "$REPO/.agents/worktrees/dirty" ] && ok "idle dirty checkout reclaimed" || bad "idle dirty checkout survived"
+check "UNCOMMITTED WORK PARKED: refs/wip/dirty holds the untracked file" \
+  "$(git -C "$REPO" show refs/wip/dirty:uncommitted.txt 2>/dev/null)" "scratch"
+check "parked commit sits on the branch tip, branch itself untouched" \
+  "$(git -C "$REPO" rev-parse refs/wip/dirty^ 2>/dev/null)" "$(git -C "$REPO" rev-parse feat/dirty)"
+case "$out" in *"parked: dirty -> refs/wip/dirty"*) ok "parking is reported with its ref";;
+  *) bad "no 'parked:' line naming the ref: $out";; esac
+[ -d "$REPO/.agents/worktrees/editing" ] && ok "recently edited worktree preserved" || bad "recently edited worktree destroyed"
+[ -d "$REPO/.agents/worktrees/occupied" ] && ok "OCCUPIED WORKTREE PRESERVED" || bad "worktree with a live process inside was removed"
+kill "$OCCUPANT" 2>/dev/null
 [ -d "$REPO/.agents/worktrees/fresh" ]    && ok "in-grace worktree preserved" || bad "in-grace worktree destroyed"
 
 # The rebase-merged branch must be gone: `-d` refuses it (rewritten SHAs), so the
