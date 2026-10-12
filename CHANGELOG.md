@@ -4,6 +4,18 @@
 
 ### Added
 
+- **`routines/worktree-sweep`: never touches a tree in use; reclaims killed checkouts; publishes parked work (#518).**
+  - **Held trees.** A tree is held when any of these applies:
+    - a live process is inside it;
+    - a file in it changed in the last 3 days;
+    - a session transcript names it. Any transcript from the last 12 hours counts. An older one counts only if it names 5 trees or fewer, so a survey that lists every tree does not hold them all;
+    - it has a `.agents-keep` file.
+  - **Killed checkouts.** A `git worktree add` killed mid-checkout leaves an `initializing` lock and no index. These were held as `locked` forever (87 trees, 98 GB on yosemite-m6) and are now reclaimed.
+  - **Merge commits.** A merge commit that carries its own change is parked, not judged landed.
+  - **Ignored files.** Gitignored files that are not caches are copied to `~/.agents-swept/` before any removal.
+  - **`--preserve`, on in the routine.** It pushes a parked tree on a private repo to `wip/<host>/<name>` as a draft PR. The pushed history is scanned first, merges included, and a likely secret or a file over 5 MB keeps it local.
+  - **Signals.** INT and TERM now end the run.
+
 - **No fleet-wide ask group yet.** agents-cli can now sync `ask:` rules (phnx-labs/agi-cli#3905), but none ship here: a device without `AGENTS_PERMISSION_PRESET` syncs every group, and in a headless `-p` run under bypass a matching ask rule denies instead of prompting, so `git push` and `gh pr merge` would fail for every dispatched worker. Add ask rules per device or in the user layer instead.
 - **`hooks/session-start/03-linear-inject-tasks-context.sh`: week and today goals in
   the Goals block (PHNX-4291).** Under the company goal it now prints "This week
