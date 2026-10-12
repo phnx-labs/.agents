@@ -5,6 +5,10 @@
 # before the checkout goes, so `git worktree add <path> refs/wip/<name>` brings
 # it back. Without parking, 420 of 428 worktrees on yosemite-s0 were held forever
 # (2026-10-12: 255 uncommitted, 165 unmerged) and yosemite-m1 sat at 96% disk.
+# Parking keeps tracked and untracked files; ignored files go with the checkout,
+# on the rule that they are build output. The exceptions a person cannot rebuild
+# (.env*), nested repos, submodules, locked worktrees and an operation in
+# progress are held instead, as is any tree with a file name git has to quote.
 #
 # Why this exists (PHNX-3503): worktree law puts every tracked change in
 # <repo>/.agents/worktrees/<slug>/, and nothing ever removed one. `gh pr merge

@@ -96,6 +96,9 @@ snapshot_cwds() {
 # /proc and lsof report physical paths, so the worktree is matched both as found
 # and with symlinks resolved (macOS /tmp is /private/tmp).
 in_use() {
+  # No process list at all (no /proc and no lsof, or a readlink that takes one
+  # operand) cannot prove anything idle: every worktree counts as in use.
+  [ -s "$cwds" ] || return 0
   _phys=$(cd "$1" 2>/dev/null && pwd -P) || _phys=$1
   awk -v p="$1" -v q="$_phys" '
     $0 == p || index($0, p "/") == 1 || $0 == q || index($0, q "/") == 1 { f = 1 }
