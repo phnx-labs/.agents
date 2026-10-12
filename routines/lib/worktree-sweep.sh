@@ -65,6 +65,7 @@ held=0
 # timeout: a box with 500 worktrees finishes the rest the next night instead of
 # being killed mid-run with nothing reported.
 BUDGET_SECONDS=900
+RETRY_CAP=20
 out_of_time() { [ $(( $(date +%s) - now )) -ge "$BUDGET_SECONDS" ]; }
 
 wtlist=$(mktemp) && cwds=$(mktemp) && changed=$(mktemp) && parkidx=$(mktemp) &&
@@ -173,14 +174,17 @@ stamp_at() { # <file> <epoch>
 #
 # Conversation files only: Claude's projects/, Codex's and Grok's sessions/,
 # Gemini's chats/, OpenCode's session/. NOT a harness's own config (~/.claude.json
-# and kin list every directory ever opened) or the activity feed, which name
-# every tree and are rewritten all the time: on yosemite-m5 they held 91 of 94.
+# and kin list every directory ever opened), the activity feed, or the agents
+# CLI's session index (~/.agents/.history/sessions/sessions.db), which name every
+# tree and are rewritten all the time: on yosemite-m5 the first two held 91 of
+# 94, on yosemite-s0 the index alone held 246.
 list_recent_transcripts() { # <stamp>
   for _d in "$SEARCH_HOME/.agents/.history" "$SEARCH_HOME/.claude/projects" "$SEARCH_HOME/.codex/sessions" \
             "$SEARCH_HOME/.gemini" "$SEARCH_HOME/.local/share/opencode"; do
     [ -e "$_d" ] && find -H "$_d" -type f \( -path '*/projects/*' -o -path '*/sessions/*' \
       -o -path '*/chats/*' -o -path '*/session/*' -o -path '*/storage/message/*' -o -path '*/storage/part/*' \) \
-      ! -path '*/activity/*' -newer "$1" 2>/dev/null
+      ! -path '*/activity/*' ! -path '*/.agents/.history/sessions/*' \
+      ! -name '*.db' ! -name '*.db-wal' ! -name '*.db-shm' ! -name '*.sqlite*' -newer "$1" 2>/dev/null
   done | sort -u
 }
 # ONE pass over every recent transcript for every tree path on the box (grep -F -f
@@ -324,8 +328,16 @@ publish_park() { # <repo> <wipref> <ref> <name> <orig-branch>
   # lives) is recorded in refs/wip-checked/, so the retry pass below does not
   # re-judge it every night. A network failure is not recorded: it is retried.
   _checked="refs/wip-checked/${2#refs/wip/}"
+  case $_slug in *://*|*@*|'') git -C "$1" update-ref "$_checked" "$2" 2>/dev/null
+    echo "not published (origin is not on GitHub), kept locally in $2"; return 0 ;; esac
   _b=$(publish_blocker "$1" "$2" "$3")
-  [ -n "$_b" ] && { git -C "$1" update-ref "$_checked" "$2" 2>/dev/null; echo "not published ($_b), kept locally in $2"; return 0; }
+  case $_b in
+    '') ;;
+    # What the work is settles it; a scan that could not run does not.
+    "suspect file names"|"suspect file contents"|"a file over 5 MB")
+      git -C "$1" update-ref "$_checked" "$2" 2>/dev/null; echo "not published ($_b), kept locally in $2"; return 0 ;;
+    *) echo "not published ($_b, retried next run), kept locally in $2"; return 0 ;;
+  esac
   # `gh repo view` takes the repository as an argument; it has no -R. With -R
   # every repo read as not private and nothing was ever published.
   _priv=$($TO gh repo view "$_slug" --json isPrivate -q .isPrivate 2>/dev/null)
@@ -601,14 +613,22 @@ sweep_repo() {
   # Parked work a previous run did not settle (gh unreachable, or the -R bug in
   # 532e520 that read every repo as not private) is published now. Each ref is
   # judged once per content: refs/wip-checked/<name> records the outcome.
-  if [ "$PRESERVE" = 1 ] && [ "$DRY_RUN" != 1 ]; then
-    git -C "$repo" for-each-ref --format='%(refname) %(objectname)' refs/wip/ 2>/dev/null |
-      while read -r _wr _ws; do
-        out_of_time && break
-        _wn=${_wr#refs/wip/}
-        [ "$(git -C "$repo" rev-parse -q --verify "refs/wip-checked/$_wn" 2>/dev/null)" = "$_ws" ] && continue
-        echo "$_wn: $(publish_park "$repo" "$_wr" "$ref" "$_wn" "(parked earlier)")"
-      done
+  # At most RETRY_CAP per repo per run, so the first night does not open every
+  # old park at once; judged against a freshly fetched default branch so the
+  # pushed range is only what never landed.
+  if [ "$PRESERVE" = 1 ] && [ "$DRY_RUN" != 1 ] &&
+     git -C "$repo" for-each-ref --format='%(refname) %(objectname)' refs/wip/ > "$scratch" 2>/dev/null && [ -s "$scratch" ]; then
+    $TO git -C "$repo" fetch -q origin </dev/null >/dev/null 2>&1 || true
+    cp "$scratch" "$tarfile"
+    _tries=0
+    while read -r _wr _ws; do
+      out_of_time && break
+      [ "$_tries" -ge "$RETRY_CAP" ] && { echo "retry cap reached in $repo; the rest waits for the next run"; break; }
+      _wn=${_wr#refs/wip/}
+      [ "$(git -C "$repo" rev-parse -q --verify "refs/wip-checked/$_wn" 2>/dev/null)" = "$_ws" ] && continue
+      _tries=$((_tries + 1))
+      echo "$_wn: $(publish_park "$repo" "$_wr" "$ref" "$_wn" "(parked earlier)" </dev/null)"
+    done < "$tarfile"
   fi
 }
 

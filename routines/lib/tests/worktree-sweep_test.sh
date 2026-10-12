@@ -439,11 +439,13 @@ age "$(WT r configured)"
 mkdir -p "$P/.agents/.history/versions/claude/9.9.9/home" "$P/.agents/.history/activity"
 printf '{"projects":{"%s":{}}}\n' "$(WT r configured)" > "$P/.agents/.history/versions/claude/9.9.9/home/.claude.json"
 printf '{"event":"worktree.created","path":"%s"}\n' "$(WT r configured)" > "$P/.agents/.history/activity/a.jsonl"
+mkdir -p "$P/.agents/.history/sessions"
+printf 'SQLite format 3 %s\n' "$(WT r configured)" > "$P/.agents/.history/sessions/sessions.db"
 out=$(sweep --dry-run)
 case "$out" in *"held (recent-session): mentioned"*) ok "a tree named in a RECENT TRANSCRIPT is held";;
   *) bad "recent transcript mention not detected: $out";; esac
 case "$out" in *"would reclaim: configured"*) ok "a harness CONFIG or the activity feed naming a tree does not hold it";;
-  *) bad "config/activity mention held the tree: $(printf '%s\n' "$out" | grep ': configured$')";; esac
+  *) bad "config/activity/index mention held the tree: $(printf '%s\n' "$out" | grep ': configured$')";; esac
 mv "$P/.agents" "$BASE/p-agents-done"
 
 # A session that names many trees at once (a disk survey, an inventory) is not
