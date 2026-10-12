@@ -39,6 +39,9 @@ REPO="$BASE/repo"
 git_q init --bare -b main "$ORIGIN"
 git_q clone "$ORIGIN" "$REPO"
 echo one > "$REPO/a.txt"
+# Real repos ignore .agents/; without it the `add .` below commits each worktree
+# as a gitlink, and every later worktree inherits a phantom submodule.
+printf '.agents/\n' > "$REPO/.gitignore"
 git_q -C "$REPO" add .
 git_q -C "$REPO" commit -m init
 git_q -C "$REPO" push -u origin main
@@ -110,6 +113,47 @@ echo "still typing" > "$REPO/.agents/worktrees/editing/a.txt"
 new_wt occupied feat/occupied
 echo wip > "$REPO/.agents/worktrees/occupied/w.txt"
 age "$REPO/.agents/worktrees/occupied"
+
+# --- review findings on parking: each must be HELD, checkout intact ----------
+W="$REPO/.agents/worktrees"
+# A nested repo in an untracked dir: `add -A` would keep only a gitlink.
+new_wt nested feat/nested
+git_q init -b main "$W/nested/inner"
+echo inner > "$W/nested/inner/i.txt"; git_q -C "$W/nested/inner" add .; git_q -C "$W/nested/inner" commit -m inner
+echo unsaved > "$W/nested/inner/u.txt"
+age "$W/nested"
+# A submodule: its edits and unpushed commits are not in the parent's tree.
+SUBORIGIN="$BASE/sub-origin"
+git_q init -b main "$SUBORIGIN"; echo s > "$SUBORIGIN/s"; git_q -C "$SUBORIGIN" add .; git_q -C "$SUBORIGIN" commit -m s
+new_wt submod feat/submod
+git_q -C "$W/submod" -c protocol.file.allow=always submodule add "$SUBORIGIN" sm
+git_q -C "$W/submod" commit -m 'add submodule'
+echo edited > "$W/submod/sm/s"
+age "$W/submod"
+# Ignored local config is never committed, so --force would delete it.
+new_wt envcfg feat/envcfg
+printf '.env\n' > "$W/envcfg/.gitignore"
+echo SECRET=1 > "$W/envcfg/.env"
+age "$W/envcfg"
+# A merge in progress lives in the admin dir and would be lost.
+new_wt merging feat/merging
+echo m > "$W/merging/m.txt"
+age "$W/merging"
+git -C "$W/merging" rev-parse HEAD > "$(git -C "$W/merging" rev-parse --absolute-git-dir)/MERGE_HEAD"
+# 2100 files in one untracked dir: one porcelain line without -uall.
+new_wt bulky feat/bulky
+mkdir -p "$W/bulky/out"
+i=0; while [ $i -lt 2100 ]; do : > "$W/bulky/out/f$i"; i=$((i+1)); done
+age "$W/bulky"
+# A file deep in an untracked dir edited now: the dir's mtime does not move.
+new_wt deepedit feat/deepedit
+mkdir -p "$W/deepedit/notes/sub"; echo v1 > "$W/deepedit/notes/sub/n.txt"
+age "$W/deepedit"
+echo v2 > "$W/deepedit/notes/sub/n.txt"
+# A name git C-quotes cannot be stat'd from porcelain: unjudgeable, so held.
+new_wt quoted feat/quoted
+echo q > "$W/quoted/q\"u"
+age "$W/quoted"
 (cd "$REPO/.agents/worktrees/occupied/" && exec sleep 300) &
 OCCUPANT=$!
 trap 'kill "$OCCUPANT" 2>/dev/null; rm -rf "$BASE"' EXIT
@@ -141,6 +185,12 @@ case "$out" in *"held (within-grace): editing"*) ok "dry-run holds a tree whose 
   *) bad "dry-run did not hold the recently edited tree: $out";; esac
 case "$out" in *"held (in-use): occupied"*) ok "dry-run holds a tree a process is sitting in";;
   *) bad "dry-run did not hold the occupied tree: $out";; esac
+for pair in "nested-repo:nested" "has-submodules:submod" "ignored-local-config:envcfg" \
+            "operation-in-progress:merging" "too-many-changes-to-park:bulky" \
+            "within-grace:deepedit" "within-grace:quoted"; do
+  case "$out" in *"held (${pair%%:*}): ${pair#*:}"*) ok "dry-run holds ${pair#*:} (${pair%%:*})";;
+    *) bad "dry-run did not hold ${pair#*:} as ${pair%%:*}: $(printf '%s\n' "$out" | grep ": ${pair#*:}$")";; esac
+done
 case "$out" in *"held (within-grace): fresh"*) ok "dry-run holds a worktree inside the grace window";;
   *) bad "dry-run did not hold the fresh worktree: $out";; esac
 
@@ -163,6 +213,12 @@ case "$out" in *"parked: dirty -> refs/wip/dirty"*) ok "parking is reported with
   *) bad "no 'parked:' line naming the ref: $out";; esac
 [ -d "$REPO/.agents/worktrees/editing" ] && ok "recently edited worktree preserved" || bad "recently edited worktree destroyed"
 [ -d "$REPO/.agents/worktrees/occupied" ] && ok "OCCUPIED WORKTREE PRESERVED" || bad "worktree with a live process inside was removed"
+for n in nested submod envcfg merging bulky deepedit quoted; do
+  [ -d "$REPO/.agents/worktrees/$n" ] && ok "$n checkout preserved" || bad "$n checkout was removed"
+done
+check "nested repo's uncommitted file survives" "$(cat "$REPO/.agents/worktrees/nested/inner/u.txt" 2>/dev/null)" "unsaved"
+check "submodule edit survives" "$(cat "$REPO/.agents/worktrees/submod/sm/s" 2>/dev/null)" "edited"
+check "ignored .env survives" "$(cat "$REPO/.agents/worktrees/envcfg/.env" 2>/dev/null)" "SECRET=1"
 kill "$OCCUPANT" 2>/dev/null
 [ -d "$REPO/.agents/worktrees/fresh" ]    && ok "in-grace worktree preserved" || bad "in-grace worktree destroyed"
 
