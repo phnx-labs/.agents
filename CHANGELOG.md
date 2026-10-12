@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Fixed
+
+- **`routines/worktree-sweep --preserve` never published (#518).** `gh repo view -R <repo>` is not a valid call. Every repo therefore read as not private, and all parked work stayed local. The repo is now passed as an argument. A retry pass also publishes parked `refs/wip/*` work that no run settled, and `refs/wip-checked/<name>` records each settled outcome so a refused ref is not judged again.
+
 ### Added
 
 - **`routines/worktree-sweep`: never touches a tree in use; reclaims killed checkouts; publishes parked work (#518).**
