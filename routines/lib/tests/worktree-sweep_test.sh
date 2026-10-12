@@ -451,8 +451,15 @@ mv "$P/.agents" "$BASE/p-agents-done"
 for i in 1 2 3 4 5 6; do wt_in r surveyed$i; age "$(WT r surveyed$i)"; done
 mkdir -p "$P/.claude/projects/y"
 for i in 1 2 3 4 5 6; do printf 'du -sh %s\n' "$(WT r surveyed$i)"; done > "$P/.claude/projects/y/survey.jsonl"
+# Written just now, it might be a live orchestrator: within 12 hours every
+# mention holds.
 out=$(sweep --dry-run)
-case "$out" in *"would reclaim: surveyed3"*) ok "a SURVEY naming more than 5 trees does not hold them";;
+case "$out" in *"held (recent-session): surveyed3"*) ok "a many-tree transcript written in the last 12 hours still HOLDS";;
+  *) bad "a fresh many-tree transcript did not hold: $(printf '%s\n' "$out" | grep ': surveyed3$')";; esac
+# A day old, it is a survey: its mentions no longer hold.
+touch -d '1 day ago' "$P/.claude/projects/y/survey.jsonl" 2>/dev/null || touch -t "$(date -v-1d +%Y%m%d%H%M)" "$P/.claude/projects/y/survey.jsonl"
+out=$(sweep --dry-run)
+case "$out" in *"would reclaim: surveyed3"*) ok "a SURVEY naming more than 5 trees, a day old, does not hold them";;
   *) bad "a survey's mentions held the tree: $(printf '%s\n' "$out" | grep ': surveyed3$')";; esac
 mv "$P/.claude" "$BASE/p-claude-survey-done"
 rm -rf "$P/.claude"
@@ -586,13 +593,30 @@ i=0; while [ $i -lt 3000 ]; do echo "$i" > "$(WT r pubmany)/many/a-rather-long-f
 echo 'AKIAABCDEFGHIJKLMNOP' > "$(WT r pubmany)/many/a-rather-long-file-name-to-fill-the-argument-list-1500.txt"
 git_q -C "$(WT r pubmany)" add many; git_q -C "$(WT r pubmany)" commit -m many
 age "$(WT r pubmany)"
+# A secret or .env that only a MERGE commit carries: git log prints nothing for
+# merges without -m.
+for n in pubmerge pubmergeenv; do
+  git_q -C "$P/r" branch "side-$n" origin/main
+  wt_in r $n
+  git_q -C "$(WT r $n)" commit --allow-empty -m "before $n"
+done
+git_q -C "$P/r" worktree add -q "$BASE/side-wt" side-pubmerge 2>/dev/null
+echo s > "$BASE/side-wt/s.txt"; git_q -C "$BASE/side-wt" add s.txt; git_q -C "$BASE/side-wt" commit -m side
+git_q -C "$(WT r pubmerge)" merge --no-ff --no-commit side-pubmerge
+echo 'AKIAABCDEFGHIJKLMNOP' > "$(WT r pubmerge)/merged-notes.txt"; git_q -C "$(WT r pubmerge)" add merged-notes.txt
+git_q -C "$(WT r pubmerge)" commit -m 'merge with a key'
+git_q -C "$(WT r pubmergeenv)" merge --no-ff --no-commit side-pubmerge
+echo S=1 > "$(WT r pubmergeenv)/.env"; git_q -C "$(WT r pubmergeenv)" add -f .env
+git_q -C "$(WT r pubmergeenv)" commit -m 'merge with a .env'
+git_q -C "$P/r" worktree remove --force "$BASE/side-wt"
+age "$(WT r pubmerge)"; age "$(WT r pubmergeenv)"
 out=$(FAKE_GH_PRIVATE=true psweep)
 case "$out" in *"pubok: published: https://example.invalid/pull/1"*) ok "a clean parked tree on a private repo is PUBLISHED as a draft PR";;
   *) bad "clean tree not published: $(printf '%s\n' "$out" | grep pubok)";; esac
 check "the published branch carries the work" "$("$REALGIT" -C "$P/r.git" show "wip/$HOST/pubok:work.txt" 2>/dev/null)" "work"
 for pair in "suspect file names:pubsecret" "suspect file contents:pubinline" "suspect file contents:pubspace" \
             "suspect file contents:pubhist" "suspect file names:pubhistenv" "a file over 5 MB:pubbig" \
-            "suspect file contents:pubmany"; do
+            "suspect file contents:pubmany" "suspect file contents:pubmerge" "suspect file names:pubmergeenv"; do
   n=${pair#*:}; why=${pair%%:*}
   case "$out" in *"$n: not published ($why)"*) ok "not published: $n ($why)";;
     *) bad "$n was not refused as '$why': $(printf '%s\n' "$out" | grep "^$n:")";; esac

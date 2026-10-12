@@ -179,7 +179,8 @@ list_recent_transcripts() { # <stamp>
   for _d in "$SEARCH_HOME/.agents/.history" "$SEARCH_HOME/.claude/projects" "$SEARCH_HOME/.codex/sessions" \
             "$SEARCH_HOME/.gemini" "$SEARCH_HOME/.local/share/opencode"; do
     [ -e "$_d" ] && find -H "$_d" -type f \( -path '*/projects/*' -o -path '*/sessions/*' \
-      -o -path '*/chats/*' -o -path '*/session/*' \) ! -path '*/activity/*' -newer "$1" 2>/dev/null
+      -o -path '*/chats/*' -o -path '*/session/*' -o -path '*/storage/message/*' -o -path '*/storage/part/*' \) \
+      ! -path '*/activity/*' -newer "$1" 2>/dev/null
   done | sort -u
 }
 # ONE pass over every recent transcript for every tree path on the box (grep -F -f
@@ -192,7 +193,11 @@ list_recent_transcripts() { # <stamp>
 # disk cleanup, an inventory, a review of the fleet), not a session working in
 # them: on yosemite-m5 four such sessions named 25-40 trees each and held 90 of
 # 93. Its mentions do not hold; a session working in a tree names a handful.
+# EXCEPT within the last RECENT_HOURS: any transcript written that recently holds
+# every tree it names, so a live orchestrator driving many trees by path is
+# never mistaken for a survey.
 SURVEY_TREES=5
+RECENT_HOURS=12
 # Paths named by working sessions among the transcripts listed on stdin.
 working_mentions() {
   tr '\n' '\0' | xargs -0 grep -aoHF -f "$patfile" 2>/dev/null | sort -u |
@@ -204,16 +209,20 @@ working_mentions() {
 build_mentioned() {
   : > "$mentioned"
   [ -s "$transcripts" ] && [ -s "$patfile" ] || return 0
-  working_mentions < "$transcripts" > "$mentioned"
+  stamp_at "$scratch" $((now - RECENT_HOURS * 3600)) || return 1
+  { working_mentions < "$transcripts"
+    list_recent_transcripts "$scratch" | tr '\n' '\0' | xargs -0 grep -aohF -f "$patfile" 2>/dev/null
+  } | sort -u > "$mentioned"
 }
 mentioned_recently() { # <wt>
   [ -f "$mentioned" ] || return 0
   grep -qxF -- "$1" "$mentioned"
 }
 # Right before mutating: only transcripts written since the run's scan.
+# Anything written since the scan is within RECENT_HOURS, so every mention holds.
 mentioned_since_scan() { # <wt>
   [ -f "$scanstamp" ] || return 0
-  list_recent_transcripts "$scanstamp" | working_mentions | grep -qxF -- "$1"
+  [ -n "$(list_recent_transcripts "$scanstamp" | tr '\n' '\0' | xargs -0 grep -alF -- "$1" 2>/dev/null | head -n 1)" ]
 }
 
 # Merge commits on <range> that carry a change of their own. `git cherry` skips
@@ -283,12 +292,14 @@ SUSPECT_CONTENT='-----BEGIN [A-Z ]*PRIVATE KEY-----|gh[pousr]_[A-Za-z0-9]{30,}|g
 # path list on a command line, and anything but a clean "no match" blocks.
 publish_blocker() { # <repo> <commit> <ref> -> a reason, or nothing
   _r="$3..$2"
-  git -C "$1" -c core.quotepath=off log --format= --name-only --no-renames "$_r" > "$scratch" 2>/dev/null ||
+  # -m: without it git log prints nothing for a merge commit, and this sweep
+  # parks exactly the merges that carry a change of their own.
+  git -C "$1" -c core.quotepath=off log -m --format= --name-only --no-renames "$_r" > "$scratch" 2>/dev/null ||
     { echo "history unreadable"; return; }
   grep -qE "$SUSPECT_PATHS" "$scratch"; _rc=$?
   [ "$_rc" -eq 0 ] && { echo "suspect file names"; return; }
   [ "$_rc" -eq 1 ] || { echo "name scan failed"; return; }
-  git -C "$1" log -p --format= --no-color --no-ext-diff --text "$_r" > "$scratch" 2>/dev/null ||
+  git -C "$1" log -m -p --format= --no-color --no-ext-diff --text "$_r" > "$scratch" 2>/dev/null ||
     { echo "history unreadable"; return; }
   grep -aqE "^\+.*($SUSPECT_CONTENT)" "$scratch"; _rc=$?
   [ "$_rc" -eq 0 ] && { echo "suspect file contents"; return; }
@@ -616,7 +627,7 @@ list_recent_transcripts "$gracestamp" > "$transcripts"
 while IFS= read -r _c; do
   for _w in "$_c"/*/; do [ -d "$_w" ] && printf '%s\n' "${_w%/}"; done
 done < "$wtlist" > "$patfile"
-build_mentioned
+build_mentioned || { echo "could not scan transcripts — skipping"; exit 1; }
 
 # --preserve publishes, so it needs a signed-in gh; without one, parking still
 # keeps the work locally and nothing is pushed.
