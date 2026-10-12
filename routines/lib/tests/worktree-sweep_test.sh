@@ -366,6 +366,15 @@ out=$(sweep --dry-run)
 case "$out" in *"held (within-grace): edited"*) ok "a FILE EDITED inside the grace window holds the tree";;
   *) bad "a fresh edit in an old directory was not seen: $out";; esac
 
+# A plain `git status` from anything (IDE, prompt, hook, the old sweep) rewrites
+# the index and moves the git dir's mtime; that is not someone working there.
+wt_in r statused
+age "$(W r statused)"
+git -C "$(W r statused)" status >/dev/null 2>&1
+out=$(sweep --dry-run)
+case "$out" in *"would reclaim (merged): statused"*) ok "an index refresh by git status does NOT make a tree look active";;
+  *) bad "git status alone held the tree as active: $out";; esac
+
 # A .agents-keep file opts a tree out.
 wt_in r kept
 age "$(W r kept)"
@@ -382,15 +391,26 @@ out=$(sweep --dry-run)
 case "$out" in *"held (uncommitted-changes): wip"*) ok "without --preserve, uncommitted work is held";;
   *) bad "uncommitted work not held without --preserve: $out";; esac
 
-# --preserve pushes it. The fixture repo does not exist on GitHub, so no PR can
-# open, and with no PR the tree must stay.
+# --preserve would publish it...
+out=$(sweep --preserve --dry-run)
+case "$out" in *"would preserve as a draft PR, then remove: wip"*) ok "--preserve picks local-only work for a draft PR";;
+  *) bad "--preserve did not pick the uncommitted work: $out";; esac
+# ...but the fixture repo cannot be confirmed PRIVATE (it is not on GitHub), or
+# gh is not signed in: either way nothing is pushed and the tree stays.
 out=$(sweep --preserve)
-if git -C "$P/r.git" cat-file -e "refs/heads/wip/$HOST/wip:work.txt" 2>/dev/null; then
-  ok "--preserve committed and PUSHED the uncommitted work to wip/$HOST/wip"
-else
-  bad "--preserve did not push the work: $out"
-fi
+git -C "$P/r.git" rev-parse -q --verify "refs/heads/wip/$HOST/wip" >/dev/null 2>&1 &&
+  bad "pushed to a repo not confirmed private: $out" || ok "nothing pushed to a repo not confirmed private"
 [ -d "$(W r wip)" ] && ok "with no PR opened, the tree is KEPT" || bad "tree removed although no PR was opened"
+
+# Night 2 of a failed preserve: the work reached wip/<host>/<name> but no PR
+# opened. Commits that only our own wip/ push holds still need their PR, so the
+# tree is never dropped as "already on origin" (reproduced in review).
+git_q -C "$(W r wip)" add -A; git_q -C "$(W r wip)" commit -m wip
+git_q -C "$(W r wip)" push origin "HEAD:refs/heads/wip/$HOST/wip"
+age "$(W r wip)"
+out=$(sweep --preserve --dry-run)
+case "$out" in *"would preserve as a draft PR, then remove: wip"*) ok "work only on a wip/ branch still needs its PR (not dropped)";;
+  *) bad "work only on wip/ was not kept for a PR: $(printf "%s\n" "$out" | grep -E ": wip$")";; esac
 
 # A tree whose every commit is already on origin loses only its local copy.
 wt_in r pushed
@@ -404,17 +424,78 @@ out=$(sweep --preserve)
 [ ! -d "$(W r pushed)" ] && ok "--preserve removes a tree whose commits are all on origin" || bad "pushed tree kept: $out"
 [ -n "$(git -C "$P/r" branch --list feat/pushed)" ] && ok "its local branch is kept" || bad "pushed tree's branch deleted"
 
-# A tree holding a likely secret is never pushed by a nightly job.
+# A tree holding a likely secret is never published by a nightly job: at the top
+# level, inside a NEW untracked directory (which `status` collapses to `?? cfg/`),
+# or as a key in an ordinary-looking file.
 wt_in r secret
 echo TOKEN=x > "$(W r secret)/.env.local"
 age "$(W r secret)"
-out=$(sweep --preserve)
-case "$out" in *"held (suspect-files): secret"*|*"suspect-files"*) ok "a tree with a .env file is held, not pushed";;
-  *) bad "suspect file not caught: $out";; esac
-git -C "$P/r.git" rev-parse -q --verify "refs/heads/wip/$HOST/secret" >/dev/null 2>&1 &&
-  bad "a .env file was PUSHED" || ok "nothing was pushed for the .env tree"
+wt_in r nested
+mkdir -p "$(W r nested)/cfg"; echo SECRET=1 > "$(W r nested)/cfg/.env"; echo k > "$(W r nested)/cfg/id_rsa"
+age "$(W r nested)"
+wt_in r inline
+printf 'token = "ghp_%s"\n' "abcdefghijklmnopqrstuvwxyz0123456789" > "$(W r inline)/notes.txt"
+age "$(W r inline)"
+out=$(sweep --preserve --dry-run)
+case "$out" in *"held (suspect-files): secret"*) ok "a top-level .env file holds the tree";; *) bad "top-level .env not caught: $out";; esac
+case "$out" in *"held (suspect-files): nested"*) ok "a .env inside a NEW untracked directory holds the tree";; *) bad "nested secret not caught: $out";; esac
+case "$out" in *"held (suspect-files): inline"*) ok "a token inside an ordinary file holds the tree";; *) bad "inline token not caught: $out";; esac
+
+# A STAGED large file is caught too (ls-files -m misses staged-and-unchanged).
+wt_in r big
+head -c 6000000 /dev/zero > "$(W r big)/big.bin"; git_q -C "$(W r big)" add big.bin
+age "$(W r big)"
+out=$(sweep --preserve --dry-run)
+case "$out" in *"held (file over 5 MB): big"*) ok "a staged file over 5 MB holds the tree";; *) bad "staged big file not caught: $out";; esac
+
+# Work that lives only in a MERGE commit: `git cherry` skips merges, so the old
+# check called this branch landed and deleted it (reproduced in review).
+wt_in r evil
+git_q -C "$P/r" commit --allow-empty -m 'main moves'
+git_q -C "$P/r" push origin main; git_q -C "$P/r" fetch origin
+git_q -C "$(W r evil)" merge --no-ff --no-commit origin/main
+echo only-here > "$(W r evil)/unique.txt"; git_q -C "$(W r evil)" add unique.txt
+git_q -C "$(W r evil)" commit -m 'merge with an extra file'
+age "$(W r evil)"
+out=$(sweep)
+[ -d "$(W r evil)" ] && ok "work that exists only in a MERGE commit is not treated as landed" || bad "a merge-only change was deleted: $out"
+
+# Gitignored files are not caches: a removal salvages them first. Caches
+# (node_modules and the like) are dropped.
+wt_in r ign
+printf 'precious.txt\nnode_modules/\n' > "$(W r ign)/.gitignore"
+git_q -C "$(W r ign)" add .gitignore; git_q -C "$(W r ign)" commit -m ignore
+git_q -C "$(W r ign)" push origin "HEAD:refs/heads/feat/ign"
+git_q -C "$P/r" fetch origin
+git_q -C "$P/r" merge -q --ff-only origin/feat/ign 2>/dev/null || git_q -C "$P/r" merge -q origin/feat/ign
+git_q -C "$P/r" push origin main; git_q -C "$P/r" fetch origin
+echo keep-me > "$(W r ign)/precious.txt"; mkdir -p "$(W r ign)/node_modules/x"; echo junk > "$(W r ign)/node_modules/x/i.js"
+age "$(W r ign)"
+out=$(sweep)
+if [ ! -d "$(W r ign)" ] && [ "$(cat "$P/.agents-swept/"*/r/ign/precious.txt 2>/dev/null)" = keep-me ]; then
+  ok "a GITIGNORED file is salvaged before the tree is removed"
+else
+  bad "ignored file not salvaged: $out"
+fi
+[ ! -e "$P/.agents-swept/"*/r/ign/node_modules ] && ok "caches are not salvaged" || bad "node_modules was salvaged"
+
+# A TERM mid-sweep must end the run. A handler that only cleaned up let the script
+# carry on with its stamp and transcript list deleted, removing fresh trees.
+wt_in r term-fresh
+SLOW="$BASE/slowshim"; mkdir -p "$SLOW"
+cat > "$SLOW/git" <<SHIM
+#!/bin/sh
+case " \$* " in *" cherry "*) sleep 2 ;; esac
+exec "$REALGIT" "\$@"
+SHIM
+chmod +x "$SLOW/git"
+PATH="$SLOW:$PATH" "$SH" "$SWEEP" --home "$P" --grace-days 3 > "$BASE/term.out" 2>&1 & TPID=$!
+sleep 1; kill -TERM "$TPID" 2>/dev/null; wait "$TPID"; trc=$?
+[ "$trc" -ne 0 ] && ok "TERM ends the run (exit $trc)" || bad "the run kept going after TERM"
+[ -d "$(W r term-fresh)" ] && ok "a fresh tree survives a TERM mid-run" || bad "fresh tree removed after TERM: $(cat "$BASE/term.out")"
 
 # The summary says why trees were kept.
+out=$(sweep --dry-run)
 case "$out" in *"  held: "*) ok "the run summary lists hold reasons";; *) bad "no hold reasons in the summary: $out";; esac
 
 echo "---"
