@@ -180,7 +180,7 @@ QUERY='{
   team(id: "'"$LINEAR_TEAM_ID"'") {
     projects(first: 50) {
       nodes {
-        name state progress
+        name state status { name type } progress
         projectMilestones(first: 20) { nodes { name targetDate progress sortOrder } }
         issues(first: 8, filter: { state: { type: { nin: ["completed", "canceled"] } } }) {
           nodes { identifier title priority state { name type } assignee { displayName } }
@@ -457,6 +457,12 @@ try:
 
     # -- Projects (all) + milestones + top open tickets -------------------
     projects = (team.get('projects') or {}).get('nodes', [])
+    # Same rule as linear-cli's project_state: Linear's UI files Paused under
+    # the Planned category, so a status named Paused reads as paused.
+    for p in projects:
+        st = p.get('status') or {}
+        paused = (st.get('name') or '').strip().lower() == 'paused'
+        p['state'] = 'paused' if paused else (st.get('type') or p.get('state'))
     # Drop finished projects; keep backlog/started/planned.
     live_projects = [
         p for p in projects
@@ -512,6 +518,8 @@ try:
             name = p.get('name') or 'unnamed'
             pct = pct_str(p.get('progress')) or '?'
             state = p.get('state') or ''
+            if state == 'paused':
+                state = 'paused, takes no new issues'
             if goals and norm(name) in goal_of:
                 state += f' · goal {goal_of[norm(name)]}'
             elif goals:

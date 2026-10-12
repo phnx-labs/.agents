@@ -120,6 +120,14 @@ cat > "$CURL_PAYLOAD" <<'JSON'
             }
           },
           {
+            "name": "On Hold",
+            "state": "planned",
+            "status": {"name": "Paused", "type": "planned"},
+            "progress": 0.9,
+            "projectMilestones": {"nodes": []},
+            "issues": {"nodes": []}
+          },
+          {
             "name": "Old Stuff",
             "state": "completed",
             "progress": 1.0,
@@ -234,6 +242,7 @@ check_contains "config.json creds: cycle by project"       "$out" "### Cycle by 
 check_contains "fixture apiKey reached Authorization"      "$(cat "$CURL_ARGS" 2>/dev/null)" "Authorization: lin_api_fixture_key"
 # Completed projects must not appear in the live list
 check_absent   "completed project filtered out"            "$out" "### Old Stuff"
+check_contains "paused status shows as paused"             "$out" "**On Hold** — 90% · paused, takes no new issues"
 
 # --- 2. env vars win over config.json -----------------------------------------
 rm -f "$CURL_ARGS"
