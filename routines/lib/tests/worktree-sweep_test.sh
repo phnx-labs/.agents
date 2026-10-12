@@ -445,6 +445,16 @@ case "$out" in *"held (recent-session): mentioned"*) ok "a tree named in a RECEN
 case "$out" in *"would reclaim: configured"*) ok "a harness CONFIG or the activity feed naming a tree does not hold it";;
   *) bad "config/activity mention held the tree: $(printf '%s\n' "$out" | grep ': configured$')";; esac
 mv "$P/.agents" "$BASE/p-agents-done"
+
+# A session that names many trees at once (a disk survey, an inventory) is not
+# working in any of them: its mentions do not hold.
+for i in 1 2 3 4 5 6; do wt_in r surveyed$i; age "$(WT r surveyed$i)"; done
+mkdir -p "$P/.claude/projects/y"
+for i in 1 2 3 4 5 6; do printf 'du -sh %s\n' "$(WT r surveyed$i)"; done > "$P/.claude/projects/y/survey.jsonl"
+out=$(sweep --dry-run)
+case "$out" in *"would reclaim: surveyed3"*) ok "a SURVEY naming more than 5 trees does not hold them";;
+  *) bad "a survey's mentions held the tree: $(printf '%s\n' "$out" | grep ': surveyed3$')";; esac
+mv "$P/.claude" "$BASE/p-claude-survey-done"
 rm -rf "$P/.claude"
 
 # .agents-keep opts one tree out.
@@ -506,27 +516,88 @@ sleep 1; kill -TERM "$TPID" 2>/dev/null; wait "$TPID"; trc=$?
 [ -d "$(WT r term-fresh)" ] && ok "a fresh tree survives a TERM mid-run" || bad "fresh tree removed after TERM: $(cat "$BASE/term.out")"
 
 # --preserve parks first (the work is safe locally whatever happens next), then
-# publishes only what passes the secret checks to a repo confirmed PRIVATE.
+# publishes only what passes the checks to a repo confirmed PRIVATE. A stand-in
+# `gh` answers auth, repo visibility (FAKE_GH_PRIVATE) and PRs; pushes go to the
+# fixture's local bare origin, so the publish path runs for real.
+FAKEGH="$BASE/fakegh"; mkdir -p "$FAKEGH"
+cat > "$FAKEGH/gh" <<'GH'
+#!/bin/sh
+case "$1 $2" in
+  "auth status") exit 0 ;;
+  "repo view") echo "${FAKE_GH_PRIVATE:-false}" ;;
+  "pr list") : ;;
+  "pr create") echo "https://example.invalid/pull/1" ;;
+  *) exit 1 ;;
+esac
+GH
+chmod +x "$FAKEGH/gh"
+psweep() { PATH="$FAKEGH:$PATH" sweep --preserve "$@"; }
+wip_on_origin() { "$REALGIT" -C "$P/r.git" rev-parse -q --verify "refs/heads/wip/$HOST/$1" >/dev/null 2>&1; }
+
+# Not confirmed private: parked locally, nothing pushed.
+wt_in r pubpublic
+echo work > "$(WT r pubpublic)/work.txt"
+age "$(WT r pubpublic)"
+out=$(FAKE_GH_PRIVATE=false psweep)
+check "--preserve still PARKS locally first" "$(git -C "$P/r" show refs/wip/pubpublic:work.txt 2>/dev/null)" "work"
+case "$out" in *"pubpublic: not published (phnx-labs/wtsweep-fixture-r is not confirmed private)"*)
+    ok "nothing is published unless gh confirms the repo private";;
+  *) bad "no private-repo refusal: $(printf '%s\n' "$out" | grep pubpublic)";; esac
+wip_on_origin pubpublic && bad "pushed to a repo not confirmed private" || ok "no wip branch for a repo not confirmed private"
+
+# Private, clean: pushed to wip/<host>/<name> and a draft PR opened.
 wt_in r pubok
 echo work > "$(WT r pubok)/work.txt"
 age "$(WT r pubok)"
+# Each way a secret or junk could ride along, all on a private repo.
 wt_in r pubsecret
 echo TOKEN=x > "$(WT r pubsecret)/.env.local"
 age "$(WT r pubsecret)"
 wt_in r pubinline
 printf 'token = "ghp_%s"\n' abcdefghijklmnopqrstuvwxyz0123456789 > "$(WT r pubinline)/notes.txt"
 age "$(WT r pubinline)"
-out=$(PATH="$SLOW/../nogh:$PATH" sweep --preserve)
-check "--preserve still PARKS locally first" "$(git -C "$P/r" show refs/wip/pubok:work.txt 2>/dev/null)" "work"
-case "$out" in *"pubsecret: not published (suspect file names)"*) ok "a .env file is never published";;
-  *) bad "suspect file name not caught: $(printf '%s\n' "$out" | grep pubsecret)";; esac
-case "$out" in *"pubinline: not published (suspect file contents)"*) ok "a token inside an ordinary file is never published";;
-  *) bad "suspect content not caught: $(printf '%s\n' "$out" | grep pubinline)";; esac
-case "$out" in *"preserve off: gh is not signed in"*|*"pubok: not published (phnx-labs/wtsweep-fixture-r is not confirmed private)"*)
-    ok "nothing is published unless gh confirms the repo private";;
-  *) bad "published without a private-repo check: $(printf '%s\n' "$out" | grep -E 'pubok|preserve')";; esac
-"$REALGIT" -C "$P/r.git" for-each-ref 'refs/heads/wip/*' | grep -q . &&
-  bad "a wip branch was PUSHED to a repo not confirmed private" || ok "no wip branch reached the fixture origin"
+wt_in r pubspace
+# Committed: an untracked name with a space is quoted by `git status`, so the
+# activity check already holds such a tree as unjudgeable.
+printf 'k = "ghp_%s"\n' abcdefghijklmnopqrstuvwxyz0123456789 > "$(WT r pubspace)/my notes.txt"
+git_q -C "$(WT r pubspace)" add "my notes.txt"; git_q -C "$(WT r pubspace)" commit -m notes
+age "$(WT r pubspace)"
+# A key committed and then deleted is still in the pushed history.
+wt_in r pubhist
+echo 'AKIAABCDEFGHIJKLMNOP' > "$(WT r pubhist)/hist.txt"
+git_q -C "$(WT r pubhist)" add hist.txt; git_q -C "$(WT r pubhist)" commit -m add
+git_q -C "$(WT r pubhist)" rm -q hist.txt; git_q -C "$(WT r pubhist)" commit -m remove
+age "$(WT r pubhist)"
+wt_in r pubhistenv
+echo S=1 > "$(WT r pubhistenv)/.env"
+git_q -C "$(WT r pubhistenv)" add -f .env; git_q -C "$(WT r pubhistenv)" commit -m add
+git_q -C "$(WT r pubhistenv)" rm -q .env; git_q -C "$(WT r pubhistenv)" commit -m remove
+age "$(WT r pubhistenv)"
+# A big blob in history, and a key among 3,000 committed files (no path list on
+# any command line).
+wt_in r pubbig
+head -c 6000000 /dev/zero > "$(WT r pubbig)/big.bin"
+git_q -C "$(WT r pubbig)" add big.bin; git_q -C "$(WT r pubbig)" commit -m big
+git_q -C "$(WT r pubbig)" rm -q big.bin; git_q -C "$(WT r pubbig)" commit -m unbig
+age "$(WT r pubbig)"
+wt_in r pubmany
+mkdir -p "$(WT r pubmany)/many"
+i=0; while [ $i -lt 3000 ]; do echo "$i" > "$(WT r pubmany)/many/a-rather-long-file-name-to-fill-the-argument-list-$i.txt"; i=$((i+1)); done
+echo 'AKIAABCDEFGHIJKLMNOP' > "$(WT r pubmany)/many/a-rather-long-file-name-to-fill-the-argument-list-1500.txt"
+git_q -C "$(WT r pubmany)" add many; git_q -C "$(WT r pubmany)" commit -m many
+age "$(WT r pubmany)"
+out=$(FAKE_GH_PRIVATE=true psweep)
+case "$out" in *"pubok: published: https://example.invalid/pull/1"*) ok "a clean parked tree on a private repo is PUBLISHED as a draft PR";;
+  *) bad "clean tree not published: $(printf '%s\n' "$out" | grep pubok)";; esac
+check "the published branch carries the work" "$("$REALGIT" -C "$P/r.git" show "wip/$HOST/pubok:work.txt" 2>/dev/null)" "work"
+for pair in "suspect file names:pubsecret" "suspect file contents:pubinline" "suspect file contents:pubspace" \
+            "suspect file contents:pubhist" "suspect file names:pubhistenv" "a file over 5 MB:pubbig" \
+            "suspect file contents:pubmany"; do
+  n=${pair#*:}; why=${pair%%:*}
+  case "$out" in *"$n: not published ($why)"*) ok "not published: $n ($why)";;
+    *) bad "$n was not refused as '$why': $(printf '%s\n' "$out" | grep "^$n:")";; esac
+  wip_on_origin "$n" && bad "$n was PUSHED" || ok "nothing pushed for $n"
+done
 
 # The summary says why trees were kept.
 out=$(sweep --dry-run)

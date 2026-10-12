@@ -186,11 +186,25 @@ list_recent_transcripts() { # <stamp>
 # is one automaton), once per run. Measured: 20.8 GB of transcripts from 3 days on
 # one box, ~28 s per pass, so a pass per repo or per tree cannot finish inside
 # the routine timeout. Over-matching (a mention of fix-1103 also marks fix-110)
-# only ever HOLDS. No list (it failed to build) means every tree is mentioned.
+# only ever HOLDS. -a: a transcript store with binary records is read as text.
+#
+# A transcript that names more than SURVEY_TREES different trees is a survey (a
+# disk cleanup, an inventory, a review of the fleet), not a session working in
+# them: on yosemite-m5 four such sessions named 25-40 trees each and held 90 of
+# 93. Its mentions do not hold; a session working in a tree names a handful.
+SURVEY_TREES=5
+# Paths named by working sessions among the transcripts listed on stdin.
+working_mentions() {
+  tr '\n' '\0' | xargs -0 grep -aoHF -f "$patfile" 2>/dev/null | sort -u |
+    awk -v max="$SURVEY_TREES" '
+      { i = index($0, ":/"); f = substr($0, 1, i - 1); p = substr($0, i + 1)
+        n[f]++; at[NR] = f; path[NR] = p }
+      END { for (k = 1; k <= NR; k++) if (n[at[k]] <= max) print path[k] }' | sort -u
+}
 build_mentioned() {
   : > "$mentioned"
   [ -s "$transcripts" ] && [ -s "$patfile" ] || return 0
-  tr '\n' '\0' < "$transcripts" | xargs -0 grep -ohF -f "$patfile" 2>/dev/null | sort -u > "$mentioned"
+  working_mentions < "$transcripts" > "$mentioned"
 }
 mentioned_recently() { # <wt>
   [ -f "$mentioned" ] || return 0
@@ -199,7 +213,7 @@ mentioned_recently() { # <wt>
 # Right before mutating: only transcripts written since the run's scan.
 mentioned_since_scan() { # <wt>
   [ -f "$scanstamp" ] || return 0
-  [ -n "$(list_recent_transcripts "$scanstamp" | tr '\n' '\0' | xargs -0 grep -lF -- "$1" 2>/dev/null | head -n 1)" ]
+  list_recent_transcripts "$scanstamp" | working_mentions | grep -qxF -- "$1"
 }
 
 # Merge commits on <range> that carry a change of their own. `git cherry` skips
@@ -241,7 +255,11 @@ is_abandoned_checkout() { # <wt> <gitdir> <ref>
 CACHE_DIRS='(^|/)(node_modules|\.next|\.nuxt|\.svelte-kit|dist|target|\.venv|__pycache__|\.pytest_cache|\.mypy_cache|\.ruff_cache|\.tox|\.turbo|\.cache|\.parcel-cache|\.gradle|\.wrangler|\.vercel|\.output)(/|$)'
 SALVAGE_MAX_KB=102400
 salvage_ignored() { # <repo> <wt>
-  _keep=$(git -C "$2" -c core.quotepath=off ls-files -o -i --exclude-standard --directory 2>/dev/null | grep -vE "$CACHE_DIRS")
+  # An ls-files failure is not "nothing to salvage": the removal would then
+  # delete whatever it could not list.
+  _all=$(git -C "$2" -c core.quotepath=off ls-files -o -i --exclude-standard --directory 2>/dev/null) ||
+    { echo "ignored files unreadable"; return 1; }
+  _keep=$(printf '%s\n' "$_all" | grep -vE "$CACHE_DIRS")
   [ -n "$_keep" ] || return 0
   _kb=$(printf '%s\n' "$_keep" | (cd "$2" && while IFS= read -r _p; do du -sk "$_p" 2>/dev/null; done) | awk '{s += $1} END {print s + 0}')
   [ "$_kb" -le "$SALVAGE_MAX_KB" ] || { echo "ignored files total ${_kb} KB, over the salvage cap"; return 1; }
@@ -258,16 +276,30 @@ salvage_ignored() { # <repo> <wt>
 # commit carries beyond the default branch; contents are scanned for key shapes.
 SUSPECT_PATHS='(^|/)(\.env[^/]*|\.npmrc|\.netrc|\.pgpass|\.pypirc|id_[a-z0-9]+|[^/]*\.(pem|key|p8|p12|pfx|ppk|jks|keystore)|credentials[^/]*|service-account[^/]*\.json|secrets?[^/]*\.(json|ya?ml|env|toml))$'
 SUSPECT_CONTENT='-----BEGIN [A-Z ]*PRIVATE KEY-----|gh[pousr]_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{30,}|AKIA[0-9A-Z]{16}|xox[abposr]-[A-Za-z0-9-]{10,}|sk-[A-Za-z0-9_-]{32,}|sk_live_[A-Za-z0-9]{20,}|AIza[0-9A-Za-z_-]{35}'
+# Scans exactly what a push of <commit> sends: every commit in <ref>..<commit>,
+# not only the final tree, since a key committed and then deleted is still in the
+# pushed history (reproduced in review). Names come from every commit's file list,
+# contents from every added line, sizes from every blob. One git process each, no
+# path list on a command line, and anything but a clean "no match" blocks.
 publish_blocker() { # <repo> <commit> <ref> -> a reason, or nothing
-  _p=$(git -C "$1" -c core.quotepath=off diff --name-only "$3...$2" 2>/dev/null) || { echo "diff unreadable"; return; }
-  printf '%s\n' "$_p" | grep -qE "$SUSPECT_PATHS" && { echo "suspect file names"; return; }
-  git -C "$1" grep -qE -e "$SUSPECT_CONTENT" "$2" -- $(printf '%s\n' "$_p" | sed 's/^/:(literal)/') 2>/dev/null &&
-    { echo "suspect file contents"; return; }
-  printf '%s\n' "$_p" | while IFS= read -r _f; do
-    [ -n "$_f" ] || continue
-    _sz=$(git -C "$1" cat-file -s "$2:$_f" 2>/dev/null) || continue
-    [ "$_sz" -gt 5242880 ] && { echo "a file over 5 MB"; break; }
-  done
+  _r="$3..$2"
+  git -C "$1" -c core.quotepath=off log --format= --name-only --no-renames "$_r" > "$scratch" 2>/dev/null ||
+    { echo "history unreadable"; return; }
+  grep -qE "$SUSPECT_PATHS" "$scratch"; _rc=$?
+  [ "$_rc" -eq 0 ] && { echo "suspect file names"; return; }
+  [ "$_rc" -eq 1 ] || { echo "name scan failed"; return; }
+  git -C "$1" log -p --format= --no-color --no-ext-diff --text "$_r" > "$scratch" 2>/dev/null ||
+    { echo "history unreadable"; return; }
+  grep -aqE "^\+.*($SUSPECT_CONTENT)" "$scratch"; _rc=$?
+  [ "$_rc" -eq 0 ] && { echo "suspect file contents"; return; }
+  [ "$_rc" -eq 1 ] || { echo "content scan failed"; return; }
+  # Only the id goes to cat-file: it reads a whole "<id> <path>" line as one name,
+  # reports it missing, and the check would pass on nothing.
+  _big=$(git -C "$1" rev-list --objects "$_r" 2>/dev/null | cut -d' ' -f1 |
+    git -C "$1" cat-file --batch-check='%(objecttype) %(objectsize)' 2>/dev/null |
+    awk '$NF == "missing" { print "bad"; exit } $1 == "blob" && $2 > 5242880 { print "big"; exit }
+         END { if (NR == 0) print "bad" }')
+  case $_big in big) echo "a file over 5 MB" ;; bad) echo "history unreadable" ;; esac
 }
 
 # --preserve: push a parked worktree's commit to wip/<host>/<name> and open (or
@@ -281,8 +313,13 @@ publish_park() { # <repo> <wipref> <ref> <name> <orig-branch>
   [ -n "$_b" ] && { echo "not published ($_b), kept locally in $2"; return 0; }
   _priv=$($TO gh repo view -R "$_slug" --json isPrivate -q .isPrivate 2>/dev/null)
   [ "$_priv" = true ] || { echo "not published ($_slug is not confirmed private), kept locally in $2"; return 0; }
-  $TO git -C "$1" push -q origin "$2:refs/heads/$_wipb" >/dev/null 2>&1 ||
-    { echo "PUBLISH FAILED (push), kept locally in $2"; return 0; }
+  # A later tree with the same name gets its own branch rather than a rejected
+  # non-fast-forward push onto the first one's PR.
+  if ! $TO git -C "$1" push -q origin "$2:refs/heads/$_wipb" >/dev/null 2>&1; then
+    _wipb="$_wipb-$now"
+    $TO git -C "$1" push -q origin "$2:refs/heads/$_wipb" >/dev/null 2>&1 ||
+      { echo "PUBLISH FAILED (push), kept locally in $2"; return 0; }
+  fi
   _url=$($TO gh pr list -R "$_slug" --head "$_wipb" --state open --json url -q '.[0].url' 2>/dev/null)
   [ -n "$_url" ] || _url=$($TO gh pr create -R "$_slug" --draft --base "${3#origin/}" --head "$_wipb" \
       --title "WIP: $4 (parked on $host)" \
@@ -463,19 +500,21 @@ sweep_repo() {
     case $reason in
       park:*)
         if ! wipref=$(park "$repo" "$wt" "$name"); then
-          held=$((held + 1)); echo "held (could not park): $name"; continue
+          held=$((held + 1)); echo "failed or changed during sweep" >> "$reasons"; echo "held (could not park): $name"; continue
         fi
+        # Salvage BEFORE the last look, so a write during the (up to 100 MB) copy
+        # is caught by it rather than lost.
+        if ! salv=$(salvage_ignored "$repo" "$wt"); then
+          held=$((held + 1)); echo "failed or changed during sweep" >> "$reasons"; echo "held (ignored files not salvaged: $salv, kept $wipref): $name"; continue
+        fi
+        [ -n "$salv" ] && echo "$name: $salv"
         # Last look after the snapshot: anything written since would not be in
         # the ref, so the checkout stays (the ref is harmless and kept).
         snapshot_cwds
         if [ "$(blockers_for "$wt" "$ref" "$GRACE_DAYS")" != "$reason" ] ||
            [ "$(worktree_tree "$wt")" != "$(git -C "$repo" rev-parse "$wipref^{tree}" 2>/dev/null)" ]; then
-          held=$((held + 1)); echo "held (changed while parking, kept $wipref): $name"; continue
+          held=$((held + 1)); echo "failed or changed during sweep" >> "$reasons"; echo "held (changed while parking, kept $wipref): $name"; continue
         fi
-        if ! salv=$(salvage_ignored "$repo" "$wt"); then
-          held=$((held + 1)); echo "held (ignored files not salvaged: $salv, kept $wipref): $name"; continue
-        fi
-        [ -n "$salv" ] && echo "$name: $salv"
         # --force only because the tree may be dirty; every byte of it is in the
         # ref, checked against the live tree just above. The branch is not touched.
         if git -C "$repo" worktree remove --force "$wt" >/dev/null 2>&1; then
@@ -483,7 +522,7 @@ sweep_repo() {
           parked=$((parked + 1))
           [ "$PRESERVE" = 1 ] && echo "$name: $(publish_park "$repo" "$wipref" "$ref" "$name" "$branch")"
         else
-          held=$((held + 1)); echo "held (git refused removal, kept $wipref): $name"
+          held=$((held + 1)); echo "failed or changed during sweep" >> "$reasons"; echo "held (git refused removal, kept $wipref): $name"
         fi
         continue ;;
     esac
@@ -499,7 +538,7 @@ sweep_repo() {
         force=--force ;;
       *)
         if ! salv=$(salvage_ignored "$repo" "$wt"); then
-          held=$((held + 1)); echo "held (ignored files not salvaged: $salv): $name"; continue
+          held=$((held + 1)); echo "failed or changed during sweep" >> "$reasons"; echo "held (ignored files not salvaged: $salv): $name"; continue
         fi
         [ -n "$salv" ] && echo "$name: $salv" ;;
     esac
