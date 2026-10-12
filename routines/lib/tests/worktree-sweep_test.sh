@@ -44,8 +44,13 @@ git_q -C "$REPO" commit -m init
 git_q -C "$REPO" push -u origin main
 mkdir -p "$REPO/.agents/worktrees"
 
-# Backdate a worktree past the grace window (the sweep reads dir mtime).
-age() { touch -d '30 days ago' "$1" 2>/dev/null || touch -t 202601010000 "$1"; }
+# Backdate a worktree past the grace window: every file in it and in its git dir,
+# since the sweep reads the newest change in either, not the directory's mtime.
+age() {
+  _gd=$(git -C "$1" rev-parse --absolute-git-dir 2>/dev/null)
+  find "$1" ${_gd:+"$_gd"} -exec touch -d '30 days ago' {} + 2>/dev/null ||
+    find "$1" ${_gd:+"$_gd"} -exec touch -t 202601010000 {} +
+}
 
 new_wt() { # <name> <branch>
   git_q -C "$REPO" worktree add -b "$2" "$REPO/.agents/worktrees/$1" origin/main
@@ -106,7 +111,7 @@ git_q -C "$REPO" remote set-url origin "git@github.com:phnx-labs/fixture-repo.gi
 # ---------------------------------------------------------------- dry run ---
 out=$("$SH" "$SWEEP" --home "$BASE" --grace-days 3 --dry-run 2>&1)
 
-case "$out" in *"would reclaim: merged"*) ok "dry-run reclaims the rebase-merged worktree (patch-id, not ancestry)";;
+case "$out" in *"would reclaim (merged): merged"*) ok "dry-run reclaims the rebase-merged worktree (patch-id, not ancestry)";;
   *) bad "dry-run missed the rebase-merged worktree: $out";; esac
 case "$out" in *"held (unmerged-commits): unpushed"*) ok "dry-run holds unpushed work";;
   *) bad "dry-run did not hold unpushed work: $out";; esac
@@ -291,6 +296,126 @@ fi
 case "$out" in *"gained unmerged commits during sweep"*)
     ok "RACE: the kept branch is reported, not silently skipped";;
   *) bad "RACE: no 'gained unmerged commits' message: $out";; esac
+
+# ================================================ in-use detection, abandoned
+# checkouts and --preserve. A separate home so --preserve never tries to push
+# the fixtures above to GitHub. Each repo's fetch URL is allowlisted, but its
+# push URL is a local bare repo, so pushes are real.
+P="$BASE/p"; mkdir -p "$P"
+HOST=$(hostname -s 2>/dev/null || echo unknown)
+mkrepo() { # <name> -> $P/<name>, origin $P/<name>.git
+  git_q init --bare -b main "$P/$1.git"
+  git_q clone "$P/$1.git" "$P/$1"
+  echo x > "$P/$1/f.txt"; git_q -C "$P/$1" add .; git_q -C "$P/$1" commit -m init
+  git_q -C "$P/$1" push -u origin main
+  mkdir -p "$P/$1/.agents/worktrees"
+  git_q -C "$P/$1" remote set-url origin "git@github.com:phnx-labs/wtsweep-fixture-$1.git"
+  git_q -C "$P/$1" remote set-url --push origin "$P/$1.git"
+}
+wt_in() { git_q -C "$P/$1" worktree add -b "feat/$2" "$P/$1/.agents/worktrees/$2" origin/main; }
+W() { echo "$P/$1/.agents/worktrees/$2"; }
+sweep() { "$SH" "$SWEEP" --home "$P" --grace-days 3 "$@" 2>&1; }
+mkrepo r
+
+# An abandoned checkout: what a `git worktree add` killed mid-checkout leaves.
+wt_in r abandoned
+age "$(W r abandoned)"
+GD=$(git -C "$(W r abandoned)" rev-parse --absolute-git-dir)
+rm -f "$GD/index"; : > "$GD/index.lock"; echo initializing > "$GD/locked"
+# Backdate after the edits: removing index moved the git dir's own mtime.
+touch -d '30 days ago' "$GD/index.lock" "$GD/locked" "$GD" 2>/dev/null || touch -t 202601010000 "$GD/index.lock" "$GD/locked" "$GD"
+# The same shape, but a file was written a day after it was created: not abandoned.
+wt_in r written
+age "$(W r written)"
+GD2=$(git -C "$(W r written)" rev-parse --absolute-git-dir)
+rm -f "$GD2/index"; echo initializing > "$GD2/locked"
+touch -d '30 days ago' "$GD2/locked" "$GD2" 2>/dev/null || touch -t 202601010000 "$GD2/locked" "$GD2"
+echo later > "$(W r written)/later.txt"
+touch -d '20 days ago' "$(W r written)/later.txt" 2>/dev/null || touch -t 202601200000 "$(W r written)/later.txt"
+out=$(sweep)
+[ ! -d "$(W r abandoned)" ] && ok "ABANDONED checkout (no index, 'initializing' lock) reclaimed" || bad "abandoned checkout survived: $out"
+[ -d "$(W r written)" ] && ok "abandoned-looking tree written after creation is HELD" || bad "a tree with later writes was force-removed"
+
+# A merged, aged tree is held while ANY process sits in it — an idle agent's
+# harness keeps its cwd there however long it waits.
+wt_in r live
+age "$(W r live)"
+( cd "$(W r live)" && exec sleep 60 ) & LIVE_PID=$!
+sleep 1
+out=$(sweep --dry-run)
+case "$out" in *"held (live-process): live"*) ok "a tree with a LIVE PROCESS inside is held";;
+  *) bad "live process not detected: $out";; esac
+kill "$LIVE_PID" 2>/dev/null; wait "$LIVE_PID" 2>/dev/null
+
+# Held when a recent transcript names it: an agent working by absolute path.
+wt_in r mentioned
+age "$(W r mentioned)"
+mkdir -p "$P/.claude/projects/x"
+printf '{"cwd":"/elsewhere","tool_input":{"file_path":"%s/f.txt"}}\n' "$(W r mentioned)" > "$P/.claude/projects/x/s.jsonl"
+out=$(sweep --dry-run)
+case "$out" in *"held (recent-session): mentioned"*) ok "a tree named in a RECENT TRANSCRIPT is held";;
+  *) bad "recent transcript mention not detected: $out";; esac
+rm -rf "$P/.claude"
+
+# An old directory with one file edited today is in use. The directory's own
+# mtime, which the sweep used to read, does not move on an edit.
+wt_in r edited
+age "$(W r edited)"
+touch "$(W r edited)/f.txt"
+out=$(sweep --dry-run)
+case "$out" in *"held (within-grace): edited"*) ok "a FILE EDITED inside the grace window holds the tree";;
+  *) bad "a fresh edit in an old directory was not seen: $out";; esac
+
+# A .agents-keep file opts a tree out.
+wt_in r kept
+age "$(W r kept)"
+: > "$(W r kept)/.agents-keep"
+out=$(sweep --dry-run)
+case "$out" in *"held (keep-marker): kept"*) ok ".agents-keep holds the tree";;
+  *) bad ".agents-keep ignored: $out";; esac
+
+# Without --preserve, local-only work is held, as before.
+wt_in r wip
+echo work > "$(W r wip)/work.txt"
+age "$(W r wip)"
+out=$(sweep --dry-run)
+case "$out" in *"held (uncommitted-changes): wip"*) ok "without --preserve, uncommitted work is held";;
+  *) bad "uncommitted work not held without --preserve: $out";; esac
+
+# --preserve pushes it. The fixture repo does not exist on GitHub, so no PR can
+# open, and with no PR the tree must stay.
+out=$(sweep --preserve)
+if git -C "$P/r.git" cat-file -e "refs/heads/wip/$HOST/wip:work.txt" 2>/dev/null; then
+  ok "--preserve committed and PUSHED the uncommitted work to wip/$HOST/wip"
+else
+  bad "--preserve did not push the work: $out"
+fi
+[ -d "$(W r wip)" ] && ok "with no PR opened, the tree is KEPT" || bad "tree removed although no PR was opened"
+
+# A tree whose every commit is already on origin loses only its local copy.
+wt_in r pushed
+echo p > "$(W r pushed)/p.txt"; git_q -C "$(W r pushed)" add .; git_q -C "$(W r pushed)" commit -m pushed
+git_q -C "$(W r pushed)" push origin HEAD:refs/heads/feat/pushed
+age "$(W r pushed)"
+out=$(sweep --dry-run)
+case "$out" in *"held (unmerged-commits): pushed"*) ok "without --preserve, pushed-but-unmerged is held";;
+  *) bad "pushed-but-unmerged not held without --preserve: $out";; esac
+out=$(sweep --preserve)
+[ ! -d "$(W r pushed)" ] && ok "--preserve removes a tree whose commits are all on origin" || bad "pushed tree kept: $out"
+[ -n "$(git -C "$P/r" branch --list feat/pushed)" ] && ok "its local branch is kept" || bad "pushed tree's branch deleted"
+
+# A tree holding a likely secret is never pushed by a nightly job.
+wt_in r secret
+echo TOKEN=x > "$(W r secret)/.env.local"
+age "$(W r secret)"
+out=$(sweep --preserve)
+case "$out" in *"held (suspect-files): secret"*|*"suspect-files"*) ok "a tree with a .env file is held, not pushed";;
+  *) bad "suspect file not caught: $out";; esac
+git -C "$P/r.git" rev-parse -q --verify "refs/heads/wip/$HOST/secret" >/dev/null 2>&1 &&
+  bad "a .env file was PUSHED" || ok "nothing was pushed for the .env tree"
+
+# The summary says why trees were kept.
+case "$out" in *"  held: "*) ok "the run summary lists hold reasons";; *) bad "no hold reasons in the summary: $out";; esac
 
 echo "---"
 echo "worktree-sweep: $pass passed, $fail failed"

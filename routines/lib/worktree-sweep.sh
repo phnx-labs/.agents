@@ -28,17 +28,25 @@
 # apply. That deny stops an AGENT picking branches to delete; here the branch is
 # picked by the merge. Agents gain no permission and no command.
 #
-# Usage: worktree-sweep.sh [--grace-days N] [--dry-run] [--home DIR]
+# A tree is never touched while an agent may be using it: a live process inside
+# it, any change in it or a transcript naming it within the grace window, or a
+# `.agents-keep` file in it. With --preserve, a stale tree holding work that
+# exists nowhere else is pushed to wip/<host>/<name> as a draft PR first, and one
+# whose commits are all on origin loses only its local copy.
+#
+# Usage: worktree-sweep.sh [--grace-days N] [--dry-run] [--preserve] [--home DIR]
 set -u
 
 GRACE_DAYS=3
 DRY_RUN=0
+PRESERVE=0
 SEARCH_HOME=$HOME
 
 while [ $# -gt 0 ]; do
   case $1 in
     --grace-days) GRACE_DAYS=${2:-3}; shift 2 ;;
     --dry-run)    DRY_RUN=1; shift ;;
+    --preserve)   PRESERVE=1; shift ;;
     --home)       SEARCH_HOME=${2:-$HOME}; shift 2 ;;
     *) echo "worktree-sweep: unknown argument '$1'" >&2; exit 2 ;;
   esac
@@ -48,8 +56,10 @@ now=$(date +%s)
 swept=0
 held=0
 
-wtlist=$(mktemp) || { echo "could not create temp file — skipping"; exit 0; }
-trap 'rm -f "$wtlist"' EXIT INT TERM
+host=$(hostname -s 2>/dev/null || echo unknown)
+wtlist=$(mktemp) && livefile=$(mktemp) && transcripts=$(mktemp) && reasons=$(mktemp) &&
+  gracestamp=$(mktemp) && scratch=$(mktemp) || { echo "could not create temp file — skipping"; exit 0; }
+trap 'rm -f "$wtlist" "$livefile" "$transcripts" "$reasons" "$gracestamp" "$scratch"' EXIT INT TERM
 
 # The ref to compare against: origin/HEAD, else origin/main|master. With no
 # default ref every worktree is indeterminate and nothing is removed.
@@ -66,32 +76,149 @@ default_ref() {
 
 mtime_of() { stat -c %Y "$1" 2>/dev/null || stat -f %m "$1" 2>/dev/null; }
 
-# Every reason a worktree is NOT reclaimable, or empty when it is. Fails CLOSED:
-# an unreadable status or an undeterminable merge state is a blocker, never a
-# pass. An index.lock held by a live agent lands exactly there — on the tree most
-# likely to be holding work.
+# touch -t takes local [[CC]YY]MMDDhhmm[.SS] on both GNU and BSD; only the epoch
+# conversion differs (date -d @N on GNU, date -r N on BSD/macOS).
+stamp_at() { # <file> <epoch>
+  _t=$(date -d "@$2" +%Y%m%d%H%M.%S 2>/dev/null || date -r "$2" +%Y%m%d%H%M.%S 2>/dev/null) || return 1
+  touch -t "$_t" "$1"
+}
+
+# `git status` refreshes the index when stat data changed and WRITES it, which
+# bumps the index mtime — the activity signal below. Every read here passes
+# --no-optional-locks so the sweep never makes a tree look freshly used.
+gitr() { git --no-optional-locks "$@"; }
+
+# Whether anything in the tree or its git dir changed since <stamp>: an edit, a
+# `git add` (index), a commit (HEAD, logs). The directory's own mtime, which this
+# used to read, moves only when an entry directly under it is added or removed,
+# so a tree being edited every hour read as 30 days idle.
+changed_since() { # <wt> <gitdir> <stamp>
+  [ -n "$(find "$1" "$2" \( -name node_modules -o -name .next -o -name dist -o -name target \
+            -o -name .venv \) -prune -o -newer "$3" -print 2>/dev/null | head -n 1)" ]
+}
+
+# Processes whose working directory is inside a worktree. An agent idle for hours
+# or days still has its harness process sitting in the tree, so this — not the age
+# — is what protects an open session. Linux reads /proc; macOS has no /proc, so lsof.
+list_live_cwds() {
+  if [ -d /proc/self ]; then
+    for _p in /proc/[0-9]*; do readlink "$_p/cwd" 2>/dev/null; done
+  else
+    lsof -a -d cwd -Fn 2>/dev/null | sed -n 's/^n//p'
+  fi
+}
+refresh_live() { list_live_cwds | sort -u > "$livefile"; }
+has_live_process() { # <wt>
+  awk -v p="$1/" 'index($0 "/", p) == 1 { f = 1 } END { exit !f }' "$livefile"
+}
+
+# Agent transcripts written within the grace window. An agent that works on a tree
+# by absolute path from elsewhere (git -C, editing by full path) never has its
+# cwd there, but its transcript names the path. Over-matching (fix-110 also
+# matches a mention of fix-1103) only ever HOLDS a tree, never frees one.
+list_recent_transcripts() {
+  for _d in "$SEARCH_HOME/.agents/.history" "$SEARCH_HOME/.claude/projects" "$SEARCH_HOME/.codex/sessions"; do
+    [ -e "$_d" ] && find -H "$_d" -type f -newer "$gracestamp" 2>/dev/null
+  done | sort -u
+}
+mentioned_recently() { # <wt>
+  [ -s "$transcripts" ] || return 1
+  # tr turns the list into NUL-separated paths so names with spaces survive xargs.
+  # Tested on output, not exit status: xargs fails if ANY batch has no match.
+  [ -n "$(tr '\n' '\0' < "$transcripts" | xargs -0 grep -lF -- "$1" 2>/dev/null | head -n 1)" ]
+}
+
+# A `git worktree add` killed mid-checkout (main-branch-guard runs it inside a
+# 5-second Codex hook) leaves git's "initializing" lock, an empty index.lock and
+# NO index: every file then reads as staged-deleted plus untracked, so the
+# uncommitted-changes check holds it forever. It is that only if no commit was
+# made on it and no file was written more than 10 minutes after it was created.
+is_abandoned_checkout() { # <wt> <gitdir> <ref>
+  [ ! -f "$2/index" ] || return 1
+  [ "$(cat "$2/locked" 2>/dev/null)" = initializing ] || return 1
+  _c=$(mtime_of "$2/HEAD") || return 1
+  stamp_at "$scratch" $((_c + 600)) || return 1
+  changed_since "$1" "$2/logs" "$scratch" && return 1
+  _ch=$(gitr -C "$1" cherry "$3" HEAD 2>/dev/null) || return 1
+  [ "$(printf '%s\n' "$_ch" | grep -c '^+')" -eq 0 ]
+}
+
+# Paths that must never be pushed by a nightly job, even inside a WIP commit.
+SUSPECT_PATHS='(^|/)(\.env[^/]*|id_[a-z0-9]+|[^/]*\.(pem|key|p12|pfx)|credentials[^/]*|secrets?[^/]*\.(json|ya?ml|env))$'
+
+# What to do with one worktree, as "<action> <reason>". Fails CLOSED: an
+# unreadable status or an undeterminable merge state is a hold, never a pass. An
+# index.lock held by a live agent lands exactly there — on the tree most likely
+# to be holding work.
 #
 # Merge is judged by patch-id (`git cherry`), NOT ancestry: this fleet
 # rebase-merges, so a landed branch's SHAs are rewritten and
 # `merge-base --is-ancestor` reports NOT merged for work that fully landed — an
 # ancestry gate would reclaim nothing at all. Patch-id also subsumes the unpushed
 # check, since an unpushed commit has no upstream equivalent.
-blockers_for() {
-  _wt=$1; _ref=$2; _grace=$3
-  _mt=$(mtime_of "$_wt") || { printf '%s' 'age-unreadable'; return; }
-  _age=$(( (now - _mt) / 86400 ))
-  [ "$_age" -lt "$_grace" ] && { printf '%s' 'within-grace'; return; }
-  if ! _st=$(git -C "$_wt" status --porcelain 2>/dev/null); then
-    printf '%s' 'status-unreadable'; return
+#
+# Actions: hold | remove (merged, or an abandoned checkout) | drop (--preserve:
+# every commit is already on origin and the tree is clean) | preserve
+# (--preserve: local-only work, pushed as a draft PR before the tree goes).
+verdict_for() { # <wt> <ref>
+  _wt=$1; _ref=$2
+  has_live_process "$_wt" && { echo 'hold live-process'; return; }
+  [ -e "$_wt/.agents-keep" ] && { echo 'hold keep-marker'; return; }
+  _gd=$(git -C "$_wt" rev-parse --absolute-git-dir 2>/dev/null) || { echo 'hold status-unreadable'; return; }
+  changed_since "$_wt" "$_gd" "$gracestamp" && { echo 'hold within-grace'; return; }
+  mentioned_recently "$_wt" && { echo 'hold recent-session'; return; }
+  is_abandoned_checkout "$_wt" "$_gd" "$_ref" && { echo 'remove abandoned-checkout'; return; }
+  _st=$(gitr -C "$_wt" status --porcelain 2>/dev/null) || { echo 'hold status-unreadable'; return; }
+  _ch=$(gitr -C "$_wt" cherry "$_ref" HEAD 2>/dev/null) || { echo 'hold merge-state-unknown'; return; }
+  _ahead=$(printf '%s\n' "$_ch" | grep -c '^+')
+  [ -z "$_st" ] && [ "$_ahead" -eq 0 ] && { echo 'remove merged'; return; }
+  if [ "$PRESERVE" != 1 ]; then
+    if [ -n "$_st" ]; then echo 'hold uncommitted-changes'; else echo 'hold unmerged-commits'; fi
+    return
   fi
-  [ -n "$_st" ] && { printf '%s' 'uncommitted-changes'; return; }
-  if ! _ch=$(git -C "$_wt" cherry "$_ref" HEAD 2>/dev/null); then
-    printf '%s' 'merge-state-unknown'; return
+  _local=$(gitr -C "$_wt" rev-list HEAD --not --remotes=origin 2>/dev/null | wc -l) || { echo 'hold merge-state-unknown'; return; }
+  [ -z "$_st" ] && [ "$_local" -eq 0 ] && { echo 'drop pushed-unmerged'; return; }
+  if printf '%s\n' "$_st" | cut -c4- | sed 's/.* -> //' | grep -qE "$SUSPECT_PATHS"; then
+    echo 'hold suspect-files'; return
   fi
-  if [ -n "$_ch" ] && [ "$(printf '%s\n' "$_ch" | grep -c '^+')" -ne 0 ]; then
-    printf '%s' 'unmerged-commits'; return
+  echo 'preserve local-work'
+}
+
+# --preserve: commit any uncommitted work, push it to wip/<host>/<name>, and open
+# (or reuse) a draft PR. Succeeds only once a PR URL exists, so the caller removes
+# the tree only when the work is reachable from GitHub. The local branch is kept.
+preserve_work() { # <repo> <wt> <ref>
+  _repo=$1; _wt=$2; _name=$(basename "$2")
+  _orig=$(git -C "$_wt" rev-parse --abbrev-ref HEAD 2>/dev/null || echo HEAD)
+  _wipb="wip/$host/$_name"
+  _slug=$(git -C "$_repo" config --get remote.origin.url | sed -E 's#^(https://github\.com/|git@github\.com:|ssh://git@github\.com/)##; s#\.git$##')
+  _base=${3#origin/}
+  if [ -n "$(gitr -C "$_wt" status --porcelain 2>/dev/null)" ]; then
+    # Oversized files are not work product; a nightly job never pushes them.
+    if [ -n "$(gitr -C "$_wt" ls-files -mo --exclude-standard -z 2>/dev/null | (cd "$_wt" && xargs -0 sh -c 'for f; do [ -f "$f" ] && find "$f" -size +5M; done' sh) | head -n 1)" ]; then
+      echo "held (preserve: file over 5 MB): $_name"; return 1
+    fi
+    git -C "$_wt" add -A >/dev/null 2>&1 &&
+      git -C "$_wt" commit -q -m "WIP: uncommitted work from $_name, preserved by worktree-sweep on $host" >/dev/null 2>&1 ||
+      { echo "held (preserve: commit failed): $_name"; return 1; }
   fi
-  printf '%s' ''
+  git -C "$_wt" push -q origin "HEAD:refs/heads/$_wipb" >/dev/null 2>&1 ||
+    { echo "held (preserve: push failed): $_name"; return 1; }
+  command -v gh >/dev/null 2>&1 || { echo "held (preserve: pushed $_wipb, no gh to open a PR): $_name"; return 1; }
+  _url=$(gh pr list -R "$_slug" --head "$_wipb" --state open --json url -q '.[0].url' 2>/dev/null)
+  if [ -z "$_url" ]; then
+    _url=$(gh pr create -R "$_slug" --draft --base "$_base" --head "$_wipb" \
+      --title "WIP: $_name (preserved from $host)" \
+      --body "worktree-sweep on $host preserved this worktree before removing it: it had work that existed nowhere else and had not been touched for $GRACE_DAYS days.
+
+- Worktree: \`$_name\` (branch \`$_orig\`)
+
+Unfinished work, not ready for review. Close it if the work is obsolete; this branch is the only copy." 2>/dev/null | tail -n 1)
+  fi
+  case $_url in
+    https://*) echo "preserved: $_name -> $_url"; return 0 ;;
+    *) echo "held (preserve: pushed $_wipb, PR not opened): $_name"; return 1 ;;
+  esac
 }
 
 sweep_repo() {
@@ -114,15 +241,20 @@ sweep_repo() {
     git -C "$repo" worktree list --porcelain 2>/dev/null |
       grep -qxF "worktree $wt" || continue
 
-    reason=$(blockers_for "$wt" "$ref" "$GRACE_DAYS")
-    if [ -n "$reason" ]; then
-      held=$((held + 1))
+    verdict=$(verdict_for "$wt" "$ref")
+    action=${verdict%% *}; reason=${verdict#* }
+    if [ "$action" = hold ]; then
+      held=$((held + 1)); echo "$reason" >> "$reasons"
       [ "$DRY_RUN" = 1 ] && echo "held ($reason): $name"
       continue
     fi
 
     if [ "$DRY_RUN" = 1 ]; then
-      echo "would reclaim: $name"
+      case $action in
+        remove) echo "would reclaim ($reason): $name" ;;
+        drop) echo "would remove the local copy (all commits on origin): $name" ;;
+        preserve) echo "would preserve as a draft PR, then remove: $name" ;;
+      esac
       swept=$((swept + 1))
       continue
     fi
@@ -132,21 +264,54 @@ sweep_repo() {
     # RE-READ immediately before mutating, never from the check above. A box with
     # 136 worktrees takes minutes; an agent that COMMITS mid-sweep leaves a clean
     # tree, and a stale "0 unmerged" would then authorise `branch -D` and destroy
-    # that commit.
-    reason=$(blockers_for "$wt" "$ref" "$GRACE_DAYS")
-    if [ -n "$reason" ]; then
-      held=$((held + 1))
-      echo "held (changed during sweep: $reason): $name"
+    # that commit. The live-process list is re-read too: an agent may have just
+    # opened a session in this tree.
+    refresh_live
+    again=$(verdict_for "$wt" "$ref")
+    if [ "$again" != "$verdict" ]; then
+      held=$((held + 1)); echo "changed during sweep" >> "$reasons"
+      echo "held (changed during sweep: ${again#* }): $name"
       continue
     fi
 
-    # No --force, so git refuses a tree with uncommitted changes. That is NOT an
+    case $action in
+      drop|preserve)
+        if [ "$action" = preserve ]; then
+          preserve_work "$repo" "$wt" "$ref" || { held=$((held + 1)); echo "preserve failed" >> "$reasons"; continue; }
+        fi
+        # Remove only what provably exists on origin now: a clean tree whose every
+        # commit is on a remote-tracking ref (the push above updated origin/wip/...).
+        refresh_live
+        if has_live_process "$wt" || [ -n "$(gitr -C "$wt" status --porcelain 2>/dev/null)" ] ||
+           [ "$(gitr -C "$wt" rev-list HEAD --not --remotes=origin 2>/dev/null | wc -l)" -ne 0 ]; then
+          held=$((held + 1)); echo "changed during sweep" >> "$reasons"
+          echo "held (changed during sweep after preserving): $name"; continue
+        fi
+        # No --force; the branch stays as a local ref. Its commits are on origin.
+        if git -C "$repo" worktree remove "$wt" >/dev/null 2>&1; then
+          echo "reclaimed ($reason): $name ($repo)"; swept=$((swept + 1))
+        else
+          echo "held (git refused removal): $name"; held=$((held + 1))
+        fi
+        continue
+        ;;
+    esac
+
+    # An abandoned checkout has no index, so every file reads as untracked and a
+    # plain remove refuses it; --force is safe only because is_abandoned_checkout
+    # just re-proved no commit and no write since creation. Everything else gets
+    # no --force, so git refuses a tree with uncommitted changes. That is NOT an
     # independent check on the thing that matters: worktree removal does not look
     # at the commit graph, so a branch carrying an unmerged commit is removed
     # without complaint as long as the tree is clean (verified in review). The
     # remaining window is an agent COMMITTING between the re-read above and this
     # call, which leaves a clean tree and would let the deletion below destroy it.
-    if git -C "$repo" worktree remove "$wt" >/dev/null 2>&1; then
+    force=
+    if [ "$reason" = abandoned-checkout ]; then
+      git -C "$repo" worktree unlock "$wt" >/dev/null 2>&1 || true
+      force=--force
+    fi
+    if git -C "$repo" worktree remove $force "$wt" >/dev/null 2>&1; then
       # FINAL proof, taken after the worktree is gone so no further commit can
       # land on it, and read from the BRANCH ref (which survives removal). Only a
       # branch still provably patch-equivalent upstream is deleted; anything else
@@ -163,7 +328,7 @@ sweep_repo() {
           echo "kept branch (gained unmerged commits during sweep): $branch"
         fi
       fi
-      echo "reclaimed: $name ($repo)"
+      echo "reclaimed ($reason): $name ($repo)"
       swept=$((swept + 1))
     else
       echo "held (git refused removal): $name"
@@ -178,7 +343,7 @@ sweep_repo() {
 # with ~/.agents/worktree-sweep.allow (one pattern per line). Anything unmatched is
 # reported and never swept, so a personal or vendored checkout is safe by default.
 allowfile=$(mktemp) || { echo "could not create temp file — skipping"; exit 0; }
-trap 'rm -f "$wtlist" "$allowfile"' EXIT INT TERM
+trap 'rm -f "$wtlist" "$allowfile" "$livefile" "$transcripts" "$reasons" "$gracestamp" "$scratch"' EXIT INT TERM
 if [ -f "$HOME/.agents/worktree-sweep.allow" ]; then
   cat "$HOME/.agents/worktree-sweep.allow" > "$allowfile"
 else
@@ -202,6 +367,13 @@ find "$SEARCH_HOME" -maxdepth 7 \
   \( -name node_modules -o -name .cache -o -name .npm -o -name .bun \
      -o -name Library -o -name .venv -o -name dist -o -name target \) -prune -o \
   -type d -path '*/.agents/worktrees' -print > "$wtlist" 2>/dev/null
+
+# The grace window as a reference file for `find -newer`, and the inputs every
+# verdict reads, gathered once: a transcript scan per tree would read the same
+# gigabytes hundreds of times. Without a stamp nothing can be judged idle.
+stamp_at "$gracestamp" $((now - GRACE_DAYS * 86400)) || { echo "could not set the grace stamp — skipping"; exit 0; }
+refresh_live
+list_recent_transcripts > "$transcripts"
 
 while IFS= read -r wtdir; do
   repo=$(dirname "$(dirname "$wtdir")")
@@ -240,4 +412,8 @@ while IFS= read -r wtdir; do
   sweep_repo "$repo"
 done < "$wtlist"
 
-echo "worktree-sweep on $(hostname -s 2>/dev/null || echo unknown): reclaimed=$swept held=$held"
+echo "worktree-sweep on $host: reclaimed=$swept held=$held"
+# Why each tree was kept. A bare "held=150" hid for weeks that most were broken
+# checkouts nothing could ever reclaim.
+[ -s "$reasons" ] && sort "$reasons" | uniq -c | sort -rn | sed 's/^ */  held: /'
+exit 0

@@ -47,6 +47,16 @@
 #   4. Paths are compared exactly, so `fix-110` can never match `fix-1103`.
 #   5. Discovery matches directory SHAPE, so an ALLOWLIST on remote.origin.url —
 #      anchored to host and exact org — gates which repos may be touched at all.
+# IN USE (2026-10-12). Every box held 85-95% of its worktrees: 87 on yosemite-m6
+# were `git worktree add` runs killed mid-checkout (no index, so they read as
+# dirty forever), and the rest held work that existed nowhere else. A tree is now
+# left alone while an agent may be using it: a live process inside it (an idle
+# harness keeps its cwd there, so this covers sessions idle for hours or days),
+# any file, index or commit change, or a transcript naming its path, within the
+# grace window, or a `.agents-keep` file in it. --preserve then pushes a stale
+# tree's local-only work to wip/<host>/<name> as a draft PR before removing it,
+# and removes a tree whose commits are all on origin; a tree with a likely
+# secret or a file over 5 MB is held instead.
 name: worktree-sweep
 schedule: 30 4 * * *        # daily 04:30 (daemon-local time), off the work day
 enabled: true
@@ -63,4 +73,4 @@ command: |
   # Grace window: to change it on one box, copy this routine to
   # ~/.agents/routines/worktree-sweep.yml and edit it there — that is the repo's
   # per-device override, so this reads no bespoke env var of its own.
-  sh "$HOME/.agents/.system/routines/lib/worktree-sweep.sh" --grace-days 3
+  sh "$HOME/.agents/.system/routines/lib/worktree-sweep.sh" --grace-days 3 --preserve
