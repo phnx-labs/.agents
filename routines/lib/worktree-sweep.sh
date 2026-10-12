@@ -28,6 +28,11 @@
 # apply. That deny stops an AGENT picking branches to delete; here the branch is
 # picked by the merge. Agents gain no permission and no command.
 #
+# An idle worktree that still holds work (uncommitted changes, or commits not on
+# the default branch) is PARKED rather than held forever: its work is saved to
+# refs/wip/<name> in the repo and the checkout is removed. Idle means no process
+# has its working directory inside it and nothing in it changed for --grace-days.
+#
 # Usage: worktree-sweep.sh [--grace-days N] [--dry-run] [--home DIR]
 set -u
 
@@ -46,10 +51,12 @@ done
 
 now=$(date +%s)
 swept=0
+parked=0
 held=0
 
-wtlist=$(mktemp) || { echo "could not create temp file — skipping"; exit 0; }
-trap 'rm -f "$wtlist"' EXIT INT TERM
+wtlist=$(mktemp) && cwds=$(mktemp) && changed=$(mktemp) && parkidx=$(mktemp) ||
+  { echo "could not create temp file — skipping"; exit 0; }
+trap 'rm -f "$wtlist" "$cwds" "$changed" "$parkidx"' EXIT INT TERM
 
 # The ref to compare against: origin/HEAD, else origin/main|master. With no
 # default ref every worktree is indeterminate and nothing is removed.
@@ -66,9 +73,50 @@ default_ref() {
 
 mtime_of() { stat -c %Y "$1" 2>/dev/null || stat -f %m "$1" 2>/dev/null; }
 
-# Every reason a worktree is NOT reclaimable, or empty when it is. Fails CLOSED:
-# an unreadable status or an undeterminable merge state is a blocker, never a
-# pass. An index.lock held by a live agent lands exactly there — on the tree most
+# The working directory of every process this user can see, one per line. A
+# process sitting inside a worktree (an agent's shell, a dev server, a test run)
+# is the strongest "in use" signal there is, and it holds no matter how long the
+# files have been untouched: an agent can idle for days between turns.
+snapshot_cwds() {
+  if [ -d /proc/self ]; then
+    for _p in /proc/[0-9]*; do readlink "$_p/cwd" 2>/dev/null; done > "$cwds"
+  elif command -v lsof >/dev/null 2>&1; then
+    lsof -a -d cwd -Fn 2>/dev/null | sed -n 's/^n//p' > "$cwds"
+  else
+    : > "$cwds"
+  fi
+}
+# Exact path or a path below it: `fix-110` must not claim a shell in `fix-1103`.
+in_use() { awk -v p="$1" '$0 == p || index($0, p "/") == 1 { f = 1 } END { exit !f }' "$cwds"; }
+
+# Newest moment anyone touched this worktree: the directory itself, a commit or
+# checkout (the per-worktree HEAD, its reflog, ORIG_HEAD) and every changed or
+# untracked path. The worktree directory's own mtime alone moves only when a
+# top-level entry is added or removed, so an agent editing src/ for a week read
+# as idle. `index` is left out on purpose: `git status`, including this sweep's
+# own, rewrites it, which would make every worktree look touched every night.
+last_activity() {
+  _wt=$1
+  _new=$(mtime_of "$_wt") || return 1
+  _gd=$(git -C "$_wt" rev-parse --absolute-git-dir 2>/dev/null) || return 1
+  for _f in "$_gd/HEAD" "$_gd/logs/HEAD" "$_gd/ORIG_HEAD"; do
+    [ -e "$_f" ] || continue
+    _m=$(mtime_of "$_f") && [ "$_m" -gt "$_new" ] && _new=$_m
+  done
+  git -C "$_wt" status --porcelain 2>/dev/null > "$changed" || return 1
+  while IFS= read -r _l; do
+    _p=${_l#???}; _p=${_p#\"}; _p=${_p%\"}
+    case $_p in *' -> '*) _p=${_p#* -> } ;; esac
+    [ -e "$_wt/$_p" ] || continue
+    _m=$(mtime_of "$_wt/$_p") && [ "$_m" -gt "$_new" ] && _new=$_m
+  done < "$changed"
+  printf '%s' "$_new"
+}
+
+# Every reason a worktree must be left exactly as it is, `park:<why>` when it is
+# idle but still holds work, or empty when its work has landed. Fails CLOSED: an
+# unreadable status or an undeterminable merge state is a blocker, never a pass.
+# An index.lock held by a live agent lands exactly there — on the tree most
 # likely to be holding work.
 #
 # Merge is judged by patch-id (`git cherry`), NOT ancestry: this fleet
@@ -78,20 +126,60 @@ mtime_of() { stat -c %Y "$1" 2>/dev/null || stat -f %m "$1" 2>/dev/null; }
 # check, since an unpushed commit has no upstream equivalent.
 blockers_for() {
   _wt=$1; _ref=$2; _grace=$3
-  _mt=$(mtime_of "$_wt") || { printf '%s' 'age-unreadable'; return; }
-  _age=$(( (now - _mt) / 86400 ))
-  [ "$_age" -lt "$_grace" ] && { printf '%s' 'within-grace'; return; }
+  in_use "$_wt" && { printf '%s' 'in-use'; return; }
+  _last=$(last_activity "$_wt") || { printf '%s' 'activity-unreadable'; return; }
+  [ $(( (now - _last) / 86400 )) -lt "$_grace" ] && { printf '%s' 'within-grace'; return; }
   if ! _st=$(git -C "$_wt" status --porcelain 2>/dev/null); then
     printf '%s' 'status-unreadable'; return
   fi
-  [ -n "$_st" ] && { printf '%s' 'uncommitted-changes'; return; }
+  if [ -n "$_st" ]; then
+    # Parking stores the changes as git objects; a tree this large is almost
+    # always build output nobody ignored, and copying it into .git defeats the
+    # point of reclaiming the disk.
+    [ "$(printf '%s\n' "$_st" | wc -l)" -gt 2000 ] && { printf '%s' 'too-many-changes-to-park'; return; }
+    printf '%s' 'park:uncommitted-changes'; return
+  fi
   if ! _ch=$(git -C "$_wt" cherry "$_ref" HEAD 2>/dev/null); then
     printf '%s' 'merge-state-unknown'; return
   fi
   if [ -n "$_ch" ] && [ "$(printf '%s\n' "$_ch" | grep -c '^+')" -ne 0 ]; then
-    printf '%s' 'unmerged-commits'; return
+    printf '%s' 'park:unmerged-commits'; return
   fi
   printf '%s' ''
+}
+
+# Snapshot an idle worktree's work into refs/wip/<name> in the repo and print the
+# ref. Uncommitted and untracked (not ignored) files become one commit on top of
+# HEAD, built in a throwaway index so neither the branch nor the worktree's own
+# index moves. The ref lives in the shared object store, so it outlives the
+# checkout, is never pushed, and `git worktree add <path> refs/wip/<name>` brings
+# the work back. Ignored files are not kept: by definition they are build output.
+# The tree the worktree holds right now, tracked edits and untracked files
+# included, written through a throwaway index.
+worktree_tree() {
+  rm -f "$parkidx"
+  GIT_INDEX_FILE=$parkidx git -C "$1" read-tree HEAD 2>/dev/null &&
+    GIT_INDEX_FILE=$parkidx git -C "$1" add -A . 2>/dev/null &&
+    GIT_INDEX_FILE=$parkidx git -C "$1" write-tree 2>/dev/null
+}
+
+park() {
+  _repo=$1; _wt=$2; _name=$3
+  _head=$(git -C "$_wt" rev-parse -q --verify HEAD 2>/dev/null) || return 1
+  _tip=$_head
+  if [ -n "$(git -C "$_wt" status --porcelain 2>/dev/null)" ]; then
+    _tree=$(worktree_tree "$_wt") || return 1
+    _tip=$(git -C "$_wt" -c user.name=worktree-sweep -c user.email=worktree-sweep@localhost \
+      commit-tree "$_tree" -p "$_head" \
+      -m "wip: $_name, parked by worktree-sweep on $(hostname -s 2>/dev/null) $(date -u +%Y-%m-%dT%H:%M:%SZ)" 2>/dev/null) || return 1
+  fi
+  _wipref="refs/wip/$_name"
+  git -C "$_repo" rev-parse -q --verify "$_wipref" >/dev/null 2>&1 && _wipref="$_wipref-$now"
+  git -C "$_repo" update-ref "$_wipref" "$_tip" 2>/dev/null || return 1
+  # The ref must hold exactly the tree just read, or the removal below would lose
+  # whatever differs.
+  [ "$(git -C "$_repo" rev-parse "$_wipref^{tree}" 2>/dev/null)" = "$(git -C "$_repo" rev-parse "$_tip^{tree}" 2>/dev/null)" ] || return 1
+  printf '%s' "$_wipref"
 }
 
 sweep_repo() {
@@ -115,15 +203,19 @@ sweep_repo() {
       grep -qxF "worktree $wt" || continue
 
     reason=$(blockers_for "$wt" "$ref" "$GRACE_DAYS")
-    if [ -n "$reason" ]; then
-      held=$((held + 1))
-      [ "$DRY_RUN" = 1 ] && echo "held ($reason): $name"
-      continue
-    fi
+    case $reason in
+      ''|park:*) ;;
+      *)
+        held=$((held + 1))
+        [ "$DRY_RUN" = 1 ] && echo "held ($reason): $name"
+        continue ;;
+    esac
 
     if [ "$DRY_RUN" = 1 ]; then
-      echo "would reclaim: $name"
-      swept=$((swept + 1))
+      case $reason in
+        park:*) echo "would park (${reason#park:}): $name"; parked=$((parked + 1)) ;;
+        *)      echo "would reclaim: $name"; swept=$((swept + 1)) ;;
+      esac
       continue
     fi
 
@@ -132,13 +224,37 @@ sweep_repo() {
     # RE-READ immediately before mutating, never from the check above. A box with
     # 136 worktrees takes minutes; an agent that COMMITS mid-sweep leaves a clean
     # tree, and a stale "0 unmerged" would then authorise `branch -D` and destroy
-    # that commit.
-    reason=$(blockers_for "$wt" "$ref" "$GRACE_DAYS")
-    if [ -n "$reason" ]; then
+    # that commit. The process list is re-read too: an agent may have cd'd in.
+    snapshot_cwds
+    again=$(blockers_for "$wt" "$ref" "$GRACE_DAYS")
+    if [ "$again" != "$reason" ]; then
       held=$((held + 1))
-      echo "held (changed during sweep: $reason): $name"
+      echo "held (changed during sweep: ${again:-landed}): $name"
       continue
     fi
+
+    case $reason in
+      park:*)
+        if ! wipref=$(park "$repo" "$wt" "$name"); then
+          held=$((held + 1)); echo "held (could not park): $name"; continue
+        fi
+        # Last look after the snapshot: anything written since would not be in
+        # the ref, so the checkout stays (the ref is harmless and kept).
+        snapshot_cwds
+        if [ "$(blockers_for "$wt" "$ref" "$GRACE_DAYS")" != "$reason" ] ||
+           [ "$(worktree_tree "$wt")" != "$(git -C "$repo" rev-parse "$wipref^{tree}" 2>/dev/null)" ]; then
+          held=$((held + 1)); echo "held (changed while parking, kept $wipref): $name"; continue
+        fi
+        # --force only because the tree may be dirty; every byte of it is in the
+        # ref, checked against the live tree just above. The branch is not touched.
+        if git -C "$repo" worktree remove --force "$wt" >/dev/null 2>&1; then
+          echo "parked: $name -> $wipref ($repo)"
+          parked=$((parked + 1))
+        else
+          held=$((held + 1)); echo "held (git refused removal, kept $wipref): $name"
+        fi
+        continue ;;
+    esac
 
     # No --force, so git refuses a tree with uncommitted changes. That is NOT an
     # independent check on the thing that matters: worktree removal does not look
@@ -178,7 +294,7 @@ sweep_repo() {
 # with ~/.agents/worktree-sweep.allow (one pattern per line). Anything unmatched is
 # reported and never swept, so a personal or vendored checkout is safe by default.
 allowfile=$(mktemp) || { echo "could not create temp file — skipping"; exit 0; }
-trap 'rm -f "$wtlist" "$allowfile"' EXIT INT TERM
+trap 'rm -f "$wtlist" "$cwds" "$changed" "$parkidx" "$allowfile"' EXIT INT TERM
 if [ -f "$HOME/.agents/worktree-sweep.allow" ]; then
   cat "$HOME/.agents/worktree-sweep.allow" > "$allowfile"
 else
@@ -203,6 +319,7 @@ find "$SEARCH_HOME" -maxdepth 7 \
      -o -name Library -o -name .venv -o -name dist -o -name target \) -prune -o \
   -type d -path '*/.agents/worktrees' -print > "$wtlist" 2>/dev/null
 
+snapshot_cwds
 while IFS= read -r wtdir; do
   repo=$(dirname "$(dirname "$wtdir")")
   # `.git` is a DIRECTORY in a normal checkout but a FILE inside a linked
@@ -240,4 +357,4 @@ while IFS= read -r wtdir; do
   sweep_repo "$repo"
 done < "$wtlist"
 
-echo "worktree-sweep on $(hostname -s 2>/dev/null || echo unknown): reclaimed=$swept held=$held"
+echo "worktree-sweep on $(hostname -s 2>/dev/null || echo unknown): reclaimed=$swept parked=$parked held=$held"
