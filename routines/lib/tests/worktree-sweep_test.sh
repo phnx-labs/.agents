@@ -433,9 +433,18 @@ wt_in r mentioned
 age "$(WT r mentioned)"
 mkdir -p "$P/.claude/projects/x"
 printf '{"tool_input":{"file_path":"%s/f.txt"}}\n' "$(WT r mentioned)" > "$P/.claude/projects/x/s.jsonl"
+# A harness config or the activity feed naming it is not a session working on it.
+wt_in r configured
+age "$(WT r configured)"
+mkdir -p "$P/.agents/.history/versions/claude/9.9.9/home" "$P/.agents/.history/activity"
+printf '{"projects":{"%s":{}}}\n' "$(WT r configured)" > "$P/.agents/.history/versions/claude/9.9.9/home/.claude.json"
+printf '{"event":"worktree.created","path":"%s"}\n' "$(WT r configured)" > "$P/.agents/.history/activity/a.jsonl"
 out=$(sweep --dry-run)
 case "$out" in *"held (recent-session): mentioned"*) ok "a tree named in a RECENT TRANSCRIPT is held";;
   *) bad "recent transcript mention not detected: $out";; esac
+case "$out" in *"would reclaim: configured"*) ok "a harness CONFIG or the activity feed naming a tree does not hold it";;
+  *) bad "config/activity mention held the tree: $(printf '%s\n' "$out" | grep ': configured$')";; esac
+mv "$P/.agents" "$BASE/p-agents-done"
 rm -rf "$P/.claude"
 
 # .agents-keep opts one tree out.

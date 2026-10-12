@@ -170,10 +170,16 @@ stamp_at() { # <file> <epoch>
 # Agent transcripts written within the grace window. An agent that works on a
 # tree by absolute path from elsewhere (git -C, editing by full path, reading it
 # to review) never has its cwd there, but its transcript names the path.
+#
+# Conversation files only: Claude's projects/, Codex's and Grok's sessions/,
+# Gemini's chats/, OpenCode's session/. NOT a harness's own config (~/.claude.json
+# and kin list every directory ever opened) or the activity feed, which name
+# every tree and are rewritten all the time: on yosemite-m5 they held 91 of 94.
 list_recent_transcripts() { # <stamp>
   for _d in "$SEARCH_HOME/.agents/.history" "$SEARCH_HOME/.claude/projects" "$SEARCH_HOME/.codex/sessions" \
             "$SEARCH_HOME/.gemini" "$SEARCH_HOME/.local/share/opencode"; do
-    [ -e "$_d" ] && find -H "$_d" -type f -newer "$1" 2>/dev/null
+    [ -e "$_d" ] && find -H "$_d" -type f \( -path '*/projects/*' -o -path '*/sessions/*' \
+      -o -path '*/chats/*' -o -path '*/session/*' \) ! -path '*/activity/*' -newer "$1" 2>/dev/null
   done | sort -u
 }
 # ONE pass over every recent transcript for every tree path on the box (grep -F -f
