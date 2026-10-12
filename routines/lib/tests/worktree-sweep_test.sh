@@ -130,7 +130,8 @@ git_q -C "$W/submod" -c protocol.file.allow=always submodule add "$SUBORIGIN" sm
 git_q -C "$W/submod" commit -m 'add submodule'
 echo edited > "$W/submod/sm/s"
 age "$W/submod"
-# Ignored local config is never committed, so --force would delete it.
+# Ignored local config is never committed, so --force would delete it: it is
+# copied to ~/.agents-swept/<date>/<repo>/<tree>/ first, then the tree is parked.
 new_wt envcfg feat/envcfg
 printf '.env\n' > "$W/envcfg/.gitignore"
 echo SECRET=1 > "$W/envcfg/.env"
@@ -185,7 +186,7 @@ case "$out" in *"held (within-grace): editing"*) ok "dry-run holds a tree whose 
   *) bad "dry-run did not hold the recently edited tree: $out";; esac
 case "$out" in *"held (in-use): occupied"*) ok "dry-run holds a tree a process is sitting in";;
   *) bad "dry-run did not hold the occupied tree: $out";; esac
-for pair in "nested-repo:nested" "has-submodules:submod" "ignored-local-config:envcfg" \
+for pair in "nested-repo:nested" "has-submodules:submod" \
             "operation-in-progress:merging" "too-many-changes-to-park:bulky" \
             "within-grace:deepedit" "within-grace:quoted"; do
   case "$out" in *"held (${pair%%:*}): ${pair#*:}"*) ok "dry-run holds ${pair#*:} (${pair%%:*})";;
@@ -213,12 +214,14 @@ case "$out" in *"parked: dirty -> refs/wip/dirty"*) ok "parking is reported with
   *) bad "no 'parked:' line naming the ref: $out";; esac
 [ -d "$REPO/.agents/worktrees/editing" ] && ok "recently edited worktree preserved" || bad "recently edited worktree destroyed"
 [ -d "$REPO/.agents/worktrees/occupied" ] && ok "OCCUPIED WORKTREE PRESERVED" || bad "worktree with a live process inside was removed"
-for n in nested submod envcfg merging bulky deepedit quoted; do
+for n in nested submod merging bulky deepedit quoted; do
   [ -d "$REPO/.agents/worktrees/$n" ] && ok "$n checkout preserved" || bad "$n checkout was removed"
 done
 check "nested repo's uncommitted file survives" "$(cat "$REPO/.agents/worktrees/nested/inner/u.txt" 2>/dev/null)" "unsaved"
 check "submodule edit survives" "$(cat "$REPO/.agents/worktrees/submod/sm/s" 2>/dev/null)" "edited"
-check "ignored .env survives" "$(cat "$REPO/.agents/worktrees/envcfg/.env" 2>/dev/null)" "SECRET=1"
+check "ignored .env is SALVAGED before the tree is parked" "$(cat "$BASE/.agents-swept/"*/repo/envcfg/.env 2>/dev/null)" "SECRET=1"
+[ "$(stat -c %a "$BASE/.agents-swept" 2>/dev/null || stat -f %Lp "$BASE/.agents-swept")" = 700 ] &&
+  ok "the salvage directory is private (700)" || bad "salvage directory is not 0700"
 kill "$OCCUPANT" 2>/dev/null
 [ -d "$REPO/.agents/worktrees/fresh" ]    && ok "in-grace worktree preserved" || bad "in-grace worktree destroyed"
 
@@ -387,6 +390,138 @@ fi
 case "$out" in *"gained unmerged commits during sweep"*)
     ok "RACE: the kept branch is reported, not silently skipped";;
   *) bad "RACE: no 'gained unmerged commits' message: $out";; esac
+
+# =========================================== abandoned checkouts, transcripts,
+# .agents-keep, merge commits, salvage, signals and --preserve. A separate home:
+# its repos fetch from an allowlisted GitHub URL but push to a local bare repo.
+P="$BASE/p"; mkdir -p "$P"
+REALGIT=$(command -v git)
+HOST=$(hostname -s 2>/dev/null || echo unknown)
+mkrepo() { # <name> -> $P/<name>, origin $P/<name>.git
+  git_q init --bare -b main "$P/$1.git"
+  git_q clone "$P/$1.git" "$P/$1"
+  echo x > "$P/$1/f.txt"; git_q -C "$P/$1" add .; git_q -C "$P/$1" commit -m init
+  git_q -C "$P/$1" push -u origin main
+  mkdir -p "$P/$1/.agents/worktrees"
+  git_q -C "$P/$1" remote set-url origin "git@github.com:phnx-labs/wtsweep-fixture-$1.git"
+  git_q -C "$P/$1" remote set-url --push origin "$P/$1.git"
+}
+wt_in() { git_q -C "$P/$1" worktree add -b "feat/$2" "$P/$1/.agents/worktrees/$2" origin/main; }
+WT() { echo "$P/$1/.agents/worktrees/$2"; }
+sweep() { "$SH" "$SWEEP" --home "$P" --grace-days 3 "$@" 2>&1; }
+mkrepo r
+
+# A `git worktree add` killed mid-checkout: "initializing" lock, no index.
+wt_in r abandoned
+age "$(WT r abandoned)"
+GD=$(git -C "$(WT r abandoned)" rev-parse --absolute-git-dir)
+rm -f "$GD/index"; : > "$GD/index.lock"; echo initializing > "$GD/locked"
+# The same shape, but a file was written a day after it was created.
+wt_in r written
+age "$(WT r written)"
+GD2=$(git -C "$(WT r written)" rev-parse --absolute-git-dir)
+rm -f "$GD2/index"; echo initializing > "$GD2/locked"
+echo later > "$(WT r written)/later.txt"
+touch -d '20 days ago' "$(WT r written)/later.txt" 2>/dev/null || touch -t 202601200000 "$(WT r written)/later.txt"
+dry=$(sweep --dry-run)
+out=$(sweep)
+[ ! -d "$(WT r abandoned)" ] && ok "ABANDONED checkout (no index, 'initializing' lock) reclaimed" || bad "abandoned checkout survived: $(printf '%s\n' "$dry" | grep -E ': (abandoned|written)$')"
+[ -d "$(WT r written)" ] && ok "an abandoned-looking tree written after creation is HELD" || bad "a tree with later writes was force-removed"
+
+# Named in a recent transcript: an agent working on it by absolute path.
+wt_in r mentioned
+age "$(WT r mentioned)"
+mkdir -p "$P/.claude/projects/x"
+printf '{"tool_input":{"file_path":"%s/f.txt"}}\n' "$(WT r mentioned)" > "$P/.claude/projects/x/s.jsonl"
+out=$(sweep --dry-run)
+case "$out" in *"held (recent-session): mentioned"*) ok "a tree named in a RECENT TRANSCRIPT is held";;
+  *) bad "recent transcript mention not detected: $out";; esac
+rm -rf "$P/.claude"
+
+# .agents-keep opts one tree out.
+wt_in r kept
+: > "$(WT r kept)/.agents-keep"
+age "$(WT r kept)"
+out=$(sweep --dry-run)
+case "$out" in *"held (keep-marker): kept"*) ok ".agents-keep holds the tree";; *) bad ".agents-keep ignored: $out";; esac
+
+# Work that lives only in a MERGE commit: `git cherry` skips merges, so the old
+# check called it landed and deleted the branch (reproduced in review).
+git_q -C "$P/r" commit --allow-empty -m 'main moves'; git_q -C "$P/r" push origin main; git_q -C "$P/r" fetch origin
+wt_in r evil
+git_q -C "$(WT r evil)" reset -q --hard origin/main~1
+git_q -C "$(WT r evil)" merge --no-ff --no-commit origin/main
+echo only-here > "$(WT r evil)/unique.txt"; git_q -C "$(WT r evil)" add unique.txt
+git_q -C "$(WT r evil)" commit -m 'merge with an extra file'
+age "$(WT r evil)"
+# A plain catch-up merge adds nothing: that tree has landed.
+wt_in r catchup
+git_q -C "$(WT r catchup)" reset -q --hard origin/main~1
+git_q -C "$(WT r catchup)" merge --no-ff -m 'catch up' origin/main
+age "$(WT r catchup)"
+out=$(sweep --dry-run)
+case "$out" in *"would park (merge-with-changes): evil"*) ok "work only in a MERGE commit is parked, never treated as landed";;
+  *) bad "merge-only work misjudged: $(printf '%s\n' "$out" | grep ': evil$')";; esac
+case "$out" in *"would reclaim: catchup"*) ok "a plain catch-up merge does not hold a landed tree";;
+  *) bad "catch-up merge held the tree: $(printf '%s\n' "$out" | grep ': catchup$')";; esac
+
+# Gitignored files that are not caches are salvaged; caches are not.
+wt_in r ign
+age "$(WT r ign)"
+printf 'precious.txt\nnode_modules/\n' > "$(WT r ign)/.git-info-exclude"
+printf 'precious.txt\nnode_modules/\n' >> "$(git -C "$(WT r ign)" rev-parse --git-common-dir)/info/exclude"
+echo keep-me > "$(WT r ign)/precious.txt"; mkdir -p "$(WT r ign)/node_modules/x"; echo junk > "$(WT r ign)/node_modules/x/i.js"
+rm -f "$(WT r ign)/.git-info-exclude"
+age "$(WT r ign)"
+out=$(sweep)
+if [ ! -d "$(WT r ign)" ] && [ "$(cat "$P/.agents-swept/"*/r/ign/precious.txt 2>/dev/null)" = keep-me ]; then
+  ok "a GITIGNORED file is salvaged before a landed tree is removed"
+else
+  bad "ignored file not salvaged: $out"
+fi
+[ ! -e "$P/.agents-swept/"*/r/ign/node_modules ] && ok "caches are not salvaged" || bad "node_modules was salvaged"
+
+# A TERM mid-sweep ends the run. A handler that only cleaned up let the script
+# carry on with its inputs deleted, removing fresh trees (reproduced in review).
+wt_in r term-fresh
+SLOW="$BASE/slowshim"; mkdir -p "$SLOW"
+cat > "$SLOW/git" <<SHIM
+#!/bin/sh
+case " \$* " in *" worktree list "*) sleep 2 ;; esac
+exec "$REALGIT" "\$@"
+SHIM
+chmod +x "$SLOW/git"
+PATH="$SLOW:$PATH" "$SH" "$SWEEP" --home "$P" --grace-days 3 > "$BASE/term.out" 2>&1 & TPID=$!
+sleep 1; kill -TERM "$TPID" 2>/dev/null; wait "$TPID"; trc=$?
+[ "$trc" -ne 0 ] && ok "TERM ends the run (exit $trc)" || bad "the run kept going after TERM"
+[ -d "$(WT r term-fresh)" ] && ok "a fresh tree survives a TERM mid-run" || bad "fresh tree removed after TERM: $(cat "$BASE/term.out")"
+
+# --preserve parks first (the work is safe locally whatever happens next), then
+# publishes only what passes the secret checks to a repo confirmed PRIVATE.
+wt_in r pubok
+echo work > "$(WT r pubok)/work.txt"
+age "$(WT r pubok)"
+wt_in r pubsecret
+echo TOKEN=x > "$(WT r pubsecret)/.env.local"
+age "$(WT r pubsecret)"
+wt_in r pubinline
+printf 'token = "ghp_%s"\n' abcdefghijklmnopqrstuvwxyz0123456789 > "$(WT r pubinline)/notes.txt"
+age "$(WT r pubinline)"
+out=$(PATH="$SLOW/../nogh:$PATH" sweep --preserve)
+check "--preserve still PARKS locally first" "$(git -C "$P/r" show refs/wip/pubok:work.txt 2>/dev/null)" "work"
+case "$out" in *"pubsecret: not published (suspect file names)"*) ok "a .env file is never published";;
+  *) bad "suspect file name not caught: $(printf '%s\n' "$out" | grep pubsecret)";; esac
+case "$out" in *"pubinline: not published (suspect file contents)"*) ok "a token inside an ordinary file is never published";;
+  *) bad "suspect content not caught: $(printf '%s\n' "$out" | grep pubinline)";; esac
+case "$out" in *"preserve off: gh is not signed in"*|*"pubok: not published (phnx-labs/wtsweep-fixture-r is not confirmed private)"*)
+    ok "nothing is published unless gh confirms the repo private";;
+  *) bad "published without a private-repo check: $(printf '%s\n' "$out" | grep -E 'pubok|preserve')";; esac
+"$REALGIT" -C "$P/r.git" for-each-ref 'refs/heads/wip/*' | grep -q . &&
+  bad "a wip branch was PUSHED to a repo not confirmed private" || ok "no wip branch reached the fixture origin"
+
+# The summary says why trees were kept.
+out=$(sweep --dry-run)
+case "$out" in *"  held: "*) ok "the run summary lists hold reasons";; *) bad "no hold reasons in the summary: $out";; esac
 
 echo "---"
 echo "worktree-sweep: $pass passed, $fail failed"

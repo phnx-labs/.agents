@@ -57,6 +57,12 @@
 #   4. Paths are compared exactly, so `fix-110` can never match `fix-1103`.
 #   5. Discovery matches directory SHAPE, so an ALLOWLIST on remote.origin.url —
 #      anchored to host and exact org — gates which repos may be touched at all.
+# IN USE AND GONE (2026-10-12). Beyond parking: a tree an agent names in a recent
+# transcript, or that has a `.agents-keep` file, is held; a `git worktree add`
+# killed mid-checkout (no index, "initializing" lock: 87 trees, 98 GB on
+# yosemite-m6) is reclaimed; work that only a merge commit carries is parked, not
+# judged landed; gitignored files that are not caches are copied to
+# ~/.agents-swept/ before any removal; INT/TERM end the run.
 name: worktree-sweep
 schedule: 30 4 * * *        # daily 04:30 (daemon-local time), off the work day
 enabled: true
@@ -73,4 +79,8 @@ command: |
   # Grace window: to change it on one box, copy this routine to
   # ~/.agents/routines/worktree-sweep.yml and edit it there — that is the repo's
   # per-device override, so this reads no bespoke env var of its own.
-  sh "$HOME/.agents/.system/routines/lib/worktree-sweep.sh" --grace-days 3
+  #
+  # --preserve: a parked worktree on a repo gh confirms PRIVATE is also pushed to
+  # wip/<host>/<name> and opened as a draft PR, unless it carries a likely secret
+  # or a file over 5 MB. The local refs/wip ref keeps the work either way.
+  sh "$HOME/.agents/.system/routines/lib/worktree-sweep.sh" --grace-days 3 --preserve
