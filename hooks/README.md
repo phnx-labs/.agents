@@ -116,7 +116,7 @@ implementation. See [§Subrule hooks](#subrule-hooks-rules-not-this-tree).
 | Hook | What it does |
 |---|---|
 | [`02-expand-prompt-user-shortcuts.sh`](./user-prompt-submit/02-expand-prompt-user-shortcuts.sh) | **promptcuts** — expands shortcut tokens from `promptcuts.yaml` |
-| [`02-expand-prompt-bang-commands.sh`](./user-prompt-submit/02-expand-prompt-bang-commands.sh) | **bangcuts** — runs inline `` `!cmd` `` blocks concurrently and injects their output |
+| [`02-expand-prompt-bang-commands.sh`](./user-prompt-submit/02-expand-prompt-bang-commands.sh) | **bangcuts** — runs inline `` `!cmd` `` blocks concurrently and injects their output. Never runs one inside an agent message, task notification, system reminder or pasted content |
 | [`03-vacation-recap.py`](./user-prompt-submit/03-vacation-recap.py) | On a long gap since the session's last prompt, reminds the agent to open with a back-from-vacation recap |
 | [`04-verify-work-state.py`](./user-prompt-submit/04-verify-work-state.py) | Records a hashed goal boundary plus transcript byte offset in `verify-work-complete`'s session-keyed hook database; never stores prompt text |
 | [`06-investigate-first-reminder.sh`](./user-prompt-submit/06-investigate-first-reminder.sh) | Interactive Claude only: injects the investigate-first rule before the agent writes its first token (a Stop hook cannot take back text already shown) |

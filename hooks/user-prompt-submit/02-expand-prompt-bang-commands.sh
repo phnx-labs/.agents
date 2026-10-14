@@ -32,6 +32,17 @@ TERSE_PATTERN = re.compile(r'`!([^\s`][^`]*)`')
 BARE_IDENT = re.compile(r'[A-Za-z_][\w-]*')
 COMMAND_TIMEOUT_SECONDS = 5
 MAX_PARALLEL_COMMANDS = 8
+# Text the owner did not type reaches this hook too: subagent reports, task
+# notifications, system reminders and pasted content. A command quoted there
+# must never run, so those blocks are excluded; an unclosed one runs to the end.
+UNTRUSTED_BLOCK = re.compile(
+    r'<(agent-message|task-notification|system-reminder|pasted_content)\b[^>]*>.*?(?:</\1\b[^>]*>|\Z)',
+    re.DOTALL,
+)
+
+
+def untrusted_spans(prompt):
+    return [(m.start(), m.end()) for m in UNTRUSTED_BLOCK.finditer(prompt)]
 
 
 def run_command(command, cwd):
@@ -72,7 +83,7 @@ def run_command(command, cwd):
 
 def command_matches(prompt):
     matches = []
-    occupied = []
+    occupied = untrusted_spans(prompt)
     for pattern, explicit in ((EXPLICIT_PATTERN, True), (TERSE_PATTERN, False)):
         for match in pattern.finditer(prompt):
             if any(match.start() < end and match.end() > start for start, end in occupied):
