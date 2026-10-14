@@ -33,16 +33,21 @@ BARE_IDENT = re.compile(r'[A-Za-z_][\w-]*')
 COMMAND_TIMEOUT_SECONDS = 5
 MAX_PARALLEL_COMMANDS = 8
 # Text the owner did not type reaches this hook too: subagent reports, task
-# notifications, system reminders and pasted content. A command quoted there
-# must never run, so those blocks are excluded; an unclosed one runs to the end.
-UNTRUSTED_BLOCK = re.compile(
-    r'<(agent-message|task-notification|system-reminder|pasted_content)\b[^>]*>.*?(?:</\1\b[^>]*>|\Z)',
-    re.DOTALL,
+# notifications, reminders, pasted content, command output and hook feedback.
+# Nothing at or after the first such marker runs. Closing tags are ignored on
+# purpose: the quoted text can forge one.
+UNTRUSTED_START = re.compile(
+    r'<(?:agent-message|task-notification|system-reminder|pasted_content|local-command-stdout|'
+    r'local-command-stderr|local-command-caveat|command-message|command-name|command-args|'
+    r'user-prompt-submit-hook|bash-stdout|bash-stderr)\b'
+    r'|\[SYSTEM NOTIFICATION|\[Subagent hand-back\]|Stop hook feedback:|Another Claude session sent a message',
+    re.IGNORECASE,
 )
 
 
 def untrusted_spans(prompt):
-    return [(m.start(), m.end()) for m in UNTRUSTED_BLOCK.finditer(prompt)]
+    first = UNTRUSTED_START.search(prompt)
+    return [(first.start(), len(prompt))] if first else []
 
 
 def run_command(command, cwd):
