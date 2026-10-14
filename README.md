@@ -214,7 +214,6 @@ Each directory has a `README.md` for humans (a catalog of everything in it) and 
 | [`clis/`](clis/README.md) | Manifests for host CLIs (`mq`, `jq`, `linear`) that agents-cli installs |
 | [`routines/`](routines/README.md) | Scheduled agent runs (cron / one-shot) |
 | [`subagents/`](subagents/README.md) | Named sub-agent definitions |
-| [`webhooks/`](webhooks/README.md) | Inbound webhook handlers |
 
 ## Hooks change runtime — commands do not
 

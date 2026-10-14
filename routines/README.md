@@ -3,8 +3,10 @@
 Scheduled agent runs. A routine fires on a **clock** — a cron schedule or a one-shot time.
 The scheduler daemon starts on the first `agents routines add`.
 
-If you want something to fire on a **push** from GitHub or Linear instead of a clock, that
-is a [webhook](../webhooks/README.md) that fires a routine.
+A push from GitHub or Linear fires trigger routines through
+`agents routines webhook --source <github|linear> --event <e>` (payload on stdin or
+`--file`). That command matches and fires, then exits. There is no inbound receiver
+and no `~/.agents/webhooks/` handler directory.
 
 ## What ships here
 
