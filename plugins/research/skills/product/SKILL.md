@@ -1,7 +1,7 @@
 ---
 name: product
 description: "Explore a PRODUCT hands-on and prove every claim visually — don't just read about it. Install or sign up, DRIVE the real product through each user journey, screenshot every meaningful step, record a short clip of the headline flows, then put landing-page CLAIMS next to what the product ACTUALLY did. Produces a highly-visual artifact: favicon/logo-tagged product cards, per-journey flow diagrams, screenshot strips, an embedded clip, and a claims-vs-reality table — never one idle screenshot and a wall of text. Composes research:research for the public intel, browser + secrets to drive the surface, and artifacts to render. Triggers on: /research:product, 'explore <product> hands-on', 'how does <product> actually work', 'test out <product> and show me', 'does <product> really do X', 'walk through <product>'s features', 'compare these products by actually using them', 'evaluate <product>'s user flows'."
-argument-hint: "<product(s) + what to explore — e.g. 'how Devin supports background agents', 'evaluate Harvey's document-review flow', 'compare v0 vs bolt.new by using both'> [--compare a,b,c] [--depth quick|standard|deep] [--record on|off] [--signup ask|auto|creds-only]"
+argument-hint: "<product(s) + what to explore — e.g. 'how Devin supports background agents', 'evaluate a competitor's onboarding flow', 'compare v0 vs bolt.new by using both'> [--compare a,b,c] [--depth quick|standard|deep] [--record on|off] [--signup ask|auto|creds-only]"
 allowed-tools: Bash(agents *), Bash(git *), Bash(gh *), Bash(linear *), Bash(rg *), Bash(ls *), Bash(cat *), Bash(jq *), Bash(curl *), Bash(scp *), Read(*), Write(*), Edit(*), Task(*), WebSearch(*), WebFetch(*)
 user-invocable: true
 ---
