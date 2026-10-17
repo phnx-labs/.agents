@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Changed
+
+- **Reviewers check that a hover highlight slides.** `subagents/code-reviewer` and `design:critique` now look at the highlight in a row of sibling controls (icon buttons, tabs, a segmented control, nav items, menu rows). It must be one indicator that slides from the item it leaves to the item it enters. A background on each item that blinks off and on is a finding. Under `prefers-reduced-motion` the indicator jumps instead of sliding.
+
 ### Removed
 
 - **Routines (agents-cli removed `agents routines` in 1.23.29, phnx-labs/agi-cli#3986).** Deleted `routines/` (the `worktree-sweep` and `backfill-check-outcomes` jobs, the sweep script and its test), the `routines` skill, and `webhooks/`, whose receiver only fired routines and which agents-cli had already retired. README, AGENTS.md, `skills/README.md`, CODEOWNERS, `.gitignore`, `hooks/run_tests.sh`, `/self:hibernate` and two hook comments no longer point at them. Nothing reclaims stale worktrees on a schedule now: `hooks/post-tool-use/02-worktree-reclaim-nudge.py` still removes the tree at merge time, and `check-outcome-backfill.py` still runs on demand.
