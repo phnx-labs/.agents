@@ -81,7 +81,6 @@ or the resource exists on disk and is invisible or dead:
 | subagent | `subagents/<name>/AGENT.md` with `name:` + `description:` frontmatter | the table in `subagents/README.md`, **and** the skill that spawns it — a subagent nothing spawns is dead weight in every install. Do **not** put it in a plugin's `agents/` dir: that reaches only plugin-format harnesses, while `subagents/` reaches every subagents-capable one |
 | rule | `rules/subrules/<name>.md` | the `default` preset in `rules/rules.yaml`, then regenerate `rules/AGENTS.md` |
 | CLI manifest | `cli/<tool>.yaml` | the table in `cli/README.md` |
-| routine | `routines/<name>.yml` | the table in `routines/README.md` |
 
 A hook is the sharpest edge: the script alone does nothing. Registration is the
 `hooks:` entry in `agents.yaml`, and an unregistered script is dead code.

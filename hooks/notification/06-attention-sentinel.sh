@@ -11,7 +11,7 @@
 # (what the agent is waiting on — permission text / question), one line, so the
 # menu bar can show the actual ask instead of a generic "awaiting input". The
 # menu-bar helper (LocalState.attentionMarks) reads this dir; without it,
-# "NEEDS YOU" only reflects cloud tasks + failed routines.
+# "NEEDS YOU" only reflects cloud tasks.
 #
 # session_id, hook_event_name, and message arrive on stdin as JSON
 # (Claude/Codex/Gemini).

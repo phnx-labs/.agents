@@ -8,10 +8,9 @@ node_modules — so every merged PR leaked a working tree. Measured 2026-08-30
 across the fleet: 581 worktrees / ~263 GB, which took the release home base to
 1.6 GiB free and wedged publishing (PHNX-3478).
 
-The daily `worktree-sweep` routine is the backstop, but it is a backstop: it runs
-on a clock and only after the grace window. This hook closes the loop at the one
-moment the agent is provably finished with the tree — the merge it just ran — so
-the common case is reclaimed immediately by the agent that created it.
+This hook closes the loop at the one moment the agent is provably finished with
+the tree — the merge it just ran — so the tree is reclaimed immediately by the
+agent that created it.
 
 PostToolUse on the shell tool (matcher Bash): it sees the command and its output.
 
@@ -132,9 +131,7 @@ def main() -> int:
                         "  git -C <repo> worktree remove <repo>/.agents/worktrees/<slug>\n\n"
                         "That is allowed without --force once the tree is clean and pushed, which "
                         "it is after a merge. It refuses on uncommitted changes or unpushed "
-                        "commits, so it is safe to run immediately. Leave the local branch ref "
-                        "alone — the nightly worktree-sweep routine reclaims stragglers and "
-                        "branch refs on every device."
+                        "commits, so it is safe to run immediately."
                     ),
                 }
             }

@@ -18,9 +18,8 @@ skill stays loaded and brings tooling with it.
 | [`teams`](./teams/SKILL.md) | Organize agents into teams that work a shared task in parallel, each in its own worktree |
 | [`sessions`](./sessions/SKILL.md) | Search, browse, read, and move agent transcripts across Claude, Codex, Gemini, and OpenCode |
 | [`cloud`](./cloud/SKILL.md) | Dispatch agent tasks to Rush Cloud, Codex Cloud, or Factory pods |
-| [`routines`](./routines/SKILL.md) | Schedule agents on a cron schedule or one-shot at a specific time |
 
-`routines` fire on a clock; inbound [webhooks](../webhooks/README.md) fire on a push. To reach the owner when genuinely
+To reach the owner when genuinely
 blocked, use `agents feed post --blocked` (it opens a needs-you record and delivers
 out-of-band) — after the self-unblock ladder is exhausted.
 

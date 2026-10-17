@@ -2,6 +2,10 @@
 
 ## [Unreleased]
 
+### Removed
+
+- **Routines (agents-cli removed `agents routines` in 1.23.29, phnx-labs/agi-cli#3986).** Deleted `routines/` (the `worktree-sweep` and `backfill-check-outcomes` jobs, the sweep script and its test), the `routines` skill, and `webhooks/`, whose receiver only fired routines and which agents-cli had already retired. README, AGENTS.md, `skills/README.md`, CODEOWNERS, `.gitignore`, `hooks/run_tests.sh`, `/self:hibernate` and two hook comments no longer point at them. Nothing reclaims stale worktrees on a schedule now: `hooks/post-tool-use/02-worktree-reclaim-nudge.py` still removes the tree at merge time, and `check-outcome-backfill.py` still runs on demand.
+
 ### Fixed
 
 - **`research:product` no longer names a real company in its argument hint.** The example now reads "evaluate a competitor's onboarding flow".
