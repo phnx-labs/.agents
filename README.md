@@ -166,25 +166,14 @@ The same loop handles engineering queues through review, merge, and the reposito
 release process. Use `/work:commit` when the
 requested outcome is cohesive commits and a verified push.
 
-### 3. Schedule it (cron)
-
-[`routines`](skills/routines/SKILL.md) + the **continuous ticket drain** recipe in that
-skill: one drain routine per worker, unattended `work:loop`, overlap lock,
-park blockers and continue. Register with `agents routines add ./drain-worker.yml`.
-
-```bash
-agents routines list
-agents routines run drain-s0    # foreground test
-```
-
-### 4. One task at a time
+### 3. One task at a time
 
 ```text
 /work:dispatch RUSH-1234
 /dispatch fix the menubar reclaim bug
 ```
 
-### 5. After a crash
+### 4. After a crash
 
 ```text
 /continue recover    # finish interrupted work headlessly
@@ -212,9 +201,7 @@ Each directory has a `README.md` for humans (a catalog of everything in it) and 
 | [`rules/`](rules/README.md) | The ruleset every agent gets as its memory file, composed from `subrules/` |
 | [`permissions/`](permissions/README.md) | Canonical YAML permission rules, translated per agent |
 | [`clis/`](clis/README.md) | Manifests for host CLIs (`mq`, `jq`, `linear`) that agents-cli installs |
-| [`routines/`](routines/README.md) | Scheduled agent runs (cron / one-shot) |
 | [`subagents/`](subagents/README.md) | Named sub-agent definitions |
-| [`webhooks/`](webhooks/README.md) | Inbound webhook handlers |
 
 ## Hooks change runtime — commands do not
 

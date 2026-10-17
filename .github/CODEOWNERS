@@ -16,8 +16,6 @@
 /.githooks/         @muqsitnawaz
 /clis/              @muqsitnawaz
 /permissions/       @muqsitnawaz
-/routines/          @muqsitnawaz
-/webhooks/          @muqsitnawaz
 /agents.yaml        @muqsitnawaz
 
 # Instruction surface — becomes system-prompt content for every agent.
