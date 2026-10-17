@@ -198,7 +198,14 @@ declared surface, an extendable concept, by file:line) is the more specific.
     `--json` on anything that emits data, help that teaches a workflow.
   - **UI** — design tokens versus hardcoded colors, the spacing and type scale, reuse of
     an existing component versus a new one-off that renders the same thing, the full
-    state set (loading, empty, error, disabled), focus and contrast affordances.
+    state set (loading, empty, error, disabled), focus and contrast affordances. Check
+    the small motion too: in a row of sibling controls (icon buttons, tabs, a segmented
+    control, nav items, menu rows) the hover or selected highlight is one element that
+    slides from the item it leaves to the item it enters, not a background on each item
+    that blinks off and on; a shared-layout or measured-position indicator, eased out
+    inside the interface clock, jumping without travel under `prefers-reduced-motion`.
+    Sweep the pointer and the arrow keys across the group in the rendered surface; a
+    highlight that blinks is a finding.
   Cite the sibling's file:line and the new member's, and name the convention broken. When
   the repo states these conventions in writing (a design-system doc, a CLI-conventions
   section), a divergence from them is blocking, not advisory.

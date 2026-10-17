@@ -29,7 +29,9 @@ directory; resolve their paths from this skill's actual installed location.
 3. **Assess the user experience.** Check hierarchy, density, readability, alignment,
    asset consistency, component reuse, and copy against the task. For interactions,
    assess discoverability, keyboard/focus, feedback, state continuity, recovery, and
-   relevant responsive/motion behavior. Compare pages or variants to identify drift.
+   relevant responsive/motion behavior. State continuity includes the hover or selected
+   highlight in a row of sibling controls: it slides from one item to the next rather than
+   blinking off one and on the other. Compare pages or variants to identify drift.
 4. **Report actionable findings.** Prioritize blockers to task completion and accessibility,
    then inconsistency and polish. Each finding names the page/element, observed behavior,
    evidence (capture, timestamp/action trace, computed result, or source line), impact,
