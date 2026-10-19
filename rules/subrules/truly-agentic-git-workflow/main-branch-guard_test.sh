@@ -292,6 +292,8 @@ run_guard 0 "install attached owner operand is not directory mode" \
   "$(bj "install -odaemon '$MAIN_REPO/tracked.txt' /tmp/safe-destination" "$NOGIT")"
 run_guard 2 "install end-of-options preserves dash-leading directory" \
   "$(bj "cd '$MAIN_REPO' && install -d -- -new-dir" "$NOGIT")"
+run_guard 2 "cd ; install still judged in the cd target" \
+  "$(bj "cd '$MAIN_REPO'; install -d -- -new-dir" "$NOGIT")"
 run_guard 2 "worktree-shaped path cannot traverse into primary" \
   "$(bj "cat > '$MAIN_REPO/.agents/worktrees/fake/../../../traversal.txt'" "$NOGIT")"
 run_guard 0 "documented plan readback destination /tmp" \
@@ -420,6 +422,15 @@ run_guard 2 "leading cd list backgrounded, sibling git add" "$(bj "cd $WT_LINK &
 run_guard 2 "leading cd then ; git add" "$(bj "cd $WT_LINK && true; git add -A" "$MAIN_REPO")" "$MAIN_REPO"
 run_guard 2 "leading cd then newline git add" "$(bj "cd $WT_LINK && true
 git add -A" "$MAIN_REPO")" "$MAIN_REPO"
+# DENY: obfuscated or nested cd after a leading cd (third-round review); only
+# allowlisted plain command words keep the move.
+run_guard 2 'leading cd then c\d' "$(bj "cd $WT_LINK && c\\d $MAIN_REPO && git add -A" "$MAIN_REPO")" "$MAIN_REPO"
+run_guard 2 "leading cd then c''d" "$(bj "cd $WT_LINK && c''d $MAIN_REPO && git add -A" "$MAIN_REPO")" "$MAIN_REPO"
+run_guard 2 'leading cd then ${X:-cd}' "$(bj "cd $WT_LINK && \${X:-cd} $MAIN_REPO && git add -A" "$MAIN_REPO")" "$MAIN_REPO"
+run_guard 2 'leading cd then $X$Y' "$(bj "cd $WT_LINK && X=c && Y=d && \$X\$Y $MAIN_REPO && git add -A" "$MAIN_REPO")" "$MAIN_REPO"
+run_guard 2 "leading cd then \$'\\x63\\x64'" "$(bj "cd $WT_LINK && \$'\\x63\\x64' $MAIN_REPO && git add -A" "$MAIN_REPO")" "$MAIN_REPO"
+run_guard 2 "leading cd then sh -c obfuscated cd" "$(bj "cd $WT_LINK && sh -c 'c\\d $MAIN_REPO && git add -A'" "$MAIN_REPO")" "$MAIN_REPO"
+run_guard 2 "leading cd then eval" "$(bj "cd $WT_LINK && eval 'cd $MAIN_REPO' && git add -A" "$MAIN_REPO")" "$MAIN_REPO"
 run_guard 0 "leading cd, quoted ; in the message" "$(bj "cd $WT_LINK && git commit -m 'a; b | c & d'" "$MAIN_REPO")" "$MAIN_REPO"
 run_guard 0 "leading cd, add && commit chain" "$(bj "cd $WT_LINK && git add -A && git commit -m x 2>&1" "$MAIN_REPO")" "$MAIN_REPO"
 # A background `&` is a chain operator (it was not split before, so a
