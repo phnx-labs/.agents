@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Unit test for hooks/lib/session_record.py::merge_fields: it merges into this
+# Unit test for hooks/lib/session_record.py. merge_fields: it merges into this
 # session's existing record only, keeps every other field, and never creates,
 # rewrites, or crashes on a missing, corrupt, non-object, or foreign record.
 # HOME is a sandbox so the real ~/.agents/.cache never leaks in.
@@ -31,6 +31,23 @@ for case in 'corrupt:{not json' 'list:[1,2]' 'foreign:{"session_id":"sid-2","pid
   check "$name record is refused" "$(merge 13)" "False"
   check "$name record is left untouched" "$(cat "$SESS/13.json")" "$body"
 done
+
+# started_own_session: this live shell ($$) reported its own SessionStart only
+# when its record names it, carries an id, and was written after it started.
+if [ "$(uname -s)" = Linux ]; then
+  own() { HOME="$SANDBOX" python3 -I -c 'import sys; sys.path.insert(0, sys.argv[1]); import session_record as s; print(s.started_own_session(int(sys.argv[2])))' "$LIB" "$$"; }
+  now=$(date +%s)
+  printf '{"session_id":"sid-own","pid":%s,"ts":%s}' "$$" "$now" > "$SESS/$$.json"
+  check "a current record is its own session" "$(own)" "True"
+  printf '{"session_id":"sid-own","pid":%s,"ts":1}' "$$" > "$SESS/$$.json"
+  check "a record older than the process is not (pid reuse)" "$(own)" "False"
+  printf '{"session_id":"sid-own","pid":%s,"ts":%s}' "$(($$ + 1))" "$now" > "$SESS/$$.json"
+  check "a record naming another pid is not" "$(own)" "False"
+  printf '{"session_id":"","pid":%s,"ts":%s}' "$$" "$now" > "$SESS/$$.json"
+  check "a record without a session id is not" "$(own)" "False"
+  rm -f "$SESS/$$.json"
+  check "no record is not" "$(own)" "False"
+fi
 
 echo "session_record: $pass passed, $fail failed"
 [ "$fail" -eq 0 ]

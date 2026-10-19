@@ -61,8 +61,9 @@ hooks/<event-name>/<hook-file>.{sh,py}
   `large-file-add-guard`, and `main-branch-guard`, which supply their own
   `git_on_command` policy callback). `session_record.py` owns the per-agent-pid session
   record `~/.agents/.cache/state/sessions/<pid>.json`: its key (`unwrap_hook_shell`),
-  path, atomic write, and `started_own_session` (whether an ancestor is an agent that already
-  reported its own SessionStart, where the identity hook's by-pid walk stops). `session-start/04-session-identity.sh` creates it;
+  path, atomic write, and `started_own_session` (whether an ancestor is an agent that
+  already reported its own SessionStart, where the identity hook's by-pid walk stops).
+  `session-start/04-session-identity.sh` creates it;
   `stop/verify-work-state.py` merges the Stop `verdict` into it and never creates one. `test-sqlite.sh` is sourced by hook tests
   that query SQLite; it is not a hook. Not event scripts: no `agents.yaml` entry,
   skipped by `registration_test.sh`. Source them by path; do not register them as
