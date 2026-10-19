@@ -1042,20 +1042,18 @@ _mbg_note_cd() {   # rc 0 when the segment was a `cd`
 
 # _mbg_leading_cd <command> — when the command starts `cd <dir> && …`, <dir>
 # resolves, AND the rest is a plain `&&` chain the cd provably governs, move cwd
-# (and the redirect base) there. The rest must hold no other cd/pushd/popd word
-# anywhere, and, outside quotes once heredoc bodies are dropped, no `;`, `|`,
-# background `&`, newline, `(`, `)` or backtick: any of those can run a git
-# command somewhere the leading cd does not decide (`cd wt && cd - && git add`,
-# `cd wt && x & git add`). Anything else keeps the session cwd (fail closed).
+# (and the redirect base) there. Outside quotes once heredoc bodies are dropped,
+# the rest holds no `;`, `|`, background `&`, newline, `(`, `)`, backtick or
+# `$(`, and every command in it is a plain allowlisted word (git, gh, echo, …):
+# anything else could run a git command somewhere the leading cd does not decide
+# (`cd wt && cd - && git add`, `cd wt && x & git add`, `cd wt && c\d p && git add`).
+# Anything else keeps the session cwd (fail closed).
 _mbg_leading_cd() {
   _lc=$(printf '%s\n' "$1" | sed -n '1{s/^[[:space:]]*//;p;}')
   _lt=$(printf '%s' "$_lc" | sed -nE "s/^cd[[:space:]]+(\"[^\"]*\"|'[^']*'|[^[:space:]&|;<>()\"']+)[[:space:]]*&&.*/\\1/p")
   [ -n "$_lt" ] || return 0
   _lrest=$(printf '%s\n' "$1" | _mbg_strip_heredoc_bodies)
   _lrest=${_lrest#*&&}
-  if printf '%s' "$_lrest" | grep -Eq '(^|[^A-Za-z0-9_.-])(cd|pushd|popd)([^A-Za-z0-9_.-]|$)'; then
-    return 0
-  fi
   printf '%s' "$_lrest" | awk '
     { s = s (NR > 1 ? "\n" : "") $0 }
     END {
@@ -1076,6 +1074,30 @@ _mbg_leading_cd() {
           if (n == ">" || p == ">") continue
           exit 1
         }
+      }
+    }' || return 0
+  # Every command after the cd must be a plain, allowlisted word: a blacklist of
+  # cd spellings loses to `c\d`, `${X:-cd}`, `$X$Y`, `sh -c`, `eval`.
+  printf '%s' "$_lrest" | awk '
+    { s = s (NR > 1 ? "\n" : "") $0 }
+    END {
+      ok["git"]; ok["gh"]; ok["echo"]; ok["printf"]; ok["true"]; ok["test"]
+      ok["ls"]; ok["pwd"]; ok["cat"]; ok["grep"]; ok["wc"]; ok["head"]; ok["tail"]
+      sq = 0; dq = 0; esc = 0; seg = ""
+      for (i = 1; i <= length(s) + 1; i++) {
+        c = (i <= length(s)) ? substr(s, i, 1) : ""
+        n = substr(s, i + 1, 1)
+        if (c != "" && esc) { seg = seg c; esc = 0; continue }
+        if (c == "\\" && !sq) { seg = seg c; esc = 1; continue }
+        if (c == sprintf("%c", 39) && !dq) { sq = !sq; seg = seg c; continue }
+        if (c == "\"" && !sq) { dq = !dq; seg = seg c; continue }
+        if (c == "" || (!sq && !dq && c == "&" && n == "&")) {
+          sub(/^[ \t\n]+/, "", seg)
+          w = seg; sub(/[ \t\n].*$/, "", w)
+          if (w !~ /^[a-z]+$/ || !(w in ok)) exit 1
+          seg = ""; i++; continue
+        }
+        seg = seg c
       }
     }' || return 0
   _ld=$(_mbg_cd_dir "$_lt") || return 0
@@ -1100,8 +1122,9 @@ check_command_string() {
     # A plain `NAME=value` segment feeds later `-C "$NAME"` resolution; it is
     # not itself a command to check (RUSH-2743).
     if _mbg_note_assignment "$seg"; then continue; fi
-    # A local `cd` writes nothing; it only feeds the deny-only check above.
-    if [ -z "${WRITE_REMOTE_HOST:-}" ] && _mbg_note_cd "$seg"; then continue; fi
+    # A local `cd` feeds the deny-only git check, then still goes through
+    # check_segment so the write scan tracks it for destinations.
+    [ -z "${WRITE_REMOTE_HOST:-}" ] && _mbg_note_cd "$seg" || :
     if ! check_segment "$seg"; then
       IFS=$OLDIFS
       return 1
