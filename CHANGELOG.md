@@ -4,7 +4,7 @@
 
 ### Changed
 
-- **`verify-work-complete` blocks the delivery check once per goal.** Its first block already lists everything still open. A second block in the same goal changed the agent's next move 0 of 29 times (2026-10-17), so a repeat is now allowed and recorded as `already-blocked-this-goal`. The open-PR check, including conflicts and red CI, is unchanged.
+- **`verify-work-complete` blocks the delivery check once per goal.** Its first block already lists everything still open. A second block in the same goal changed the agent's next move 0 of 29 times (2026-10-17), so a repeat is now allowed and recorded as `already-blocked-this-goal`. The trade-off: a gap that appears later in the same goal (a second PR, a missing release) is not checked again until the owner's next message. The open-PR check, including conflicts and red CI, is unchanged.
 - **Reviewers check that a hover highlight slides.** `subagents/code-reviewer` and `design:critique` now look at the highlight in a row of sibling controls (icon buttons, tabs, a segmented control, nav items, menu rows). It must be one indicator that slides from the item it leaves to the item it enters. A background on each item that blinks off and on is a finding. Under `prefers-reduced-motion` the indicator jumps instead of sliding.
 
 ### Removed

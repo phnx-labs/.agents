@@ -3,8 +3,9 @@
 #
 # A Stop hook cannot take back text already on screen, so the "You're right." opener
 # has to be prevented before the agent writes its first token. This injects the rule
-# into context on every message the owner sends. Headless runs (CLAUDE_CODE_ENTRYPOINT=sdk-cli) are machine prompts and get
-# nothing. Stdout of an exit-0 UserPromptSubmit hook is added to the model's context.
+# into context on every message the owner sends. Headless runs
+# (CLAUDE_CODE_ENTRYPOINT=sdk-cli) are machine prompts and get nothing. Stdout of
+# an exit-0 UserPromptSubmit hook is added to the model's context.
 set -u
 cat >/dev/null
 [ "${CLAUDE_CODE_ENTRYPOINT:-}" = "cli" ] || exit 0
