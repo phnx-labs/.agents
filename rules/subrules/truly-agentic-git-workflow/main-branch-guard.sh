@@ -1040,12 +1040,44 @@ _mbg_note_cd() {   # rc 0 when the segment was a `cd`
   return 0
 }
 
-# _mbg_leading_cd <command> — when the command starts `cd <dir> && …` and <dir>
-# resolves, move cwd (and the redirect base) there.
+# _mbg_leading_cd <command> — when the command starts `cd <dir> && …`, <dir>
+# resolves, AND the rest is a plain `&&` chain the cd provably governs, move cwd
+# (and the redirect base) there. The rest must hold no other cd/pushd/popd word
+# anywhere, and, outside quotes once heredoc bodies are dropped, no `;`, `|`,
+# background `&`, newline, `(`, `)` or backtick: any of those can run a git
+# command somewhere the leading cd does not decide (`cd wt && cd - && git add`,
+# `cd wt && x & git add`). Anything else keeps the session cwd (fail closed).
 _mbg_leading_cd() {
   _lc=$(printf '%s\n' "$1" | sed -n '1{s/^[[:space:]]*//;p;}')
   _lt=$(printf '%s' "$_lc" | sed -nE "s/^cd[[:space:]]+(\"[^\"]*\"|'[^']*'|[^[:space:]&|;<>()\"']+)[[:space:]]*&&.*/\\1/p")
   [ -n "$_lt" ] || return 0
+  _lrest=$(printf '%s\n' "$1" | _mbg_strip_heredoc_bodies)
+  _lrest=${_lrest#*&&}
+  if printf '%s' "$_lrest" | grep -Eq '(^|[^A-Za-z0-9_.-])(cd|pushd|popd)([^A-Za-z0-9_.-]|$)'; then
+    return 0
+  fi
+  printf '%s' "$_lrest" | awk '
+    { s = s (NR > 1 ? "\n" : "") $0 }
+    END {
+      sub(/[ \t\n]+$/, "", s)
+      sq = 0; dq = 0; esc = 0
+      for (i = 1; i <= length(s); i++) {
+        c = substr(s, i, 1); n = substr(s, i + 1, 1); p = substr(s, i - 1, 1)
+        if (esc) { esc = 0; continue }
+        if (c == "\\" && !sq) { esc = 1; continue }
+        if (c == sprintf("%c", 39) && !dq) { sq = !sq; continue }
+        if (c == "\"" && !sq) { dq = !dq; continue }
+        if (sq) continue
+        if (c == "`") exit 1
+        if (dq) { if (c == "$" && n == "(") exit 1; continue }
+        if (c == ";" || c == "\n" || c == "|" || c == "(" || c == ")") exit 1
+        if (c == "&") {
+          if (n == "&") { i++; continue }
+          if (n == ">" || p == ">") continue
+          exit 1
+        }
+      }
+    }' || return 0
   _ld=$(_mbg_cd_dir "$_lt") || return 0
   cwd=$_ld
   WRITE_DEST_CWD=$_ld
