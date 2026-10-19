@@ -4,7 +4,7 @@
 
 ### Added
 
-- **`verify-work-complete` shows its done verdict outside the agent.** Each stop where its checks run merges `"verdict": {"state", "gaps", "at"}` into the session record at `~/.agents/.cache/state/sessions/<agent_pid>.json`. `state` is `open` when a check blocked the stop (`gaps` names those checks), `done` when the delivery chain closed and nothing blocked, and `unchecked` otherwise. The `stop_hook_active` retry leaves the verdict alone, a missing record is never created, and a record naming another session is skipped. The write rides the existing check-telemetry flush, so it adds no process. The record's key and write move into `hooks/lib/session_record.py`, which `04-session-identity.sh` now shares.
+- **`verify-work-complete` shows its done verdict outside the agent.** Each stop where its checks run merges `"verdict": {"state", "gaps", "at"}` into the session record at `~/.agents/.cache/state/sessions/<agent_pid>.json`. `state` is `open` when a check blocked the stop (`gaps` names those checks), `done` when the delivery chain closed and nothing blocked, and `unchecked` otherwise. The `stop_hook_active` retry leaves the verdict alone, a missing record is never created, and a record naming another session is skipped. Two consequences for readers: after a blocked stop, the retry that follows is not evaluated, so `open` stands until the next evaluated stop (usually the owner's next turn); and a later SessionStart on the same pid rewrites the record without a `verdict`, so a missing key means no stop has been evaluated since. The write rides the existing check-telemetry flush, so it adds no process. The record's key and write move into `hooks/lib/session_record.py`, which `04-session-identity.sh` now shares.
 
 ### Changed
 
