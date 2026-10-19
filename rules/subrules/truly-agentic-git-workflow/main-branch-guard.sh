@@ -1054,6 +1054,10 @@ _mbg_leading_cd() {
   [ -n "$_lt" ] || return 0
   _lrest=$(printf '%s\n' "$1" | _mbg_strip_heredoc_bodies)
   _lrest=${_lrest#*&&}
+  # git can be pointed at another work tree; then the cd decides nothing.
+  case "$_lrest" in
+    *--work-tree*|*--git-dir*|*core.worktree*|*GIT_*) return 0 ;;
+  esac
   printf '%s' "$_lrest" | awk '
     { s = s (NR > 1 ? "\n" : "") $0 }
     END {
