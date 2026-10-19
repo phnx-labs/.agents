@@ -36,7 +36,7 @@ import json, os, socket, struct, sys, time
 
 here = sys.argv[3] if len(sys.argv) > 3 else "."
 sys.path[:0] = [here, os.path.join(here, "..", "lib")]
-from session_record import atomic_write_json, record_path, unwrap_hook_shell
+from session_record import atomic_write_json, record_path, started_own_session, unwrap_hook_shell
 
 raw = sys.argv[1] if len(sys.argv) > 1 else ""
 try:
@@ -224,11 +224,21 @@ def ppid_of(pid):
 
 
 # Resolve the AGENT process pid: walk ancestors and prefer the first that
-# already has a launcher-written registry file (that IS the agent process).
-# Fall back to our immediate parent when none is found (agent not run via ag run).
+# already has a launcher-written registry file (a wrapper such as codex's node
+# launcher, whose child runs this hook). Fall back to our immediate parent when
+# none is found (agent not run via ag run). The walk stops at an ancestor that
+# reported its own SessionStart: that is another agent, and this session is one
+# it started (a `claude -p` run through its shell). Adopting its file rewrote
+# the tab agent's id and handed its tab to a one-second headless run
+# (yosemite-s0, 2026-10-19); the AGENT_TERMINAL_ID/AGENT_LAUNCH_ID such a child
+# inherited are that agent's too.
 agent_pid = agent_ppid
+nested = False
 cur, seen = agent_pid, 0
 while cur and cur > 1 and seen < 25:
+    if cur != agent_ppid and started_own_session(cur):
+        nested = True
+        break
     if os.path.exists(os.path.join(reg_dir, "%d.json" % cur)):
         agent_pid = cur
         break
@@ -274,11 +284,11 @@ except Exception:
     pass
 # Env fallbacks when the launcher entry is missing or incomplete (hand-started
 # agent, or a race before writePidSessionEntry lands).
-if not entry.get("terminalId"):
+if not entry.get("terminalId") and not nested:
     tid = (os.environ.get("AGENT_TERMINAL_ID") or "").strip()
     if tid:
         entry["terminalId"] = tid
-if not entry.get("launchId"):
+if not entry.get("launchId") and not nested:
     lid = (os.environ.get("AGENT_LAUNCH_ID") or "").strip()
     if lid:
         entry["launchId"] = lid
