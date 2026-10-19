@@ -431,6 +431,9 @@ run_guard 2 'leading cd then $X$Y' "$(bj "cd $WT_LINK && X=c && Y=d && \$X\$Y $M
 run_guard 2 "leading cd then \$'\\x63\\x64'" "$(bj "cd $WT_LINK && \$'\\x63\\x64' $MAIN_REPO && git add -A" "$MAIN_REPO")" "$MAIN_REPO"
 run_guard 2 "leading cd then sh -c obfuscated cd" "$(bj "cd $WT_LINK && sh -c 'c\\d $MAIN_REPO && git add -A'" "$MAIN_REPO")" "$MAIN_REPO"
 run_guard 2 "leading cd then eval" "$(bj "cd $WT_LINK && eval 'cd $MAIN_REPO' && git add -A" "$MAIN_REPO")" "$MAIN_REPO"
+run_guard 2 "leading cd then git --work-tree" "$(bj "cd $WT_LINK && git --work-tree=$MAIN_REPO add -A" "$MAIN_REPO")" "$MAIN_REPO"
+run_guard 2 "leading cd then git -c core.worktree" "$(bj "cd $WT_LINK && git -c core.worktree=$MAIN_REPO add -A" "$MAIN_REPO")" "$MAIN_REPO"
+run_guard 2 "leading cd then git --git-dir" "$(bj "cd $WT_LINK && git --git-dir=$MAIN_REPO/.git commit -m x" "$MAIN_REPO")" "$MAIN_REPO"
 run_guard 0 "leading cd, quoted ; in the message" "$(bj "cd $WT_LINK && git commit -m 'a; b | c & d'" "$MAIN_REPO")" "$MAIN_REPO"
 run_guard 0 "leading cd, add && commit chain" "$(bj "cd $WT_LINK && git add -A && git commit -m x 2>&1" "$MAIN_REPO")" "$MAIN_REPO"
 # A background `&` is a chain operator (it was not split before, so a
