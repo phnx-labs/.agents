@@ -57,15 +57,14 @@ MAX_JUDGES = 2           # concurrent judge children per machine
 STALE_HANDOFF_S = 300    # an unclaimed handoff older than this is swept
 CHILD_SENTINEL = "STOP_JUDGE_CHILD"
 
-# Tool calls that record or schedule work but gather no evidence (as in
-# 07-investigate-first-gate.py).
+# Tool calls that record or schedule work but gather no evidence.
 BOOKKEEPING = {
     "TodoWrite", "TaskCreate", "TaskUpdate", "TaskList", "TaskGet", "ToolSearch",
     "ScheduleWakeup", "AskUserQuestion", "ExitPlanMode", "EnterPlanMode",
 }
 CMD_FAMILIES = ("secrets", "browser", "devices", "sessions")
 
-# User records the owner did not type (as in 07-investigate-first-gate.py).
+# User records the owner did not type.
 SYNTHETIC = re.compile(
     r"^\s*(?:<(?:system-reminder|task-notification|local-command-stdout|local-command-stderr"
     r"|local-command-caveat|bash-stdout|bash-stderr)>|Base directory for this skill:"

@@ -4,10 +4,12 @@
 
 ### Changed
 
+- **`verify-work-complete` blocks the delivery check once per goal.** Its first block already lists everything still open. A second block in the same goal changed the agent's next move 0 of 29 times (2026-10-17), so a repeat is now allowed and recorded as `already-blocked-this-goal`. The open-PR check, including conflicts and red CI, is unchanged.
 - **Reviewers check that a hover highlight slides.** `subagents/code-reviewer` and `design:critique` now look at the highlight in a row of sibling controls (icon buttons, tabs, a segmented control, nav items, menu rows). It must be one indicator that slides from the item it leaves to the item it enters. A background on each item that blinks off and on is a finding. Under `prefers-reduced-motion` the indicator jumps instead of sliding.
 
 ### Removed
 
+- **The `investigate-first-gate` Stop hook.** The same rule is already in `rules/` and in the `investigate-first-reminder` prompt hook, so the gate was a third copy that re-blocked replies. It also fired on a bare `! git pull`. The reminder stays.
 - **Routines (agents-cli removed `agents routines` in 1.23.29, phnx-labs/agi-cli#3986).** Deleted `routines/` (the `worktree-sweep` and `backfill-check-outcomes` jobs, the sweep script and its test), the `routines` skill, and `webhooks/`, whose receiver only fired routines and which agents-cli had already retired. README, AGENTS.md, `skills/README.md`, CODEOWNERS, `.gitignore`, `hooks/run_tests.sh`, `/self:hibernate` and two hook comments no longer point at them. Nothing reclaims stale worktrees on a schedule now: `hooks/post-tool-use/02-worktree-reclaim-nudge.py` still removes the tree at merge time, and `check-outcome-backfill.py` still runs on demand.
 
 ### Fixed
