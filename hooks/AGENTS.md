@@ -59,7 +59,10 @@ hooks/<event-name>/<hook-file>.{sh,py}
   `git-parse.sh` (the git-command parser — `sh -c` unwrapping, chain splitting,
   env/quote stripping, global-flag peeling — shared by `git-guard`,
   `large-file-add-guard`, and `main-branch-guard`, which supply their own
-  `git_on_command` policy callback). `test-sqlite.sh` is sourced by hook tests
+  `git_on_command` policy callback). `session_record.py` owns the per-agent-pid session
+  record `~/.agents/.cache/state/sessions/<pid>.json`: its key (`unwrap_hook_shell`),
+  path, and atomic write. `session-start/04-session-identity.sh` creates it;
+  `stop/verify-work-state.py` merges the Stop `verdict` into it and never creates one. `test-sqlite.sh` is sourced by hook tests
   that query SQLite; it is not a hook. Not event scripts: no `agents.yaml` entry,
   skipped by `registration_test.sh`. Source them by path; do not register them as
   hooks.

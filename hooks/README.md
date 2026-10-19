@@ -52,6 +52,7 @@ hooks/
   lib/                    shared helpers sourced by hooks (not event scripts):
                             json-field.sh (JSON extractor), git-facts.sh (git-fact
                             cache), git-parse.sh (git-command parser),
+                            session_record.py (the per-agent-pid session record),
                             test-sqlite.sh (stdlib sqlite3 for tests; not a hook)
     tests/                  its *_test.sh files
   promptcuts.yaml         data for promptcuts (internal hook: expand-promptcuts)
@@ -125,7 +126,7 @@ implementation. See [§Subrule hooks](#subrule-hooks-rules-not-this-tree).
 
 | Hook | What it does |
 |---|---|
-| [`00-agent-verify-work-complete.sh`](./stop/00-agent-verify-work-complete.sh) | Blocks a stop only on facts: an owned PR still open with no watcher armed for the current goal, no plan mode, and no filed `--blocked` receipt (a receipt never covers conflicts or red checks); running teammates with nothing armed; unfinished checklist items; a delivery that has not closed its Linear/docs/release loop (once per goal). Final-message wording never blocks or clears a check |
+| [`00-agent-verify-work-complete.sh`](./stop/00-agent-verify-work-complete.sh) | Blocks a stop only on facts: an owned PR still open with no watcher armed for the current goal, no plan mode, and no filed `--blocked` receipt (a receipt never covers conflicts or red checks); running teammates with nothing armed; unfinished checklist items; a delivery that has not closed its Linear/docs/release loop (once per goal). Final-message wording never blocks or clears a check. Each evaluated stop merges a `verdict` (`done` / `open` with its `gaps` / `unchecked`) into the agent's session record |
 | [`verify-work-state.py`](./stop/verify-work-state.py) | Goal-scoped positive-evidence classifier, session-owned entity ledger, and structured check telemetry used by `verify-work-complete` |
 | [`verify-delivery-chain.py`](./stop/verify-delivery-chain.py) | Goal-scoped delivery-chain verifier invoked by the Stop check (not registered alone) |
 | [`check-outcome-backfill.py`](./stop/check-outcome-backfill.py) | Offline: derives whether each recorded block was followed by the specific thing that block demanded; never on a hook path |

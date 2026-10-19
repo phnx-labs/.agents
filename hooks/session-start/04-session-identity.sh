@@ -28,36 +28,21 @@ input="$(cat 2>/dev/null || true)"
 # $PPID = the process that spawned this hook (bash's parent): the agent, or a
 # `sh -c` wrapper that unwrap_hook_shell resolves to the agent. Passed explicitly
 # because python's os.getppid() would resolve to bash, not the agent.
-python3 - "$input" "$PPID" <<'PY' 2>/dev/null || true
+# The hook's own dir locates lib/session_record.py: beside it once agents-cli
+# flattens hooks into a version home, ../lib in this repo.
+case "$0" in */*) here="${0%/*}" ;; *) here=. ;; esac
+python3 - "$input" "$PPID" "$here" <<'PY' 2>/dev/null || true
 import json, os, socket, struct, sys, time
+
+here = sys.argv[3] if len(sys.argv) > 3 else "."
+sys.path[:0] = [here, os.path.join(here, "..", "lib")]
+from session_record import atomic_write_json, record_path, unwrap_hook_shell
 
 raw = sys.argv[1] if len(sys.argv) > 1 else ""
 try:
     agent_ppid = int(sys.argv[2]) if len(sys.argv) > 2 else os.getppid()
 except (ValueError, IndexError):
     agent_ppid = os.getppid()
-
-
-def unwrap_hook_shell(pid):
-    """Claude runs a hook as `/bin/sh -c <command>`. bash (macOS /bin/sh) execs
-    the lone command, so $PPID is the agent; dash (Debian/Ubuntu /bin/sh) forks
-    it, so $PPID is a wrapper that exits with the hook. Keying state on that
-    wrapper left a restarted `claude` unbound from its terminal. A shell the
-    launcher registered is the agent itself and stays the key."""
-    if os.path.exists(os.path.expanduser("~/.agents/.cache/terminals/by-pid/%d.json" % pid)):
-        return pid
-    try:
-        with open("/proc/%d/cmdline" % pid, "rb") as f:
-            argv = f.read().split(b"\0")
-        if (len(argv) > 2 and os.path.basename(argv[0]) in (b"sh", b"dash", b"bash", b"ash")
-                and argv[1][:1] == b"-" and argv[1][-1:] == b"c" and argv[1][1:].isalpha()):
-            with open("/proc/%d/stat" % pid) as f:
-                parent = int(f.read().rsplit(")", 1)[1].split()[1])
-            if parent > 1:
-                return parent
-    except Exception:
-        pass
-    return pid
 
 
 agent_ppid = unwrap_hook_shell(agent_ppid)
@@ -89,18 +74,6 @@ if not cwd:
     cwd = os.environ.get("GEMINI_CWD") or os.getcwd()
 
 home = os.path.expanduser("~")
-
-
-def atomic_write_json(path, obj):
-    """Best-effort atomic JSON write; a failure never breaks the session."""
-    try:
-        os.makedirs(os.path.dirname(path), exist_ok=True)
-        tmp = path + ".tmp.%d" % os.getpid()
-        with open(tmp, "w") as f:
-            json.dump(obj, f)
-        os.replace(tmp, path)
-    except Exception:
-        pass
 
 
 def owns_process_view():
@@ -223,7 +196,7 @@ can_write = owns_process_view()
 # ---------------------------------------------------------------------------
 if can_write:
     atomic_write_json(
-        os.path.join(home, ".agents", ".cache", "state", "sessions", "%d.json" % agent_ppid),
+        record_path(agent_ppid),
         {"session_id": sid, "cwd": cwd, "pid": agent_ppid, "ts": int(time.time())},
     )
 

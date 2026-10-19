@@ -25,6 +25,9 @@ import time
 from pathlib import Path
 from typing import Any, Iterable
 
+sys.path[:0] = [str(Path(__file__).resolve().parent), str(Path(__file__).resolve().parent.parent / "lib")]
+import session_record  # noqa: E402
+
 
 HOOK_ID = "system.verify-work-complete"
 SCHEMA_VERSION = 4
@@ -613,6 +616,36 @@ def record_checks(payload: dict[str, Any], db_path: Path, triples: list[tuple[st
     return {"recorded": True, "count": len(triples)}
 
 
+def verdict_of(triples: list[tuple[str, str, str]]) -> dict[str, Any]:
+    """The owner-visible summary of one evaluated stop: open when a check
+    blocked it, done when the delivery chain closed, unchecked otherwise."""
+    gaps: list[str] = []
+    for check_name, outcome, _reason in triples:
+        if outcome == "blocked" and check_name not in gaps:
+            gaps.append(check_name)
+    if gaps:
+        state = "open"
+    elif ("delivery", "passed", "delivery-chain-closed") in triples:
+        state = "done"
+    else:
+        state = "unchecked"
+    return {"state": state, "gaps": gaps, "at": _now_ms()}
+
+
+def publish_verdict(payload: dict[str, Any], agent_pid: int, triples: list[tuple[str, str, str]]) -> bool:
+    """Merge the verdict into the session record session-start wrote for this
+    agent, so the owner's surfaces see what only the agent saw before."""
+    if not triples:
+        return False
+    try:
+        for check_name, outcome, reason_code in triples:
+            _validate_check(check_name, outcome, reason_code)
+        pid = session_record.unwrap_hook_shell(agent_pid)
+        return session_record.merge_fields(pid, str(payload.get("session_id") or ""), {"verdict": verdict_of(triples)})
+    except Exception:
+        return False
+
+
 def record_check(payload: dict[str, Any], db_path: Path, check_name: str, outcome: str, reason_code: str) -> dict[str, Any]:
     result = record_checks(payload, db_path, [(check_name, outcome, reason_code)])
     if result.get("recorded"):
@@ -641,14 +674,21 @@ def main() -> int:
                 raise ValueError("record-check requires check, outcome, and reason")
             result = record_check(payload, default_db_path(), sys.argv[2], sys.argv[3], sys.argv[4])
         elif action == "record-checks":
-            # each remaining argv is "check:outcome:reason"
+            # [--agent-pid <pid>] then each remaining argv is "check:outcome:reason"
+            specs = sys.argv[2:]
+            agent_pid = 0
+            if specs[:1] == ["--agent-pid"] and len(specs) > 1:
+                agent_pid = int(specs[1]) if specs[1].isdigit() else 0
+                specs = specs[2:]
             triples = []
-            for spec in sys.argv[2:]:
+            for spec in specs:
                 parts = spec.split(":")
                 if len(parts) != 3:
                     raise ValueError("check spec must be check:outcome:reason")
                 triples.append((parts[0], parts[1], parts[2]))
+            published = publish_verdict(payload, agent_pid, triples) if agent_pid else False
             result = record_checks(payload, default_db_path(), triples)
+            result["verdict_published"] = published
         else:
             raise ValueError(f"unknown action: {action}")
     except (OSError, sqlite3.Error, RuntimeError, ValueError) as exc:
