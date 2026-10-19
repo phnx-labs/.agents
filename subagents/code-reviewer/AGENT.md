@@ -205,7 +205,12 @@ declared surface, an extendable concept, by file:line) is the more specific.
     that blinks off and on; a shared-layout or measured-position indicator, eased out
     inside the interface clock, jumping without travel under `prefers-reduced-motion`.
     Sweep the pointer and the arrow keys across the group in the rendered surface; a
-    highlight that blinks is a finding.
+    highlight that blinks is a finding. Icons on tiles are one family too: every square
+    tile takes the same corner (a percentage of its side, so it holds at every size) and
+    every logo or brand mark the same inset from the tile's edge, carried in the mark
+    itself rather than tuned per tile. A new tile with its own px radius, a logo sized
+    by hand (`h-[19px]`, `h-[60%]`), or a mark file whose margin differs from its
+    siblings' is a finding; measure the new mark against two siblings.
   Cite the sibling's file:line and the new member's, and name the convention broken. When
   the repo states these conventions in writing (a design-system doc, a CLI-conventions
   section), a divergence from them is blocking, not advisory.
