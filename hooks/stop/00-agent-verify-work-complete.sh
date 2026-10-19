@@ -97,10 +97,14 @@ record_check_ok() { # $1 check, $2 outcome (passed|skipped), $3 reason code
   CHECK_LOG+=("$1:$2:$3")
 }
 
+# The same flush merges this stop's verdict (open / done / unchecked) into the
+# agent's session record (lib/session_record.py), where the owner's surfaces
+# read it. A retry with stop_hook_active records no checks, so it never
+# overwrites the verdict of the stop it retries.
 flush_check_log() {
   [ "${#CHECK_LOG[@]}" -eq 0 ] && return 0
   printf '%s' "$INPUT_JSON" | python3 "$HERE/verify-work-state.py" record-checks \
-    ${CHECK_LOG[@]+"${CHECK_LOG[@]}"} >/dev/null 2>&1 || true
+    --agent-pid "$PPID" ${CHECK_LOG[@]+"${CHECK_LOG[@]}"} >/dev/null 2>&1 || true
   CHECK_LOG=()
 }
 # EXIT flushes. INT/TERM must flush and then genuinely DIE: a signal handler that

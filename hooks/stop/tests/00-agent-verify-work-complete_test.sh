@@ -1083,4 +1083,74 @@ rc=$(FAKE_GH_STATE=OPEN run_hook "$TCAPL" "CI is green, waiting for the reviewer
 check "identical-state: unchanged state after 2 fires is capped (passes)" "$rc" "0"
 export VERIFY_WORK_STATE_DB="$SANDBOX/verify-work-state.db"
 
+# --- verdict in the session record -------------------------------------------
+# Every evaluated stop merges {state, gaps, at} into the session record that
+# session-start wrote at ~/.agents/.cache/state/sessions/<agent_pid>.json.
+# A parent script (not `sh -c`, which the hook would unwrap) stands in for the
+# agent: it seeds the record under its own pid and spawns the hook.
+VHOME="$SANDBOX/verdict-home"
+VSESS="$VHOME/.agents/.cache/state/sessions"
+mkdir -p "$VSESS"
+cat > "$SANDBOX/agent-parent.sh" <<'PARENT'
+#!/usr/bin/env bash
+# $1 hook, $2 payload file, $3 seed: record | other | missing | <verdict json>
+rec="$HOME/.agents/.cache/state/sessions/$$.json"
+sid=$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["session_id"])' "$2")
+case "$3" in
+  missing) ;;
+  record)  printf '{"session_id":"%s","cwd":"/w","pid":%d,"ts":1}' "$sid" $$ > "$rec" ;;
+  other)   printf '{"session_id":"other-session","cwd":"/w","pid":%d,"ts":1}' $$ > "$rec" ;;
+  *)       printf '{"session_id":"%s","cwd":"/w","pid":%d,"ts":1,"verdict":%s}' "$sid" $$ "$3" > "$rec" ;;
+esac
+bash "$1" < "$2" >/dev/null 2>&1
+echo "$rec"
+PARENT
+run_verdict() {   # $1 transcript, $2 last message, $3 stop_hook_active, $4 seed -> prints record path
+  python3 - "$1" "$2" "$3" <<'PY' > "$SANDBOX/verdict-payload.json"
+import hashlib, json, os, sys
+fixture_id = "fixture-" + hashlib.sha256(sys.argv[1].encode()).hexdigest()[:16]
+print(json.dumps({"session_id": fixture_id, "launch_id": fixture_id, "agent": "claude",
+    "transcript_path": sys.argv[1], "cwd": os.environ["FIXTURE_CWD_REPO"],
+    "last_assistant_message": sys.argv[2], "stop_hook_active": sys.argv[3] == "true"}))
+PY
+  HOME="$VHOME" bash "$SANDBOX/agent-parent.sh" "$HOOK" "$SANDBOX/verdict-payload.json" "$4"
+}
+vfield() {   # $1 record, $2 python expression over r
+  python3 -c 'import json,sys; r=json.load(open(sys.argv[1])); print(eval(sys.argv[2]))' "$1" "$2" 2>/dev/null
+}
+export VERIFY_WORK_STATE_DB="$SANDBOX/verdict-state.db"
+
+# V1. open: an unfinished checklist blocks; the gap is keep-moving.
+R=$(run_verdict "$(mk_tasks one-remaining)" "Wiring is next." false record)
+check "verdict open on a blocked stop" "$(vfield "$R" 'r["verdict"]["state"]')" "open"
+check "verdict gaps name the blocking check" "$(vfield "$R" 'r["verdict"]["gaps"]')" "['keep-moving']"
+check "verdict keeps the record's other fields" "$(vfield "$R" '(r["cwd"], r["ts"])')" "('/w', 1)"
+check "verdict at is epoch ms" "$(vfield "$R" 'r["verdict"]["at"] > 10**12')" "True"
+
+# V1b. open: an owned PR still open blocks; the gap is open-pr.
+R=$(FAKE_GH_STATE=OPEN run_verdict "$(mk_transcript create)" "Opened the PR." false record)
+check "verdict gaps name open-pr" "$(vfield "$R" '(r["verdict"]["state"], r["verdict"]["gaps"])')" "('open', ['open-pr'])"
+
+# V2. done: the delivery chain closed and nothing blocked.
+R=$(FAKE_GH_STATE=MERGED FAKE_GIT_BRANCH=feature/RUSH-1234 FAKE_LINEAR_STATE=Done \
+  run_verdict "$(mk_delivery_transcript "Please implement the widget")" "Merged RUSH-1234. Evidence: tests passed." false record)
+check "verdict done when the delivery chain closed" "$(vfield "$R" '(r["verdict"]["state"], r["verdict"]["gaps"])')" "('done', [])"
+
+# V3. unchecked: nothing blocked and no delivery to check.
+R=$(run_verdict "$TSHORT" "The config looks valid." false record)
+check "verdict unchecked when no delivery ran" "$(vfield "$R" '(r["verdict"]["state"], r["verdict"]["gaps"])')" "('unchecked', [])"
+
+# V4. The stop_hook_active retry evaluates nothing and keeps the verdict.
+R=$(run_verdict "$(mk_tasks one-remaining)" "Wiring is next." true '{"state":"open","gaps":["keep-moving"],"at":5}')
+check "retry keeps the existing verdict" "$(vfield "$R" 'r["verdict"]')" "{'state': 'open', 'gaps': ['keep-moving'], 'at': 5}"
+
+# V5. No record: the hook never creates one.
+R=$(run_verdict "$(mk_tasks one-remaining)" "Wiring is next." false missing)
+[ -e "$R" ] && { echo "FAIL - verdict created a missing session record"; fail=1; } || echo "ok   - missing session record stays missing"
+
+# V6. A record naming another session (a reused pid) is left alone.
+R=$(run_verdict "$TSHORT" "The config looks valid." false other)
+check "another session's record gets no verdict" "$(vfield "$R" '"verdict" in r')" "False"
+export VERIFY_WORK_STATE_DB="$SANDBOX/verify-work-state.db"
+
 exit $fail
