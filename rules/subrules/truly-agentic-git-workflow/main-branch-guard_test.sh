@@ -409,6 +409,19 @@ run_guard 2 "cd || git add" "$(bj "cd $WT_LINK || git add -A" "$MAIN_REPO")" "$M
 run_guard 2 "skipped conditional cd" "$(bj "false && cd $WT_LINK; git add -A" "$MAIN_REPO")" "$MAIN_REPO"
 run_guard 2 "sh -c cd does not leak" "$(bj "sh -c 'cd $WT_LINK'; git add -A" "$MAIN_REPO")" "$MAIN_REPO"
 run_guard 2 "bash -c cd does not leak" "$(bj "bash -c \"cd $WT_LINK\"; git add -A" "$MAIN_REPO")" "$MAIN_REPO"
+# DENY: a leading cd moves cwd only when the rest is a plain `&&` chain it
+# provably governs (second-round review bypasses).
+run_guard 2 "leading cd then cd \$OLDPWD" "$(bj "cd $WT_LINK && cd \$OLDPWD && git add -A" "$MAIN_REPO")" "$MAIN_REPO"
+run_guard 2 "leading cd then cd -" "$(bj "cd $WT_LINK && cd - && git add -A" "$MAIN_REPO")" "$MAIN_REPO"
+run_guard 2 "leading cd then cd \$(...)" "$(bj "cd $WT_LINK && cd \$(echo $MAIN_REPO) && git add -A" "$MAIN_REPO")" "$MAIN_REPO"
+run_guard 2 "leading cd then pushd" "$(bj "cd $WT_LINK && pushd $MAIN_REPO && git add -A" "$MAIN_REPO")" "$MAIN_REPO"
+run_guard 2 "leading cd then subshell cd" "$(bj "cd $WT_LINK && (cd $MAIN_REPO && git add -A)" "$MAIN_REPO")" "$MAIN_REPO"
+run_guard 2 "leading cd list backgrounded, sibling git add" "$(bj "cd $WT_LINK && git add -A & git add -A" "$MAIN_REPO")" "$MAIN_REPO"
+run_guard 2 "leading cd then ; git add" "$(bj "cd $WT_LINK && true; git add -A" "$MAIN_REPO")" "$MAIN_REPO"
+run_guard 2 "leading cd then newline git add" "$(bj "cd $WT_LINK && true
+git add -A" "$MAIN_REPO")" "$MAIN_REPO"
+run_guard 0 "leading cd, quoted ; in the message" "$(bj "cd $WT_LINK && git commit -m 'a; b | c & d'" "$MAIN_REPO")" "$MAIN_REPO"
+run_guard 0 "leading cd, add && commit chain" "$(bj "cd $WT_LINK && git add -A && git commit -m x 2>&1" "$MAIN_REPO")" "$MAIN_REPO"
 # A background `&` is a chain operator (it was not split before, so a
 # `git add` after it went unchecked); `2>&1` and `&>` are redirects.
 run_guard 2 "background & then git add" "$(bj "echo hi & git add -A" "$MAIN_REPO")" "$MAIN_REPO"
