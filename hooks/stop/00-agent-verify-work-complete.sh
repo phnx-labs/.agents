@@ -13,7 +13,8 @@ set -euo pipefail
 #                fresh durable watcher, filed --blocked receipt, last-tool
 #                ExitPlanMode/AskUserQuestion, or plan mode covers them
 #   delivery     a done-claim (or PR/merge finish line) on a session with real
-#                delivery evidence, checked by verify-delivery-chain.py
+#                delivery evidence, checked by verify-delivery-chain.py; blocks
+#                at most once per goal
 #
 # Exit 0 = allow stop
 # Exit 2 = block stop, stderr becomes feedback to the agent
@@ -68,7 +69,8 @@ print("STATE_OWNED_PRS=" + shlex.quote("\n".join(str(value) for value in data.ge
 failed = bool(data.get("state_error")) or not isinstance(data.get("delivery_evidence"), bool)
 print("STATE_EVAL_FAILED=" + shlex.quote("yes" if failed else "no"))
 print("STATE_EVIDENCE_REPEAT=" + shlex.quote("yes" if data.get("evidence_repeat") is True else "no"))
-' 2>/dev/null || printf '%s\n' 'STATE_DELIVERY_EVIDENCE=no' 'STATE_GOAL_OFFSET=0' 'STATE_OWNED_PRS=' 'STATE_EVAL_FAILED=yes' 'STATE_EVIDENCE_REPEAT=no')"
+print("STATE_BLOCKED_CHECKS=" + shlex.quote(" ".join(str(v) for v in data.get("blocked_checks", []))))
+' 2>/dev/null || printf '%s\n' 'STATE_DELIVERY_EVIDENCE=no' 'STATE_GOAL_OFFSET=0' 'STATE_OWNED_PRS=' 'STATE_EVAL_FAILED=yes' 'STATE_EVIDENCE_REPEAT=no' 'STATE_BLOCKED_CHECKS=')"
 
 # --- check outcome recording ---------------------------------------------------
 # Every check evaluation is recorded, not just the ones that block. Recording only
@@ -854,6 +856,15 @@ if [ "$delivery_trigger" != "yes" ]; then
   record_check_ok delivery skipped no-delivery-trigger
   exit 0
 fi
+
+# The delivery check blocks once per goal. Its first message lists everything
+# still open; a repeat changed nothing (0 of 29 repeats, 2026-10-17).
+case " ${STATE_BLOCKED_CHECKS:-} " in
+  *" delivery "*)
+    record_check_ok delivery skipped already-blocked-this-goal
+    exit 0
+    ;;
+esac
 
 # --- Delivery-chain close-the-loop check ---------------------------------------
 # A stop at the end of a delivery must close the loop on Linear, docs/CHANGELOG,

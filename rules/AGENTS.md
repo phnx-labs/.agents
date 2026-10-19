@@ -17,8 +17,7 @@ output is a tool call that gathers what the message needs. Never open by agreein
 owner pushes back, find out whether they are right first. Before asking the owner
 for anything (a token, key, login, file, fact, merge, or click), check what you can
 reach: secrets bundles by name, logged-in browsers, fleet devices, sessions, and a
-non-author reviewer for merge gates. The `investigate-first-gate` hook rejects a
-reply with no investigation behind it.
+non-author reviewer for merge gates.
 
 Exhaust self-serve before declaring a blocker: change approach instead of
 repeating one, check secret-name variants and `secrets exec` on the

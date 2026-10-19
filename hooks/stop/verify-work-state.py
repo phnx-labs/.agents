@@ -539,6 +539,16 @@ def evaluate(payload: dict[str, Any], db_path: Path) -> dict[str, Any]:
             (session_key, goal_ordinal),
         ).fetchone()
         evidence_repeat = bool(prev_row and prev_row[0] == evidence_hash)
+        # Checks that already blocked in this goal. A delivery block that did not
+        # change the agent's next move the first time does not the second: 0 of 29
+        # repeat delivery blocks were followed by the demanded change (2026-10-17).
+        blocked_checks = sorted(
+            row[0]
+            for row in db.execute(
+                "SELECT DISTINCT check_name FROM check_events WHERE session_key=? AND goal_ordinal=? AND outcome='blocked'",
+                (session_key, goal_ordinal),
+            )
+        )
         db.execute(
             "INSERT INTO decisions(session_key,goal_ordinal,decision,reason,evidence_sha256,created_at_ms) VALUES(?,?,?,?,?,?)",
             (session_key, goal_ordinal, decision, reason, evidence_hash, _now_ms()),
@@ -554,6 +564,7 @@ def evaluate(payload: dict[str, Any], db_path: Path) -> dict[str, Any]:
         "reason": reason,
         "evidence": evidence,
         "evidence_repeat": evidence_repeat,
+        "blocked_checks": blocked_checks,
         "owned_prs": owned_prs,
         "owned_tickets": owned_tickets,
     }

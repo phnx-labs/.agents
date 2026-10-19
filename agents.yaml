@@ -49,14 +49,6 @@ hooks:
       - Stop
     script: stop/00-agent-verify-work-complete.sh
     timeout: 20
-  # Blocks a reply to the owner made with no investigation tool call since their
-  # message, and (once) a reply that opened by conceding before any evidence came
-  # back. Interactive Claude sessions only (CLAUDE_CODE_ENTRYPOINT=cli).
-  investigate-first-gate:
-    events:
-      - Stop
-    script: stop/07-investigate-first-gate.py
-    timeout: 5
   credential-ask-nudge:
     # The agent's final message asks the human for a password/token/API key/login
     # that a secrets bundle or signed-in browser profile on this machine already

@@ -524,7 +524,8 @@ grep -q "RUSH-1234" "$SANDBOX/stderr" && echo "ok   - delivery gate cites the op
 # D2. PR finish-line + ticket closed + evidence -> delivery gate allows stop.
 #     This avoids generic done-claim wording so the older self-audit gate does
 #     not intentionally fire after the delivery gate passes.
-rc=$(FAKE_GH_STATE=MERGED FAKE_GIT_BRANCH=feature/RUSH-1234 FAKE_LINEAR_STATE=Done run_hook "$TD" "Merged RUSH-1234. Evidence: tests passed." false)
+TD2=$(mk_delivery_transcript "Please implement the widget")
+rc=$(FAKE_GH_STATE=MERGED FAKE_GIT_BRANCH=feature/RUSH-1234 FAKE_LINEAR_STATE=Done run_hook "$TD2" "Merged RUSH-1234. Evidence: tests passed." false)
 check "finish-line + closed ticket + evidence allows delivery stop" "$rc" "0"
 
 # D3. User-facing change + no docs/CHANGELOG -> blocks.
@@ -533,9 +534,18 @@ rc=$(FAKE_GH_STATE=MERGED FAKE_GIT_BRANCH=feature/no-ticket FAKE_GIT_FILES=src/w
 check "user-facing change without docs/CHANGELOG blocks" "$rc" "2"
 grep -q "no docs and CHANGELOG update" "$SANDBOX/stderr" && echo "ok   - delivery check flags missing docs and CHANGELOG" || { echo "FAIL - delivery check did not flag docs/changelog"; fail=1; }
 
+# D3b. The delivery check blocks once per goal: the same incomplete chain on
+#      the next stop of the same goal is allowed and recorded as skipped.
+rc=$(FAKE_GH_STATE=MERGED FAKE_GIT_BRANCH=feature/no-ticket FAKE_GIT_FILES=src/widget.js run_hook "$TD_UF" "Merged the new flag." false)
+check "a second delivery block in the same goal is skipped" "$rc" "0"
+skipped=$(sqlite3 "$VERIFY_WORK_STATE_DB" "SELECT count(*) FROM check_events WHERE check_name='delivery' AND reason_code='already-blocked-this-goal'")
+check "the skipped repeat is recorded" "$skipped" "1"
+
 # D4. User-facing change + only CHANGELOG updated -> still blocks; docs and
-#     CHANGELOG are separate requirements.
-rc=$(FAKE_GH_STATE=MERGED FAKE_GIT_BRANCH=feature/no-ticket FAKE_GIT_FILES=$'CHANGELOG.md\nsrc/widget.js' run_hook "$TD_UF" "Merged the new flag. Evidence: screenshot /tmp/flag.png." false)
+#     CHANGELOG are separate requirements. A fresh session, since D3 already
+#     spent this goal's one delivery block.
+TD_UF2=$(mk_delivery_transcript "Please add a new --flag command to the widget")
+rc=$(FAKE_GH_STATE=MERGED FAKE_GIT_BRANCH=feature/no-ticket FAKE_GIT_FILES=$'CHANGELOG.md\nsrc/widget.js' run_hook "$TD_UF2" "Merged the new flag. Evidence: screenshot /tmp/flag.png." false)
 check "user-facing change with only CHANGELOG still blocks" "$rc" "2"
 grep -q "no docs update" "$SANDBOX/stderr" && echo "ok   - delivery check requires docs separately" || { echo "FAIL - delivery check did not require docs separately"; fail=1; }
 
@@ -591,7 +601,8 @@ echo "garbage"
 exit 1
 STUB
 chmod +x "$SANDBOX/bin/linear"
-rc=$(FAKE_GH_STATE=MERGED FAKE_GIT_BRANCH=feature/RUSH-1234 run_hook "$TD" "All done. The widget is merged." false)
+TD_ERR=$(mk_delivery_transcript "Please implement the widget")
+rc=$(FAKE_GH_STATE=MERGED FAKE_GIT_BRANCH=feature/RUSH-1234 run_hook "$TD_ERR" "All done. The widget is merged." false)
 check "linear probe error fails open (allows stop)" "$rc" "0"
 grep -q "close out the delivery" "$SANDBOX/stderr" && { echo "FAIL - delivery gate did not fail open on linear error"; fail=1; } || echo "ok   - delivery gate fails open on linear error"
 
