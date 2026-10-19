@@ -252,8 +252,9 @@ git_unwrap_quotes() {
   esac
 }
 
-# git_split_chains <cmd> — split a command string on chain operators and real
-# newlines OUTSIDE quotes. Quoted remote/shell inner commands must stay whole so
+# git_split_chains <cmd> — split a command string on chain operators (`;`, `|`,
+# `||`, `&&`, a background `&`) and real newlines OUTSIDE quotes. A `&` in a
+# redirect (`2>&1`, `&>file`) is not an operator. Quoted remote/shell inner commands must stay whole so
 # their raw-level extractor sees the complete string before recursion.
 git_split_chains() {
   printf '%s\n' "$1" | awk '
@@ -266,7 +267,7 @@ git_split_chains() {
         if (c == "\\" && !sq) { out = out c; esc = 1; continue }
         if (c == sprintf("%c", 39) && !dq) { sq = !sq; out = out c; continue }
         if (c == "\"" && !sq) { dq = !dq; out = out c; continue }
-        if (!sq && !dq && (c == "\n" || c == ";" || (c == "|" && substr(s, i - 1, 1) != ">") || (c == "&" && n == "&"))) {
+        if (!sq && !dq && (c == "\n" || c == ";" || (c == "|" && substr(s, i - 1, 1) != ">") || (c == "&" && n == "&") || (c == "&" && n != ">" && substr(s, i - 1, 1) != ">"))) {
           print out; out = ""
           if ((c == "|" && n == "|") || (c == "&" && n == "&")) i++
           continue

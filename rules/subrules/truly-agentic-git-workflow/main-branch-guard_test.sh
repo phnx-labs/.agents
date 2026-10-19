@@ -389,21 +389,36 @@ AGENTS_WORKTREE_FETCH_MAX_AGE_SEC=0 run_guard 0 "worktree add -b, age check disa
 touch "$_REF_PATH" 2>/dev/null
 touch "$_FH_PATH" 2>/dev/null
 
-# --- `cd` moves where later segments are judged (2026-10-18) -----------------
-# Real false block: `cd <linked worktree> && git add -A` with the session cwd in
-# a primary checkout was judged against the session cwd.
-run_guard 0 "cd to linked worktree then git add" "$(bj "cd $WT_LINK && git add -A" "$MAIN_REPO")" "$MAIN_REPO"
-run_guard 0 "cd to quoted linked worktree; git commit" "$(bj "cd \"$WT_LINK\"; git commit -m x" "$MAIN_REPO")" "$MAIN_REPO"
-run_guard 0 "cd via var to linked worktree" "$(bj "WT=$WT_LINK
-cd \"\$WT\" && git add -A" "$MAIN_REPO")" "$MAIN_REPO"
-# DENY: cd INTO a primary checkout from anywhere still blocks.
+# --- `cd` handling (2026-10-18): a leading `cd <dir> &&` moves cwd; any other
+# cd can only add a denial. Real false block: `cd <linked worktree> && git add -A`
+# with the session cwd in a primary checkout.
+run_guard 0 "leading cd to linked worktree && git add" "$(bj "cd $WT_LINK && git add -A" "$MAIN_REPO")" "$MAIN_REPO"
+run_guard 0 "leading quoted cd && git commit" "$(bj "cd \"$WT_LINK\" && git commit -m x" "$MAIN_REPO")" "$MAIN_REPO"
+run_guard 0 "leading cd && heredoc commit" "$(bj "cd $WT_LINK && git commit -F - <<'EOF'
+subject
+EOF" "$MAIN_REPO")" "$MAIN_REPO"
+# DENY: a cd INTO a primary checkout, anywhere, still blocks.
 run_guard 2 "cd to primary checkout then git add" "$(bj "cd $MAIN_REPO && git add -A" "$NOGIT")" "$NOGIT"
 run_guard 2 "cd to worktree then back to primary" "$(bj "cd $WT_LINK && cd $MAIN_REPO && git add -A" "$NOGIT")" "$NOGIT"
-# DENY: a cd the guard cannot resolve leaves the session cwd in force.
-run_guard 2 "unresolvable cd keeps session cwd" "$(bj "cd \$(mktemp -d) && git add -A" "$MAIN_REPO")" "$MAIN_REPO"
-run_guard 2 "nonexistent cd keeps session cwd" "$(bj "cd $TMP/does-not-exist; git add -A" "$MAIN_REPO")" "$MAIN_REPO"
-# DENY: a cd inside a subshell does not leak to the segment after it.
-run_guard 2 "subshell cd does not move the outer cwd" "$(bj "(cd $WT_LINK && true); git add -A" "$MAIN_REPO")" "$MAIN_REPO"
+run_guard 2 "sh -c cd to primary then git add" "$(bj "sh -c 'cd $MAIN_REPO'; git add -A" "$NOGIT")" "$NOGIT"
+# DENY: a cd that may not run, or runs in another shell, never moves cwd.
+run_guard 2 "cd ; git add (not leading &&)" "$(bj "cd $WT_LINK; git add -A" "$MAIN_REPO")" "$MAIN_REPO"
+run_guard 2 "cd | git add" "$(bj "cd $WT_LINK | git add -A" "$MAIN_REPO")" "$MAIN_REPO"
+run_guard 2 "cd & git add" "$(bj "cd $WT_LINK & git add -A" "$MAIN_REPO")" "$MAIN_REPO"
+run_guard 2 "cd || git add" "$(bj "cd $WT_LINK || git add -A" "$MAIN_REPO")" "$MAIN_REPO"
+run_guard 2 "skipped conditional cd" "$(bj "false && cd $WT_LINK; git add -A" "$MAIN_REPO")" "$MAIN_REPO"
+run_guard 2 "sh -c cd does not leak" "$(bj "sh -c 'cd $WT_LINK'; git add -A" "$MAIN_REPO")" "$MAIN_REPO"
+run_guard 2 "bash -c cd does not leak" "$(bj "bash -c \"cd $WT_LINK\"; git add -A" "$MAIN_REPO")" "$MAIN_REPO"
+# A background `&` is a chain operator (it was not split before, so a
+# `git add` after it went unchecked); `2>&1` and `&>` are redirects.
+run_guard 2 "background & then git add" "$(bj "echo hi & git add -A" "$MAIN_REPO")" "$MAIN_REPO"
+run_guard 0 "2>&1 does not split a worktree commit" "$(bj "git -C $WT_LINK add -A 2>&1" "$MAIN_REPO")" "$MAIN_REPO"
+run_guard 0 "&> does not split a worktree commit" "$(bj "git -C $WT_LINK add -A &>/dev/null" "$MAIN_REPO")" "$MAIN_REPO"
+run_guard 2 "subshell cd does not leak" "$(bj "(cd $WT_LINK && true); git add -A" "$MAIN_REPO")" "$MAIN_REPO"
+run_guard 2 "unresolvable leading cd keeps session cwd" "$(bj "cd \$(mktemp -d) && git add -A" "$MAIN_REPO")" "$MAIN_REPO"
+run_guard 2 "nonexistent leading cd keeps session cwd" "$(bj "cd $TMP/does-not-exist && git add -A" "$MAIN_REPO")" "$MAIN_REPO"
+run_guard 2 "var cd is not resolved for the move" "$(bj "WT=$WT_LINK
+cd \"\$WT\" && git add -A" "$MAIN_REPO")" "$MAIN_REPO"
 
 # --- -C variable resolution (RUSH-2743): compound/heredoc/multiline -m -------
 # Real false blocks (2026-08-15): `git -C "$WT" commit` in a compound command

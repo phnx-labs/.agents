@@ -19,8 +19,9 @@
 #   - Write / Edit / MultiEdit / NotebookEdit -> inspects .tool_input.file_path
 #     (or .notebook_path); resolves its enclosing repo and current branch.
 #   - Bash -> inspects `git commit|add|stage` segments; resolves the target repo
-#     from `-C <path>`, else the directory a literal `cd` earlier in the same
-#     command moved to, else the session cwd.
+#     from `-C <path>`, else the session cwd (or the directory a leading
+#     `cd <dir> &&` moves to); a `cd` into a primary tree anywhere in the
+#     command also denies.
 #   - Bash -> also blocks `git worktree add -b/-B`: a new-branch worktree must be
 #     based on a freshly-fetched remote ref (origin/<default>), never an implicit
 #     HEAD or a local branch (the "worktree-ing off a stale local commit" trap).
@@ -939,6 +940,11 @@ git_on_command() {
         set_deny_reason "\`git $_sub\`"
         return 1
       fi
+      # A `cd` earlier in the command named a primary tree (deny-only).
+      if [ -z "$cpath" ] && [ -n "$_MBG_CD_PRIMARY" ] && in_primary_tree "$_MBG_CD_PRIMARY"; then
+        set_deny_reason "\`git $_sub\`"
+        return 1
+      fi
       return 0
       ;;
     worktree)
@@ -987,39 +993,62 @@ check_segment() {
   git_scan_segment "$_seg"
 }
 
-# _mbg_note_cd <segment> — a plain `cd <dir>` moves the directory later
-# segments of the same command run in, so `cd <worktree> && git add -A` is judged
-# against the worktree, not the session cwd. Only a literal target (after `~`,
-# `$HOME` and recorded `NAME=value` expansion) that exists as a directory moves
-# it; anything else leaves cwd where it was, which is what the guard judged
-# before it read `cd` at all. rc 0 when the segment was a `cd`; rc 1 otherwise.
-_mbg_note_cd() {
-  case "$1" in
-    'cd '*) ;;
-    *) return 1 ;;
-  esac
-  _cdt=${1#cd }
-  _cdt=$(printf '%s' "$_cdt" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')
+# _mbg_cd_dir <cd argument> — print the directory a literal `cd` argument names
+# (quoted, `~`, `$HOME`, or a `NAME=value` recorded earlier), resolved against
+# cwd; rc 1 when it cannot be resolved to an existing directory.
+_mbg_cd_dir() {
+  _cdt=$(printf '%s' "$1" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')
   case "$_cdt" in
     \"*\") _cdt=${_cdt#\"}; _cdt=${_cdt%\"} ;;
     \'*\') _cdt=${_cdt#\'}; _cdt=${_cdt%\'} ;;
-    *[[:space:]]*|''|-|-*) return 0 ;;
+    *[[:space:]]*|''|-|-*) return 1 ;;
   esac
   case "$_cdt" in
     '~'|'~/'*) _cdt="${HOME}${_cdt#\~}" ;;
     '$HOME'|'$HOME/'*) _cdt="${HOME}${_cdt#\$HOME}" ;;
     '${HOME}'|'${HOME}/'*) _cdt="${HOME}${_cdt#\$\{HOME\}}" ;;
-    '$'*) _cdt=$(_mbg_expand_leading_var "$_cdt") || return 0 ;;
+    '$'*) _cdt=$(_mbg_expand_leading_var "$_cdt") || return 1 ;;
   esac
-  case "$_cdt" in *'$'*|*'`'*) return 0 ;; esac
+  case "$_cdt" in *'$'*|*'`'*) return 1 ;; esac
   case "$_cdt" in
     /*|[A-Za-z]:/*) ;;
     *) _cdt="${cwd:-.}/$_cdt" ;;
   esac
-  [ -d "$_cdt" ] || return 0
-  cwd=$(CDPATH= cd "$_cdt" 2>/dev/null && pwd) || return 0
-  [ -z "${WRITE_REMOTE_HOST:-}" ] && WRITE_DEST_CWD=$cwd
+  [ -d "$_cdt" ] || return 1
+  CDPATH= cd "$_cdt" 2>/dev/null && pwd
+}
+
+# `cd` handling is asymmetric so it can only ever fail CLOSED. git_split_chains
+# flattens every operator, so a `cd` segment's effect on later segments is
+# unknown (`cd x | git add`, `false && cd x; git add`, `sh -c 'cd x'; git add`
+# all leave git in the original directory).
+#   - MOVE (may allow): only a LEADING `cd <dir> &&` of the whole top-level
+#     command moves cwd (_mbg_leading_cd below). If that cd fails, nothing
+#     after it runs, so every later segment really runs in <dir>.
+#   - ADD (may only deny): any `cd` into a primary tree, anywhere, nested shells
+#     included, is remembered; a later `git add|commit|stage` without `-C` is
+#     then also judged against it.
+_MBG_CD_PRIMARY=""
+_mbg_note_cd() {   # rc 0 when the segment was a `cd`
+  case "$1" in
+    'cd '*) ;;
+    *) return 1 ;;
+  esac
+  if _cdd=$(_mbg_cd_dir "${1#cd }") && in_primary_tree "$_cdd"; then
+    _MBG_CD_PRIMARY=$_cdd
+  fi
   return 0
+}
+
+# _mbg_leading_cd <command> — when the command starts `cd <dir> && …` and <dir>
+# resolves, move cwd (and the redirect base) there.
+_mbg_leading_cd() {
+  _lc=$(printf '%s\n' "$1" | sed -n '1{s/^[[:space:]]*//;p;}')
+  _lt=$(printf '%s' "$_lc" | sed -nE "s/^cd[[:space:]]+(\"[^\"]*\"|'[^']*'|[^[:space:]&|;<>()\"']+)[[:space:]]*&&.*/\\1/p")
+  [ -n "$_lt" ] || return 0
+  _ld=$(_mbg_cd_dir "$_lt") || return 0
+  cwd=$_ld
+  WRITE_DEST_CWD=$_ld
 }
 
 check_command_string() {
@@ -1039,7 +1068,7 @@ check_command_string() {
     # A plain `NAME=value` segment feeds later `-C "$NAME"` resolution; it is
     # not itself a command to check (RUSH-2743).
     if _mbg_note_assignment "$seg"; then continue; fi
-    # A local `cd` moves where later segments run (a remote one runs there).
+    # A local `cd` writes nothing; it only feeds the deny-only check above.
     if [ -z "${WRITE_REMOTE_HOST:-}" ] && _mbg_note_cd "$seg"; then continue; fi
     if ! check_segment "$seg"; then
       IFS=$OLDIFS
@@ -1051,6 +1080,7 @@ check_command_string() {
 }
 
 WRITE_DEST_CWD=${cwd:-.}
+_mbg_leading_cd "$cmd"
 if ! check_command_string "$cmd"; then
   printf '%s\n' "$deny_reason" >&2
   exit 2
