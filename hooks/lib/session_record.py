@@ -32,6 +32,25 @@ def unwrap_hook_shell(pid: int) -> int:
     return pid
 
 
+def started_own_session(pid: int) -> bool:
+    """True when the live process `pid` already reported its own SessionStart: its
+    record names it and was written after it started (Linux /proc, like the walk
+    that asks). Such a process is an agent, so a hook below it belongs to a
+    session that agent started, never to the agent itself."""
+    try:
+        with open(record_path(pid)) as f:
+            record = json.load(f)
+        if not isinstance(record, dict) or record.get("pid") != pid or not record.get("session_id"):
+            return False
+        with open("/proc/%d/stat" % pid) as f:
+            start_ticks = int(f.read().rsplit(")", 1)[1].split()[19])
+        with open("/proc/stat") as f:
+            boot = int(next(line.split()[1] for line in f if line.startswith("btime ")))
+        return float(record.get("ts", 0)) >= int(boot + start_ticks / os.sysconf("SC_CLK_TCK"))
+    except Exception:
+        return False
+
+
 def record_path(agent_pid: int) -> str:
     return os.path.join(os.path.expanduser("~"), ".agents", ".cache", "state", "sessions", "%d.json" % agent_pid)
 

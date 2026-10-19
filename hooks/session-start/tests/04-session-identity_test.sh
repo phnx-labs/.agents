@@ -145,6 +145,26 @@ if [ "$(uname -s)" = Linux ]; then
   check "registered wrapper: keeps its session" "$(printf '%s' "$wrapped" | python3 -c 'import json,sys;print(json.load(sys.stdin).get("sessionId",""))')" "sid-reg"
   check "registered wrapper: keeps launcher terminalId" "$(printf '%s' "$wrapped" | python3 -c 'import json,sys;print(json.load(sys.stdin).get("terminalId",""))')" "W-tab"
   check "registered wrapper: parent not written" "$([ -f "$REG_FILE" ] && echo yes || echo no)" "no"
+
+  # N1: an agent that already reported its SessionStart runs a nested agent
+  # (`claude -p` through its shell). The nested hook must leave the agent's entry
+  # alone and must not take its inherited terminal/launch ids: on yosemite-s0
+  # this rewrote the tab agent to the headless run's session (2026-10-19).
+  cleanup
+  nested="$(REG="$REG" SESS="$SESS" HOOK="$HOOK" AGENT_TERMINAL_ID="tab-7" AGENT_LAUNCH_ID="launch-7" sh -c '
+    printf "{\"pid\":%s,\"agent\":\"claude\",\"sessionId\":\"sid-tab\",\"terminalId\":\"tab-7\",\"launchId\":\"launch-7\"}" $$ > "$REG/$$.json"
+    printf "{\"session_id\":\"sid-tab\",\"pid\":%s,\"ts\":%s}" $$ "$(date +%s)" > "$SESS/$$.json"
+    child="$(python3 -c "import subprocess,os,sys
+p=subprocess.run([\"bash\",os.environ[\"HOOK\"]],input=b\"{\\\"session_id\\\":\\\"sid-headless\\\",\\\"cwd\\\":\\\"/tmp\\\"}\",stdout=subprocess.DEVNULL)
+print(os.getpid())")"
+    cat "$REG/$$.json"; echo; cat "$REG/$child.json" 2>/dev/null; echo
+    rm -f "$REG/$$.json" "$SESS/$$.json" "$REG/$child.json" "$SESS/$child.json"; :')"
+  tab_entry="$(printf '%s\n' "$nested" | sed -n 1p)"
+  child_entry="$(printf '%s\n' "$nested" | sed -n 2p)"
+  check "nested agent: tab agent keeps its session" "$(printf '%s' "$tab_entry" | python3 -c 'import json,sys;print(json.load(sys.stdin).get("sessionId",""))')" "sid-tab"
+  check "nested agent: own entry carries its session" "$(printf '%s' "$child_entry" | python3 -c 'import json,sys;print(json.load(sys.stdin).get("sessionId",""))' 2>/dev/null)" "sid-headless"
+  check "nested agent: no inherited terminalId" "$(printf '%s' "$child_entry" | python3 -c 'import json,sys;print(json.load(sys.stdin).get("terminalId",""))' 2>/dev/null)" ""
+  check "nested agent: no inherited launchId" "$(printf '%s' "$child_entry" | python3 -c 'import json,sys;print(json.load(sys.stdin).get("launchId",""))' 2>/dev/null)" ""
 fi
 
 # --- Job 3: Claude-harness-scoped stdout injection -------------------------
