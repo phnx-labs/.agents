@@ -14,6 +14,7 @@
 
 ### Fixed
 
+- **`main-branch-guard` follows `cd`.** `git add` and `git commit` were judged against the session's starting directory even after a `cd` in the same command. That blocked `cd <linked worktree> && git add -A` from a primary checkout, and allowed `cd <primary checkout> && git add -A` from anywhere else. A literal `cd` to an existing directory (quoted, `~`, `$HOME` or a `NAME=value` set earlier in the command) now moves where later segments are judged. A `cd` it cannot resolve, or one inside a `( … )` subshell, leaves the starting directory in force.
 - **`research:product` no longer names a real company in its argument hint.** The example now reads "evaluate a competitor's onboarding flow".
 - **`routines/worktree-sweep --preserve` never published (#518).** `gh repo view -R <repo>` is not a valid call. Every repo therefore read as not private, and all parked work stayed local. The repo is now passed as an argument. A retry pass also publishes parked `refs/wip/*` work that no run settled, and `refs/wip-checked/<name>` records each settled outcome so a refused ref is not judged again.
 

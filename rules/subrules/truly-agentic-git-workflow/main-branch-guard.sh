@@ -19,7 +19,8 @@
 #   - Write / Edit / MultiEdit / NotebookEdit -> inspects .tool_input.file_path
 #     (or .notebook_path); resolves its enclosing repo and current branch.
 #   - Bash -> inspects `git commit|add|stage` segments; resolves the target repo
-#     from `-C <path>` or the session cwd.
+#     from `-C <path>`, else the directory a literal `cd` earlier in the same
+#     command moved to, else the session cwd.
 #   - Bash -> also blocks `git worktree add -b/-B`: a new-branch worktree must be
 #     based on a freshly-fetched remote ref (origin/<default>), never an implicit
 #     HEAD or a local branch (the "worktree-ing off a stale local commit" trap).
@@ -986,6 +987,41 @@ check_segment() {
   git_scan_segment "$_seg"
 }
 
+# _mbg_note_cd <segment> — a plain `cd <dir>` moves the directory later
+# segments of the same command run in, so `cd <worktree> && git add -A` is judged
+# against the worktree, not the session cwd. Only a literal target (after `~`,
+# `$HOME` and recorded `NAME=value` expansion) that exists as a directory moves
+# it; anything else leaves cwd where it was, which is what the guard judged
+# before it read `cd` at all. rc 0 when the segment was a `cd`; rc 1 otherwise.
+_mbg_note_cd() {
+  case "$1" in
+    'cd '*) ;;
+    *) return 1 ;;
+  esac
+  _cdt=${1#cd }
+  _cdt=$(printf '%s' "$_cdt" | sed 's/^[[:space:]]*//; s/[[:space:]]*$//')
+  case "$_cdt" in
+    \"*\") _cdt=${_cdt#\"}; _cdt=${_cdt%\"} ;;
+    \'*\') _cdt=${_cdt#\'}; _cdt=${_cdt%\'} ;;
+    *[[:space:]]*|''|-|-*) return 0 ;;
+  esac
+  case "$_cdt" in
+    '~'|'~/'*) _cdt="${HOME}${_cdt#\~}" ;;
+    '$HOME'|'$HOME/'*) _cdt="${HOME}${_cdt#\$HOME}" ;;
+    '${HOME}'|'${HOME}/'*) _cdt="${HOME}${_cdt#\$\{HOME\}}" ;;
+    '$'*) _cdt=$(_mbg_expand_leading_var "$_cdt") || return 0 ;;
+  esac
+  case "$_cdt" in *'$'*|*'`'*) return 0 ;; esac
+  case "$_cdt" in
+    /*|[A-Za-z]:/*) ;;
+    *) _cdt="${cwd:-.}/$_cdt" ;;
+  esac
+  [ -d "$_cdt" ] || return 0
+  cwd=$(CDPATH= cd "$_cdt" 2>/dev/null && pwd) || return 0
+  [ -z "${WRITE_REMOTE_HOST:-}" ] && WRITE_DEST_CWD=$cwd
+  return 0
+}
+
 check_command_string() {
   _input=$1
   # Heredoc bodies are data, not commands — drop terminated ones before the
@@ -1003,6 +1039,8 @@ check_command_string() {
     # A plain `NAME=value` segment feeds later `-C "$NAME"` resolution; it is
     # not itself a command to check (RUSH-2743).
     if _mbg_note_assignment "$seg"; then continue; fi
+    # A local `cd` moves where later segments run (a remote one runs there).
+    if [ -z "${WRITE_REMOTE_HOST:-}" ] && _mbg_note_cd "$seg"; then continue; fi
     if ! check_segment "$seg"; then
       IFS=$OLDIFS
       return 1
