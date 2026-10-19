@@ -25,8 +25,6 @@ import time
 from pathlib import Path
 from typing import Any, Iterable
 
-sys.path[:0] = [str(Path(__file__).resolve().parent), str(Path(__file__).resolve().parent.parent / "lib")]
-import session_record  # noqa: E402
 
 
 HOOK_ID = "system.verify-work-complete"
@@ -640,6 +638,10 @@ def publish_verdict(payload: dict[str, Any], agent_pid: int, triples: list[tuple
     try:
         for check_name, outcome, reason_code in triples:
             _validate_check(check_name, outcome, reason_code)
+        # Imported here so a missing session_record.py costs only the verdict, never the stop checks.
+        sys.path[:0] = [str(Path(__file__).resolve().parent), str(Path(__file__).resolve().parent.parent / "lib")]
+        import session_record
+
         pid = session_record.unwrap_hook_shell(agent_pid)
         return session_record.merge_fields(pid, str(payload.get("session_id") or ""), {"verdict": verdict_of(triples)})
     except Exception:
