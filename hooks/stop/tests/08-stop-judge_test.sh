@@ -347,17 +347,20 @@ HOOK_OVERRIDE="$VER/home/.claude/hooks/08-stop-judge.py" \
 check installed-layout "1|merge_or_approve_pr|ok|merge_or_approve_pr|0" "$(row installed-layout)"
 
 # Turn verdict: whose move it is, merged into this session's record (never a foreign one).
-seed_records() {  # seed_records <case>: a record for sess-1 and one for another session
+# The hook's parent (this test shell, standing in for claude) is the agent pid the record is keyed on.
+AGENT=$$
+seed_records() {  # seed_records <case>: this agent's record for sess-1, and another session's
   local d="$TMP/$1/.agents/.cache/state/sessions"; mkdir -p "$d"
-  printf '{"session_id":"sess-1","pid":4242,"verdict":{"state":"done"}}' > "$d/4242.json"
+  printf '{"session_id":"sess-1","pid":%s,"verdict":{"state":"done"}}' "$AGENT" > "$d/$AGENT.json"
   printf '{"session_id":"sess-other","pid":4243}' > "$d/4243.json"
 }
-turn() {  # turn <case> [pid] -> "kind|quote-has-mark|choices" of turnVerdict, or none
-  python3 - "$TMP/$1/.agents/.cache/state/sessions/${2:-4242}.json" "$MARK" <<'PY'
-import json, sys
+turn() {  # turn <case> [pid] -> "kind|quote-has-mark|choices|ok" of turnVerdict, or none
+  python3 - "$TMP/$1/.agents/.cache/state/sessions/${2:-$AGENT}.json" "$MARK" <<'PY'
+import json, os, stat, sys
 r = json.load(open(sys.argv[1])); v = r.get("turnVerdict")
 if not v: print("none"); sys.exit()
-ok = isinstance(v.get("at"), int) and len(v.get("sha256", "")) == 64 and r.get("verdict") in (None, {"state": "done"})
+ok = (isinstance(v.get("at"), int) and len(v.get("sha256", "")) == 64 and r.get("verdict") in (None, {"state": "done"})
+      and stat.S_IMODE(os.stat(sys.argv[1]).st_mode) == 0o600)
 print("%s|%s|%s|%s" % (v["kind"], sys.argv[2] in v.get("quote", ""), ",".join(v.get("choices", [])), ok))
 PY
 }
@@ -380,6 +383,17 @@ check tv-done "done|False||True" "$(turn tv-done)"
 seed_records tv-unjudged
 run_hook tv-unjudged cli "$WORKED" '{}' STUB_MODE=garbage
 check tv-unjudged "unjudged|False||True" "$(turn tv-unjudged)"
+# A sign-off after finished work is done, not an ask.
+seed_records tv-signoff
+run_hook tv-signoff cli "$WORKED" '{}' STUB_ITEMS='{"items":[{"kind":"done_claim","actor":"agent","quote":"Shipped."},{"kind":"what_next","actor":"agent","quote":"Anything else?"}]}'
+check tv-signoff "done|False||True" "$(turn tv-signoff)"
+# A wait on someone else's step is waiting; one the owner must take is an ask.
+seed_records tv-other
+run_hook tv-other cli "$WORKED" '{}' STUB_ITEMS="$(item announced_not_taken other)"
+check tv-other "waiting|True||True" "$(turn tv-other)"
+seed_records tv-owner
+run_hook tv-owner cli "$WORKED" '{}' STUB_ITEMS="$(item wait_claim owner)"
+check tv-owner "asks|True||True" "$(turn tv-owner)"
 check "tv no record no crash" "1|merge_or_approve_pr|ok|merge_or_approve_pr|0" "$(row merge)"
 
 # Per-account home: the hook lives at accounts/claude/<id>/.claude/hooks/, so neither

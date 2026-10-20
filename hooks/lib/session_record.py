@@ -6,6 +6,7 @@ way, on the agent process that spawned the hook.
 """
 from __future__ import annotations
 
+import fcntl
 import json
 import os
 
@@ -56,11 +57,12 @@ def record_path(agent_pid: int) -> str:
 
 
 def atomic_write_json(path: str, obj: object) -> None:
-    """Best-effort atomic JSON write; a failure never breaks the session."""
+    """Best-effort atomic JSON write, owner-only (the turn verdict quotes the agent);
+    a failure never breaks the session."""
     try:
         os.makedirs(os.path.dirname(path), exist_ok=True)
         tmp = path + ".tmp.%d" % os.getpid()
-        with open(tmp, "w") as f:
+        with os.fdopen(os.open(tmp, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600), "w") as f:
             json.dump(obj, f)
         os.replace(tmp, path)
     except Exception:
@@ -74,12 +76,19 @@ def merge_fields(agent_pid: int, session_id: str, fields: dict) -> bool:
     sandbox sharing HOME) is not ours and is left alone."""
     path = record_path(agent_pid)
     try:
-        with open(path) as f:
-            record = json.load(f)
+        lock = open(path + ".lock", "a")
     except Exception:
         return False
-    if not isinstance(record, dict) or not session_id or record.get("session_id") != session_id:
-        return False
-    record.update(fields)
-    atomic_write_json(path, record)
-    return True
+    with lock:
+        # Two Stop hooks (the done-check, the turn judge) merge into one record moments apart.
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        try:
+            with open(path) as f:
+                record = json.load(f)
+        except Exception:
+            return False
+        if not isinstance(record, dict) or not session_id or record.get("session_id") != session_id:
+            return False
+        record.update(fields)
+        atomic_write_json(path, record)
+        return True

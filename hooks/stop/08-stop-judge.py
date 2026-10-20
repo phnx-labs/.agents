@@ -314,7 +314,7 @@ decide_taste             owner is asked to pick a design, wording, look, or feel
 signoff_destructive      owner is asked to OK deleting, killing, force-pushing, closing work, or loosening a safety rule
 permission_next_step     agent asks permission for the next step of the work it was asked to do
 offer_investigate        agent offers to check/test/verify something that the requested work still depends on, instead of doing it
-offer_extra_work         agent offers optional new work beyond what was asked (a share link, tickets, a tidy-up); the requested work itself is finished. If the agent itself calls the offered work "the next step" or "natural next step", use permission_next_step instead
+offer_extra_work         agent offers optional new work beyond what was asked (a share link, tickets, a tidy-up); the requested work itself is finished. A closing "anything else?", "let me know if you need more" or similar after finished work is offer_extra_work, not what_next. If the agent itself calls the offered work "the next step" or "natural next step", use permission_next_step instead
 what_next                agent asks what to do next with no specific proposal
 announced_not_taken      the AGENT says it will do a step now ("let me…", "next I'll…", "next step is…") and the message ends without doing it; set actor=other when the step belongs to CI, a release, or someone else
 wait_claim               agent says it is waiting for something (CI, a poller, a subagent, a publish)
@@ -511,33 +511,31 @@ def decide(counts: dict[str, int], items: list[dict], background_live: bool,
 
 
 def turn_verdict(items: list[dict], background_live: bool) -> dict:
-    """{kind, quote, choices}: asks beats waiting; a wait with nothing live is not_done."""
-    ask = next((it for it in items if it.get("kind") in ASK_KINDS), None)
+    """{kind, quote, choices}: asks beats waiting; a wait with nothing live is not_done.
+    A step announced for someone else is waiting; a wait on the owner is an ask; a
+    what_next beside a done claim is a sign-off."""
+    done = any(it.get("kind") == "done_claim" for it in items)
+    ask = next((it for it in items if it.get("kind") in ASK_KINDS
+                and not (it.get("kind") == "what_next" and done)), None)
+    if not ask:
+        ask = next((it for it in items if it.get("kind") in WAIT_KINDS and it.get("actor") == "owner"), None)
     if ask:
         choices = [str(c)[:80] for c in (ask.get("choices") or []) if isinstance(c, str) and c.strip()]
         return {"kind": "asks", "quote": str(ask.get("quote", ""))[:600], "choices": choices[:6]}
     wait = next((it for it in items if it.get("kind") in WAIT_KINDS), None)
     if wait:
-        kind = "waiting" if background_live else "not_done"
+        # A step announced for CI or someone else is theirs; a wait is not_done unless something live will wake the agent.
+        theirs = wait.get("kind") == "announced_not_taken" and wait.get("actor") == "other"
+        kind = "waiting" if background_live or theirs else "not_done"
         return {"kind": kind, "quote": str(wait.get("quote", ""))[:600], "choices": []}
     return {"kind": "done", "quote": "", "choices": []}
 
 
-def publish_turn_verdict(session_id: str, verdict: dict) -> None:
-    """Merge into every live record of this session. The detached child has no
-    agent pid, so it finds the record by session id; merge_fields refuses any
-    record naming another session."""
+def publish_turn_verdict(agent_pid: int, session_id: str, verdict: dict) -> None:
+    """Merge into the agent's record; merge_fields refuses one naming another session."""
     import session_record  # beside this script in a version home, ../lib in the repo
 
-    folder = Path(session_record.record_path(0)).parent
-    try:
-        names = os.listdir(folder)
-    except OSError:
-        return
-    for name in names:
-        stem = name[:-5] if name.endswith(".json") else ""
-        if stem.isdigit():
-            session_record.merge_fields(int(stem), session_id, {"turnVerdict": verdict})
+    session_record.merge_fields(agent_pid, session_id, {"turnVerdict": verdict})
 
 
 # --- record -----------------------------------------------------------------
@@ -611,7 +609,8 @@ def judge_stop(payload: dict) -> None:
     turn = (turn_verdict(verdict["items"], background_live) if verdict["outcome"] == "ok"
             else {"kind": "unjudged", "quote": "", "choices": []})
     try:  # before the row, so a reader that waits for the row sees the verdict too
-        publish_turn_verdict(payload["session_id"], {**turn, "at": int(time.time() * 1000), "sha256": final_sha})
+        publish_turn_verdict(int(payload["_agent_pid"]), payload["session_id"],
+                             {**turn, "at": int(time.time() * 1000), "sha256": final_sha})
     except Exception:  # noqa: BLE001 — a home without session_record still records the row
         pass
     if verdict["outcome"] == "ok":
@@ -693,6 +692,11 @@ def main() -> None:
     if (not isinstance(final, str) or not final.strip() or not payload.get("session_id")
             or not payload.get("transcript_path")):
         return
+    try:  # a home without session_record still judges and records its row
+        import session_record  # beside this script in a version home, ../lib in the repo
+        payload["_agent_pid"] = session_record.unwrap_hook_shell(os.getppid())
+    except ImportError:
+        pass
     pending = pending_dir()
     sweep_stale(pending)
     fd, handoff = tempfile.mkstemp(dir=pending, prefix="stop-", suffix=".json")
