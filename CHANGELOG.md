@@ -10,6 +10,7 @@
 
 ### Changed
 
+- **`agents clis install computer` installs computer-cli 0.1.11.** The pin was still 0.1.2, so a fresh machine got a build without VNC drag, settle-before-return, or the VNC MCP tools; machines that already had `computer` were never moved.
 - **The `computer` skill loads only the guide for the desktop in front of it.** `SKILL.md` is now about 3 KB: the loop, the verbs, the safety rails, and `computer mcp` (each input tool returns the screen in the same call). The macOS material (focus safety, setup and policy, AX and coordinate modes, focus discipline, the failure playbook, the Parallels and Electron recipes) moved unchanged to `references/macos.md`, and the VNC guide to `references/vnc.md`, which now says to take a screenshot rather than `sleep` while an app opens. An agent driving a Linux desktop over VNC read 16.5 KB of mostly macOS text on every turn; it now reads about 5 KB.
 - **The stop judge keeps judging when an account hits its usage limit.** A `429` from the session's own account ("You've hit your weekly limit") made every turn `unjudged` until the limit reset, so cards lost their asks. The judge now tries the `auth` bundle's next account once, and a turn that still fails records `detail` `limit` in place of `is_error`. A token already in the environment is used alone, as before.
 - **`turnVerdict.quote` carries every ask in the final message.** A message that asked two things published only the first; now each ask's sentence is joined by a blank line (up to 1200 characters) and `choices` combines their options (up to 6).
