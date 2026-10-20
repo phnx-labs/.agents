@@ -346,6 +346,42 @@ HOOK_OVERRIDE="$VER/home/.claude/hooks/08-stop-judge.py" \
   run_hook installed-layout cli "$WORKED" '{}' STUB_ITEMS="$(item merge_or_approve_pr owner)" PATH="$NOCLAUDE:/usr/bin:/bin"
 check installed-layout "1|merge_or_approve_pr|ok|merge_or_approve_pr|0" "$(row installed-layout)"
 
+# Turn verdict: whose move it is, merged into this session's record (never a foreign one).
+seed_records() {  # seed_records <case>: a record for sess-1 and one for another session
+  local d="$TMP/$1/.agents/.cache/state/sessions"; mkdir -p "$d"
+  printf '{"session_id":"sess-1","pid":4242,"verdict":{"state":"done"}}' > "$d/4242.json"
+  printf '{"session_id":"sess-other","pid":4243}' > "$d/4243.json"
+}
+turn() {  # turn <case> [pid] -> "kind|quote-has-mark|choices" of turnVerdict, or none
+  python3 - "$TMP/$1/.agents/.cache/state/sessions/${2:-4242}.json" "$MARK" <<'PY'
+import json, sys
+r = json.load(open(sys.argv[1])); v = r.get("turnVerdict")
+if not v: print("none"); sys.exit()
+ok = isinstance(v.get("at"), int) and len(v.get("sha256", "")) == 64 and r.get("verdict") in (None, {"state": "done"})
+print("%s|%s|%s|%s" % (v["kind"], sys.argv[2] in v.get("quote", ""), ",".join(v.get("choices", [])), ok))
+PY
+}
+ASK_WITH_CHOICES='{"items":[{"kind":"decide_taste","actor":"owner","quote":"ZEBRA-QUOKKA-7731 which ships?","object":"","host":"","credential":"","choices":["Keep A","Build B"]}]}'
+seed_records tv-asks
+run_hook tv-asks cli "$WORKED" '{}' STUB_ITEMS="$ASK_WITH_CHOICES"
+check tv-asks "asks|True|Keep A,Build B|True" "$(turn tv-asks)"
+check "tv foreign record untouched" none "$(turn tv-asks 4243)"
+seed_records tv-notdone
+run_hook tv-notdone cli "$WORKED" '{}' STUB_ITEMS="$(item wait_claim agent)"
+check tv-notdone "not_done|True||True" "$(turn tv-notdone)"
+seed_records tv-waiting
+run_hook tv-waiting cli "$WORKED" \
+  '{"background_tasks":[{"id":"b1","type":"shell","status":"running","description":"poll CI"}]}' \
+  STUB_ITEMS="$(item wait_claim agent)"
+check tv-waiting "waiting|True||True" "$(turn tv-waiting)"
+seed_records tv-done
+run_hook tv-done cli "$WORKED" '{}' STUB_ITEMS="$(item offer_extra_work agent)"
+check tv-done "done|False||True" "$(turn tv-done)"
+seed_records tv-unjudged
+run_hook tv-unjudged cli "$WORKED" '{}' STUB_MODE=garbage
+check tv-unjudged "unjudged|False||True" "$(turn tv-unjudged)"
+check "tv no record no crash" "1|merge_or_approve_pr|ok|merge_or_approve_pr|0" "$(row merge)"
+
 # Per-account home: the hook lives at accounts/claude/<id>/.claude/hooks/, so neither
 # CLAUDE_CODE_EXECPATH, the version-home layout, nor PATH finds claude. The claude that
 # fired the hook is its ancestor process; the foreground finds it there and hands it to the

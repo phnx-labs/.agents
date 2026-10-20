@@ -60,11 +60,12 @@ hooks:
     script: stop/credential-ask-nudge.py
     timeout: 10
   stop-judge:
-    # LOG-ONLY: never blocks (always exit 0) and adds no latency: the judging
-    # runs in a detached child. Interactive Claude only. One small
-    # model call extracts handoffs/offers/claims from the final message; code
-    # decides what a Stop judge WOULD block and records it (codes, counts,
-    # latency, a sha256 of the message; no text) for measurement.
+    # Never blocks (always exit 0) and adds no latency: the judging runs in a
+    # detached child. Interactive Claude only. One small model call extracts
+    # handoffs/offers/claims from the final message; code decides what a Stop
+    # judge WOULD block and records it (codes, counts, latency, a sha256 of the
+    # message; no text), and merges whose move it is (`turnVerdict`) into the
+    # session record for the agents-cli card.
     events:
       - Stop
     script: stop/08-stop-judge.py
