@@ -8,7 +8,7 @@ homepage: https://github.com/phnx-labs/computer-cli
 check: computer --version
 
 install:
-  - npm: "@phnx-labs/computer-cli@0.1.11"
+  - npm: "@phnx-labs/computer-cli@0.1.12"
 
 post_install: |
   computer --version
