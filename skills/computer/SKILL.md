@@ -8,187 +8,40 @@ user-invocable: true
 
 # Computer Use
 
-The standalone `@phnx-labs/computer-cli` package owns desktop execution and native helpers. It supports local macOS Accessibility and capture, remote Windows over SSH, and VNC desktops. The interaction recipes below describe macOS. For websites use the `browser` skill. Electron desktop apps are this skill's job too; the engine reports when an AX action cannot reach a webview (see Electron apps below).
+The standalone `@phnx-labs/computer-cli` package drives desktops: the local Mac through Accessibility and screen capture, remote Windows over SSH, and any Linux or X desktop over VNC. For websites use the `browser` skill. Run `computer <verb> --help` for exact flags; `computer sessions --json` shows recorded activity.
 
-Use `computer …` for agent-driven desktop actions. Inspect recorded activity with `computer sessions --json`. Browser activity stays in `browser sessions --json`. When you need exact flags, run `computer <verb> --help`.
+## Read the guide for your desktop first
 
-## Focus safety — do not steal the user's screen (read first)
+- **The local Mac** (no `--host`): [`references/macos.md`](references/macos.md). The user is usually working on that Mac; it says which verbs take their screen and keyboard and which do not. Read it before your first action.
+- **Linux or any desktop over VNC** (`--host vnc://…`): [`references/vnc.md`](references/vnc.md). Coordinate-only; everything there is read from screenshots.
 
-The user is usually working on the same Mac. **Element mode does not take over their screen; coordinate mode and `--raise` do.** Default to element mode, and reach for the focus-stealing paths only when you truly need them.
+Install with `agents clis install computer` if `computer --version` fails.
 
-- **Element mode (focus-safe, default):** `describe` → `click --id @eN` / `type --id` / `focus --id` / `ax-action`. These fire Accessibility actions (AXPress / set-AXValue) that **do not activate the app and do not move the cursor** — the user keeps typing in their own window while you act. `--raise` is *ignored* in element mode (element actions don't need the app frontmost), so it can't hijack focus.
-- **Capture is always focus-safe:** `screenshot --window-id <n>` grabs any window across Spaces **without raising it**.
-- **`--raise` and coordinate mode (`--x/--y`) STEAL the screen:** `--raise` brings the app forward and takes keyboard focus; coordinate clicks warp the physical cursor and need the app frontmost. Reserve them for AX-opaque surfaces (VM guests, Chromium/canvas/games) or when the user is away — never to drive an ordinary AppKit app the user can see. The CLI prints a `note:` whenever a verb will cost the user their focus or cursor.
-- **To only *view* a webview (VS Code / Electron), use a browser or the repo's preview harness — not this skill.** Reach for `computer` on Electron only for what a browser can't do (window reload, AX text extraction when Screen Recording is denied).
+When your harness takes MCP servers, `computer mcp` (add `--host vnc://…` for a VNC desktop) serves these verbs as tools. Each input tool returns the screen after it in the same result, so one call acts and looks. Over VNC its coordinates are pixels of the latest screenshot it returned.
 
-## Preflight
+## The loop
 
-Install the standalone command with `agents clis install computer` if it is missing. Agents' setup wizard also installs it; the engine is not bundled with Agents CLI. `computer --version` checks the installed engine. Helper setup and macOS permissions remain separate from npm installation.
+Observe, act, verify. Never chain actions you have not seen the result of.
 
-```bash
-computer status     # installed? daemon running? trust granted? policy?
-computer setup      # one-time install to /Applications (then: start)
-computer start      # boot the daemon (writes policy + peers, launchctl)
-```
+- Add `--screenshot <path>` to an input verb to capture the screen after it in the same call, then read that file. A separate `screenshot --out <path>` is only needed before the first action.
+- A screenshot reports `origin` and `scale` (the `saved:` line, or `--json`). A pixel in the image maps to a desktop coordinate as `x = origin_x + pixel_x / scale`, `y = origin_y + pixel_y / scale`.
+- `ok:true` means the event was sent, not that the app reacted. A screenshot identical to the one before means the action did not land: re-derive the coordinates from a fresh capture before retrying.
 
-The daemon only drives **allow-listed** apps. `permission_denied` or `bundle not in allow list` means the target is missing from policy:
-
-```bash
-# After an authorized change to the existing Computer(<bundle-id>) permissions group
-computer reload
-```
-
-Find a bundle id: `osascript -e 'id of app "AppName"'`.
-
-## The Core Loop
-
-Every interaction follows **observe → act → verify**. Never chain actions blind. The default loop is **focus-safe — no `raise`**, so the user keeps their screen:
-
-```bash
-computer apps                                   # 1. what's running (allow-listed)
-computer screenshot --bundle <id> --list --json # 2. enumerate windows (focus-free)
-computer screenshot --bundle <id> --window-id <n> --out /tmp/s.jpg
-computer describe --bundle <id>                 # 3. AX tree (element ids @eN)
-computer click --bundle <id> --id @e7           # 4. act (AXPress — no focus steal)
-computer screenshot ... --out /tmp/s2.jpg       # 5. VERIFY — re-capture, compare
-```
-
-Add `raise` **only** when the target genuinely must be frontmost — an AX-opaque surface (VM guest) or key-window-restricted keystrokes (see Focus safety). Raising takes the user's foreground; don't do it to drive an app you can already reach by element id.
-
-A **byte-identical screenshot after an action means the action did not land**. Treat `ok:true` as "the event was posted", not "the app reacted" — only a visible state change is proof.
-
-## Linux and VNC desktops
-
-`--host vnc://host[:port]` drives any X desktop over RFB. It is coordinate-only: no `describe`, no `--id`, no `get-text`, and `--raise` has no effect. Read the screen from screenshots.
-
-- A screenshot's pixels are click coordinates when its `scale` is 1; otherwise divide by `scale`. The `saved:` line prints it (`(1024x768, …, origin [0,0], scale 1)`), as does `--json`.
-- Every input verb (`click`, `right-click`, `type-text`, `key`, `scroll`, `drag`) returns once the screen has stopped changing. Do not `sleep` between actions or before a screenshot.
-- Add `--screenshot <path>` to an action to get the screen after it in the same call, then read that file. A separate `screenshot` call is only needed before your first action.
-- Chain the steps of one form into one call: `computer click --x 640 --y 300 && computer type-text --text "Jane" && computer click --x 640 --y 380 && computer type-text --text "jane@example.com" --screenshot ./form.png`.
-- Native dropdowns and menus open on a click; take a screenshot of the open list before clicking an option.
-- Type a date into a date field with its separators (`type-text --text "03/15/2024"`); its segments do not advance on digits alone. If a calendar popup opened, press `key --keys Escape` first; typed text does not reach the field while it is open.
-- Drag sliders and items with `computer drag --from x,y --to x,y`.
-- Send several keys in one call: `computer key --keys "Right,1,5,Tab"`.
-- Scroll by pixels at a point inside the scrolling area: `computer scroll --x 640 --y 450 --dy -300` scrolls down about 300 px.
-
-## Two Targeting Modes
-
-**AX mode** (preferred, focus-safe): `describe` dumps the accessibility tree; element ids (`@eN`) feed `click --id`, `type --id`, `focus --id`, `ax-action`. Works for native AppKit apps and does not activate the app or move the cursor.
-
-**Coordinate mode** (fallback, steals focus): for AX-opaque surfaces — **VM guests (Parallels), Chromium/UXP/canvas editors, games** — `describe` shows nothing useful inside them. Coordinate clicks warp the physical cursor and need the app frontmost, so only use this mode when AX can't reach the surface. Work from screenshots:
-
-```
-global_x = origin_x + pixel_x / scale
-global_y = origin_y + pixel_y / scale
-```
-
-`origin` and `scale` are in every screenshot result (`--json` or the `saved:` line). Re-capture **after every raise or window move** — a window on an inactive fullscreen Space reports shifted global coords, so coordinates from a stale capture land in the wrong place.
-
-## Focus Discipline (read this before typing)
-
-Mouse clicks are HID-tap synthesized and need the target **visible on the active Space**. Keyboard (`type-text`, `key`) is posted to the pid and is **silently dropped by key-window-restricted apps** (Parallels VMs and similar) when the app isn't frontmost.
-
-- `raise` first. `--title` matches a window substring; bare raise activates the app.
-- Add `--require-frontmost` to `type-text`/`key` whenever the target requires key-window focus (VMs, anything that previously ate your keystrokes) — turns silent drops into a hard `not_frontmost` error.
-- Every `type-text`/`key` result includes `"frontmost"`. A stderr warning or `frontmost:false` means the keystrokes probably landed nowhere — raise and retry, do not continue the chain.
-- One-shot form: `type-text --raise --require-frontmost --text "..."`.
-- Focus can be stolen **between** CLI calls (Space switches, user activity). If a mid-sequence step fails with `not_frontmost`, raise again; don't assume the earlier raise still holds.
-
-## Verb Reference
+## Verbs
 
 | Verb | What | Key flags |
 |---|---|---|
-| `apps` | List drivable apps | `--json` |
-| `launch` | Start an app | `--bundle` / `--path` / `--name` |
-| `raise` | Bring app/window frontmost (switches Spaces) | `--window-id`, `--title` |
-| `screenshot` | Capture window/display, or `--list` windows | `--window-id`, `--display`, `--out`, `--json` |
-| `describe` | AX tree with element ids | `--depth` |
-| `get-text` | Extract text without OCR | `--id`, `--max-chars` |
-| `click` / `right-click` | Element or coordinate | `--id` \| `--x --y`; `--count 2` = double; `--raise` (not on `right-click`) |
-| `type` | Set an AX field value | `--id`, `--text`, `--commit` |
-| `type-text` | Stream unicode keystrokes to the focused field | `--text`, `--commit`, `--raise`, `--require-frontmost` |
-| `key` | Key chord (`enter`, `esc`, `cmd+shift+s`) | `--keys`, `--require-frontmost` |
-| `drag` | Coordinate drag | `--from "x,y" --to "x,y"` |
-| `scroll` | Scroll at element/coordinate | `--dy`/`--dx`, `--id` \| `--x --y` |
-| `ax-action` | Any advertised AX action | `--id`, `--action AXConfirm` |
-| `focus` | AX keyboard focus to an element | `--id` |
-| `wait` | Sleep or poll for an element | `--duration` \| `--id --until` \| `--role/--label` |
+| `screenshot` | Capture a window or the display | `--out`, `--json`, `--max-dimension` |
+| `click` / `right-click` | Click an element or a point | `--id` \| `--x --y`; `--count 2` double-clicks |
+| `type-text` | Type into the focused field | `--text`, `--commit` |
+| `key` | Key chords, comma-separated | `--keys "ctrl+a,Delete"` |
+| `scroll` | Scroll at a point or element | `--dy` / `--dx` |
+| `drag` | Press, move, release | `--from x,y --to x,y` |
+| `wait` | Sleep or poll for an element | `--duration` \| `--id --until` |
+| `apps`, `launch`, `raise`, `describe`, `get-text`, `type`, `focus`, `ax-action` | macOS only; see `references/macos.md` | |
 
-## Failure-Mode Playbook
+## Safety rails
 
-| Error / symptom | Meaning | Fix |
-|---|---|---|
-| `not_frontmost` | Keystrokes would be dropped | `raise` (with `--title` for the right window), retry |
-| `window_offscreen` | Window on an inactive fullscreen Space; SCK can't capture | `raise --window-id <n>`, then re-screenshot |
-| `element_not_found` (raise) | No AX window matched | `screenshot --list`, use the exact title substring |
-| `element_stale` / dead `@eN` | UI changed since `describe` | Re-run `describe`, use fresh ids |
-| `bundle not in allow list` | Policy block | Add `Computer(<id>)` to a permissions group, `reload` |
-| `rpc_timeout` | Daemon hung or stopped | `computer status`; `stop` + `start` |
-| `ok:true` but screenshot unchanged | Event posted, app ignored it | Wrong coords (re-derive from a fresh capture) or window not key — raise, re-capture, retry |
-| Typed text partially landed (VM guests) | Mid-stream focus blip | `key esc` to clear, retype with `--require-frontmost` |
-
-## Worked Example: Drive a Windows VM (fully AX-opaque)
-
-```bash
-computer raise --bundle com.parallels.desktop.console --title "Windows 11" --json
-computer screenshot --bundle com.parallels.desktop.console --list --json   # find window_id
-computer screenshot --bundle com.parallels.desktop.console --window-id <n> --out /tmp/vm.jpg
-# read /tmp/vm.jpg, pick a pixel target, map: global = origin + pixel/scale
-computer click --bundle com.parallels.desktop.console --x 507 --y 960
-computer type-text --bundle com.parallels.desktop.console --raise --require-frontmost --text "powershell"
-computer key --bundle com.parallels.desktop.console --keys enter --require-frontmost
-computer screenshot --bundle com.parallels.desktop.console --window-id <n> --out /tmp/vm2.jpg  # verify
-```
-
-## Electron apps (VS Code / VSCodium / Cursor and any other Electron bundle)
-
-**First: if you only need to SEE a webview, open it in a browser — do not drive the Electron host at all.** Most VS Code/Electron webviews (dashboards, panels) can be rendered standalone via a dev/preview harness (Vite `bun run dev`, a `/preview` route) and screenshotted from a browser, which never touches the user's focus. Driving the app below to *view* a webview installs the extension and steals the screen for nothing.
-
-**To actually OPERATE a webview** (click a real control, type into a React input): AX won't do it — `computer` accepts the action but the web app ignores it, so a reported `clicked`/`typed` is a no-op (the CLI now prints a `note:` steering you here). Drive it over **CDP**, which fires real DOM events and does not need the app frontmost:
-
-```bash
-codium --remote-debugging-port=9222 <folder>     # relaunch WITH the debug port (VS Code: `code`, Cursor: `cursor`)
-browser profiles create vscodium --browser custom --electron -e cdp://localhost:9222
-browser -p vscodium navigate --url "…"      # then click/type via `browser` — focus-safe
-```
-
-The debug port opens **only at launch** — you cannot attach to an app already running without it. An already-open editor must be relaunched (state loss); warn the user first.
-
-CDP is the reliable way to operate a webview. But you often must drive these via AX instead — to reload a window after installing an extension, or when Screen Recording is denied and screenshots are dead. These techniques take the user's focus, so use them only when a browser can't do the job. The webview UI sits in an iframe the AX tree only partially reaches; the rules below are the ones that bite. Bundle ids: `com.microsoft.VSCode`, `com.vscodium`, Cursor varies (`defaults read /Applications/Cursor.app/Contents/Info CFBundleIdentifier`).
-
-- **AX survives a denied Screen Recording grant.** `get-text` and `describe` read the accessibility tree (incl. webview text) with no ScreenCaptureKit. Only `screenshot` needs Screen Recording. When captures time out with "denied Screen Recording permission," **verify with `get-text`**, not screenshots — grep its output for the strings the UI should render.
-- **Reload a window to activate a freshly-installed extension.** Installing writes to disk; the running window keeps its old extension host until reloaded. Command palette → **"Developer: Reload Window"**. Every open window has its own host — reload each. An editor running with **zero windows** needs one first: `code -n <folder>`.
-- **Use System Events keystrokes for the palette, not `computer key`, after a cross-window raise.** `osascript` System Events posts to the frontmost process coherently; `computer key` can race the raise and land in the wrong window. Pattern that works:
-  ```bash
-  osascript <<'EOF'
-  tell application "VSCodium" to activate
-  delay 0.5
-  tell application "System Events" to tell process "VSCodium"
-    perform action "AXRaise" of window "Factory — myrepo"   -- target a specific window by title
-    delay 0.8
-    keystroke "p" using {command down, shift down}           -- command palette
-    delay 0.8
-    keystroke "Developer: Reload Window"
-    delay 0.8
-    key code 36                                              -- Return
-  end tell
-  EOF
-  ```
-  List windows to pick a title: `osascript -e 'tell application "System Events" to tell process "Code" to get name of windows'`. The `cmd+\`` "next window" chord is **not** a valid `computer key` chord — raise by title instead.
-- **`type-text`, not `type`, into the palette.** The palette field rejects `type --id` with `AXValue not settable`. `type-text` synthesizes keystrokes into the focused field and works.
-- **Webview buttons (the Floor/Bench/Panel tabs, etc.) ignore both AXPress and coordinate clicks.** `click --id` does an AXPress that doesn't fire the React onClick; coordinate clicks miss because the iframe coordinate space and Retina scale don't line up with AX `bounds`. Drive webview state through the command palette or a keybinding, not by clicking webview chrome.
-- **`@eN` ids are per-`describe` snapshots.** They go stale as the UI changes — re-`describe` immediately before you act, never reuse ids across calls.
-- **Verify activation from `exthost.log`, not the GUI.** Authoritative and file-based:
-  ```bash
-  BASE="$HOME/Library/Application Support/Code/logs"   # or VSCodium / Cursor
-  EH="$(ls -dt "$BASE"/*/ | head -1)"window1/exthost/exthost.log
-  grep "_doActivateExtension <publisher>.<name>" "$EH" | tail -1   # fresh timestamp = live
-  grep "\[error\]" "$EH" | grep -i "<name>" | tail -3              # post-activation errors
-  ```
-  A `_doActivateExtension` timestamp newer than your reload = that window runs the new code. Use the extension repository's canonical publish→activate→verify flow for a release.
-
-## Safety Rails
-
-- Password/secure fields are refused unless `type --allow-secure-field` is passed explicitly. Don't pass it unless the user asked you to fill a credential.
-- System surfaces (`tccd`, SecurityAgent, System Settings) are hard-denied by the daemon — don't try to automate permission prompts.
-- Destructive in-app actions (delete, send, purchase) follow the same rule as everywhere: verify state via screenshot before and after, and confirm with the user when irreversible.
+- Password fields are refused unless `type --allow-secure-field` is passed. Pass it only when the user asked you to fill a credential.
+- System surfaces (`tccd`, SecurityAgent, System Settings) are denied by the daemon; do not automate permission prompts.
+- Before a destructive in-app action (delete, send, purchase), check the state on a screenshot before and after, and confirm with the user when it cannot be undone.
