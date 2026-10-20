@@ -402,10 +402,15 @@ def judge(snapshot: dict, caps: dict) -> dict:
     cwd.mkdir(exist_ok=True, mode=0o700)
     # One account at its usage limit answers 429 for every turn until it resets, so
     # the bundle's next account gets one try.
+    reply = None
     for key_try in (0, 1) if via_bundle else (0,):
         if via_bundle:
             env["STOP_JUDGE_KEY_TRY"] = str(key_try)
-        reply = call_model(argv, env, prompt, cwd, result)
+        attempt = call_model(argv, env, prompt, cwd, result)
+        if attempt is None and reply is not None:
+            result["outcome"] = "error"  # no second account: the limit is the answer
+            break
+        reply = attempt
         if not (isinstance(reply, dict) and reply.get("is_error") and reply.get("api_error_status") == 429):
             break
     if not isinstance(reply, dict):

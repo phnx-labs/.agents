@@ -37,7 +37,7 @@ printf 'secrets %s\n' "$*" >> "$STUB_LOG"
 if [ "$1" = list ]; then printf '%s\n' "$STUB_BUNDLES"; exit 0; fi
 if [ "$1" = exec ] && [ "$2" = auth ] && [ "$3" = -- ]; then
   shift 3
-  export CLAUDE_CODE_OAUTH_TOKEN_ALPHA_AT_EXAMPLE_DOT_COM=tok-alpha
+  [ -n "${STUB_ONE_KEY:-}" ] || export CLAUDE_CODE_OAUTH_TOKEN_ALPHA_AT_EXAMPLE_DOT_COM=tok-alpha
   export CLAUDE_CODE_OAUTH_TOKEN_OWNER_AT_EXAMPLE_DOT_ORG=tok-owner
   exec "$@"
 fi
@@ -260,6 +260,9 @@ check "auth-limit tries the next account" "token=tok-owner token=tok-alpha" "$(g
 check auth-limit "0|pass|ok|decide_scope|0" "$(row auth-limit)"
 run_hook auth-limit-all cli "$WORKED" '{}' STUB_LIMITED="tok-owner tok-alpha"
 check "auth-limit-all two tries" 2 "$(grep -c '^token=' "$TMP/auth-limit-all/stub.log")"
+# One account in the bundle: the retry finds no other key, and the row still says limit.
+run_hook auth-limit-one cli "$WORKED" '{}' STUB_LIMITED=tok-owner STUB_ONE_KEY=1
+check auth-limit-one "error|limit" "$(sqlite3 "$TMP/auth-limit-one/.agents/.history/hooks/system.stop-judge/state.db" 'SELECT outcome, detail FROM judgments')"
 check auth-limit-all "error|limit" "$(sqlite3 "$TMP/auth-limit-all/.agents/.history/hooks/system.stop-judge/state.db" 'SELECT outcome, detail FROM judgments')"
 # A token already in the env is used directly; the secrets store is not touched for it.
 run_hook auth-env cli "$WORKED" '{}' CLAUDE_CODE_OAUTH_TOKEN=tok-env
