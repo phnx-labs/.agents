@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
-"""stop-judge — Stop hook, LOG-ONLY. Interactive Claude sessions only.
+"""stop-judge — Stop hook, never blocks. Interactive Claude sessions only.
 
-Records, per interactive stop, what a model-based Stop judge WOULD block. It never
-blocks: every path exits 0 and nothing is written to stdout or stderr. It adds no
+Records, per interactive stop, what a model-based Stop judge WOULD block, and
+publishes whose move it is (the turn verdict) into the session record, where
+agents-cli reads it for the card. It never blocks: every path exits 0 and nothing is written to stdout or stderr. It adds no
 latency to the turn: the foreground process only runs the scope checks, hands
 the payload to a detached child (its own session, stdio on /dev/null) through a
 0600 file in the disposable cache dir, and exits. The child deletes that file
@@ -22,8 +23,12 @@ and the names of the secrets bundles on this machine.
 State (see hooks/AGENTS.md "Hook-owned session state"):
   durable:    ~/.agents/.history/hooks/system.stop-judge/state.db
   disposable: ~/.agents/.cache/state/hooks/system.stop-judge/
-No message text, prompt, quote, or credential is stored: a row holds codes,
-counts, latency, and a sha256 of the final message for later joining.
+  turn verdict: `turnVerdict` in ~/.agents/.cache/state/sessions/<pid>.json
+No message text, prompt, quote, or credential is stored in the database: a row
+holds codes, counts, latency, and a sha256 of the final message for later
+joining. The turn verdict carries the ask's own sentence and choices, because
+the card shows them; it lives in the disposable session record beside the
+done-check verdict and is replaced at the next stop.
 """
 from __future__ import annotations
 
@@ -82,6 +87,15 @@ OWNER_KINDS = {
     "decide_scope", "decide_taste", "signoff_destructive", "offer_extra_work",
     "done_claim", "wait_claim",
 }
+# Whose move it is after the turn (turnVerdict.kind): an ask hands something to the
+# owner; a wait claim with nothing live behind it is not done, since nothing will
+# wake the agent. offer_extra_work means the asked work is finished.
+ASK_KINDS = {
+    "merge_or_approve_pr", "publish_or_release", "run_command", "provide_credential",
+    "provide_fact", "decide_scope", "decide_taste", "signoff_destructive",
+    "permission_next_step", "offer_investigate", "what_next", "blocker_claim",
+}
+WAIT_KINDS = {"wait_claim", "announced_not_taken"}
 EXCUSED_BLOCKER = re.compile(r"touch ?id|biometric|2fa|password|interactive login", re.I)
 
 # What the judge would tell the agent if it blocked. Stored as the static
@@ -283,7 +297,9 @@ def model_timeout() -> float:
 RUBRIC = """Extract, do not judge. Read the FINAL message an AI coding agent sent before stopping its turn and list every place where it hands something to the owner, offers something, waits, claims a blocker, or claims completion. Quote the exact sentence for each.
 
 Output ONLY compact JSON, no prose, no fence:
-{"items":[{"kind":"...","actor":"agent|owner|other","quote":"...","object":"<PR number, command, service or thing>","host":"<host named, or empty>","credential":"<token/key/login named, or empty>"}]}
+{"items":[{"kind":"...","actor":"agent|owner|other","quote":"...","object":"<PR number, command, service or thing>","host":"<host named, or empty>","credential":"<token/key/login named, or empty>","choices":["<option>"]}]}
+
+choices = the options the message offers the owner for this item, each a short label in the message's own words (for example ["Keep A","Build B"]); [] when it offers none.
 
 actor = who would perform the step ("let me…", "I'll…", "next I'll…" are always actor=agent): "agent" (the agent itself), "owner" (the human it is talking to), or "other" (CI, a release train, another session or person, an automatic process).
 
@@ -491,6 +507,39 @@ def decide(counts: dict[str, int], items: list[dict], background_live: bool,
     return False, "pass"
 
 
+# --- turn verdict -------------------------------------------------------------
+
+
+def turn_verdict(items: list[dict], background_live: bool) -> dict:
+    """{kind, quote, choices}: asks beats waiting; a wait with nothing live is not_done."""
+    ask = next((it for it in items if it.get("kind") in ASK_KINDS), None)
+    if ask:
+        choices = [str(c)[:80] for c in (ask.get("choices") or []) if isinstance(c, str) and c.strip()]
+        return {"kind": "asks", "quote": str(ask.get("quote", ""))[:600], "choices": choices[:6]}
+    wait = next((it for it in items if it.get("kind") in WAIT_KINDS), None)
+    if wait:
+        kind = "waiting" if background_live else "not_done"
+        return {"kind": kind, "quote": str(wait.get("quote", ""))[:600], "choices": []}
+    return {"kind": "done", "quote": "", "choices": []}
+
+
+def publish_turn_verdict(session_id: str, verdict: dict) -> None:
+    """Merge into every live record of this session. The detached child has no
+    agent pid, so it finds the record by session id; merge_fields refuses any
+    record naming another session."""
+    import session_record  # beside this script in a version home, ../lib in the repo
+
+    folder = Path(session_record.record_path(0)).parent
+    try:
+        names = os.listdir(folder)
+    except OSError:
+        return
+    for name in names:
+        stem = name[:-5] if name.endswith(".json") else ""
+        if stem.isdigit():
+            session_record.merge_fields(int(stem), session_id, {"turnVerdict": verdict})
+
+
 # --- record -----------------------------------------------------------------
 
 
@@ -558,6 +607,13 @@ def judge_stop(payload: dict) -> None:
     else:
         verdict = judge(snapshot, caps)
     kinds = [str(it.get("kind")) if it.get("kind") in KINDS else "other" for it in verdict["items"]]
+    final_sha = hashlib.sha256(final.encode("utf-8", "replace")).hexdigest()
+    turn = (turn_verdict(verdict["items"], background_live) if verdict["outcome"] == "ok"
+            else {"kind": "unjudged", "quote": "", "choices": []})
+    try:  # before the row, so a reader that waits for the row sees the verdict too
+        publish_turn_verdict(payload["session_id"], {**turn, "at": int(time.time() * 1000), "sha256": final_sha})
+    except Exception:  # noqa: BLE001 — a home without session_record still records the row
+        pass
     if verdict["outcome"] == "ok":
         would_block, reason = decide(counts, verdict["items"], background_live, caps["bundles"])
     else:
@@ -577,7 +633,7 @@ def judge_stop(payload: dict) -> None:
         "output_tokens": verdict["out_tok"],
         "outcome": verdict["outcome"],
         "detail": verdict["detail"],
-        "final_sha256": hashlib.sha256(final.encode("utf-8", "replace")).hexdigest(),
+        "final_sha256": final_sha,
     })
 
 
