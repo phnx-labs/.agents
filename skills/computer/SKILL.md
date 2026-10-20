@@ -59,10 +59,10 @@ A **byte-identical screenshot after an action means the action did not land**. T
 
 ## Linux and VNC desktops
 
-`--host vnc://host[:port]` drives any X desktop over RFB. It is coordinate-only: no `describe`, no `--id`, no `get-text`, no `--raise`. Read the screen from screenshots.
+`--host vnc://host[:port]` drives any X desktop over RFB. It is coordinate-only: no `describe`, no `--id`, no `get-text`, and `--raise` has no effect. Read the screen from screenshots.
 
-- A screenshot's pixels are click coordinates when its `scale` is 1; otherwise divide by `scale`.
-- Every input verb (`click`, `type-text`, `key`, `scroll`, `drag`) returns once the screen has stopped changing. Do not `sleep` between actions or before a screenshot.
+- A screenshot's pixels are click coordinates when its `scale` is 1; otherwise divide by `scale`. The `saved:` line prints it (`(1024x768, …, origin [0,0], scale 1)`), as does `--json`.
+- Every input verb (`click`, `right-click`, `type-text`, `key`, `scroll`, `drag`) returns once the screen has stopped changing. Do not `sleep` between actions or before a screenshot.
 - Add `--screenshot <path>` to an action to get the screen after it in the same call, then read that file. A separate `screenshot` call is only needed before your first action.
 - Chain the steps of one form into one call: `computer click --x 640 --y 300 && computer type-text --text "Jane" && computer click --x 640 --y 380 && computer type-text --text "jane@example.com" --screenshot ./form.png`.
 - Native dropdowns and menus open on a click; take a screenshot of the open list before clicking an option.
@@ -104,7 +104,7 @@ Mouse clicks are HID-tap synthesized and need the target **visible on the active
 | `screenshot` | Capture window/display, or `--list` windows | `--window-id`, `--display`, `--out`, `--json` |
 | `describe` | AX tree with element ids | `--depth` |
 | `get-text` | Extract text without OCR | `--id`, `--max-chars` |
-| `click` / `right-click` | Element or coordinate | `--id` \| `--x --y`; `--count 2` = double; `--raise` (`click` only) |
+| `click` / `right-click` | Element or coordinate | `--id` \| `--x --y`; `--count 2` = double; `--raise` (not on `right-click`) |
 | `type` | Set an AX field value | `--id`, `--text`, `--commit` |
 | `type-text` | Stream unicode keystrokes to the focused field | `--text`, `--commit`, `--raise`, `--require-frontmost` |
 | `key` | Key chord (`enter`, `esc`, `cmd+shift+s`) | `--keys`, `--require-frontmost` |
