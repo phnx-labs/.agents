@@ -25,6 +25,9 @@ case "${STUB_MODE:-items}" in
   garbage) result='Nothing to extract here, sorry.' ;;
   *) result="$STUB_ITEMS" ;;
 esac
+case " ${STUB_LIMITED:-} " in *" ${CLAUDE_CODE_OAUTH_TOKEN:-} "*)
+  printf '{"type":"result","is_error":true,"api_error_status":429,"result":"You have hit your weekly limit"}\n'; exit 1 ;;
+esac
 python3 -c 'import json,sys; print(json.dumps({"type":"result","is_error":False,"result":sys.argv[1],"usage":{"input_tokens":1500,"cache_read_input_tokens":200,"output_tokens":120}}))' "$result"
 STUB
 
@@ -251,6 +254,13 @@ check "auth-bundle judge env" "env ep=sdk-cli child=1 acctkey=" "$(grep '^env ' 
 # Unknown account: the first key.
 run_hook auth-first cli "$WORKED" '{}' CLAUDE_CONFIG_DIR="$TMP/nowhere"
 check "auth-first token" "token=tok-alpha" "$(grep -o '^token=[^ ]*' "$TMP/auth-first/stub.log")"
+# An account at its usage limit (429) hands the judgment to the bundle's next account, once.
+run_hook auth-limit cli "$WORKED" '{}' STUB_LIMITED=tok-owner STUB_ITEMS="$(item decide_scope owner)"
+check "auth-limit tries the next account" "token=tok-owner token=tok-alpha" "$(grep -o '^token=[^ ]*' "$TMP/auth-limit/stub.log" | tr '\n' ' ' | sed 's/ $//')"
+check auth-limit "0|pass|ok|decide_scope|0" "$(row auth-limit)"
+run_hook auth-limit-all cli "$WORKED" '{}' STUB_LIMITED="tok-owner tok-alpha"
+check "auth-limit-all two tries" 2 "$(grep -c '^token=' "$TMP/auth-limit-all/stub.log")"
+check auth-limit-all "error|limit" "$(sqlite3 "$TMP/auth-limit-all/.agents/.history/hooks/system.stop-judge/state.db" 'SELECT outcome, detail FROM judgments')"
 # A token already in the env is used directly; the secrets store is not touched for it.
 run_hook auth-env cli "$WORKED" '{}' CLAUDE_CODE_OAUTH_TOKEN=tok-env
 check "auth-env token" "token=tok-env" "$(grep -o '^token=[^ ]*' "$TMP/auth-env/stub.log")"
@@ -369,6 +379,13 @@ seed_records tv-asks
 run_hook tv-asks cli "$WORKED" '{}' STUB_ITEMS="$ASK_WITH_CHOICES"
 check tv-asks "asks|True|Keep A,Build B|True" "$(turn tv-asks)"
 check "tv foreign record untouched" none "$(turn tv-asks 4243)"
+# A message that asks two things carries both, so the card shows each one.
+seed_records tv-two-asks
+run_hook tv-two-asks cli "$WORKED" '{}' STUB_ITEMS='{"items":[{"kind":"provide_fact","actor":"owner","quote":"Send me the code and I will confirm it."},{"kind":"decide_scope","actor":"owner","quote":"ZEBRA-QUOKKA-7731 should I merge both?","choices":["Merge both","Only #12"]}]}'
+check tv-two-asks "asks|True|Merge both,Only #12|True" "$(turn tv-two-asks)"
+check "tv-two-asks both quotes" "Send me the code and I will confirm it.
+
+ZEBRA-QUOKKA-7731 should I merge both?" "$(python3 -c 'import json,sys; print(json.load(open(sys.argv[1]))["turnVerdict"]["quote"])' "$TMP/tv-two-asks/.agents/.cache/state/sessions/$AGENT.json")"
 seed_records tv-notdone
 run_hook tv-notdone cli "$WORKED" '{}' STUB_ITEMS="$(item wait_claim agent)"
 check tv-notdone "not_done|True||True" "$(turn tv-notdone)"

@@ -115,13 +115,14 @@ HINT = {
     "blocker_claim": "Verify the blocker with tools before handing it back.",
 }
 
-# Runs under `secrets exec auth`: exports the session account's setup-token (or
-# the first one) as CLAUDE_CODE_OAUTH_TOKEN, drops the rest, execs the judge. The
-# preferred key name arrives in STOP_JUDGE_ACCOUNT_KEY, never in argv.
+# Runs under `secrets exec auth`: exports one setup-token as CLAUDE_CODE_OAUTH_TOKEN,
+# drops the rest, execs the judge. The keys are tried in order, the session account's
+# (STOP_JUDGE_ACCOUNT_KEY, never in argv) first; STOP_JUDGE_KEY_TRY picks the nth.
 AUTH_SHIM = r"""
 keys=$(env | sed -n 's/^\(CLAUDE_CODE_OAUTH_TOKEN_[A-Za-z0-9_]*\)=.*/\1/p' | sort)
-k="${STOP_JUDGE_ACCOUNT_KEY:-}"; unset STOP_JUDGE_ACCOUNT_KEY
-if [ -z "$k" ] || [ -z "$(printenv "$k")" ]; then k=$(printf '%s\n' "$keys" | sed -n 1p); fi
+k="${STOP_JUDGE_ACCOUNT_KEY:-}"; n="${STOP_JUDGE_KEY_TRY:-0}"; unset STOP_JUDGE_ACCOUNT_KEY STOP_JUDGE_KEY_TRY
+if [ -z "$k" ] || [ -z "$(printenv "$k")" ]; then k=""; fi
+k=$({ [ -z "$k" ] || printf '%s\n' "$k"; printf '%s\n' "$keys" | grep -vxF -e "$k"; } | sed -n "$((n + 1))p")
 [ -n "$k" ] || exit 77
 CLAUDE_CODE_OAUTH_TOKEN=$(printenv "$k"); export CLAUDE_CODE_OAUTH_TOKEN
 for v in $keys; do unset "$v"; done
@@ -396,8 +397,37 @@ def judge(snapshot: dict, caps: dict) -> dict:
             return result
         env["STOP_JUDGE_ACCOUNT_KEY"] = account_key()
         argv = ["secrets", "exec", "auth", "--", "sh", "-c", AUTH_SHIM, "sh"] + argv
+    via_bundle = argv[0] == "secrets"
     cwd = cache_dir() / "cwd"
     cwd.mkdir(exist_ok=True, mode=0o700)
+    # One account at its usage limit answers 429 for every turn until it resets, so
+    # the bundle's next account gets one try.
+    for key_try in (0, 1) if via_bundle else (0,):
+        if via_bundle:
+            env["STOP_JUDGE_KEY_TRY"] = str(key_try)
+        reply = call_model(argv, env, prompt, cwd, result)
+        if not (isinstance(reply, dict) and reply.get("is_error") and reply.get("api_error_status") == 429):
+            break
+    if not isinstance(reply, dict):
+        return result
+    usage = reply.get("usage") or {}
+    result["in_tok"] = sum(int(usage.get(k) or 0) for k in
+                           ("input_tokens", "cache_read_input_tokens", "cache_creation_input_tokens"))
+    result["out_tok"] = int(usage.get("output_tokens") or 0)
+    if reply.get("is_error"):
+        result["detail"] = "limit" if reply.get("api_error_status") == 429 else "is_error"
+        return result
+    items = parse_items(str(reply.get("result") or ""))
+    if items is None:
+        result["outcome"] = "parse-fail"
+        return result
+    result["outcome"] = "ok"
+    result["items"] = items
+    return result
+
+
+def call_model(argv: list[str], env: dict, prompt: str, cwd: Path, result: dict):
+    """One `claude -p` run: its JSON reply, or None with result's outcome or detail set."""
     started = time.monotonic()
     try:
         proc = subprocess.Popen(argv, cwd=cwd, env=env, stdin=subprocess.PIPE,
@@ -405,7 +435,7 @@ def judge(snapshot: dict, caps: dict) -> dict:
                                 text=True, start_new_session=True)
     except OSError:
         result["detail"] = "spawn"
-        return result
+        return None
     try:
         stdout, _ = proc.communicate(input=prompt, timeout=model_timeout())
     except subprocess.TimeoutExpired:
@@ -419,33 +449,20 @@ def judge(snapshot: dict, caps: dict) -> dict:
             pass  # a descendant that left the group holds the pipe; do not wait on it
         result["outcome"] = "timeout"
         result["latency_ms"] = int((time.monotonic() - started) * 1000)
-        return result
+        return None
     result["latency_ms"] = int((time.monotonic() - started) * 1000)
     if proc.returncode == NO_AUTH_EXIT:
         result["outcome"] = "no-auth"
-        return result
+        return None
     try:
         reply = json.loads(stdout)
     except ValueError:
         result["detail"] = f"exit-{proc.returncode}"
-        return result
+        return None
     if not isinstance(reply, dict):
         result["detail"] = "reply-shape"
-        return result
-    usage = reply.get("usage") or {}
-    result["in_tok"] = sum(int(usage.get(k) or 0) for k in
-                           ("input_tokens", "cache_read_input_tokens", "cache_creation_input_tokens"))
-    result["out_tok"] = int(usage.get("output_tokens") or 0)
-    if reply.get("is_error"):
-        result["detail"] = "is_error"
-        return result
-    items = parse_items(str(reply.get("result") or ""))
-    if items is None:
-        result["outcome"] = "parse-fail"
-        return result
-    result["outcome"] = "ok"
-    result["items"] = items
-    return result
+        return None
+    return reply
 
 
 def parse_items(text: str):
@@ -515,13 +532,16 @@ def turn_verdict(items: list[dict], background_live: bool) -> dict:
     A step announced for someone else is waiting; a wait on the owner is an ask; a
     what_next beside a done claim is a sign-off."""
     done = any(it.get("kind") == "done_claim" for it in items)
-    ask = next((it for it in items if it.get("kind") in ASK_KINDS
-                and not (it.get("kind") == "what_next" and done)), None)
-    if not ask:
-        ask = next((it for it in items if it.get("kind") in WAIT_KINDS and it.get("actor") == "owner"), None)
-    if ask:
-        choices = [str(c)[:80] for c in (ask.get("choices") or []) if isinstance(c, str) and c.strip()]
-        return {"kind": "asks", "quote": str(ask.get("quote", ""))[:600], "choices": choices[:6]}
+    asks = [it for it in items if it.get("kind") in ASK_KINDS
+            and not (it.get("kind") == "what_next" and done)]
+    if not asks:
+        asks = [it for it in items if it.get("kind") in WAIT_KINDS and it.get("actor") == "owner"]
+    if asks:
+        # A message that asks two things asks both; the owner answers them in one reply.
+        quotes = [q for q in (str(it.get("quote", "")).strip() for it in asks) if q]
+        choices = list(dict.fromkeys(str(c)[:80] for it in asks for c in (it.get("choices") or [])
+                                     if isinstance(c, str) and c.strip()))
+        return {"kind": "asks", "quote": "\n\n".join(quotes)[:1200], "choices": choices[:6]}
     wait = next((it for it in items if it.get("kind") in WAIT_KINDS), None)
     if wait:
         # A step announced for CI or someone else is theirs; a wait is not_done unless something live will wake the agent.
