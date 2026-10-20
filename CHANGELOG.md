@@ -10,6 +10,8 @@
 
 ### Changed
 
+- **The stop judge keeps judging when an account hits its usage limit.** A `429` from the session's own account ("You've hit your weekly limit") made every turn `unjudged` until the limit reset, so cards lost their asks. The judge now tries the `auth` bundle's next account once, and a turn that still fails records `detail` `limit` in place of `is_error`. A token already in the environment is used alone, as before.
+- **`turnVerdict.quote` carries every ask in the final message.** A message that asked two things published only the first; now each ask's sentence is joined by a blank line (up to 1200 characters) and `choices` combines their options (up to 6).
 - **`verify-work-complete` blocks the delivery check once per goal.** Its first block already lists everything still open. A second block in the same goal changed the agent's next move 0 of 29 times (2026-10-17), so a repeat is now allowed and recorded as `already-blocked-this-goal`. The trade-off: a gap that appears later in the same goal (a second PR, a missing release) is not checked again until the owner's next message. The open-PR check, including conflicts and red CI, is unchanged.
 - **Reviewers check that a hover highlight slides.** `subagents/code-reviewer` and `design:critique` now look at the highlight in a row of sibling controls (icon buttons, tabs, a segmented control, nav items, menu rows). It must be one indicator that slides from the item it leaves to the item it enters. A background on each item that blinks off and on is a finding. Under `prefers-reduced-motion` the indicator jumps instead of sliding.
 
