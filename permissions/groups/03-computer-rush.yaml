@@ -1,0 +1,4 @@
+name: computer-rush
+description: Allow the computer-use helper to drive the Rush menu-bar app (sign-in, run approvals)
+allow:
+  - "Computer(ai.getrush.mac)"
