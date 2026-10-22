@@ -254,6 +254,11 @@ and `agents sync claude@all system`, the installed copy still read `"version": "
 no `agents/` directory. `agents plugins sync code` moved it to `0.10.0` carrying
 `agents/code-reviewer.md`. Verify the **installed** copy's manifest version, not the mirror's.
 
+**A rule change is proven by `rules/rules-check.sh`, not by a sync.** Sync reports success
+while a user-layer `rules.yaml` or old subrule copies leave agents on a different file
+(2026-10-22: six machines, five different rulesets). Run the check on each machine; every
+version must read `ok`.
+
 ## The commit gates are opt-in — make sure this checkout runs them
 
 `.githooks/pre-commit` is what stops a staged merge-conflict marker or a stray
