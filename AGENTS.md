@@ -257,7 +257,7 @@ no `agents/` directory. `agents plugins sync code` moved it to `0.10.0` carrying
 **A rule change is proven by `rules/rules-check.sh`, not by a sync.** Sync reports success
 while a user-layer `rules.yaml` or old subrule copies leave agents on a different file
 (2026-10-22: six machines, five different rulesets). Run the check on each machine; every
-version must read `ok`.
+version file must read `ok`, none `STALE` or `LINK`.
 
 ## The commit gates are opt-in — make sure this checkout runs them
 
