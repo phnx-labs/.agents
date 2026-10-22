@@ -76,3 +76,23 @@ Rules to follow when writing one:
 
 Put a same-named file in `~/.agents/rules/subrules/<name>.md` and it replaces the system one
 wholesale. A new name unions in. This repo is a pull-only mirror — never edit it in place.
+
+**Never put a `rules.yaml` in `~/.agents/rules/`.** The preset comes from the first layer
+whose `rules.yaml` defines it, user before system, so a user `rules.yaml` replaces this
+preset wholesale: `subrules: []` there drops every system rule and leaves only your own
+subrules (yosemite-m6 and mark-1 ran on Mission and Stack alone until 2026-10-22). Old
+copies of system subrule names in `~/.agents/rules/subrules/` likewise shadow the current
+ones.
+
+## Checking what each machine loads
+
+[`rules-check.sh`](./rules-check.sh) composes the ruleset the way `composeRules` does and
+compares it with the instruction file of every installed agent version on the machine,
+without `agents sync`. It names the layer the preset came from and every account copy that
+is a frozen file rather than a link to a version. `--apply` sets aside an untracked user
+`rules.yaml`, fast-forwards `~/.agents` and `~/.agents/.system` when they are clean, and
+rewrites each version file that differs. Across the fleet:
+
+```bash
+for d in $(agents devices list --json | jq -r '.[].name'); do agents ssh "$d" 'bash -s' < rules/rules-check.sh; done
+```
