@@ -86,12 +86,15 @@ ones.
 
 ## Checking what each machine loads
 
-[`rules-check.sh`](./rules-check.sh) composes the ruleset the way `composeRules` does and
-compares it with the instruction file of every installed agent version on the machine,
-without `agents sync`. It names the layer the preset came from and every account copy that
-is a frozen file rather than a link to a version. `--apply` sets aside an untracked user
-`rules.yaml`, fast-forwards `~/.agents` and `~/.agents/.system` when they are clean, and
-rewrites each version file that differs. Across the fleet:
+[`rules-check.sh`](./rules-check.sh) composes the user and system layers the way
+`composeRules` does and compares the result with the rules file (agents-cli's
+`capabilities.rules.file` under the agent's config dir) of every installed version on the
+machine, without `agents sync`. It also names a version file that is a symlink and every
+account copy that is a frozen file rather than a link to a version. It does not model extra
+repos or a per-version `rulesPreset`; when `agents.yaml` sets either, it says so and `--apply`
+rewrites nothing. `--apply` sets aside an untracked user `rules.yaml`, fast-forwards
+`~/.agents` and `~/.agents/.system` when they are clean, and rewrites each version file that
+differs. Across the fleet (`bash -s -- --apply` to repair):
 
 ```bash
 for d in $(agents devices list --json | jq -r '.[].name'); do agents ssh "$d" 'bash -s' < rules/rules-check.sh; done
