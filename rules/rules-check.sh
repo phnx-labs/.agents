@@ -28,9 +28,11 @@ if [ "$APPLY" = 1 ]; then
   y="$A/rules/rules.yaml"
   if [ -f "$y" ] && git -C "$A" rev-parse --is-inside-work-tree >/dev/null 2>&1 </dev/null \
      && ! git -C "$A" ls-files --error-unmatch rules/rules.yaml >/dev/null 2>&1 </dev/null; then
-    mkdir -p "$A/backups"
-    mv "$y" "$A/backups/rules.yaml.$(date +%Y%m%d%H%M%S)"
-    echo "$HOST: set aside untracked rules/rules.yaml (it replaced the system preset)"
+    if mkdir -p "$A/backups" && mv "$y" "$A/backups/rules.yaml.$(date +%Y%m%d%H%M%S)"; then
+      echo "$HOST: set aside untracked rules/rules.yaml (it replaced the system preset)"
+    else
+      echo "$HOST: could not set aside untracked rules/rules.yaml"
+    fi
   fi
   for repo in "$A/.system" "$A"; do
     br=$(git -C "$repo" rev-parse --abbrev-ref HEAD 2>/dev/null </dev/null || echo "?")
