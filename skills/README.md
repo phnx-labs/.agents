@@ -43,7 +43,7 @@ out-of-band) — after the self-unblock ladder is exhausted.
 
 | Skill | What it does |
 |---|---|
-| [`artifacts`](./artifacts/SKILL.md) | Make the pages the owner reads: Markdown rendered with `artifacts-cli` for plans and reports, or a hand-written HTML review page for before/afters and prototypes. Never a claude.ai Artifact |
+| [`artifacts`](./artifacts/SKILL.md) | Make the pages the owner reads: Markdown rendered with `artifacts-cli` for plans and reports, or a hand-written HTML review page for before/afters and prototypes |
 | [`plan`](./plan/SKILL.md) | Portable entry point for the canonical `swarm:plan` skill, including goals, expected outcomes, success checks and visual artifacts |
 | [`docs`](./docs/SKILL.md) | Write documentation — user-facing, technical, runbooks, onboarding, changelogs, and AGENTS.md (`write-agents-md.md`) |
 
