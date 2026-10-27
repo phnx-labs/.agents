@@ -18,3 +18,4 @@ includes:
   - 15-misc-bash
   - 30-paths
   - 99-deny
+  - 99-deny-artifact-tools

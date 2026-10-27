@@ -1,0 +1,10 @@
+# Artifacts are artifacts-cli pages or hand-written HTML opened for the owner.
+# A harness's own page publisher (claude.ai Artifacts) is never the place for them.
+#
+# Its own group, not 99-deny: a user layer that keeps its own 99-deny.yaml
+# replaces the system file of that name entirely (buildPermissionsFromGroups
+# takes the user file first), so these lines never installed from 99-deny.
+deny:
+  - "Artifact"
+  - "ArtifactComments"
+  - "ArtifactData"
