@@ -31,6 +31,9 @@ The kind changes the content contract, not the rendering pipeline.
 
 ## Shared pipeline
 
+These steps are for Markdown artifacts. A review page follows "Review pages" below
+and its own contract.
+
 1. Check the installed CLI:
 
    ```bash
@@ -242,8 +245,7 @@ exited 0."
 ## Review pages (hand-written HTML)
 
 When the owner asks to see a change, a before/after, or what you made of their
-feedback, build the page the way the owner's approved console review is built
-(`~/.agents/artifacts/2026-10-27/console-feedback-prototype/index.html` on zion):
+feedback, build this page:
 
 - Open each section with the owner's own words, with the recording time when
   there is one.
@@ -259,8 +261,18 @@ feedback, build the page the way the owner's approved console review is built
 - Nothing the owner needs to judge is folded away. End with a table mapping each
   thing the owner said to the section that answers it.
 
-Inspect it like any artifact (step 6): capture each section at desktop and phone
-width and read the pixels, then get the artifact critic's verdict before showing it.
+Review page contract:
+
+- One `index.html` in `~/.agents/artifacts/<date>/<slug>/` (or the durable
+  directory from step 2), images embedded, with a `.artifact.json` beside it and
+  any evidence files the page cites.
+- Each section captured at desktop and phone width with a headless browser on your
+  own machine, and the pixels read: every mark sits on what its note names, and
+  nothing overflows.
+- The `artifact-critic` reviewed the page before the owner sees it; record its
+  verdict as `"review": {"agent", "session", "verdict"}` in `.artifact.json`.
+- Opened on the owner's machine when they asked to see it, and the reply names
+  its path.
 
 ## `kind: plan`
 
@@ -423,7 +435,7 @@ breakdowns or live results to make a visual look complete.
 - Write architecture the way a staff engineer would: coupling points, boot
   sequence, control vs data plane, alternatives considered.
 
-## Completion contract
+## Completion contract (Markdown artifacts)
 
 - Markdown remains the source of truth in the dated artifact directory.
 - `artifacts check` and `artifacts render` exit successfully.
