@@ -13,10 +13,11 @@ product's guidelines, components, visual patterns, and observed interactions.
 | `/design:prototype` | [prototype](skills/prototype/SKILL.md) | Screens, components, interactive flows, and UI motion |
 | `/design:critique` | [critique](skills/critique/SKILL.md) | Evidence-based assessment and concrete findings |
 
-The commands are thin routes to real skills. Each selected workflow loads the
-[shared design practice](skills/design/design-core.md) through the resolved `design`
-skill. It does not load every other workflow. Existing brand plugins can keep routing
-through `/design`.
+The commands are thin routes to real skills. Each focused skill carries every rule it
+needs in its own `SKILL.md`, so an agent never has to find another file before working;
+the shared practice lives in the [design](skills/design/SKILL.md) router itself. Optional
+depth (vocabulary, composition, research) is linked one hop from the skill that uses it.
+Existing brand plugins can keep routing through `/design`.
 
 Refinement begins by reading and visually inspecting existing guidelines and product
 examples, then exercising relevant states and interactions. A short interaction recording

@@ -1,10 +1,10 @@
 # Diagnose a flow's next step
 
-Read `design-core.md` beside this file. Use this reference to understand a dead end or
+Use this reference to understand a dead end or
 missing continuation; use `design:prototype` when creating or refining the flow.
 
 1. Identify the user's goal and the concrete entry point. Inspect the relevant source
-   and exercise the actual flow using the shared interaction preflight. A code path
+   and walk the actual flow: entry, primary action, feedback, next step, back/cancel, recovery. A code path
    alone does not prove what the user sees or can do.
 2. Look for lost context, unclear completion, missing recovery, or a related next action
    that requires repeating work. State the observed problem and evidence. A useful clean

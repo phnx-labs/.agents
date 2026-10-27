@@ -7,9 +7,9 @@ user-invocable: true
 
 # Design systems
 
-Create a system or improve an existing one. Resolve the `design` skill from the current
-skill catalog and read `design-core.md` beside its `SKILL.md`. Resolve supporting files
-relative to their owning reference directory.
+Create a system or improve an existing one. Extend the product's existing source of
+truth rather than adding a parallel one. Measure contrast from actual colors (AA: 4.5:1
+for ordinary text, 3:1 for large) and never encode meaning by color alone.
 
 ## Workflow
 

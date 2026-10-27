@@ -1,8 +1,8 @@
 #!/usr/bin/env bun
-// Static linter for the design-core anti-tells catalog (§6), offline-first
-// doctrine (§1), and color-only meaning (§3) — the checks that are detectable
+// Static linter for common AI-made style tells, offline-first
+// previews (Shared practice 1), and color-only meaning (Shared practice 4) — the checks that are detectable
 // from markup alone. Heuristic by design: every finding is a line to look at,
-// not a verdict; the screenshot critique remains mandatory (design-core §9).
+// not a verdict; the screenshot critique remains mandatory (design SKILL.md, Shared practice 9).
 //
 // Usage: bun check-tells.ts <file.html> [--strict]
 //   --strict  exit 1 when any HIGH finding is present (for gates)
@@ -124,5 +124,5 @@ const warn = findings.filter((f) => f.sev === "WARN").length;
 const tellTags = new Set(findings.filter((f) => f.tag.startsWith("tell-")).map((f) => f.tag));
 console.log(`\nsummary: ${high} high, ${warn} warn, ${findings.length - high - warn} info · ${tellTags.size} distinct tells`);
 if (tellTags.size >= 3)
-  console.log(`3+ tells in combination reads as AI-made regardless of individual quality (design-core §6)`);
+  console.log(`3+ tells in combination reads as AI-made regardless of individual quality`);
 process.exit(strict && high > 0 ? 1 : 0);

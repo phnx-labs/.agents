@@ -8,21 +8,22 @@ user-invocable: true
 # Design critique
 
 Assess the supplied surface without silently expanding a review into implementation.
-Resolve the `design` skill through the current skill catalog and read `design-core.md`
-beside its `SKILL.md`. The checker scripts belong to this critique skill's `scripts/`
-directory; resolve their paths from this skill's actual installed location.
+Judge it against the product's own guidelines, not a preferred style. Contrast is
+measured, never guessed (AA: 4.5:1 for ordinary text, 3:1 for large), and meaning never
+rides on color alone. The checker scripts are in `scripts/` beside this file.
 
 ## Workflow
 
 1. **Understand and observe.** Read the applicable design guidelines and open their
    visual examples. Inspect the target itself and representative peers for consistency.
-   For interactive surfaces, follow the shared interaction preflight. Review supplied
+   For interactive surfaces, walk the journey (entry, primary action, feedback, next step,
+   back/cancel, recovery). Review supplied
    recordings; capture and inspect a short clip when sequence or timing matters. State
    what cannot be assessed from a screenshot or an unavailable surface.
-2. **Check measurable properties.** Run `bun <critique-skill-dir>/scripts/check-contrast.ts
+2. **Check measurable properties.** Run `bun scripts/check-contrast.ts
    --json '<actual foreground/background pairs>'` on real tokens or computed colors.
    Each pair has `fg`, `bg`, and `label` fields; add `large: true` only for large text. Run
-   `bun <critique-skill-dir>/scripts/check-tells.ts <available-markup-file>` when markup
+   `bun scripts/check-tells.ts <available-markup-file>` when markup
    is available. Use the browser's authenticated page when inspecting a live app; raw
    unauthenticated HTML may be a different surface. Treat style warnings as prompts to
    investigate, not automatic failures or permission to override the product's brand.

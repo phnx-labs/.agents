@@ -24,8 +24,8 @@ replace one with another by habit.
    pages" in the artifacts skill (owner's words first, real before beside the after,
    each numbered mark on what its note names). The reader is a human deciding something; every block is judged by
    whether it helps that decision with the right amount of detail.
-3. **Read the artifacts skill's rules.** `skills/artifacts/SKILL.md` step 3 states
-   the reading-task and interaction contract and `references/authoring.md` lists the components the
+3. **Read the artifacts skill's rules.** `~/.agents/.system/skills/artifacts/SKILL.md` step 3 states
+   the reading-task and interaction contract and `~/.agents/.system/skills/artifacts/references/authoring.md` lists the components the
    renderer has: `bar-chart` fences, inline SVG, `artifact-stat`, `artifact-grid`,
    `artifact-callout`, `artifact-behavior`, `excerpt` cards, `diff` fences.
 

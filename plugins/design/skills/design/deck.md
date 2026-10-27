@@ -1,6 +1,6 @@
 # Presentation design
 
-Read `design-core.md` beside this file. Create or refine the story and visual system of
+Create or refine the story and visual system of
 slides using the existing deck, product guidelines, and supplied evidence.
 
 1. Establish audience, purpose, required format, and the narrative. Inspect the existing
@@ -16,4 +16,4 @@ slides using the existing deck, product guidelines, and supplied evidence.
    animation; review a bounded clip when timing matters. For revisions, compare the
    affected slides before and after.
 5. Deliver and inspect the actual requested file or presentation. State anything missing
-   or unverified, and use the shared presentation and artifact-location guidance.
+   or unverified, and open the result on the user's machine.
