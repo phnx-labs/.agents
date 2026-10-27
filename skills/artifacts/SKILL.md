@@ -1,13 +1,24 @@
 ---
 name: artifacts
-description: "Author plans, reports, and visual explanations as Markdown, then render them with artifacts-cli into self-contained branded light/dark HTML. Use for implementation plans, plan mode, architecture diagrams, infographics, dashboards, comparisons, data stories, or any request to render or present an artifact visually."
+description: "Make plans, reports, reviews and visual explanations the owner reads: Markdown rendered with artifacts-cli, or a hand-written self-contained HTML page for before/after reviews and prototypes. Use for implementation plans, plan mode, architecture diagrams, infographics, dashboards, comparisons, data stories, feedback reviews, or any request to render or present an artifact visually."
 ---
 
 # Artifacts
 
-Author Markdown once, add semantic HTML or inline SVG where layout requires it,
-then compile the source to responsive HTML. Do not hand-author a complete HTML
-document and do not edit generated HTML.
+An artifact is a page in `~/.agents/artifacts/` or `~/.local/share/agents/artifacts/`
+that you open for the owner. It is never a claude.ai Artifact: do not use a
+harness's own artifact or page-publishing tool.
+
+Pick the form by the job:
+
+- **Markdown rendered with artifacts-cli** for plans (the plan-presentation hook
+  checks its output), reports and documents. Author the Markdown, add semantic
+  HTML or inline SVG where layout requires it, render it, and never edit the
+  generated HTML.
+- **A hand-written HTML page** for anything the owner reviews visually: a
+  before/after, a feedback walkthrough, a prototype with working controls. One
+  self-contained file in the product's own tokens, images embedded, no CDN
+  libraries; scripts are allowed. Follow "Review pages" below.
 
 ## Choose the kind
 
@@ -26,8 +37,8 @@ The kind changes the content contract, not the rendering pipeline.
    command -v artifacts
    ```
 
-   If it is missing, report that prerequisite. Do not replace it with a
-   hand-written HTML fallback.
+   If it is missing for a Markdown artifact, report that prerequisite. A review
+   page is hand-written HTML and does not need it.
 
 2. Resolve a durable artifact directory before writing. Honor the repository
    policy when output ships with a feature: commit it through a linked worktree.
@@ -121,11 +132,14 @@ The kind changes the content contract, not the rendering pipeline.
    tile or every number into a stat. Long inventories belong behind disclosure or
    in an appendix. A table warning asks for judgment, not automatic conversion.
 
-   Make meaningful detail inspectable. A service, chart mark or stage that invites
-   a click should reveal its actual modules, evidence or explanation. Prefer the
-   renderer's reusable components: run `artifacts components`, then
-   `artifacts components <name>` for its input contract and example. Fill in data;
-   let the renderer own layout, keyboard behavior and printing. If the installed
+   Never fold away what the reader must judge: a finding, a decision, a reason or
+   a number belongs on the page, not behind a click. The `explorer` component is
+   for real drill-down only (service → module → evidence, where most readers stop
+   at the overview): rows with children, and a shared `metric` when the rows carry
+   numbers. Six things you decide on are a short list or a table, not an
+   explorer. Run `artifacts components`, then `artifacts components <name>` for a
+   component's input contract and example. Fill in data; let the renderer own
+   layout, keyboard behavior and printing. If the installed
    version lacks that command or component, use supported native disclosure or
    links and state the limitation. Do not invent a component, callback, or working
    control the renderer does not implement. See the authoring reference.
@@ -224,6 +238,29 @@ exited 0."
   hover it and observe the result. A single `<a>`-tag scan misses JS click handlers and
   mispositioned hit targets, and asserting "dead link" from one static probe puts a
   wrong claim in a deliverable. State in the figure how the behavior was verified.
+
+## Review pages (hand-written HTML)
+
+When the owner asks to see a change, a before/after, or what you made of their
+feedback, build the page the way the owner's approved console review is built
+(`~/.agents/artifacts/2026-10-27/console-feedback-prototype/index.html` on zion):
+
+- Open each section with the owner's own words, with the recording time when
+  there is one.
+- Left: the real before, a capture of the live product or the command output you
+  ran. Right: the proposed or built after, in the product's own components and
+  tokens; a working mockup when interaction is the point.
+- Number the marks: red on the problem in the before, gold on the change in the
+  after, the same number for the same issue. Put a mark beside the thing it names,
+  never over text.
+- Under each side, one or two sentences per number. Code locations go last, on one
+  muted line.
+- Label every after as built, tested, mockup, or proposed.
+- Nothing the owner needs to judge is folded away. End with a table mapping each
+  thing the owner said to the section that answers it.
+
+Inspect it like any artifact (step 6): capture each section at desktop and phone
+width and read the pixels, then get the artifact critic's verdict before showing it.
 
 ## `kind: plan`
 
@@ -337,11 +374,11 @@ caption, and — when color or line style carries meaning — direct labels on t
 marks where the figure stays clean, or a legend when direct labels would clutter.
 
 Use interaction to reveal structure, compare states, or inspect evidence while
-keeping the main conclusion visible. Prefer a supported component with embedded
-detail over a hand-built control. Show an explicit affordance and useful opened
+keeping the main conclusion visible. In Markdown, use a supported component over a
+hand-built control; a visual that needs working controls is a hand-written page. Show an explicit affordance and useful opened
 state; hover alone must not hide essential information. Motion is optional and
-must respect reduced motion. Do not ask authors to add scripts to Markdown:
-the renderer owns behavior, and authored scripts are rejected.
+must respect reduced motion. Do not add scripts to Markdown: the renderer owns
+behavior there, and authored scripts are rejected.
 
 Quantitative charts must use honest scales, units, source labels, and accessible
 color choices. Use inline SVG for bespoke explanatory graphics; use the

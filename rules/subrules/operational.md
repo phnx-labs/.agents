@@ -13,9 +13,9 @@ Use the owning tool: `tickets` for trackers, `browser` for the web,
 `computer` for native UI, `term` (the standalone `@phnx-labs/term-cli`) for interactive terminals,
 `agents teams` for parallel coding, and `sessions` to recover prior work
 and check ownership before taking over a task. Agent homes such as `~/.claude/`
-are managed links; shared configuration belongs in `~/.agents/`. Artifacts use
-the target product's design tokens and self-contained visuals, no CDN chart
-libraries.
+are managed links; shared configuration belongs in `~/.agents/`. Artifacts are
+artifacts-cli pages or hand-written self-contained HTML in the target product's
+tokens, never a harness's claude.ai Artifact; no CDN chart libraries.
 
 Scratch goes under `.agents/scratch/` (or `~/.agents/scratch/` outside a repo);
 durable output under `~/.agents/artifacts/yyyy-mm-dd/<slug>/` or, when it ships

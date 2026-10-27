@@ -1,6 +1,12 @@
 deny:
   - "Bash(sudo:*)"
 
+  # Artifacts are artifacts-cli pages or hand-written HTML opened for the owner.
+  # A harness's own page publisher (claude.ai Artifacts) is never the place for them.
+  - "Artifact"
+  - "ArtifactComments"
+  - "ArtifactData"
+
   # Credential files — never allow agents to read or write these.
   - "Read(~/.ssh/**)"
   - "Edit(~/.ssh/**)"

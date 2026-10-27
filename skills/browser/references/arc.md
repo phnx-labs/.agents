@@ -13,7 +13,7 @@ These fail with `Native Arc does not support <capability>`:
 - coordinate clicks (`click --at X,Y`)
 - `show` (the viewer cannot open a task-less Arc tab)
 
-Read the page with `evaluate` instead of a screenshot, for example `browser evaluate "document.body.innerText.slice(0, 4000)" --task <task>`. If the task needs a picture, ask the user, or tell them the task needs a CDP browser.
+Read the page with `evaluate` instead of a screenshot, for example `browser evaluate "document.body.innerText.slice(0, 4000)" --task <task>`. If the task needs a picture, say so in your report. Never move the task to Comet, Brave, Chrome or any other profile to get one: Arc is the owner's browser. macOS can capture an Arc window in the background without raising it (tested 2026-10-27), so screenshot support is a browser-cli change, not a reason to switch.
 
 Do not pass an async function to `evaluate`. Arc starts running it before the CLI rejects it, so side effects such as clicks still happen and a retry repeats them. Write the step as one synchronous expression.
 
