@@ -6,8 +6,7 @@ description: "Make plans, reports, reviews and visual explanations the owner rea
 # Artifacts
 
 An artifact is a page in `~/.agents/artifacts/` or `~/.local/share/agents/artifacts/`
-that you open for the owner. It is never a claude.ai Artifact: do not use a
-harness's own artifact or page-publishing tool.
+that you open for the owner, made with this skill.
 
 Pick the form by the job:
 
