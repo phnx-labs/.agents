@@ -34,7 +34,10 @@ Create a new prototype or refine an existing screen, component, or flow. Resolve
    or the sequence matters; compare the same path before and after a refinement. Fix
    dead controls, unexpected focus changes, confusing transitions, and visual drift.
 6. **Deliver the requested result.** Show the working prototype or changed live surface,
-   summarize the behavior, and state simulations or unverified states. Use the owning
+   summarize the behavior, and state simulations or unverified states. When the owner
+   asked for a review of their feedback or a before/after, build the review page the
+   `artifacts` skill describes ("Review pages"): their words first, the real before
+   beside your after, the same numbered marks on both, one or two sentences per mark. Use the owning
    browser/computer/artifacts workflow and the repository's delivery process when code
    changes are authorized.
 

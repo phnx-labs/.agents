@@ -103,9 +103,12 @@ An explicit shared scale is required for values. Omit child values when their
 units differ; use detail text and preserve the distinction. Supply actual modules
 and evidence, not invented subdivisions that happen to total the overview.
 
-Use this for service → module → evidence, a finding → affected paths, or a stage
-→ work and validation. Summary rows show the comparison; opening a row exposes
-its content. All data travels with the HTML. Authors supply no React, CSS or event
+Use this only for real drill-down: service → module → evidence, a finding →
+affected paths, or a stage → work and validation, where most readers stop at the
+overview. Every row has children, and rows that carry numbers share a `metric` so
+they draw as bars. A flat list of decisions, steps or findings is a list or a short
+table; folding it makes the reader click every row (owner review, 2026-10-27).
+Summary rows show the comparison; opening a row exposes its content. All data travels with the HTML. Authors supply no React, CSS or event
 handlers. Do not imply live agent actions or production changes from local
 exploration. Check that the installed catalogue contains the component before use;
 on an older CLI use ordinary `<details>` and links, or report the missing feature.

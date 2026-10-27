@@ -27,7 +27,7 @@ out-of-band) — after the self-unblock ladder is exhausted.
 
 | Skill | What it does |
 |---|---|
-| [`browser`](./browser/SKILL.md) | Drive a browser — fill forms, click, screenshot, scrape — with per-agent profile isolation over CDP |
+| [`browser`](./browser/SKILL.md) | Drive the owner's browser (Arc on zion) — open, click, read, screenshot where supported, show pages — and never switch to another browser |
 | [`computer`](./computer/SKILL.md) | Drive desktop apps through the standalone Computer engine while retaining Agents permissions and session tracking |
 | [`secrets`](./secrets/SKILL.md) | Keychain-backed bundles of environment variables, injected into a run without landing on disk |
 
@@ -43,7 +43,7 @@ out-of-band) — after the self-unblock ladder is exhausted.
 
 | Skill | What it does |
 |---|---|
-| [`artifacts`](./artifacts/SKILL.md) | Author plans, reports, and visuals as Markdown, then render them to branded light/dark HTML with `artifacts-cli`. One pipeline; `kind: plan` and `kind: visual` carry the differences |
+| [`artifacts`](./artifacts/SKILL.md) | Make the pages the owner reads: Markdown rendered with `artifacts-cli` for plans and reports, or a hand-written HTML review page for before/afters and prototypes. Never a claude.ai Artifact |
 | [`plan`](./plan/SKILL.md) | Portable entry point for the canonical `swarm:plan` skill, including goals, expected outcomes, success checks and visual artifacts |
 | [`docs`](./docs/SKILL.md) | Write documentation — user-facing, technical, runbooks, onboarding, changelogs, and AGENTS.md (`write-agents-md.md`) |
 
