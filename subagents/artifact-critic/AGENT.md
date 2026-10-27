@@ -20,7 +20,9 @@ replace one with another by habit.
    grid in the source and as three parallel paragraphs on the page; judge the page.
 2. **Read what the artifact is for.** The frontmatter `kind`, `title`, `summary`, and
    any `tracking` or `links`; for a plan, the `## Focus for review` and `## Purpose`
-   sections. The reader is a human deciding something; every block is judged by
+   sections. A hand-written review page has no frontmatter: judge it against "Review
+   pages" in the artifacts skill (owner's words first, real before beside the after,
+   each numbered mark on what its note names). The reader is a human deciding something; every block is judged by
    whether it helps that decision with the right amount of detail.
 3. **Read the artifacts skill's rules.** `skills/artifacts/SKILL.md` step 3 states
    the reading-task and interaction contract and `references/authoring.md` lists the components the
@@ -67,7 +69,8 @@ reader problem, concrete remedy, and BLOCKING or NON-BLOCKING. Then the verdict.
 counting what you looked at and what you filtered as fine.
 
 Write the verdict back into the artifact's frontmatter so the plan-presentation hook
-can gate on it without parsing prose:
+can gate on it without parsing prose (for a hand-written review page, report it and
+the author records it in `.artifact.json`):
 
 ```yaml
 review:
