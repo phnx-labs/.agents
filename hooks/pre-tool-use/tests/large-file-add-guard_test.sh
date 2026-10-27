@@ -125,6 +125,13 @@ printf 'hello world\n' > "$SMALLFILE"
 BINARYFILE="$REPO/binaryfile"                    # ELF magic bytes, tiny — still denied
 printf '\x7f\x45\x4c\x46\x02\x01\x01\x00restofdata' > "$BINARYFILE"
 
+BIGDOC_HTML="$REPO/design.html"                 # 6 MiB rendered doc: text, exempt from the size limit
+head -c 6291456 /dev/zero | tr '\0' 'a' > "$BIGDOC_HTML"
+BIGDOC_MD="$REPO/notes.md"
+cp "$BIGDOC_HTML" "$BIGDOC_MD"
+BINARY_HTML="$REPO/disguised.html"               # ELF bytes behind a doc extension: still denied
+printf '\x7f\x45\x4c\x46\x02\x01\x01\x00restofdata' > "$BINARY_HTML"
+
 SUBDIR="$REPO/a-directory"
 mkdir -p "$SUBDIR"
 
@@ -152,6 +159,9 @@ check_deny "timeout inside sh -c wrapper"                       "sh -c \"timeout
 
 # --- 2. Allows the benign neighbour -------------------------------------------
 check_allow "small text file under threshold"          "git add $SMALLFILE"
+check_allow "6 MiB HTML doc skips the size limit"       "git add $BIGDOC_HTML"
+check_allow "6 MiB Markdown doc skips the size limit"   "git add $BIGDOC_MD"
+check_deny  "binary magic behind a .html name"          "git add $BINARY_HTML" "binary magic bytes"
 check_allow "non-add git command"                        "git status"
 check_allow "git add -A (out of scope, too broad to scan)" "git add -A"
 check_allow "quoted glob (expanded by git, not the shell)"  "git add 'dist/*.so'"
