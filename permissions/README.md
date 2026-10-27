@@ -33,7 +33,7 @@ Files concatenate in alphabetical order, so the number prefix controls order.
 | [`12-self.yaml`](./groups/12-self.yaml) | Agent self-operations — the one exact `kill -TERM $PPID` the `self` plugin (`/self:close`) uses to SIGTERM its own harness |
 | [`15-misc-bash.yaml`](./groups/15-misc-bash.yaml) | Everything else shell |
 | [`30-paths.yaml`](./groups/30-paths.yaml) | Blanket allows plus Write and Edit path rules |
-| [`99-deny.yaml`](./groups/99-deny.yaml) · [`99-deny-sandbox.yaml`](./groups/99-deny-sandbox.yaml) | Deny lists. Deny always beats allow. A user who wants a deny the system does not ship (for example `Artifact`, `ArtifactComments` and `ArtifactData`, a harness's own page publisher) adds a group in `~/.agents/permissions/groups/`; deleting it turns the deny off |
+| [`99-deny.yaml`](./groups/99-deny.yaml) · [`99-deny-sandbox.yaml`](./groups/99-deny-sandbox.yaml) | Deny lists. Deny always beats allow. A user who wants a deny the system does not ship (for example `Artifact`, `ArtifactComments` and `ArtifactData`, a harness's own page publisher) adds a group in `~/.agents/permissions/groups/`; deleting it turns the deny off. A user-only group applies while no `AGENTS_PERMISSION_PRESET` is set: a preset's `includes` names system groups only |
 
 ## Presets
 
