@@ -20,10 +20,6 @@ A bare start opens the browser the user configured as their default. When the ma
 
 Do not create profiles, launch a headless browser, or switch to another machine's browser to work around an error. Sites block remote and cloud browsers, and those browsers do not have the user's logins. Report the error instead.
 
-Never switch to a different browser because the default cannot do something. The owner's browser is Arc on zion. When a step Arc does not support yet (see `references/arc.md`) is needed, read the page as text instead and say the picture was not possible; do not pick another profile from `browser profiles list`.
-
-A local file you only need to check, such as an artifact you rendered, is the exception: inspect it headlessly on your own machine, which opens nothing on the owner's screen.
-
 ## Workflow
 
 ```bash
