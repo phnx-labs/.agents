@@ -1,6 +1,6 @@
 ---
 name: health
-description: "Assess code size and human maintainability, rank reduction opportunities, and maintain HEALTH.md with rendered HEALTH.html. Use for code-health assessments, size budgets, or a baseline before refactoring."
+description: "Assess code size and human maintainability, rank reduction opportunities, and share the HEALTH report as an owner-only artifacts page. Use for code-health assessments, size budgets, or a baseline before refactoring."
 argument-hint: "[path(s) | empty = this repo]"
 user-invocable: true
 ---
@@ -10,7 +10,7 @@ user-invocable: true
 Assess how much code and how many decisions a human must understand to change a component
 safely. Produce a compact, evidence-backed baseline and practical reduction opportunities.
 Health assesses; `code:refactor` implements. Do not change product code or create tickets
-for findings. Follow repository worktree, review, and delivery rules for report changes.
+for findings. The report is shared, not committed.
 
 ## Inspect current code
 
@@ -20,7 +20,11 @@ roots and state the scope rather than creating a report in every directory. Chec
 reports, open PRs and active ownership before work. Current user decisions govern retained
 behavior; a size budget is not permission to delete a feature.
 
-Read HEALTH.md as a prior assessment, never as current proof. Compare its assessed commit
+Find the prior baseline: the newest `~/.agents/artifacts/*/health-<repo>-<component>/HEALTH.md`
+on this machine, else the page `artifacts share list --scope me --meta kind=health --meta
+component=<repo>/<path> --list-json` returns (its `commit` metadata is the assessed revision;
+open it with `browser`). A repository that still tracks a HEALTH.md at the component root has
+an older one there. Read it as a prior assessment, never as current proof. Compare its assessed commit
 with current source and inspect the relevant changes, including shared code and dependency
 changes outside the component. Report-only changes do not require a full reassessment.
 If the report or commit is missing or unavailable, establish a fresh baseline. Even when
@@ -57,8 +61,10 @@ correctness and verification gaps visible without turning health into a bug-list
 
 ## Write the baseline
 
-Write HEALTH.md at each selected component root and render HEALTH.html beside it.
-HEALTH.md is canonical; never hand-edit generated HTML. Use exactly four frontmatter fields:
+Write HEALTH.md for each selected component in the `artifacts` skill's durable artifact
+directory (`~/.agents/artifacts/<date>/health-<repo>-<component>/`), never in the repository,
+and render HEALTH.html beside it. HEALTH.md is canonical; never hand-edit generated HTML.
+Use exactly four frontmatter fields:
 
 ```yaml
 ---
@@ -69,8 +75,7 @@ commit: <full assessed source commit>
 ---
 ```
 
-The location defines scope. `commit` is the source revision assessed, not the later commit
-that adds the report. Disclose any assessed uncommitted changes in the body. Advance
+The `component` metadata below defines scope. `commit` is the source revision assessed. Disclose any assessed uncommitted changes in the body. Advance
 `updated` and `commit` only after assessment, never just because HTML was rendered. State
 partial coverage plainly; do not refresh stale findings as if they were checked.
 
@@ -89,14 +94,23 @@ on each element a finding concerns with the same number as that finding, and cap
 figure with the assessed commit and anything omitted. A level-3 component view of the
 largest container is worth adding when one file or module dominates it.
 
-Use `artifacts` to validate and render, and `browser` to inspect the result. These
-component-root outputs are intentional repository documentation, so use a linked worktree
-and the repository's PR flow rather than the default external artifact directory. Keep assessment and render
-review evidence in the body or PR, not extra frontmatter or a separate metadata file.
-Report incomplete rendering or visual checks honestly; do not publish externally by default.
+Use `artifacts` to validate and render, and `browser` to inspect the result. Then share it
+owner-only under one stable slug per component, so each refresh is a new revision of the
+same page and the owner finds it in the Rush console under Artifacts:
+
+```bash
+artifacts share HEALTH.md --visibility me --expire never \
+  --slug health-<repo>-<component> \
+  --meta kind=health --meta component=<repo>/<path> --meta commit=<sha>
+```
+
+Give the returned link in the reply and in the ticket or PR that asked for the assessment.
+Do not commit HEALTH.md or HEALTH.html, open a report PR, or widen the visibility unless the
+user asks in this conversation. Keep assessment and render review evidence in the body.
+Report incomplete rendering or visual checks honestly.
 
 When refactor uses this assessment in read-only `--scan-only` mode, return findings without
-writing tracked HEALTH files or opening a report PR. A bounded `quality` change needs only
+writing or sharing a report. A bounded `quality` change needs only
 the relevant assessment, not a mandatory whole-component audit or new report. For full
-structural work, refresh the baseline before relying on it and update both HEALTH files
+structural work, refresh the baseline before relying on it and share the updated report
 afterward with the actual measurements and remaining limitations.
