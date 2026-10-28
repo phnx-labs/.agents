@@ -79,7 +79,7 @@ when delivery is authorized; distinguish merged from shipped in the report.
 
 Use [code:health](../health/SKILL.md) when the requested outcome is a persistent component
 maintainability baseline. Review keeps its read-only diagnostic role; it need not generate
-or refresh HEALTH files before reviewing a change.
+or refresh a HEALTH report before reviewing a change.
 
 Inspect architecture, code health, documented invariants, identifiers, and repeated
 responsibilities where relevant. Existing helper scripts and their data contract are in

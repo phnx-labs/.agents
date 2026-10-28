@@ -36,16 +36,16 @@ with independent cleanup; an old document or a size target is not permission to 
 ## Health before changes
 
 Use [code:health](../health/SKILL.md) to establish the relevant baseline before selecting
-changes. Read existing HEALTH.md, compare its assessed source commit with current code,
+changes. Read the latest shared HEALTH report, compare its assessed source commit with current code,
 and revalidate the findings this work depends on. A matching commit is not proof; a missing
 report or unavailable revision requires fresh inspection. Ignore report-only changes when
 deciding what source needs reassessment. Health owns the report format and counting policy.
 
-For structural work, refresh the component's HEALTH.md and generated HEALTH.html before
-relying on the assessment, then update them after the change with actual results. Keep
+For structural work, refresh the component's shared HEALTH report before relying on the
+assessment, then share the update after the change with actual results and link it from the PR. Keep
 `quality` bounded to the current change; it does not require creating a report or auditing
 the whole component. `--scan-only` may read health and return updated findings, but must not
-write tracked reports, change product code, create tickets or open a report PR.
+share a report, change product code, create tickets or open a PR.
 
 ## Architectural judgment
 

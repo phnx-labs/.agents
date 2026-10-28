@@ -7,6 +7,8 @@
 #
 # Threshold: 5 MiB. Override per-repo by exporting LARGE_FILE_GUARD_MAX_KB
 # (in KiB) before invoking the agent. Set to 0 to disable size check.
+# Markdown and HTML documents skip the size check: a rendered doc such as a
+# design page is a reviewed text file, not a build artifact.
 #
 # Magic-byte detection covers: Mach-O (cf fa ed fe / fe ed fa cf), ELF
 # (7f 45 4c 46), Windows PE (4d 5a), zip/jar/docx (50 4b 03 04), gzip
@@ -166,7 +168,11 @@ check_path() {
     return 0
   fi
 
-  if [ "$THRESHOLD_KB" -gt 0 ]; then
+  case "$_p" in
+    *.md|*.markdown|*.html|*.htm) _sized=0 ;;
+    *) _sized=1 ;;
+  esac
+  if [ "$THRESHOLD_KB" -gt 0 ] && [ "$_sized" -eq 1 ]; then
     _kb=$(size_kb "$_p")
     if [ "$_kb" -gt "$THRESHOLD_KB" ]; then
       set_deny "git.add-large-file" \
