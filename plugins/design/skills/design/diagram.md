@@ -18,8 +18,8 @@ relationships, processes, or interactions using the actual system and its eviden
    artifact with editable SVG/HTML when layout or presentation needs more control.
    Do not replace an existing editable diagram with a disconnected drawing without reason.
 5. Inspect the rendered result for correctness, clipping, readability, and clear
-   relationships. Verify navigation or interaction if present. Deliver through the
-   shared artifact and presentation guidance.
+   relationships. Verify navigation or interaction if present. Open the result on the
+   user's machine.
 
 Quantitative axes and data stories belong in `dataviz.md`; interactive product screens
 belong in `design:prototype`.

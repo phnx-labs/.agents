@@ -46,7 +46,7 @@ A prototype is held to this bar before anyone else sees it:
    preflight: the guideline sections read, the components and marks the screen will reuse
    (with file paths), and the capture. No preflight, no prototype.
 2. **Settle what the screen is.** Name the existing entity it shows, whose it is, and which
-   states it covers (a catalog listing is not the copy someone added and is running).
+   states it covers (a template listing is not the instance a user created).
    Check the product's requirements and agent instructions for anything the request
    conflicts with, and raise it before drawing.
 3. **Map behavior.** Entry point, primary action, state transitions, feedback, recovery,
@@ -75,7 +75,7 @@ A prototype is held to this bar before anyone else sees it:
 ## Owner feedback
 
 Keep a `requirements.md` beside the prototype. Restate each correction as a numbered,
-general rule ("every mark comes from its source file", not "fix the Sentry logo"), play
+general rule ("every mark comes from its source file", not "fix the logo on this card"), play
 the list back before changing anything, then check every element of the next version
 against the whole list, not only the latest item. Reread it at the start of each round;
 it outlives context compaction.

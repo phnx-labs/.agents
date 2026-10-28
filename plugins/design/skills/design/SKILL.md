@@ -47,7 +47,8 @@ different tasks.
    navigation and visible focus, labels, validation, disabled states, and touch use. Honor
    reduced-motion preferences.
 5. **References.** Start with the product's own examples and the user's references. For a
-   new direction, browse current examples and inspect them before borrowing a choice.
+   new direction or a page from scratch, browse current examples and inspect them before
+   borrowing a choice; a small refinement needs no competitor browsing.
 6. **Copy.** Precise language, realistic content, the product's voice. Labels explain
    actions and outcomes. Never invent testimonials, usage counts, or claims.
 7. **Raster assets.** Use the image capability when artwork is needed. A placeholder or a
@@ -60,8 +61,12 @@ different tasks.
    the affected interactions. Run `bun ../critique/scripts/check-contrast.ts --json
    '<pairs>'` on actual color pairs and `bun ../critique/scripts/check-tells.ts <file>` on
    available markup (paths relative to this folder); treat their style warnings as prompts
-   to inspect, not laws. Fix findings, inspect again, show the result on the user's machine,
-   and state what changed, what was exercised, and what remains unverified.
+   to inspect, not laws, and never restyle a product just to clear them. Static checks
+   cannot prove live interactions or full accessibility. Fix findings, inspect again,
+   show the result on the user's machine, and state what changed, what was exercised, and what remains unverified. Work in the
+   repository's worktree and artifact locations and keep captures local unless
+   publication is authorized. Ask only for missing information or a consequential design
+   choice.
 
 For naming a move precisely see [vocabulary.md](vocabulary.md); for composing a whole page,
 [composition.md](composition.md); for studying reference sites, [research.md](research.md).

@@ -39,7 +39,7 @@ const scanSrc = (re: RegExp, cb: (m: RegExpMatchArray, lineNo: number) => void) 
   for (const m of src.matchAll(re)) cb(m, lineOf(m.index ?? 0));
 };
 
-// ── offline-first (§1): external network dependencies ────────────────────────
+// ── offline-first (Shared practice 1): external network dependencies ────────────────────────
 scan(/<(?:link|script|img|iframe)[^>]*(?:href|src)=["'](https?:\/\/[^"']+)/i, (m, n) =>
   add("HIGH", "offline", n, `external resource ${m[1].slice(0, 60)} — page breaks offline; inline it or use system fonts`));
 scan(/@import\s+(?:url\()?["']?https?:\/\//i, (m, n) =>
@@ -88,7 +88,7 @@ scan(/linear-gradient/i, (m, n, text) =>
 scan(/box-shadow\s*:[^;]*\b(?:[2-9]\d|\d{3,})px[^;]*(?:oklch|rgb|#)[^;]*/i, (m, n) =>
   add("INFO", "tell-11", n, `large colored box-shadow — if it glows a button, drop it`));
 
-// ── §3: meaning by color alone ───────────────────────────────────────────────
+// ── Shared practice 4: meaning by color alone ────────────────────────────────────────────
 // Exact class-token match, not \b — "rounded-lg" and "fa-lg" contain the token
 // "lg" at a \b boundary but are layout/icon classes, not status glyphs.
 const STATUS_TOKENS = new Set(["st", "dot", "status", "lg", "badge"]);

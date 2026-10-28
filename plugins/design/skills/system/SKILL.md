@@ -41,6 +41,7 @@ for ordinary text, 3:1 for large) and never encode meaning by color alone.
    motion or state transitions. Check that docs and implementation agree.
 
 Deliver the updated system or clearly labeled proposal, the visible examples, and a
-concise account of what changed and which consumers are affected. Follow the shared
-worktree, artifact, and presentation guidance. For one screen or flow, use
+concise account of what changed and which consumers are affected. Work in the
+repository's worktree and artifact locations, keep captures local unless publication
+is authorized, and open the result on the user's machine. For one screen or flow, use
 `design:prototype`; for an icon or logo, use `design:graphics`.
