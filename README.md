@@ -100,7 +100,7 @@ to type.
 | Review PRs this session (or a whole repo scan) | `/code:review` | `code:review` — three modes |
 | Learn a codebase into project `AGENTS.md` | `/code:learn` | Durable nav notes for future agents |
 | Create or refine systems, graphics, and interactive prototypes; critique existing design | `/design` or `/design:system`, `/design:graphics`, `/design:prototype`, `/design:critique` | [`design`](plugins/design/README.md) |
-| Share an HTML plan/report | `artifacts share <file>` | [`artifacts`](skills/artifacts/SKILL.md) — public link with OG cover, or `--unlisted --no-cover --expire 7d` for a discreet one |
+| Share an HTML plan/report | `artifacts share <file> --visibility me` | [`artifacts`](skills/artifacts/SKILL.md) — owner-only, listed in the Rush console; `--visibility org` or `public` when asked |
 | Drive a **website** | skill `browser` (`browser` CLI) | Not a slash command — load the skill |
 | Drive a **native Mac app** | skill `computer` | Same |
 | Credentials | skill `secrets` | `secrets` |

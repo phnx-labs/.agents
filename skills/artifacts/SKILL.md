@@ -213,14 +213,16 @@ and its own contract.
    prototype do not prove a production rollout. If the interactive machine is
    unreachable, retain the files and report their exact paths.
 
-9. Share only on explicit request:
+9. Share owner-only, never by committing the page to a repository:
 
    ```bash
-   artifacts share "$SOURCE" --expire 30d
+   artifacts share "$SOURCE" --visibility me
    ```
 
-   Shared links are public and unlisted, not private. Never put credentials or
-   confidential material in the source, `DESIGN.md`, or a public share.
+   `me` opens only for the owner and lists the page in the Rush console under
+   Artifacts; link it from the ticket or PR. Widen to `--visibility org` or
+   `public` only when the user asks. Never put credentials or confidential
+   material in the source, `DESIGN.md`, or a widened share.
 
 ## Evidence: captures and claims
 

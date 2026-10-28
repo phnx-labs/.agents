@@ -1,5 +1,5 @@
 ---
-description: Assess code size and human maintainability; update component-root HEALTH.md and HEALTH.html.
+description: Assess code size and human maintainability; share the HEALTH report owner-only.
 ---
 
 Invoke the `code:health` skill. Arguments: $ARGUMENTS
