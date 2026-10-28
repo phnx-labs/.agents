@@ -1,5 +1,5 @@
 name: rush
-description: Rush — Phoenix Labs agent OS CLI (rush run/http/cloud/login/message) against api.prix.dev
+description: Rush — Phoenix Labs agent OS CLI (rush run/http/cloud/login/message) against api.phoenix.so
 homepage: https://getrush.ai
 
 # `rush --version` prints the installed version once the binary is on PATH
@@ -20,7 +20,7 @@ install:
 post_install: |
   Authenticate with: rush login
   Then verify: rush whoami
-  rush is the api.prix.dev REST client (`rush http`) and the backend that
+  rush is the api.phoenix.so REST client (`rush http`) and the backend that
   `agents send` shells out to for imessage/slack/telegram/discord providers
   (`rush send`). For owner pings agents should use `agents feed post --level important` /
   `agents send --to owner` (`agents notify` is deprecated) — not `rush message send` (version-skewed; not the
