@@ -225,11 +225,9 @@ attributes; do not try to define `.box` once in `<defs><style>`.
 A plan's architecture figure is a **system diagram**, not a decorative SVG:
 named modules, arrows for calls / data / control, layers kept distinct
 (orchestration ≠ machine ≠ isolation). Current and proposed each get their
-own drawing when the shape changes. **First read [diagram-conventions.md](diagram-conventions.md):
-notation and semantics take precedence over the styling examples below.** Choose
+own drawing when the shape changes. **Notation and semantics take precedence over the styling examples below.** Choose
 shapes by role and notation, not a universal rounded rectangle; line styles encode
-relationships, not decoration. Read [product-brief.md](product-brief.md) for a
-plan's product overview, goals, non-goals, and journeys. The palette below is an
+relationships, not decoration. The palette below is an
 optional comparison example, not a system-design notation:
 
 | Role | Fill | Stroke | Use |
@@ -248,7 +246,7 @@ For nodes whose notation calls for rounded boxes: `rx="8"`, `stroke-width="1.5"`
 (e.g. x=40 and x=520 with a 100-unit gap) and pair rows across the gap with
 dashed connectors. Figures are dark-first: these tints sit on the
 `artifact-figure-diagram` surface, which stays dark in both themes and in
-print. See `examples/showcase.md` for a complete figure.
+print.
 
 ## Generated Files
 

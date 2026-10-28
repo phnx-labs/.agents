@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 // WCAG 2.x contrast checker. Computes real ratios so no agent ever guesses one
-// (design-core §3: "State the ratio; do not guess it").
+// (design SKILL.md, Shared practice 4: measure contrast, never guess it).
 //
 // Usage:
 //   bun check-contrast.ts <fg> <bg> [--large]

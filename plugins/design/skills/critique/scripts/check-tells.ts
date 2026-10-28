@@ -1,8 +1,8 @@
 #!/usr/bin/env bun
-// Static linter for the design-core anti-tells catalog (§6), offline-first
-// doctrine (§1), and color-only meaning (§3) — the checks that are detectable
+// Static linter for common AI-made style tells, offline-first
+// previews (Shared practice 1), and color-only meaning (Shared practice 4) — the checks that are detectable
 // from markup alone. Heuristic by design: every finding is a line to look at,
-// not a verdict; the screenshot critique remains mandatory (design-core §9).
+// not a verdict; the screenshot critique remains mandatory (design SKILL.md, Shared practice 9).
 //
 // Usage: bun check-tells.ts <file.html> [--strict]
 //   --strict  exit 1 when any HIGH finding is present (for gates)
@@ -39,7 +39,7 @@ const scanSrc = (re: RegExp, cb: (m: RegExpMatchArray, lineNo: number) => void) 
   for (const m of src.matchAll(re)) cb(m, lineOf(m.index ?? 0));
 };
 
-// ── offline-first (§1): external network dependencies ────────────────────────
+// ── offline-first (Shared practice 1): external network dependencies ────────────────────────
 scan(/<(?:link|script|img|iframe)[^>]*(?:href|src)=["'](https?:\/\/[^"']+)/i, (m, n) =>
   add("HIGH", "offline", n, `external resource ${m[1].slice(0, 60)} — page breaks offline; inline it or use system fonts`));
 scan(/@import\s+(?:url\()?["']?https?:\/\//i, (m, n) =>
@@ -88,7 +88,7 @@ scan(/linear-gradient/i, (m, n, text) =>
 scan(/box-shadow\s*:[^;]*\b(?:[2-9]\d|\d{3,})px[^;]*(?:oklch|rgb|#)[^;]*/i, (m, n) =>
   add("INFO", "tell-11", n, `large colored box-shadow — if it glows a button, drop it`));
 
-// ── §3: meaning by color alone ───────────────────────────────────────────────
+// ── Shared practice 4: meaning by color alone ────────────────────────────────────────────
 // Exact class-token match, not \b — "rounded-lg" and "fa-lg" contain the token
 // "lg" at a \b boundary but are layout/icon classes, not status glyphs.
 const STATUS_TOKENS = new Set(["st", "dot", "status", "lg", "badge"]);
@@ -124,5 +124,5 @@ const warn = findings.filter((f) => f.sev === "WARN").length;
 const tellTags = new Set(findings.filter((f) => f.tag.startsWith("tell-")).map((f) => f.tag));
 console.log(`\nsummary: ${high} high, ${warn} warn, ${findings.length - high - warn} info · ${tellTags.size} distinct tells`);
 if (tellTags.size >= 3)
-  console.log(`3+ tells in combination reads as AI-made regardless of individual quality (design-core §6)`);
+  console.log(`3+ tells in combination reads as AI-made regardless of individual quality`);
 process.exit(strict && high > 0 ? 1 : 0);

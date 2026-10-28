@@ -114,7 +114,9 @@ and its own contract.
    HTML only for grids, panels, figures, and callouts. Use inline SVG for
    architecture, flows, timelines, state diagrams, and other semantic figures.
    Read [references/authoring.md](references/authoring.md) before adding HTML or
-   SVG; follow its diagram recipe.
+   SVG; follow its diagram recipe. Before drawing a diagram, read
+   [references/diagram-conventions.md](references/diagram-conventions.md) for the
+   notation the field expects.
 
    State the artifact's purpose and what the reader should understand, decide or
    expect from it near the beginning. Plans must make the goal, observable expected
@@ -402,13 +404,13 @@ the *Big Idea* in one sentence and the reader's *"so what"* before you chart, an
 give the piece a narrative arc — beginning, tension, resolution or call to action.
 Pick each visual by its job from the effective set — simple text or one big number,
 table or heatmap, scatterplot, line, slopegraph, bar, stacked bar, waterfall — and
-avoid donut, 3D, and dual-axis (pie only up to ~3 slices, matching `dataviz`'s
-mechanics). *Declutter*: cut chartjunk, reduce cognitive
+avoid donut, 3D, and dual-axis (pie only up to ~3 slices). *Declutter*: cut chartjunk, reduce cognitive
 load, group with Gestalt proximity and alignment. Then steer the eye with
 *preattentive attributes* (size, color, position) — gray the context and highlight
 the one thing that matters in a single accent color, keeping labels next to the
-marks they name. For the chart mechanics (palette, marks, accessibility) load the
-`design` skill's `dataviz` mode; this is the storytelling layer on top of it.
+marks they name. Chart mechanics: bars start at zero, every axis carries its quantity
+and unit, palettes are colorblind-safe (Okabe-Ito categorical, Viridis sequential),
+and color is always paired with a label, shape, or line style.
 
 ## When the artifact recommends
 

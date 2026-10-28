@@ -7,9 +7,9 @@ user-invocable: true
 
 # Graphics
 
-Create an asset or refine an existing one. Resolve the `design` skill from the current
-skill catalog and read `design-core.md` beside its `SKILL.md`. Supporting files resolve
-from the directory of their owning reference.
+Create an asset or refine an existing one. Reuse the product's or vendor's published
+files; never redraw a mark that already exists. A placeholder or a generation brief is
+unfinished work: label it and say what remains.
 
 ## Workflow
 
@@ -37,5 +37,5 @@ from the directory of their owning reference.
    raster image; state the missing deliverable if the required capability is unavailable.
 
 Deliver the master and verified exports or the updated library asset, with a brief
-explanation of what changed. Use the shared delivery guidance. System-wide rules belong
+explanation of what changed. Open the result on the user's machine. System-wide rules belong
 in `design:system`; interactive screens and flows belong in `design:prototype`.
