@@ -191,5 +191,5 @@ Concrete, not a slogan. Name real files, flags, numbers, error strings.
 
 ---
 
-Changing this skill? Read [`../../AGENTS.md`](../../AGENTS.md) and keep the
-`/work:demo` command (`plugins/work/commands/demo.md`) routing to this skill.
+Changing this skill? Read [`../../AGENTS.md`](../../AGENTS.md). The skill is the
+`/work:demo` command itself; never add a `commands/demo.md` beside it.

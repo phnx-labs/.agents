@@ -2,8 +2,14 @@
 
 Humans start at [README.md](./README.md).
 
-A plugin is a namespaced bundle of commands and skills. The directory name is the namespace:
-`plugins/work/commands/loop.md` is `/work:loop`.
+A plugin is a namespaced bundle of skills and commands. The directory name is the namespace:
+`plugins/work/skills/loop/SKILL.md` is `/work:loop`, and so is the Skill tool's `work:loop`.
+
+**Never give a command the name of a skill in the same plugin.** In Claude Code the command
+takes the name, and both the typed `/work:loop` and the Skill tool's `work:loop` load the
+command instead of the skill. Over 14 days to 2026-11-01, all 80 Skill calls on such a pair
+loaded the one-line wrapper ("Invoke the `work:loop` skill") and none loaded the skill's
+text. A `commands/<name>.md` is only for an operation with no skill.
 
 ## Three places must agree
 
@@ -28,8 +34,8 @@ Then add a row to the table in [`README.md`](./README.md) and a `CHANGELOG.md` e
 plugins/<name>/
   README.md                      # required — what it is, and every command
   .claude-plugin/plugin.json     # required — the plugin manifest
-  commands/<command>.md          # becomes /<name>:<command>
-  skills/<skill>/SKILL.md        # skills the commands load
+  skills/<skill>/SKILL.md        # becomes /<name>:<skill>
+  commands/<command>.md          # becomes /<name>:<command>; only for a name no skill has
 ```
 
 A plugin command follows the same rules as a top-level

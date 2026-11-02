@@ -98,7 +98,10 @@ when it is genuinely standalone and cross-domain (`browser`, `mq`, `sessions`).
 **Give every user-facing skill a slash command that routes to it.** A skill loads when
 the model decides its `description` matches; a command fires when the user types it.
 Those are different doors, and a skill with no command can only be reached by asking the
-agent nicely. Add `commands/<name>.md` (or `plugins/<p>/commands/<name>.md`) that routes
+agent nicely. A plugin skill already is its command (`plugins/<p>/skills/<name>/` answers
+`/<p>:<name>`), so it gets none: a `plugins/<p>/commands/<name>.md` of the same name hides
+the skill in Claude Code (`plugins/AGENTS.md`). A top-level skill gets a top-level
+`commands/<name>.md` that routes
 to the skill — the command stays thin, the behavior stays in the skill, and they never
 fork (see the `/continue` → `/sessions:continue` alias pattern).
 

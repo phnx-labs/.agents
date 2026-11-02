@@ -5,10 +5,10 @@ knowledge. Shared delivery and Git workflows live in the [work plugin](../work/R
 
 | Command | Capability | Source |
 |---|---|---|
-| `/code:review` | Review session/named PRs, or run a read-only repository diagnostic. | [Command](commands/review.md) · [Skill](skills/review/SKILL.md) |
-| `/code:health` | Map a component (C4 container view with findings marked), assess human maintainability and reduction opportunities; share the HEALTH report owner-only with `artifacts share --visibility me`. | [Command](commands/health.md) · [Skill](skills/health/SKILL.md) |
-| `/code:refactor` | Check current code health, then simplify; `quality` scopes cleanup and `--scan-only` stays read-only. | [Command](commands/refactor.md) · [Skill](skills/refactor/SKILL.md) |
-| `/code:learn` | Update durable, non-obvious project knowledge; refine existing workflow guidance when warranted. | [Command](commands/learn.md) · [Skill](skills/learn/SKILL.md) |
+| `/code:review` | Review session/named PRs, or run a read-only repository diagnostic. | [Skill](skills/review/SKILL.md) |
+| `/code:health` | Map a component (C4 container view with findings marked), assess human maintainability and reduction opportunities; share the HEALTH report owner-only with `artifacts share --visibility me`. | [Skill](skills/health/SKILL.md) |
+| `/code:refactor` | Check current code health, then simplify; `quality` scopes cleanup and `--scan-only` stays read-only. | [Skill](skills/refactor/SKILL.md) |
+| `/code:learn` | Update durable, non-obvious project knowledge; refine existing workflow guidance when warranted. | [Skill](skills/learn/SKILL.md) |
 
 The independent review rubric lives in the portable
 [`code-reviewer` definition](../../subagents/code-reviewer/AGENT.md), not a plugin-local copy.

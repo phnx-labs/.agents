@@ -18,7 +18,6 @@ set -u
 HERE="$(cd "$(dirname "$0")" && pwd)"
 REPO="$(cd "$HERE/../../../../.." && pwd)"
 SKILL="$REPO/plugins/work/skills/demo/SKILL.md"
-CMD="$REPO/plugins/work/commands/demo.md"
 pass=0; fail=0
 ok()  { pass=$((pass + 1)); printf 'ok   - %s\n' "$1"; }
 bad() { fail=$((fail + 1)); printf 'FAIL - %s\n' "$1"; }
@@ -29,13 +28,9 @@ bad() { fail=$((fail + 1)); printf 'FAIL - %s\n' "$1"; }
 grep -q '^name: demo$' "$SKILL" \
   && ok "skill declares name: demo" || bad "skill missing 'name: demo' frontmatter"
 
-if [ -f "$CMD" ]; then
-  grep -qi 'work:demo' "$CMD" \
-    && ok "/work:demo command routes to the work:demo skill" \
-    || bad "plugins/work/commands/demo.md does not reference the work:demo skill"
-else
-  bad "command missing: plugins/work/commands/demo.md"
-fi
+[ ! -e "$REPO/plugins/work/commands/demo.md" ] \
+  && ok "no /work:demo command file hides the skill" \
+  || bad "plugins/work/commands/demo.md exists: a same-name command hides the work:demo skill in Claude Code"
 
 # -- mandate (load-bearing contract phrases) ----------------------------------
 contract() { # $1 = grep -E pattern, $2 = human name of the invariant
