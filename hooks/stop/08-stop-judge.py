@@ -70,7 +70,7 @@ CMD_FAMILIES = ("secrets", "browser", "devices", "sessions")
 # User records the owner did not type.
 SYNTHETIC = re.compile(
     r"^\s*(?:<(?:system-reminder|task-notification|local-command-stdout|local-command-stderr"
-    r"|local-command-caveat|bash-stdout|bash-stderr)>|Base directory for this skill:"
+    r"|local-command-caveat|bash-input|bash-stdout|bash-stderr)>|Base directory for this skill:"
     r"|[A-Za-z]+ hook feedback:|\[Request interrupted|Caveat: )"
 )
 
@@ -656,7 +656,10 @@ def already_pushed(session_id: str, request: str) -> bool:
 def judge_stop(payload: dict) -> str | None:
     """Snapshot, catalog, one model call, row; the push message when this stop is blocked."""
     final = payload["last_assistant_message"]
-    request, counts, opening = turn_facts(read_records(payload["transcript_path"]))
+    records = read_records(payload["transcript_path"])
+    request, counts, opening = turn_facts(records)
+    # The owner request's position, so "continue" sent twice is two requests, each with its push.
+    request_key = f"{sum(1 for r in records if owner_typed(r))}:{request}"
     caps = capabilities()
     background_live = bool(payload.get("background_tasks") or payload.get("session_crons")
                            or any(counts.get(tool) for tool in ("Monitor", "ScheduleWakeup", "CronCreate")))
@@ -679,8 +682,8 @@ def judge_stop(payload: dict) -> str | None:
     turn = (turn_verdict(verdict["items"], background_live) if verdict["outcome"] == "ok"
             else {"kind": "unjudged", "quote": "", "choices": []})
     push = (verdict["outcome"] == "ok" and verdict["verdict"] == "continue" and not background_live
-            and request.strip() and not request.lstrip().startswith("!")
-            and not already_pushed(payload["session_id"], request))
+            and request.strip()
+            and not already_pushed(payload["session_id"], request_key))
     if push:
         turn = {"kind": "not_done", "quote": verdict["step"][:600], "choices": []}
     try:  # before the row, so a reader that waits for the row sees the verdict too
@@ -714,7 +717,7 @@ def judge_stop(payload: dict) -> str | None:
         pass
     if not push:
         return None
-    marker, request_sha = push_marker(payload["session_id"], request)
+    marker, request_sha = push_marker(payload["session_id"], request_key)
     marker.write_text(request_sha)
     return block_message(verdict["step"] or "the step you offered or handed back", caps)
 
@@ -738,6 +741,7 @@ def claim_slot():
 def main() -> int:
     """Interactive Claude only. Exit 2 with the push on stderr blocks the stop once per owner
     request; every other path, error included, exits 0 and lets the stop through."""
+    DEADLINE[0] = time.monotonic() + HOOK_BUDGET_S
     if os.environ.get("CLAUDE_CODE_ENTRYPOINT") != "cli" or os.environ.get(CHILD_SENTINEL):
         return 0
     payload = json.load(sys.stdin)
