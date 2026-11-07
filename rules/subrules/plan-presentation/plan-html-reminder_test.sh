@@ -472,24 +472,71 @@ STOP_AUTO() { printf '{"hook_event_name":"Stop","permission_mode":"auto","transc
 # 28. Auto mode: the turn wrote a page and never opened it -> BLOCK.
 {
   printf '%s\n' '{"type":"user","origin":{"kind":"human"},"message":{"role":"user","content":"make the report"}}'
-  printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"w","name":"Write","input":{"file_path":"/h/.agents/artifacts/2026-11-07/report/index.html","content":"x"}}]}}'
+  printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"w","name":"Write","input":{"file_path":"/home/u/.agents/artifacts/2026-11-07/report/index.html","content":"x"}}]}}'
   printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"text","text":"Done."}]}}'
 } > "$TX"
 run 2 "auto mode, page written, not opened -> block" "$(STOP_AUTO)"
 
 # 29. Same turn, opened with browser show -> ALLOW.
-printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"s","name":"Bash","input":{"command":"browser show /h/.agents/artifacts/2026-11-07/report/index.html --json"}}]}}' >> "$TX"
+printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"s","name":"Bash","input":{"command":"browser show /home/u/.agents/artifacts/2026-11-07/report/index.html --json"}}]}}' >> "$TX"
 run 0 "auto mode, page written and opened -> allow" "$(STOP_AUTO)"
 
-# 30. The reply names an artifact folder an earlier turn wrote (the ChemStation case) -> BLOCK.
+# 30. The final reply names an artifact folder an earlier turn wrote (the ChemStation
+# case) -> BLOCK. The folder must exist, so this runs against a fake home.
+PAGE_HOME=$(mktemp -d)
+mkdir -p "$PAGE_HOME/.local/share/agents/artifacts/2026-11-07/chromatography-agent"
+run_page_home() {
+  want=$1; label=$2; json=$3; got=0
+  printf '%s' "$json" | HOME="$PAGE_HOME" sh "$HOOK" >/dev/null 2>&1 || got=$?
+  if [ "$got" = "$want" ]; then pass=$((pass+1)); echo "ok   — $label (rc=$got)"
+  else fail=$((fail+1)); echo "FAIL — $label (want rc=$want, got rc=$got)"; fi
+}
 {
   printf '%s\n' '{"type":"user","origin":{"kind":"human"},"message":{"role":"user","content":"Is it done? Where are the results?"}}'
   printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"text","text":"Results are in ~/.local/share/agents/artifacts/2026-11-07/chromatography-agent/: index.html is the walkthrough."}]}}'
 } > "$TX"
-run 2 "reply names an artifact it never opened -> block" "$(STOP_AUTO)"
+run_page_home 2 "final reply names an artifact it never opened -> block" "$(STOP_AUTO)"
 
 # 31. The block fires once: the retry with stop_hook_active passes.
-run 0 "page check blocks once (stop_hook_active) -> allow" "$(STOP_AUTO ',"stop_hook_active":true')"
+run_page_home 0 "page check blocks once (stop_hook_active) -> allow" "$(STOP_AUTO ',"stop_hook_active":true')"
+
+# 31b. A named artifact that does not exist is a passing mention -> ALLOW.
+{
+  printf '%s\n' '{"type":"user","origin":{"kind":"human"},"message":{"role":"user","content":"where did that go"}}'
+  printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"text","text":"It was under ~/.agents/artifacts/1999-01-01/never-made/ before it was removed."}]}}'
+} > "$TX"
+run 0 "reply names an artifact that does not exist -> allow" "$(STOP_AUTO)"
+
+# 31c. Reading an artifact writes nothing: Read, sed and grep -> ALLOW (review on #549).
+{
+  printf '%s\n' '{"type":"user","origin":{"kind":"human"},"message":{"role":"user","content":"what did the brief say"}}'
+  printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"r","name":"Read","input":{"file_path":"/home/u/.agents/artifacts/2026-11-07/demo/brief.md"}}]}}'
+  printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"b","name":"Bash","input":{"command":"sed -n 1,140p ~/.agents/artifacts/2026-11-07/demo/brief.md; grep -n hero ~/.local/share/agents/artifacts/2026-11-07/x/src.html"}}]}}'
+  printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"text","text":"The brief asks for two headlines."}]}}'
+} > "$TX"
+run 0 "turn that only reads artifacts -> allow" "$(STOP_AUTO)"
+
+# 31d. An in-repo .agents/artifacts path is a repository file, not a page for the owner -> ALLOW.
+{
+  printf '%s\n' '{"type":"user","origin":{"kind":"human"},"message":{"role":"user","content":"update the readme"}}'
+  printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"w","name":"Write","input":{"file_path":".agents/artifacts/README.md","content":"x"}}]}}'
+} > "$TX"
+run 0 "in-repo .agents/artifacts write -> allow" "$(STOP_AUTO)"
+
+# 31f. Opened straight in Arc with AppleScript instead of browser show -> ALLOW.
+{
+  printf '%s\n' '{"type":"user","origin":{"kind":"human"},"message":{"role":"user","content":"show me"}}'
+  printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"w","name":"Write","input":{"file_path":"/home/u/.agents/artifacts/2026-11-07/r/index.html","content":"x"}}]}}'
+  printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"o","name":"Bash","input":{"command":"agents ssh zion \"osascript -e '"'"'tell application \\\"Arc\\\"'"'"' -e '"'"'tell front window to make new tab with properties {URL:\\\"file:///x\\\"}'"'"'\""}}]}}'
+} > "$TX"
+run 0 "page opened directly in Arc with AppleScript -> allow" "$(STOP_AUTO)"
+
+# 31e. artifacts render of a home page, not opened -> BLOCK.
+{
+  printf '%s\n' '{"type":"user","origin":{"kind":"human"},"message":{"role":"user","content":"render it"}}'
+  printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"b","name":"Bash","input":{"command":"artifacts render ~/.agents/artifacts/2026-11-07/p/plan.md"}}]}}'
+} > "$TX"
+run 2 "artifacts render without opening -> block" "$(STOP_AUTO)"
 
 # 32. A turn that touched no page -> ALLOW.
 {
