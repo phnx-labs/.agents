@@ -69,7 +69,30 @@ FAILED = re.compile(r'"via"\s*:\s*"none"|No visible Arc window|execution error|A
                     r'|Permission (?:for this action was|to use \w+ .*?has been) denied', re.I)
 
 
-HANDOFF = re.compile(r"\bagents\s+feed\s+post\b[^\n]*--blocked")
+HANDOFF = re.compile(r"^\s*agents\s+feed\s+post\s+(?!-h\b|--help\b)[^\n]*--blocked\b")
+
+
+def handed_off(records, done, page):
+    """A blocked ask to the owner that really went out and names the page: a shell
+    command that starts with `agents feed post … --blocked` (not an echo, a heredoc or
+    --help), whose result is not an error or a denial (review on #553)."""
+    if page == "-":
+        return False
+    slug = re.search(r"/artifacts/\d{4}-\d{2}-\d{2}/([^/\s#]+)", absolute(page))
+    folder = slug.group(1) if slug else os.path.basename(absolute(page).rstrip("/"))
+    for r in records:
+        if r.get("type") != "assistant":
+            continue
+        for b in (r.get("message") or {}).get("content") or []:
+            if not (isinstance(b, dict) and b.get("type") == "tool_use"):
+                continue
+            command = str((b.get("input") or {}).get("command") or "")
+            if not HANDOFF.search(command) or folder not in command:
+                continue
+            text, is_error = done.get(b.get("id"), ("", True))
+            if not is_error and not FAILED.search(text):
+                return True
+    return False
 
 
 def results(records):
@@ -171,5 +194,5 @@ else:
                 page = hit.group(0)
                 break
     # The one sanctioned way past an unopened page: a blocked ask filed to the owner.
-    handed = "yes" if any(HANDOFF.search(c) for r in turn for c in calls(r)) else "no"
+    handed = "yes" if handed_off(turn, done, page) else "no"
     print(opened, absolute(page) if page != "-" else "-", last, handed)
