@@ -1,24 +1,23 @@
 #!/usr/bin/env python3
-"""stop-judge — Stop hook, never blocks. Interactive Claude sessions only.
+"""stop-judge — Stop hook. Interactive Claude sessions only.
 
-Records, per interactive stop, what a model-based Stop judge WOULD block, and
-publishes whose move it is (the turn verdict) into the session record, where
-agents-cli reads it for the card. It never blocks: every path exits 0 and nothing is written to stdout or stderr. It adds no
-latency to the turn: the foreground process only runs the scope checks, hands
-the payload to a detached child (its own session, stdio on /dev/null) through a
-0600 file in the disposable cache dir, and exits. The child deletes that file
-as soon as it has read it, then does the judging below; at most MAX_JUDGES
-children judge at once (flock slots), and the foreground sweeps handoffs no
-child claimed. The model gets the snapshot on stdin, never in argv, and runs
-as a machine prompt (CLAUDE_CODE_ENTRYPOINT=sdk-cli, STOP_JUDGE_CHILD=1) so it
-can never re-enter this hook.
+Pushes an agent back once per owner request when it stopped on a step it should
+do itself, and publishes whose move it is (the turn verdict) into the session
+record, where agents-cli reads it for the card.
 
-One small model call extracts structured items from the agent's final message
-(handoffs, offers, waits, blocker and done claims; rubric embedded below as
-RUBRIC). Code, not the model, decides
-would-block/pass from those items plus facts: the tool calls made since the
-owner's latest message, the Stop payload's `background_tasks` / `session_crons`,
-and the names of the secrets bundles on this machine.
+One model call (MODEL, snapshot on stdin, never argv; run as a machine prompt with
+CLAUDE_CODE_ENTRYPOINT=sdk-cli and STOP_JUDGE_CHILD=1 so it never re-enters this
+hook) returns both the items in the final message (handoffs, offers, waits, blocker
+and done claims) and a verdict: `continue` with the in-scope step, or `stop_ok`.
+On `continue`, with nothing armed to wake the agent (background tasks, session
+crons, Monitor/ScheduleWakeup/CronCreate this turn), not a `!` prompt, and no push
+yet for this owner request, the hook exits 2 with the step on stderr. Every other
+path, an error or timeout included, exits 0. At most MAX_JUDGES calls run at once
+per machine (flock slots); a third stop passes unjudged.
+
+The verdict replaced kind-based blocking: on 55 stops labelled blind (2026-11-07),
+item kinds alone would have pushed 32 legitimate stops; the verdict pushed 8 and
+caught 5 of 7 real ones. `decide()` still records the kind-based would-block code.
 
 State (see hooks/AGENTS.md "Hook-owned session state"):
   durable:    ~/.agents/.history/hooks/system.stop-judge/state.db
@@ -50,7 +49,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."
 import credential_catalog  # noqa: E402
 
 HOOK_ID = "system.stop-judge"
-MODEL = "claude-haiku-4-5"
+MODEL = "claude-sonnet-5-5"
 MODEL_TIMEOUT_S = 12.0
 CATALOG_TIMEOUT_S = 2.0
 MANIFEST_TTL_S = 600
@@ -59,7 +58,6 @@ BUSY_TIMEOUT_MS = 100
 SCHEMA_VERSION = 1
 NO_AUTH_EXIT = 77
 MAX_JUDGES = 2           # concurrent judge children per machine
-STALE_HANDOFF_S = 300    # an unclaimed handoff older than this is swept
 CHILD_SENTINEL = "STOP_JUDGE_CHILD"
 
 # Tool calls that record or schedule work but gather no evidence.
@@ -96,7 +94,7 @@ ASK_KINDS = {
     "permission_next_step", "offer_investigate", "what_next", "blocker_claim",
 }
 WAIT_KINDS = {"wait_claim", "announced_not_taken"}
-EXCUSED_BLOCKER = re.compile(r"touch ?id|biometric|2fa|password|interactive login", re.I)
+EXCUSED_BLOCKER = re.compile(r"touch ?id|biometric|2fa|one-time code|interactive login", re.I)
 
 # What the judge would tell the agent if it blocked. Stored as the static
 # template only; placeholders are never filled from message content.
@@ -295,10 +293,15 @@ def model_timeout() -> float:
 
 # The extraction rubric lives in the script: agents-cli installs hooks into version homes
 # and does not reliably copy data files beside them, so a sidecar went missing in place.
-RUBRIC = """Extract, do not judge. Read the FINAL message an AI coding agent sent before stopping its turn and list every place where it hands something to the owner, offers something, waits, claims a blocker, or claims completion. Quote the exact sentence for each.
+RUBRIC = """First decide, then extract. Read the owner's latest_request and the FINAL message an AI coding agent sent before stopping its turn.
+
+1. verdict: was the agent right to stop? The owner's standing policy: agents carry authorized work through doing, verifying, installing what they need (on a fleet worker box, never the owner's laptop), reviewing with a subagent, merging and releasing. Credentials are in secrets bundles and signed-in browser profiles with password managers; fleet machines are reachable. The owner is involved only for genuinely unclear intent, a choice that is truly theirs (a design or taste pick, scope beyond the request, a destructive or irreversible action, spend the request does not imply), or a blocker that is truly exhausted (Touch ID, 2FA, another person). Proving the work is part of the work: running the product (a real agent run, an API call against production, a test deploy) to verify a fix, or installing a missing tool on a worker box, is not spend the owner must approve. The owner hates "I haven't done X, want me to?" when X is within the request.
+continue = it stopped on something it could and should do itself within latest_request; put that step in step. stop_ok = the work is done (an optional extra offer is fine), it is waiting on CI, a reviewer or a process it is watching, or it is a genuine owner decision or exhausted blocker.
+
+2. Extract, do not judge: Read the FINAL message an AI coding agent sent before stopping its turn and list every place where it hands something to the owner, offers something, waits, claims a blocker, or claims completion. Quote the exact sentence for each.
 
 Output ONLY compact JSON, no prose, no fence:
-{"items":[{"kind":"...","actor":"agent|owner|other","quote":"...","object":"<PR number, command, service or thing>","host":"<host named, or empty>","credential":"<token/key/login named, or empty>","choices":["<option>"]}]}
+{"verdict":"continue|stop_ok","step":"<the in-scope step to do now, in a few words, or empty>","items":[{"kind":"...","actor":"agent|owner|other","quote":"...","object":"<PR number, command, service or thing>","host":"<host named, or empty>","credential":"<token/key/login named, or empty>","choices":["<option>"]}]}
 
 choices = the options the message offers the owner for this item, each a short label in the message's own words (for example ["Keep A","Build B"]); [] when it offers none.
 
@@ -375,17 +378,16 @@ def claude_binary() -> str | None:
 
 
 def judge(snapshot: dict, caps: dict) -> dict:
-    """One extraction call. Returns {outcome, detail, items, latency_ms, in_tok, out_tok}."""
-    result = {"outcome": "error", "detail": "", "items": [], "latency_ms": None,
-              "in_tok": None, "out_tok": None}
+    """One model call. Returns {outcome, detail, items, verdict, step, latency_ms, in_tok, out_tok}."""
+    result = {"outcome": "error", "detail": "", "items": [], "verdict": "", "step": "",
+              "latency_ms": None, "in_tok": None, "out_tok": None}
     claude = claude_binary()
     if not claude:
         result["detail"] = "no-claude"
         return result
-    rubric = RUBRIC
     # The snapshot carries message text, so it goes on stdin, never in argv.
     argv = [claude, "-p", "--setting-sources", "project", "--model", MODEL, "--tools", "",
-            "--no-session-persistence", "--system-prompt", rubric, "--output-format", "json"]
+            "--no-session-persistence", "--system-prompt", RUBRIC, "--output-format", "json"]
     prompt = "SNAPSHOT:\n" + json.dumps(snapshot, ensure_ascii=False)
     # The nested claude is a machine prompt, and must never re-enter this hook.
     env = dict(os.environ, MAX_THINKING_TOKENS="0", CLAUDE_CODE_ENTRYPOINT="sdk-cli",
@@ -422,12 +424,14 @@ def judge(snapshot: dict, caps: dict) -> dict:
     if reply.get("is_error"):
         result["detail"] = "limit" if reply.get("api_error_status") == 429 else "is_error"
         return result
-    items = parse_items(str(reply.get("result") or ""))
-    if items is None:
+    obj = parse_reply(str(reply.get("result") or ""))
+    if obj is None:
         result["outcome"] = "parse-fail"
         return result
     result["outcome"] = "ok"
-    result["items"] = items
+    result["items"] = obj["items"]
+    result["verdict"] = str(obj.get("verdict") or "")
+    result["step"] = str(obj.get("step") or "")
     return result
 
 
@@ -470,8 +474,8 @@ def call_model(argv: list[str], env: dict, prompt: str, cwd: Path, result: dict)
     return reply
 
 
-def parse_items(text: str):
-    """The `items` list of the first JSON object in the model's reply, or None."""
+def parse_reply(text: str):
+    """The first JSON object in the model's reply, with its `items` list kept to dicts, or None."""
     start = text.find("{")
     if start < 0:
         return None
@@ -479,10 +483,10 @@ def parse_items(text: str):
         obj, _ = json.JSONDecoder().raw_decode(text[start:])
     except ValueError:
         return None
-    items = obj.get("items") if isinstance(obj, dict) else None
-    if not isinstance(items, list):
+    if not isinstance(obj, dict) or not isinstance(obj.get("items"), list):
         return None
-    return [it for it in items if isinstance(it, dict)]
+    obj["items"] = [it for it in obj["items"] if isinstance(it, dict)]
+    return obj
 
 
 # --- decision (code) --------------------------------------------------------
@@ -527,6 +531,19 @@ def decide(counts: dict[str, int], items: list[dict], background_live: bool,
         if kind in HINT:
             return True, kind
     return False, "pass"
+
+
+def block_message(step: str, caps: dict) -> str:
+    """The one push an agent gets per owner request: name the step and this machine's access."""
+    lines = [f"Not done: this step is inside what the owner asked for, so do it now instead of handing it back: {step[:300]}",
+             "Then report the result with evidence. A missing tool: install it on a fleet worker box "
+             "(agents ssh <box>), never the owner's laptop. A login: use a signed-in browser profile and its "
+             "password manager, or a secrets bundle. Stop only for a decision that is genuinely the owner's: "
+             "a design pick, scope beyond the request, a destructive step, or spend the request does not imply."]
+    manifest = manifest_text(caps)
+    if manifest:
+        lines.append("This machine has: " + manifest)
+    return "\n".join(lines)
 
 
 # --- turn verdict -------------------------------------------------------------
@@ -610,29 +627,52 @@ def record(row: dict) -> None:
     os.chmod(path, 0o600)
 
 
-def judge_stop(payload: dict) -> None:
-    """The detached child's work: snapshot, catalog, model call, decision, row."""
+def already_pushed(session_id: str, request: str) -> bool:
+    """True when this owner request already got its one push; records it otherwise.
+    A repeat block in the same goal changed the agent's next move 0 of 29 times."""
+    path = cache_dir() / "pushed"
+    path.mkdir(exist_ok=True, mode=0o700)
+    marker = path / hashlib.sha256(session_id.encode()).hexdigest()[:32]
+    request_sha = hashlib.sha256(request.encode("utf-8", "replace")).hexdigest()
+    try:
+        if marker.read_text() == request_sha:
+            return True
+    except OSError:
+        pass
+    marker.write_text(request_sha)
+    return False
+
+
+def judge_stop(payload: dict) -> str | None:
+    """Snapshot, catalog, one model call, row; the push message when this stop is blocked."""
     final = payload["last_assistant_message"]
     request, counts, opening = turn_facts(read_records(payload["transcript_path"]))
     caps = capabilities()
+    background_live = bool(payload.get("background_tasks") or payload.get("session_crons")
+                           or any(counts.get(tool) for tool in ("Monitor", "ScheduleWakeup", "CronCreate")))
     snapshot = {
         "latest_request": request[:1200],
         "tool_counts_this_turn": counts,
+        "watcher_or_background_task_armed": background_live,
         "text_before_first_evidence": opening[:500],
         "final_message": final[-2500:],
         "capability_manifest": manifest_text(caps),
     }
-    background_live = bool(payload.get("background_tasks") or payload.get("session_crons"))
     slot = claim_slot()  # the flock is held until this process exits
     if slot is None:
-        verdict = {"outcome": "skipped-busy", "detail": "", "items": [], "latency_ms": None,
-                   "in_tok": None, "out_tok": None}
+        verdict = {"outcome": "skipped-busy", "detail": "", "items": [], "verdict": "", "step": "",
+                   "latency_ms": None, "in_tok": None, "out_tok": None}
     else:
         verdict = judge(snapshot, caps)
     kinds = [str(it.get("kind")) if it.get("kind") in KINDS else "other" for it in verdict["items"]]
     final_sha = hashlib.sha256(final.encode("utf-8", "replace")).hexdigest()
     turn = (turn_verdict(verdict["items"], background_live) if verdict["outcome"] == "ok"
             else {"kind": "unjudged", "quote": "", "choices": []})
+    push = (verdict["outcome"] == "ok" and verdict["verdict"] == "continue" and not background_live
+            and request.strip() and not request.lstrip().startswith("!")
+            and not already_pushed(payload["session_id"], request))
+    if push:
+        turn = {"kind": "not_done", "quote": verdict["step"][:600], "choices": []}
     try:  # before the row, so a reader that waits for the row sees the verdict too
         publish_turn_verdict(int(payload["_agent_pid"]), payload["session_id"],
                              {**turn, "at": int(time.time() * 1000), "sha256": final_sha})
@@ -648,7 +688,7 @@ def judge_stop(payload: dict) -> None:
         "session_key": f"claude:{payload['session_id']}",
         "ts_ms": int(time.time() * 1000),
         "would_block": int(would_block),
-        "reason": reason,
+        "reason": "pushed" if push else ("continue" if verdict["verdict"] == "continue" else reason),
         "hint": HINT.get(reason, ""),
         "item_kinds": ",".join(kinds),
         "background_live": int(background_live),
@@ -659,6 +699,7 @@ def judge_stop(payload: dict) -> None:
         "detail": verdict["detail"],
         "final_sha256": final_sha,
     })
+    return block_message(verdict["step"] or "the step you offered or handed back", caps) if push else None
 
 
 def claim_slot():
@@ -677,80 +718,38 @@ def claim_slot():
     return None
 
 
-def sweep_stale(pending: Path) -> None:
-    """Unlink handoffs no child claimed: each holds a whole payload, message included."""
-    cutoff = time.time() - STALE_HANDOFF_S
-    for entry in os.scandir(pending):
-        try:
-            if entry.name.startswith("stop-") and entry.stat().st_mtime < cutoff:
-                os.unlink(entry.path)
-        except OSError:
-            continue
-
-
-def pending_dir() -> Path:
-    path = cache_dir() / "pending"
-    path.mkdir(exist_ok=True, mode=0o700)
-    return path
-
-
-def child(handoff: str) -> None:
-    """Read and delete the handoff file, then judge. Only files in pending/ are accepted."""
-    path = Path(handoff).resolve()
-    if path.parent != pending_dir().resolve():
-        return
-    try:
-        payload = json.loads(path.read_text())
-    finally:
-        path.unlink()
-    judge_stop(payload)
-
-
-def main() -> None:
-    """Foreground: scope checks only, then hand off to a detached child and return."""
+def main() -> int:
+    """Interactive Claude only. Exit 2 with the push on stderr blocks the stop once per owner
+    request; every other path, error included, exits 0 and lets the stop through."""
     if os.environ.get("CLAUDE_CODE_ENTRYPOINT") != "cli" or os.environ.get(CHILD_SENTINEL):
-        return
+        return 0
     payload = json.load(sys.stdin)
     if not isinstance(payload, dict) or payload.get("stop_hook_active"):
-        return
+        return 0
     final = payload.get("last_assistant_message")
     if (not isinstance(final, str) or not final.strip() or not payload.get("session_id")
             or not payload.get("transcript_path")):
-        return
+        return 0
     try:  # a home without session_record still judges and records its row
         import session_record  # beside this script in a version home, ../lib in the repo
         payload["_agent_pid"] = session_record.unwrap_hook_shell(os.getppid())
     except ImportError:
         pass
-    pending = pending_dir()
-    sweep_stale(pending)
-    fd, handoff = tempfile.mkstemp(dir=pending, prefix="stop-", suffix=".json")
-    try:
-        with os.fdopen(fd, "w") as handle:
-            json.dump(payload, handle)
-        # The detached child is reparented away from claude, so the foreground (still a
-        # descendant of the claude that fired this hook) finds that binary for it.
-        child_env = dict(os.environ)
-        if not os.environ.get("CLAUDE_CODE_EXECPATH"):
-            found = ancestor_claude()
-            if found:
-                child_env["STOP_JUDGE_CLAUDE"] = found
-        subprocess.Popen(
-            [sys.executable, str(Path(__file__).resolve()), "--judge", handoff],
-            stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-            start_new_session=True, close_fds=True, env=child_env,
-        )
-    except BaseException:
-        os.unlink(handoff)
-        raise
+    if not os.environ.get("CLAUDE_CODE_EXECPATH"):
+        found = ancestor_claude()
+        if found:
+            os.environ["STOP_JUDGE_CLAUDE"] = found
+    message = judge_stop(payload)
+    if message:
+        sys.stderr.write(message + "\n")
+        return 2
+    return 0
 
 
 if __name__ == "__main__":
+    code = 0
     try:
-        if len(sys.argv) == 3 and sys.argv[1] == "--judge":
-            child(sys.argv[2])
-        else:
-            main()
-    except BaseException:  # noqa: BLE001 — log-only: no path may block or wedge a stop
-        pass
-    sys.exit(0)
+        code = main()
+    except BaseException:  # noqa: BLE001 — fail open: an error never blocks or wedges a stop
+        code = 0
+    sys.exit(code)
