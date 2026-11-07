@@ -438,10 +438,31 @@ run 0 "plan opened with browser show this turn -> allow" \
 
 # 25. Codex rollout: opened through a function_call after the user message -> ALLOW.
 {
-  printf '%s\n' '{"type":"response_item","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":"plan it"}]}}'
+  printf '%s\n' '{"type":"event_msg","payload":{"type":"user_message","message":"plan it"}}'
   printf '%s\n' '{"type":"response_item","payload":{"type":"function_call","name":"exec_command","arguments":"{\"cmd\":\"browser show plan.html\"}"}}'
 } > "$TX"
 run 0 "codex function_call browser show -> allow" \
+  '{"tool_name":"ExitPlanMode","tool_input":{"plan":"x"},"transcript_path":"'"$TX"'"}'
+# 26. Records the harness injects after the open are not the owner's prompt:
+# a task notification, a compaction summary, a ! command, an interrupt.
+{
+  printf '%s\n' '{"type":"user","origin":{"kind":"human"},"message":{"role":"user","content":"plan it"}}'
+  printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"b1","name":"Bash","input":{"command":"browser show plan.html --json"}}]}}'
+  printf '%s\n' '{"type":"user","origin":{"kind":"task-notification"},"message":{"role":"user","content":"<task-notification>done</task-notification>"}}'
+  printf '%s\n' '{"type":"user","isCompactSummary":true,"message":{"role":"user","content":"This session is being continued from a previous conversation"}}'
+  printf '%s\n' '{"type":"user","message":{"role":"user","content":"<bash-input>git status</bash-input>"}}'
+  printf '%s\n' '{"type":"user","message":{"role":"user","content":[{"type":"text","text":"[Request interrupted by user]"}]}}'
+} > "$TX"
+run 0 "injected user records after the open do not reset the turn -> allow" \
+  '{"tool_name":"ExitPlanMode","tool_input":{"plan":"x"},"transcript_path":"'"$TX"'"}'
+
+# 27. Codex injects context as a role-user response_item; only event_msg user_message is the owner.
+{
+  printf '%s\n' '{"type":"event_msg","payload":{"type":"user_message","message":"plan it"}}'
+  printf '%s\n' '{"type":"response_item","payload":{"type":"function_call","name":"exec_command","arguments":"{\"cmd\":\"browser show plan.html\"}"}}'
+  printf '%s\n' '{"type":"response_item","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":"<environment_context>cwd</environment_context>"}]}}'
+} > "$TX"
+run 0 "codex injected context after the open -> allow" \
   '{"tool_name":"ExitPlanMode","tool_input":{"plan":"x"},"transcript_path":"'"$TX"'"}'
 rm -f "$SCAN"/plan-open.html "$SCAN"/plan-open.md
 

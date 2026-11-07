@@ -269,16 +269,37 @@ with open(sys.argv[1], encoding="utf-8") as handle:
         except Exception:
             pass
 
+# Only the owner's own prompts reset the turn. Claude Code marks them with
+# origin.kind "human"; older versions are told apart by what the harness injects
+# as user records. Codex records the owner's prompt as an event_msg user_message.
+INJECTED = ("<task-notification", "<bash-", "<command-", "<local-command",
+            "[Request interrupted", "<environment_context", "<user_instructions",
+            "# AGENTS.md", "This session is being continued")
+
+def text_of(content):
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        return " ".join(b.get("text", "") for b in content
+                        if isinstance(b, dict) and b.get("type") in ("text", "input_text"))
+    return ""
+
 def human(r):
-    if r.get("type") == "user" and not r.get("isMeta"):
-        c = (r.get("message") or {}).get("content")
-        if isinstance(c, str):
-            return True
-        if isinstance(c, list):
-            return any(isinstance(b, dict) and b.get("type") == "text" for b in c) \
-                and not any(isinstance(b, dict) and b.get("type") == "tool_result" for b in c)
     p = r.get("payload") or {}
-    return p.get("type") == "message" and p.get("role") == "user"
+    if r.get("type") == "event_msg":
+        return p.get("type") == "user_message"
+    if r.get("type") == "response_item":
+        return False
+    if r.get("type") != "user" or r.get("isMeta") or r.get("isCompactSummary"):
+        return False
+    origin = r.get("origin")
+    if isinstance(origin, dict) and origin.get("kind"):
+        return origin["kind"] == "human"
+    content = (r.get("message") or {}).get("content")
+    if isinstance(content, list) and any(isinstance(b, dict) and b.get("type") == "tool_result" for b in content):
+        return False
+    text = text_of(content).strip()
+    return bool(text) and not text.startswith(INJECTED)
 
 def calls(r):
     if r.get("type") == "assistant":
