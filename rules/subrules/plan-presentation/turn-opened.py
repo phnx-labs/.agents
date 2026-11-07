@@ -69,6 +69,9 @@ FAILED = re.compile(r'"via"\s*:\s*"none"|No visible Arc window|execution error|A
                     r'|Permission (?:for this action was|to use \w+ .*?has been) denied', re.I)
 
 
+HANDOFF = re.compile(r"\bagents\s+feed\s+post\b[^\n]*--blocked")
+
+
 def results(records):
     """Tool results by call id, for Claude tool_result blocks and Codex outputs."""
     out = {}
@@ -151,7 +154,7 @@ def said(r):
 
 last = max((i for i, r in enumerate(records) if human(r)), default=None)
 if last is None:
-    print("unknown - -")
+    print("unknown - - no")
 else:
     turn = records[last:]
     done = results(turn)
@@ -167,4 +170,6 @@ else:
             if os.path.exists(absolute(hit.group(0))):
                 page = hit.group(0)
                 break
-    print(opened, absolute(page) if page != "-" else "-", last)
+    # The one sanctioned way past an unopened page: a blocked ask filed to the owner.
+    handed = "yes" if any(HANDOFF.search(c) for r in turn for c in calls(r)) else "no"
+    print(opened, absolute(page) if page != "-" else "-", last, handed)

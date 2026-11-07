@@ -105,18 +105,21 @@ open_fallback_note() {
 
 # ---- Page check: every turn, not only plans ----------------------------------
 # A turn that wrote a page into an artifact home ends with that page opened for the
-# owner. It blocks every stop until the page is open, up to PAGE_BLOCK_LIMIT stops
-# per owner prompt; past that the stop goes through and the owner gets a feed alert,
-# so an agent that cannot open the page never loops and never fails silently.
-# No transcript or no owner prompt allows.
+# owner. A stop passes only when the page's open is confirmed, or the agent filed a
+# blocked ask to the owner (`agents feed post … --blocked`) this turn. After
+# PAGE_BLOCK_LIMIT blocks the message says to file that ask; at PAGE_BLOCK_CEILING
+# the hook files it itself and lets the stop through, so nothing loops and the owner
+# always hears. No transcript or no owner prompt allows.
 PAGE_BLOCK_LIMIT=${PAGE_BLOCK_LIMIT:-3}
+PAGE_BLOCK_CEILING=${PAGE_BLOCK_CEILING:-10}
 if [ "$is_plan" != 1 ]; then
   case "$event" in Stop|stop) ;; *) exit 0 ;; esac
   set -- $turn_state
   page_opened=${1:-unknown}
   page_written=${2:--}
   prompt_at=${3:--}
-  if { [ "$page_opened" = "no" ] || [ "$page_opened" = "failed" ]; } && [ -n "$page_written" ] && [ "$page_written" != "-" ]; then
+  handed_off=${4:-no}
+  if [ "$handed_off" != "yes" ] && { [ "$page_opened" = "no" ] || [ "$page_opened" = "failed" ]; } && [ -n "$page_written" ] && [ "$page_written" != "-" ]; then
     session=$(printf '%s' "$input" | jq -r '(.session_id // .sessionId) // empty' 2>/dev/null) || session=""
     [ -n "$session" ] || session=$(basename "${tp%.jsonl}")
     state_dir="${AGENTS_CACHE_DIR:-$HOME/.agents/.cache}/state/hooks/plan-presentation"
@@ -124,12 +127,12 @@ if [ "$is_plan" != 1 ]; then
     state="$state_dir/$session.blocks"
     blocks=0
     [ -r "$state" ] && read -r seen_prompt seen_blocks < "$state" 2>/dev/null && [ "$seen_prompt" = "$prompt_at" ] && blocks=${seen_blocks:-0}
-    if [ "$blocks" -ge "$PAGE_BLOCK_LIMIT" ]; then
-      if [ "$blocks" -eq "$PAGE_BLOCK_LIMIT" ]; then
+    if [ "$blocks" -ge "$PAGE_BLOCK_CEILING" ]; then
+      if [ "$blocks" -eq "$PAGE_BLOCK_CEILING" ]; then
         printf '%s %s\n' "$prompt_at" $((blocks + 1)) > "$state" 2>/dev/null || true
-        # PAGE_ALERT_CMD lets the test suite record the alert instead of posting it.
+        # PAGE_ALERT_CMD lets the test suite record the ask instead of posting it.
         alert=${PAGE_ALERT_CMD:-agents}
-        command -v "$alert" >/dev/null 2>&1 && ("$alert" feed post "Session ${session%%-*} stopped without opening $page_written for you after $PAGE_BLOCK_LIMIT blocks. Open it, or ask that session why it could not." --title "Page never opened" --session "$session" --level important >/dev/null 2>&1 &)
+        command -v "$alert" >/dev/null 2>&1 && ("$alert" feed post "Open $page_written: session ${session%%-*} could not open it for you and stopped after $PAGE_BLOCK_CEILING blocks." --title "Page never opened" --session "$session" --blocked >/dev/null 2>&1 &)
       fi
       exit 0
     fi
@@ -141,6 +144,11 @@ if [ "$is_plan" != 1 ]; then
       echo "Do this unasked, every time. The owner runs hundreds of sessions and"
       echo "cannot chase paths or ask each agent to open its page."
       [ "$page_opened" = "failed" ] && open_fallback_note
+      if [ "$blocks" -ge "$PAGE_BLOCK_LIMIT" ]; then
+        echo ""
+        echo "If no open can work from here, hand it to the owner instead of stopping silently:"
+        echo "  agents feed post \"Open $page_written: <why it could not be opened>\" --title \"Page to open\" --blocked"
+      fi
     } >&2
     exit 2
   fi
