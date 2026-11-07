@@ -50,13 +50,13 @@ esac
 
 if [ "$is_plan" = 0 ] && { [ "$event" = "Stop" ] || [ "$event" = "stop" ]; }; then
   stop_active=$(printf '%s' "$input" | jq -r '(.stop_hook_active // .stopHookActive) // false' 2>/dev/null) || stop_active=false
-  [ "$stop_active" = "true" ] && exit 0
   # Claude sends permission_mode on every Stop: an explicit non-plan mode is not a
   # plan turn, so skip the transcript scan. With no mode field (Codex, Grok) the
   # transcript-marker backstop below decides.
   mode=$(printf '%s' "$input" | jq -r '(.permission_mode // .permissionMode) // empty' 2>/dev/null) || mode=""
   plan_signal=""
-  [ -z "$mode" ] || [ "$mode" = "plan" ] && plan_signal=$(PLAN_LAST_MESSAGE="$last_message" python3 - "$tp" <<'PY' 2>/dev/null || true
+  # A retry after a block re-checks the page below, but the plan check stays once.
+  [ "$stop_active" != "true" ] && { [ -z "$mode" ] || [ "$mode" = "plan" ]; } && plan_signal=$(PLAN_LAST_MESSAGE="$last_message" python3 - "$tp" <<'PY' 2>/dev/null || true
 import json, os, sys
 
 message = os.environ.get("PLAN_LAST_MESSAGE", "")
@@ -105,14 +105,35 @@ open_fallback_note() {
 
 # ---- Page check: every turn, not only plans ----------------------------------
 # A turn that wrote a page into an artifact home ends with that page opened for the
-# owner. Blocks once per stop chain; no transcript or no owner prompt allows.
+# owner. It blocks every stop until the page is open, up to PAGE_BLOCK_LIMIT stops
+# per owner prompt; past that the stop goes through and the owner gets a feed alert,
+# so an agent that cannot open the page never loops and never fails silently.
+# No transcript or no owner prompt allows.
+PAGE_BLOCK_LIMIT=${PAGE_BLOCK_LIMIT:-3}
 if [ "$is_plan" != 1 ]; then
   case "$event" in Stop|stop) ;; *) exit 0 ;; esac
-  stop_active=$(printf '%s' "$input" | jq -r '(.stop_hook_active // .stopHookActive) // false' 2>/dev/null) || stop_active=false
-  [ "$stop_active" = "true" ] && exit 0
-  page_opened=${turn_state%% *}
-  page_written=${turn_state#* }
+  set -- $turn_state
+  page_opened=${1:-unknown}
+  page_written=${2:--}
+  prompt_at=${3:--}
   if { [ "$page_opened" = "no" ] || [ "$page_opened" = "failed" ]; } && [ -n "$page_written" ] && [ "$page_written" != "-" ]; then
+    session=$(printf '%s' "$input" | jq -r '(.session_id // .sessionId) // empty' 2>/dev/null) || session=""
+    [ -n "$session" ] || session=$(basename "${tp%.jsonl}")
+    state_dir="${AGENTS_CACHE_DIR:-$HOME/.agents/.cache}/state/hooks/plan-presentation"
+    mkdir -p "$state_dir" 2>/dev/null || true
+    state="$state_dir/$session.blocks"
+    blocks=0
+    [ -r "$state" ] && read -r seen_prompt seen_blocks < "$state" 2>/dev/null && [ "$seen_prompt" = "$prompt_at" ] && blocks=${seen_blocks:-0}
+    if [ "$blocks" -ge "$PAGE_BLOCK_LIMIT" ]; then
+      if [ "$blocks" -eq "$PAGE_BLOCK_LIMIT" ]; then
+        printf '%s %s\n' "$prompt_at" $((blocks + 1)) > "$state" 2>/dev/null || true
+        # PAGE_ALERT_CMD lets the test suite record the alert instead of posting it.
+        alert=${PAGE_ALERT_CMD:-agents}
+        command -v "$alert" >/dev/null 2>&1 && ("$alert" feed post "Session ${session%%-*} stopped without opening $page_written for you after $PAGE_BLOCK_LIMIT blocks. Open it, or ask that session why it could not." --title "Page never opened" --session "$session" --level important >/dev/null 2>&1 &)
+      fi
+      exit 0
+    fi
+    printf '%s %s\n' "$prompt_at" $((blocks + 1)) > "$state" 2>/dev/null || true
     {
       echo "This turn wrote or pointed the owner at $page_written but never opened it."
       echo "Open it on the owner's machine before you stop:"
