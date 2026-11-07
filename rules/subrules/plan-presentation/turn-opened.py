@@ -62,8 +62,10 @@ def calls(r):
 # An open counts only when its result confirms it: `browser show` prints
 # "via": "none" when no viewer took the page (2026-11-07: Arc's front window was
 # not on the Work space, twice), and a denied or failed command never opened anything.
+# Only signals that name the open itself count: an exit code or an "error" line can
+# come from another command chained after a successful open (review on #551).
 FAILED = re.compile(r'"via"\s*:\s*"none"|No visible Arc window|execution error|AppleEvent handler failed'
-                    r'|Permission (?:for this action was|to use \w+ .*?has been) denied|^Exit code [1-9]|\berror\b.*\bopen', re.I | re.M)
+                    r'|Permission (?:for this action was|to use \w+ .*?has been) denied', re.I)
 
 
 def results(records):
@@ -153,7 +155,7 @@ else:
     turn = records[last:]
     done = results(turn)
     tried = list(opens(turn))
-    confirmed = [i for i, _ in tried if i in done and not done[i][1] and not FAILED.search(done[i][0])]
+    confirmed = [i for i, _ in tried if i in done and not FAILED.search(done[i][0])]
     opened = "yes" if confirmed else ("failed" if tried else "no")
     page = next((w for r in turn for w in written(r)), "-")
     if page == "-":

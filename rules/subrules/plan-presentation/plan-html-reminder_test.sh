@@ -562,6 +562,15 @@ run 0 "failed open then confirmed fallback -> allow" "$(STOP_AUTO)"
 } > "$TX"
 run 2 "denied open -> block" "$(STOP_AUTO)"
 
+# 31j. A successful open chained with a later failing command still counts (review on #551).
+{
+  printf '%s\n' '{"type":"user","origin":{"kind":"human"},"message":{"role":"user","content":"show me"}}'
+  printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"w","name":"Write","input":{"file_path":"/home/u/.agents/artifacts/2026-11-07/r/index.html","content":"x"}}]}}'
+  printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"k","name":"Bash","input":{"command":"browser show /home/u/.agents/artifacts/2026-11-07/r/index.html --json; grep -c x missing.txt"}}]}}'
+  printf '%s\n' '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"k","is_error":true,"content":"Exit code 2\n{\"via\": \"arc\"}\nerror: could not open missing.txt"}]}}'
+} > "$TX"
+run 0 "successful open with a later failing command -> allow" "$(STOP_AUTO)"
+
 # 31e. artifacts render of a home page, not opened -> BLOCK.
 {
   printf '%s\n' '{"type":"user","origin":{"kind":"human"},"message":{"role":"user","content":"render it"}}'
