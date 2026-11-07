@@ -29,6 +29,7 @@ def replay(item: dict, caps: dict) -> dict:
     armed = bool(ARMED.search(item["final"]))
     snapshot = {
         "latest_request": item["request"][-1200:],
+        "earlier_requests": [],
         "tool_counts_this_turn": {},
         "watcher_or_background_task_armed": armed,
         "text_before_first_evidence": "",
