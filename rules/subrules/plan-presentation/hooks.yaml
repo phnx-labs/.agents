@@ -13,16 +13,10 @@ plan-html-reminder:
   matcher: "ExitPlanMode"
   timeout: 5
 
-# Codex plan mode is collaboration state, not an ExitPlanMode tool call. Stop is
-# the common completion seam across every hooks-capable harness; the script
-# inspects the final response/transcript and exits immediately for non-plan turns.
-# matches.permission_mode (agents-cli >= 1.22.47) gates the shim before the
-# script runs: an input carrying an explicit non-plan mode (Claude Code sends
-# permission_mode on every Stop) is skipped; an input with NO mode field passes
-# — fail-open on absence — so Codex/Grok keep the transcript-marker backstop.
+# Every Stop, in every mode: a plan turn gets the full plan check (Codex plan mode
+# has no ExitPlanMode, so Stop is its seam), and any other turn that wrote a page
+# into an artifact home must have opened it for the owner with browser show.
 plan-html-stop-reminder:
   script: plan-html-reminder.sh
   events: [Stop]
   timeout: 5
-  matches:
-    permission_mode: plan
