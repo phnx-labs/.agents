@@ -16,9 +16,8 @@
 # tool call, are checked at Stop after the script proves the current turn is a
 # plan turn from the final message or transcript. Non-plan Stop events fail open.
 #
-# The check is on the RENDER (a file we can detect). Opening on the Mac and theming are
-# driven by the always-on rule text — a headless fleet still renders the file (allowed)
-# even when it cannot open a browser.
+# The check is on the RENDER (a file we can detect) and on the agent having opened it
+# for the owner with `browser show` this turn (read from the transcript).
 #
 # Exits 0 (allow) or 2 (block, message on stderr). Only checks the AGENT's tool call;
 # the user's own actions are unaffected.
@@ -251,8 +250,57 @@ if [ -n "$tp" ] && [ -r "$tp" ]; then
   fi
 fi
 
+# ---- (C) Opened check (FAILS OPEN) --------------------------------------------
+# The owner runs hundreds of sessions and cannot chase links: a plan is presented
+# only after the agent opened it on their machine with `browser show` in this
+# turn. Read from the transcript after the last genuine human prompt; with no
+# readable transcript or no locatable prompt, allow.
+opened_ok=1
+if [ -n "$tp" ] && [ -r "$tp" ]; then
+  opened=$(python3 - "$tp" <<'PY' 2>/dev/null || echo unknown
+import json, re, sys
+
+SHOW = re.compile(r"\bbrowser\s+show\b")
+records = []
+with open(sys.argv[1], encoding="utf-8") as handle:
+    for raw in handle:
+        try:
+            records.append(json.loads(raw))
+        except Exception:
+            pass
+
+def human(r):
+    if r.get("type") == "user" and not r.get("isMeta"):
+        c = (r.get("message") or {}).get("content")
+        if isinstance(c, str):
+            return True
+        if isinstance(c, list):
+            return any(isinstance(b, dict) and b.get("type") == "text" for b in c) \
+                and not any(isinstance(b, dict) and b.get("type") == "tool_result" for b in c)
+    p = r.get("payload") or {}
+    return p.get("type") == "message" and p.get("role") == "user"
+
+def calls(r):
+    if r.get("type") == "assistant":
+        for b in (r.get("message") or {}).get("content") or []:
+            if isinstance(b, dict) and b.get("type") == "tool_use":
+                yield json.dumps(b.get("input"))
+    p = r.get("payload") or {}
+    if p.get("type") in ("function_call", "custom_tool_call", "local_shell_call"):
+        yield json.dumps(p)
+
+last = max((i for i, r in enumerate(records) if human(r)), default=None)
+if last is None:
+    print("unknown")
+else:
+    print("yes" if any(SHOW.search(c) for r in records[last:] for c in calls(r)) else "no")
+PY
+)
+  [ "$opened" = "no" ] && opened_ok=0
+fi
+
 # ---- decide -------------------------------------------------------------------
-if [ "$html_ok" = 1 ] && [ "$checklist_ok" = 1 ] && [ "$review_ok" = 1 ]; then
+if [ "$html_ok" = 1 ] && [ "$checklist_ok" = 1 ] && [ "$review_ok" = 1 ] && [ "$opened_ok" = 1 ]; then
   exit 0
 fi
 
@@ -289,9 +337,6 @@ fi
     echo "    browser start --url file://\$PWD/.agents/artifacts/\$DATE/plan-<slug>.html"
     echo "    browser screenshot -o /tmp/plan-<slug>.png"
     echo "    view_image /tmp/plan-<slug>.png"
-    echo "  If the user explicitly requested it on the interactive host, keep the destination outside every checkout:"
-    echo "    scp .agents/artifacts/\$DATE/plan-<slug>.html <host>:/tmp/"
-    echo "    agents ssh <host> 'open /tmp/plan-<slug>.html'"
     echo "  Same layout for any related artifact (visuals, reports): .agents/artifacts/yyyy-mm-dd/<title>.md"
   fi
   if [ "$html_ok" = 1 ] && [ "$review_ok" != 1 ]; then
@@ -307,6 +352,12 @@ fi
     echo "  A plan without that block is not presentable; a hand-written pass with no"
     echo "  critic session behind it is the same offence as approving your own PR."
   fi
+  if [ "$opened_ok" != 1 ]; then
+    echo "* Open the rendered plan on the owner's machine before presenting it:"
+    echo "    browser show <plan.html> --json"
+    echo "  Do this unasked, every time. The owner runs hundreds of sessions and"
+    echo "  cannot chase links or ask each agent to open its plan."
+  fi
   if [ "$checklist_ok" != 1 ]; then
     echo "* Create a task checklist for this plan — it has multiple steps."
     echo "  Call TaskCreate for each step (subject + description); the checklist becomes the"
@@ -316,6 +367,7 @@ fi
   fi
   echo
   echo "Then present/stop again — this passes once the render exists, the critic"
-  echo "recorded verdict: pass, and (for a multi-step plan) a checklist was created."
+  echo "recorded verdict: pass, the plan was opened for the owner, and (for a"
+  echo "multi-step plan) a checklist was created."
 } >&2
 exit 2

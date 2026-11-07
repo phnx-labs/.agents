@@ -367,6 +367,7 @@ mkfile_nocl() {  # human turn, no checklist tool
     printf '%s\n' '{"type":"user","message":{"role":"user","content":"do a big multi-step task"}}'
     printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"text","text":"planning"}]}}'
     printf '%s\n' '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"x","content":"ok"}]}}'
+    printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"b1","name":"Bash","input":{"command":"browser show ~/.agents/artifacts/2026-11-07/x/plan.html --json"}}]}}'
   } > "$TX"
 }
 mkfile_cl() {    # human turn, then a TaskCreate tool_use, then its tool_result(user)
@@ -374,6 +375,7 @@ mkfile_cl() {    # human turn, then a TaskCreate tool_use, then its tool_result(
     printf '%s\n' '{"type":"user","message":{"role":"user","content":"do a big multi-step task"}}'
     printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"t1","name":"TaskCreate","input":{"subject":"A1","description":"d"}}]}}'
     printf '%s\n' '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"t1","content":"created 1"}]}}'
+    printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"b1","name":"Bash","input":{"command":"browser show ~/.agents/artifacts/2026-11-07/x/plan.html --json"}}]}}'
   } > "$TX"
 }
 MULTI='1. first step\n2. second step\n3. third step'
@@ -403,6 +405,45 @@ rm -f "$SCAN"/*.html 2>/dev/null || true
 mkfile_cl
 run 2 "multi-step plan, checklist ok but no HTML -> block" \
   '{"tool_name":"ExitPlanMode","tool_input":{"plan":"'"$MULTI"'"},"transcript_path":"'"$TX"'"}'
+
+# --- Part C: the plan was opened for the owner ----------------------------------
+mkfile_unopened() {  # checklist made, plan never opened, owner asked earlier
+  {
+    printf '%s\n' '{"type":"user","message":{"role":"user","content":"plan it"}}'
+    printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"t1","name":"TaskCreate","input":{"subject":"A1","description":"d"}}]}}'
+    printf '%s\n' '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"t1","content":"created 1"}]}}'
+  } > "$TX"
+}
+write_figure_html "$SCAN/plan-open.html"
+
+# 22. Rendered, reviewed, checklist made, never opened -> BLOCK.
+mkfile_unopened
+run 2 "plan never opened for the owner -> block" \
+  '{"tool_name":"ExitPlanMode","tool_input":{"plan":"'"$MULTI"'"},"transcript_path":"'"$TX"'"}'
+
+# 23. A browser show from an EARLIER turn does not count for this one.
+{
+  printf '%s\n' '{"type":"user","message":{"role":"user","content":"first ask"}}'
+  printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"b0","name":"Bash","input":{"command":"browser show old.html"}}]}}'
+  printf '%s\n' '{"type":"user","message":{"role":"user","content":"now plan it"}}'
+  printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"t1","name":"TaskCreate","input":{"subject":"A1","description":"d"}}]}}'
+} > "$TX"
+run 2 "browser show in an earlier turn -> block" \
+  '{"tool_name":"ExitPlanMode","tool_input":{"plan":"'"$MULTI"'"},"transcript_path":"'"$TX"'"}'
+
+# 24. Opened this turn -> ALLOW.
+mkfile_cl
+run 0 "plan opened with browser show this turn -> allow" \
+  '{"tool_name":"ExitPlanMode","tool_input":{"plan":"'"$MULTI"'"},"transcript_path":"'"$TX"'"}'
+
+# 25. Codex rollout: opened through a function_call after the user message -> ALLOW.
+{
+  printf '%s\n' '{"type":"response_item","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":"plan it"}]}}'
+  printf '%s\n' '{"type":"response_item","payload":{"type":"function_call","name":"exec_command","arguments":"{\"cmd\":\"browser show plan.html\"}"}}'
+} > "$TX"
+run 0 "codex function_call browser show -> allow" \
+  '{"tool_name":"ExitPlanMode","tool_input":{"plan":"x"},"transcript_path":"'"$TX"'"}'
+rm -f "$SCAN"/plan-open.html "$SCAN"/plan-open.md
 
 # --- Durable home is the canonical artifact root -------------------------------
 # Artifacts moved OUT of the repo: a checkout is tracked (stray files collide on

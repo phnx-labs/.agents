@@ -118,7 +118,8 @@ Before presenting a rendered plan, follow `artifacts` for the independent
 is required even when a second planning investigation is unnecessary; the two
 reviews answer different questions. Resolve presentation findings before delivery.
 
-Present the inspected artifact where the user can review it. A plan is complete
+Open the inspected plan on the owner's machine with `browser show` in the turn
+that presents it; never wait to be asked. A plan is complete
 when it makes the change and its validation reviewable; implementation is complete
 only at its authorized delivery stage. When emitting a final plan outside native
 plan mode, include `<!-- agents-plan -->` so the presentation check recognizes it.
