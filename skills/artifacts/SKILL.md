@@ -5,8 +5,8 @@ description: "Make plans, reports, reviews and visual explanations the owner rea
 
 # Artifacts
 
-An artifact is a page in `~/.agents/artifacts/` or `~/.local/share/agents/artifacts/`
-that you open for the owner, made with this skill.
+An artifact is a page in `~/.agents/artifacts/` that you open for the owner, made
+with this skill.
 
 Pick the form by the job:
 
@@ -52,10 +52,11 @@ and its own contract.
    ARTIFACTS_DIR="$HOME/.agents/artifacts/$DATE/<slug>"
    ```
 
-   `~/.agents/` can itself be a checkout. If so, use a linked worktree for
-   committed output or a durable directory outside that checkout, such as
-   `~/.local/share/agents/artifacts/`. Check this before creating files. The
-   `<slug>` level keeps concurrent authors from colliding on `plan.md`.
+   `~/.agents/` is itself a checkout, and its `.gitignore` excludes `artifacts/`,
+   so `~/.agents/artifacts/` is the one home for standalone output. Write
+   nowhere else: the session index reads `.artifact.json` sidecars only there, so
+   a page written elsewhere never reaches the owner's session card. The `<slug>`
+   level keeps concurrent authors from colliding on `plan.md`.
 
    Never write into a primary checkout, locally or when copying to another
    machine. Whether `<repo>/.agents/artifacts/` is tracked depends on that
@@ -179,7 +180,8 @@ and its own contract.
    console errors. Exercise each meaningful control: open, inspect, close, follow
    sources, and navigate by keyboard. Check expanded states and effective text
    size after SVG scaling, not just the declared font size. Capture the normal
-   entry view as well as the detail being demonstrated. Do not open the user's browser unless explicitly requested.
+   entry view as well as the detail being demonstrated.
+   Inspect with your own headless browser, never the user's.
 
    **A render is verified only when you have looked at the actual pixels.** A clean
    `artifacts check`, an exit-0 render, an empty console, or a loader that reports
@@ -201,10 +203,12 @@ and its own contract.
    without `verdict: pass`; the plan-presentation hook checks for it. Only this
    block can answer a table warning.
 
-8. Deliver a durable, obvious entry point. When the user asks to see it, open
-   the finished HTML on their interactive machine with the configured viewer
-   (`browser show <path-or-url> --json`). Check the result for the actual
-   viewer or fallback. If rendering elsewhere, copy the self-contained HTML and
+8. Open it for the owner, unasked. The turn that presents a plan, report, review
+   or visual is the turn that opens the finished HTML on their interactive
+   machine with the configured viewer (`browser show <path-or-url> --json`).
+   Never hand back a path and wait to be asked; the owner runs hundreds of
+   sessions and cannot chase links. Check the result for the actual viewer or
+   fallback. If rendering elsewhere, copy the self-contained HTML and
    any linked companion files into a dated durable artifact directory there;
    never write into a primary checkout. Give the exact entry link in the reply.
 
@@ -274,8 +278,8 @@ Review page contract:
   nothing overflows.
 - The `artifact-critic` reviewed the page before the owner sees it; record its
   verdict as `"review": {"agent", "session", "verdict"}` in `.artifact.json`.
-- Opened on the owner's machine when they asked to see it, and the reply names
-  its path.
+- Opened on the owner's machine without being asked, and the reply names its
+  path.
 
 ## `kind: plan`
 
@@ -454,5 +458,6 @@ breakdowns or live results to make a visual look complete.
 - A plan or report carries `review:` with `verdict: pass` from the artifact
   critic, a session that is not the author's, and every table it still holds
   is one the critic accepted.
-- No user browser was opened unless requested.
+- Opened on the owner's machine with `browser show`; headless inspection used
+  your own browser.
 - Report the source path, HTML path, and any accepted warnings or share URL.
