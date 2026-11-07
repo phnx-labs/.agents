@@ -520,14 +520,25 @@ run_page_home() {
 next_case
 run_page_home 2 "final reply names an artifact it never opened -> block" "$(STOP_AUTO)"
 
-# 31. The block persists: retries keep blocking until the limit (3 per owner prompt);
-# the next stop goes through, and only then, so an agent that cannot open never loops.
-run_page_home 2 "retry 2 still blocks while the page is unopened" "$(STOP_AUTO ',"stop_hook_active":true')"
-run_page_home 2 "retry 3 still blocks while the page is unopened" "$(STOP_AUTO ',"stop_hook_active":true')"
-run_page_home 0 "past the limit the stop goes through (owner alerted)" "$(STOP_AUTO ',"stop_hook_active":true')"
+# 31. The block persists until a confirmed open or a blocked ask to the owner.
+# Retries keep blocking past PAGE_BLOCK_LIMIT; at PAGE_BLOCK_CEILING the hook files
+# the ask itself and lets the stop through, so it never loops and is never silent.
+export PAGE_BLOCK_CEILING=6
+for n in 2 3 4 5; do
+  run_page_home 2 "retry $n still blocks while the page is unopened" "$(STOP_AUTO ',"stop_hook_active":true')"
+done
+msg=$(printf '%s' "$(STOP_AUTO ',"stop_hook_active":true')" | HOME="$PAGE_HOME" sh "$HOOK" 2>&1 >/dev/null || true)
+case "$msg" in *"--blocked"*) pass=$((pass+1)); echo "ok   — past the limit the block says how to hand it to the owner" ;; *) fail=$((fail+1)); echo "FAIL — past the limit the block says how to hand it to the owner" ;; esac
+run_page_home 0 "at the ceiling the stop goes through" "$(STOP_AUTO ',"stop_hook_active":true')"
 run_page_home 0 "and stays through for the rest of that prompt" "$(STOP_AUTO ',"stop_hook_active":true')"
 sleep 1
-if [ "$(grep -c 'Page never opened' "$ALERTS" 2>/dev/null)" = "1" ]; then pass=$((pass+1)); echo "ok   — the owner gets exactly one alert"; else fail=$((fail+1)); echo "FAIL — the owner gets exactly one alert ($(grep -c 'Page never opened' "$ALERTS" 2>/dev/null))"; fi
+if [ "$(grep -c 'Page never opened' "$ALERTS" 2>/dev/null)" = "1" ] && grep -q -- '--blocked' "$ALERTS"; then pass=$((pass+1)); echo "ok   — the hook files exactly one blocked ask"; else fail=$((fail+1)); echo "FAIL — the hook files exactly one blocked ask"; fi
+unset PAGE_BLOCK_CEILING
+
+# 31a. The agent filed a blocked ask naming the page -> ALLOW at once.
+printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"h","name":"Bash","input":{"command":"agents feed post \"Open ~/.local/share/agents/artifacts/2026-11-07/chromatography-agent/: zion is offline\" --title \"Page to open\" --blocked"}}]}}' >> "$TX"
+next_case
+run_page_home 0 "a blocked ask to the owner lets the stop through" "$(STOP_AUTO)"
 
 # 31b. A named artifact that does not exist is a passing mention -> ALLOW.
 {
