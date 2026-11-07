@@ -216,6 +216,13 @@ def turn_facts(records: list[dict]) -> tuple[str, dict[str, int], str]:
     return request, counts, " ".join(opening)
 
 
+def earlier_requests(records: list[dict], n: int = 3) -> list[str]:
+    """The owner's requests before the latest one, newest last: a "done?" carries no scope
+    of its own, so the work it asks about is in these."""
+    texts = [request_text(r) for r in records if owner_typed(r)]
+    return [t[:600] for t in texts[-(n + 1):-1]]
+
+
 def _run_json(argv: list[str]):
     try:
         out = subprocess.run(argv, capture_output=True, text=True, timeout=CATALOG_TIMEOUT_S,
@@ -302,7 +309,8 @@ def model_timeout() -> float:
 RUBRIC = """First decide, then extract. Read the owner's latest_request and the FINAL message an AI coding agent sent before stopping its turn.
 
 1. verdict: was the agent right to stop? The owner's standing policy: agents carry authorized work through doing, verifying, installing what they need (on a fleet worker box, never the owner's laptop), reviewing with a subagent, merging and releasing. Credentials are in secrets bundles and signed-in browser profiles with password managers; fleet machines are reachable. The owner is involved only for genuinely unclear intent, a choice that is truly theirs (a design or taste pick, scope beyond the request, a destructive or irreversible action, spend the request does not imply), or a blocker that is truly exhausted (Touch ID, 2FA, another person). Proving the work is part of the work: running the product (a real agent run, an API call against production, a test deploy) to verify a fix, or installing a missing tool on a worker box, is not spend the owner must approve. The owner hates "I haven't done X, want me to?" when X is within the request.
-continue = it stopped on something it could and should do itself within latest_request; put that step in step. stop_ok = the work is done (an optional extra offer is fine), it is waiting on CI, a reviewer or a process it is watching, or it is a genuine owner decision or exhausted blocker.
+The work in scope is what latest_request asks for; when latest_request is only a status question ("done?", "what's left?"), it is the work of earlier_requests. Remaining work the final message itself names toward that goal ("what's still open is…", "not done:") is in scope.
+continue = it stopped on something it could and should do itself within that scope; put that step in step. stop_ok = the work is done (an optional extra offer is fine), it is waiting on CI, a reviewer or a process it is watching, or it is a genuine owner decision or exhausted blocker.
 
 2. Extract, do not judge: Read the FINAL message an AI coding agent sent before stopping its turn and list every place where it hands something to the owner, offers something, waits, claims a blocker, or claims completion. Quote the exact sentence for each.
 
@@ -665,6 +673,7 @@ def judge_stop(payload: dict) -> str | None:
                            or any(counts.get(tool) for tool in ("Monitor", "ScheduleWakeup", "CronCreate")))
     snapshot = {
         "latest_request": request[:1200],
+        "earlier_requests": earlier_requests(records),
         "tool_counts_this_turn": counts,
         "watcher_or_background_task_armed": background_live,
         "text_before_first_evidence": opening[:500],

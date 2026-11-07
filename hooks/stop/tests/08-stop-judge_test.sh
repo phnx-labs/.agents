@@ -408,6 +408,16 @@ env -u CLAUDE_CODE_EXECPATH -u CLAUDE_CODE_OAUTH_TOKEN HOME="$TMP/push-repeat" P
   CLAUDE_CONFIG_DIR="$TMP/push-repeat/cfg" STUB_LOG="$TMP/push-repeat/stub.log" STUB_BUNDLES="$FILE_AUTH" \
   STUB_ITEMS="$(push 'ship it')" python3 "$HOOK" < "$TMP/push-repeat.payload" > "$TMP/push-repeat2.out" 2>&1; RC=$?
 check "repeat text second push" 2 "$RC"
+# A status question carries no scope of its own: the judge also gets the owner's earlier requests.
+STATUS="$LIB
+u('ship the PHNX-1 fix and measure it on prod')
+a_tool('t1','Read'); res('t1')
+a_text('Shipped; measuring next.')
+u('All done??')
+a_tool('t2','Read'); res('t2')"
+run_hook push-status cli "$STATUS" '{}' STUB_ITEMS="$(push 'measure it on prod')"
+check "status question pushes" 2 "$RC"
+check "earlier request reaches the judge" yes "$(python3 -c 'import json,sys; s=open(sys.argv[1]).read(); d=json.loads(s[s.index("{"):]); print("yes" if d["earlier_requests"]==["ship the PHNX-1 fix and measure it on prod"] else d["earlier_requests"])' "$TMP/push-status/stub.log.stdin")"
 # Something armed will wake the agent: no push.
 run_hook push-bg cli "$WORKED" '{"background_tasks":[{"id":"b1","type":"shell","status":"running"}]}' STUB_ITEMS="$(push 'merge it')"
 check_silent_exit0 push-bg
