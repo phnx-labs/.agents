@@ -392,6 +392,22 @@ env -u CLAUDE_CODE_EXECPATH -u CLAUDE_CODE_OAUTH_TOKEN HOME="$TMP/push" PATH="$B
   STUB_LOG="$TMP/push/stub.log" STUB_BUNDLES="$FILE_AUTH" STUB_ITEMS="$(push 'release it')" \
   python3 "$HOOK" < "$TMP/push.payload" > "$TMP/push3.out" 2>&1; RC=$?
 check "push again on a new request" 2 "$RC"
+# The same text sent again ("continue" twice) is a new request and earns its own push.
+CONT1="$LIB
+u('continue')
+a_tool('t1','Read'); res('t1')"
+CONT2="$CONT1
+a_text('Offered the next step.')
+u('continue')
+a_tool('t2','Read'); res('t2')"
+seed_records push-repeat
+run_hook push-repeat cli "$CONT1" '{}' STUB_ITEMS="$(push 'ship it')"
+check "repeat first push" 2 "$RC"
+python3 -c "$CONT2" > "$TMP/push-repeat.jsonl"
+env -u CLAUDE_CODE_EXECPATH -u CLAUDE_CODE_OAUTH_TOKEN HOME="$TMP/push-repeat" PATH="$BIN:$PATH" CLAUDE_CODE_ENTRYPOINT=cli \
+  CLAUDE_CONFIG_DIR="$TMP/push-repeat/cfg" STUB_LOG="$TMP/push-repeat/stub.log" STUB_BUNDLES="$FILE_AUTH" \
+  STUB_ITEMS="$(push 'ship it')" python3 "$HOOK" < "$TMP/push-repeat.payload" > "$TMP/push-repeat2.out" 2>&1; RC=$?
+check "repeat text second push" 2 "$RC"
 # Something armed will wake the agent: no push.
 run_hook push-bg cli "$WORKED" '{"background_tasks":[{"id":"b1","type":"shell","status":"running"}]}' STUB_ITEMS="$(push 'merge it')"
 check_silent_exit0 push-bg
@@ -400,13 +416,13 @@ u('land the fix ZEBRA-QUOKKA-7731')
 a_tool('t1','Read'); res('t1'); a_tool('t2','Monitor','gh pr checks 12'); res('t2')"
 run_hook push-monitor cli "$MONITORED" '{}' STUB_ITEMS="$(push 'merge it')"
 check_silent_exit0 push-monitor
-# A ! shell prompt is not a request for work: no push.
+# A ! shell command is recorded as <bash-input>: it is not an owner request, so no push.
 BANG="$LIB
-u('! git pull')
+u('<bash-input>git pull</bash-input>')
 a_tool('t1','Read'); res('t1')"
 run_hook push-bang cli "$BANG" '{}' STUB_ITEMS="$(push 'pull')"
 check_silent_exit0 push-bang
-# stop_ok, and a continue the model gives no step for under a timeout: no push.
+# stop_ok: no push.
 run_hook push-stopok cli "$WORKED" '{}' STUB_ITEMS='{"verdict":"stop_ok","step":"","items":[]}'
 check_silent_exit0 push-stopok
 # A database that cannot be written still delivers the push.
