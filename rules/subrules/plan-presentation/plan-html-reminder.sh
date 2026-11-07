@@ -35,6 +35,14 @@ event=$(printf '%s' "$input" | jq -r '(.hook_event_name // .hookEventName) // em
 tp=$(printf '%s' "$input" | jq -r '(.transcript_path // .transcriptPath) // empty' 2>/dev/null) || tp=""
 last_message=$(printf '%s' "$input" | jq -r '(.last_assistant_message // .lastAssistantMessage) // empty' 2>/dev/null) || last_message=""
 
+# One read of the transcript says whether this turn opened a page for the owner and
+# whether it wrote one; both the plan check and the page check below use it.
+here=$(CDPATH= cd "$(dirname "$0")" && pwd)
+turn_state="unknown -"
+if [ -n "$tp" ] && [ -r "$tp" ]; then
+  turn_state=$(python3 "$here/turn-opened.py" "$tp" 2>/dev/null) || turn_state="unknown -"
+fi
+
 is_plan=0
 case "$tool" in
   ExitPlanMode|exit_plan_mode|exitPlanMode) is_plan=1 ;;
@@ -43,11 +51,12 @@ esac
 if [ "$is_plan" = 0 ] && { [ "$event" = "Stop" ] || [ "$event" = "stop" ]; }; then
   stop_active=$(printf '%s' "$input" | jq -r '(.stop_hook_active // .stopHookActive) // false' 2>/dev/null) || stop_active=false
   [ "$stop_active" = "true" ] && exit 0
-  # Mode gating lives in hooks.yaml (matches.permission_mode, agents-cli >=
-  # 1.22.47): the generated shim skips this script when stdin carries an
-  # explicit non-plan mode, and passes it through when the field is absent —
-  # so the transcript-marker backstop below still covers Codex/Grok.
-  plan_signal=$(PLAN_LAST_MESSAGE="$last_message" python3 - "$tp" <<'PY' 2>/dev/null || true
+  # Claude sends permission_mode on every Stop: an explicit non-plan mode is not a
+  # plan turn, so skip the transcript scan. With no mode field (Codex, Grok) the
+  # transcript-marker backstop below decides.
+  mode=$(printf '%s' "$input" | jq -r '(.permission_mode // .permissionMode) // empty' 2>/dev/null) || mode=""
+  plan_signal=""
+  [ -z "$mode" ] || [ "$mode" = "plan" ] && plan_signal=$(PLAN_LAST_MESSAGE="$last_message" python3 - "$tp" <<'PY' 2>/dev/null || true
 import json, os, sys
 
 message = os.environ.get("PLAN_LAST_MESSAGE", "")
@@ -84,7 +93,27 @@ PY
   [ "$plan_signal" = "plan" ] && is_plan=1
 fi
 
-[ "$is_plan" = 1 ] || exit 0
+# ---- Page check: every turn, not only plans ----------------------------------
+# A turn that wrote a page into an artifact home ends with that page opened for the
+# owner. Blocks once per stop chain; no transcript or no owner prompt allows.
+if [ "$is_plan" != 1 ]; then
+  case "$event" in Stop|stop) ;; *) exit 0 ;; esac
+  stop_active=$(printf '%s' "$input" | jq -r '(.stop_hook_active // .stopHookActive) // false' 2>/dev/null) || stop_active=false
+  [ "$stop_active" = "true" ] && exit 0
+  page_opened=${turn_state%% *}
+  page_written=${turn_state#* }
+  if [ "$page_opened" = "no" ] && [ -n "$page_written" ] && [ "$page_written" != "-" ]; then
+    {
+      echo "This turn wrote or pointed the owner at $page_written but never opened it."
+      echo "Open it on the owner's machine before you stop:"
+      echo "  browser show <page.html> --json"
+      echo "Do this unasked, every time. The owner runs hundreds of sessions and"
+      echo "cannot chase paths or ask each agent to open its page."
+    } >&2
+    exit 2
+  fi
+  exit 0
+fi
 
 # This check has TWO parts, both checked before we allow the plan to be presented:
 #   (A) a fresh plan HTML was rendered (browser-reviewable), and
@@ -257,66 +286,7 @@ fi
 # readable transcript or no locatable prompt, allow.
 opened_ok=1
 if [ -n "$tp" ] && [ -r "$tp" ]; then
-  opened=$(python3 - "$tp" <<'PY' 2>/dev/null || echo unknown
-import json, re, sys
-
-SHOW = re.compile(r"\bbrowser\s+show\b")
-records = []
-with open(sys.argv[1], encoding="utf-8") as handle:
-    for raw in handle:
-        try:
-            records.append(json.loads(raw))
-        except Exception:
-            pass
-
-# Only the owner's own prompts reset the turn. Claude Code marks them with
-# origin.kind "human"; older versions are told apart by what the harness injects
-# as user records. Codex records the owner's prompt as an event_msg user_message.
-INJECTED = ("<task-notification", "<bash-", "<command-", "<local-command",
-            "[Request interrupted", "<environment_context", "<user_instructions",
-            "# AGENTS.md", "This session is being continued")
-
-def text_of(content):
-    if isinstance(content, str):
-        return content
-    if isinstance(content, list):
-        return " ".join(b.get("text", "") for b in content
-                        if isinstance(b, dict) and b.get("type") in ("text", "input_text"))
-    return ""
-
-def human(r):
-    p = r.get("payload") or {}
-    if r.get("type") == "event_msg":
-        return p.get("type") == "user_message"
-    if r.get("type") == "response_item":
-        return False
-    if r.get("type") != "user" or r.get("isMeta") or r.get("isCompactSummary"):
-        return False
-    origin = r.get("origin")
-    if isinstance(origin, dict) and origin.get("kind"):
-        return origin["kind"] == "human"
-    content = (r.get("message") or {}).get("content")
-    if isinstance(content, list) and any(isinstance(b, dict) and b.get("type") == "tool_result" for b in content):
-        return False
-    text = text_of(content).strip()
-    return bool(text) and not text.startswith(INJECTED)
-
-def calls(r):
-    if r.get("type") == "assistant":
-        for b in (r.get("message") or {}).get("content") or []:
-            if isinstance(b, dict) and b.get("type") == "tool_use":
-                yield json.dumps(b.get("input"))
-    p = r.get("payload") or {}
-    if p.get("type") in ("function_call", "custom_tool_call", "local_shell_call"):
-        yield json.dumps(p)
-
-last = max((i for i, r in enumerate(records) if human(r)), default=None)
-if last is None:
-    print("unknown")
-else:
-    print("yes" if any(SHOW.search(c) for r in records[last:] for c in calls(r)) else "no")
-PY
-)
+  opened=${turn_state%% *}
   [ "$opened" = "no" ] && opened_ok=0
 fi
 

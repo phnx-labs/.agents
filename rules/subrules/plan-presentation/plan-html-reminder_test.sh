@@ -466,6 +466,42 @@ run 0 "codex injected context after the open -> allow" \
   '{"tool_name":"ExitPlanMode","tool_input":{"plan":"x"},"transcript_path":"'"$TX"'"}'
 rm -f "$SCAN"/plan-open.html "$SCAN"/plan-open.md
 
+# --- Page check: every turn that wrote or named a page, in any mode -------------
+STOP_AUTO() { printf '{"hook_event_name":"Stop","permission_mode":"auto","transcript_path":"%s"%s}' "$TX" "${1:-}"; }
+
+# 28. Auto mode: the turn wrote a page and never opened it -> BLOCK.
+{
+  printf '%s\n' '{"type":"user","origin":{"kind":"human"},"message":{"role":"user","content":"make the report"}}'
+  printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"w","name":"Write","input":{"file_path":"/h/.agents/artifacts/2026-11-07/report/index.html","content":"x"}}]}}'
+  printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"text","text":"Done."}]}}'
+} > "$TX"
+run 2 "auto mode, page written, not opened -> block" "$(STOP_AUTO)"
+
+# 29. Same turn, opened with browser show -> ALLOW.
+printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"s","name":"Bash","input":{"command":"browser show /h/.agents/artifacts/2026-11-07/report/index.html --json"}}]}}' >> "$TX"
+run 0 "auto mode, page written and opened -> allow" "$(STOP_AUTO)"
+
+# 30. The reply names an artifact folder an earlier turn wrote (the ChemStation case) -> BLOCK.
+{
+  printf '%s\n' '{"type":"user","origin":{"kind":"human"},"message":{"role":"user","content":"Is it done? Where are the results?"}}'
+  printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"text","text":"Results are in ~/.local/share/agents/artifacts/2026-11-07/chromatography-agent/: index.html is the walkthrough."}]}}'
+} > "$TX"
+run 2 "reply names an artifact it never opened -> block" "$(STOP_AUTO)"
+
+# 31. The block fires once: the retry with stop_hook_active passes.
+run 0 "page check blocks once (stop_hook_active) -> allow" "$(STOP_AUTO ',"stop_hook_active":true')"
+
+# 32. A turn that touched no page -> ALLOW.
+{
+  printf '%s\n' '{"type":"user","origin":{"kind":"human"},"message":{"role":"user","content":"fix the test"}}'
+  printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"e","name":"Edit","input":{"file_path":"/repo/src/a.ts"}}]}}'
+} > "$TX"
+run 0 "turn with no page -> allow" "$(STOP_AUTO)"
+
+# 33. No transcript -> ALLOW (fails open).
+run 0 "no transcript -> allow" '{"hook_event_name":"Stop","permission_mode":"auto"}'
+mkfile_cl  # later cases expect a turn that opened its plan
+
 # --- Durable home is the canonical artifact root -------------------------------
 # Artifacts moved OUT of the repo: a checkout is tracked (stray files collide on
 # merge) and is a primary working tree (main-branch-guard denies the write). The
