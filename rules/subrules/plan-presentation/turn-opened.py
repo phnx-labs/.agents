@@ -5,9 +5,10 @@ page is the first page this turn wrote under an artifact home, else an artifact 
 reply names, else "-".
 A turn starts at the owner's last prompt; harness-injected records don't count.
 """
-import json, re, sys
+import json, os, re, sys
 
-SHOW = re.compile(r"\bbrowser\s+show\b")
+# browser show is the documented path; a direct Arc open on the owner's machine counts too.
+SHOW = re.compile(r"\bbrowser\s+show\b|\bopen\s+-a\s+\"?Arc\b|tell application \\*\"Arc\\*\"[^\n]*(?:make new tab|open location|set URL)")
 records = []
 with open(sys.argv[1], encoding="utf-8") as handle:
     for raw in handle:
@@ -57,8 +58,44 @@ def calls(r):
     if p.get("type") in ("function_call", "custom_tool_call", "local_shell_call"):
         yield json.dumps(p)
 
-PAGE = re.compile(r"(?:\.agents|\.local/share/agents)/artifacts/[^\s\"'\\]+\.(?:html|md)")
-NAMED = re.compile(r"(?:\.agents|\.local/share/agents)/artifacts/\d{4}-\d{2}-\d{2}/[\w.-]+(?:/[\w./-]*)?")
+# Artifact homes only, anchored at the owner's home: an in-repo .agents/artifacts/
+# path is a repository file, not a page made for the owner.
+HOME_ART = r"(?:~|\$HOME|/home/[^/\s]+|/Users/[^/\s]+)/(?:\.agents|\.local/share/agents)/artifacts/"
+PAGE = re.compile(HOME_ART + r"[^\s\"'\\`]+?\.(?:html|md)\b")
+NAMED = re.compile(HOME_ART + r"\d{4}-\d{2}-\d{2}/[\w.-]+(?:/[\w./-]*)?")
+RENDER = re.compile(r"\bartifacts\s+render\s+(\S+)")
+WRITE_TOOLS = {"Write", "Edit", "MultiEdit", "NotebookEdit"}
+ADDED = re.compile(r"\*\*\* (?:Add|Update) File: (\S+)")
+
+
+def absolute(path):
+    path = path.rstrip(".,;:)]}'\"")
+    return os.path.expanduser(path.replace("$HOME", "~", 1))
+
+
+def written(r):
+    """Pages this record wrote: a file tool's target, an `artifacts render`, or a
+    Codex patch. Reading, grepping or listing an artifact writes nothing."""
+    if r.get("type") == "assistant":
+        for b in (r.get("message") or {}).get("content") or []:
+            if not (isinstance(b, dict) and b.get("type") == "tool_use"):
+                continue
+            args = b.get("input") or {}
+            if b.get("name") in WRITE_TOOLS:
+                target = str(args.get("file_path") or args.get("notebook_path") or "")
+                if PAGE.fullmatch(target) or PAGE.match(target):
+                    yield target
+            command = str(args.get("command") or "")
+            for hit in RENDER.finditer(command):
+                if PAGE.match(hit.group(1)):
+                    yield hit.group(1)
+    p = r.get("payload") or {}
+    if p.get("type") in ("function_call", "custom_tool_call", "local_shell_call"):
+        blob = json.dumps(p)
+        for hit in list(ADDED.finditer(blob)) + list(RENDER.finditer(blob)):
+            if PAGE.match(hit.group(1)):
+                yield hit.group(1)
+
 
 def said(r):
     if r.get("type") == "assistant":
@@ -68,27 +105,20 @@ def said(r):
         return text_of(p.get("content"))
     return ""
 
-RENDER = re.compile(r"\bartifacts\s+render\s+(\S+)")
 
 last = max((i for i, r in enumerate(records) if human(r)), default=None)
 if last is None:
     print("unknown -")
 else:
-    turn = [c for r in records[last:] for c in calls(r)]
-    opened = "yes" if any(SHOW.search(c) for c in turn) else "no"
-    page = "-"
-    for c in turn:
-        if SHOW.search(c):
-            continue
-        hit = RENDER.search(c) or PAGE.search(c)
-        if hit:
-            page = hit.group(1) if hit.re is RENDER else hit.group(0)
-            break
+    turn = records[last:]
+    opened = "yes" if any(SHOW.search(c) for r in turn for c in calls(r)) else "no"
+    page = next((w for r in turn for w in written(r)), "-")
     if page == "-":
-        # A reply that points the owner at an artifact is presenting it, even when
-        # an earlier turn wrote it.
-        for r in records[last:]:
-            hit = NAMED.search(said(r))
-            if hit:
+        # The turn's final reply pointing the owner at an artifact that exists is
+        # presenting it, even when an earlier turn wrote it.
+        final = next((t for t in (said(r) for r in reversed(turn)) if t.strip()), "")
+        for hit in NAMED.finditer(final):
+            if os.path.exists(absolute(hit.group(0))):
                 page = hit.group(0)
-    print(opened, page)
+                break
+    print(opened, absolute(page) if page != "-" else "-")
