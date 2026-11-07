@@ -16,8 +16,8 @@ path, an error or timeout included, exits 0. At most MAX_JUDGES calls run at onc
 per machine (flock slots); a third stop passes unjudged.
 
 The verdict replaced kind-based blocking: on 55 stops labelled blind (2026-11-07),
-item kinds alone would have pushed 32 legitimate stops; the verdict pushed 8 and
-caught 5 of 7 real ones. `decide()` still records the kind-based would-block code.
+item kinds alone would have pushed 32 of 44 legitimate stops; the verdict pushed 7
+and caught 4 of 7 labelled ones (tests/replay_stop_judge.py). `decide()` still records the kind-based would-block code.
 
 State (see hooks/AGENTS.md "Hook-owned session state"):
   durable:    ~/.agents/.history/hooks/system.stop-judge/state.db
@@ -284,11 +284,17 @@ def account_key() -> str:
     return "CLAUDE_CODE_OAUTH_TOKEN_" + re.sub(r"[^A-Z0-9_]", "_", slug)
 
 
+HOOK_BUDGET_S = 17.0     # under the 20 s hook timeout in agents.yaml, with room to record
+DEADLINE = time.monotonic() + HOOK_BUDGET_S
+
+
 def model_timeout() -> float:
+    """The per-call cap, never past the hook's own deadline (two key tries share it)."""
     try:
-        return min(MODEL_TIMEOUT_S, float(os.environ.get("STOP_JUDGE_TIMEOUT_S", MODEL_TIMEOUT_S)))
+        cap = min(MODEL_TIMEOUT_S, float(os.environ.get("STOP_JUDGE_TIMEOUT_S", MODEL_TIMEOUT_S)))
     except ValueError:
-        return MODEL_TIMEOUT_S
+        cap = MODEL_TIMEOUT_S
+    return max(0.0, min(cap, DEADLINE - time.monotonic() - 1.0))
 
 
 # The extraction rubric lives in the script: agents-cli installs hooks into version homes
@@ -406,6 +412,9 @@ def judge(snapshot: dict, caps: dict) -> dict:
     # the bundle's next account gets one try.
     reply = None
     for key_try in (0, 1) if via_bundle else (0,):
+        if model_timeout() < 2.0:
+            result["outcome"] = "timeout"
+            break
         if via_bundle:
             env["STOP_JUDGE_KEY_TRY"] = str(key_try)
         attempt = call_model(argv, env, prompt, cwd, result)
@@ -627,20 +636,21 @@ def record(row: dict) -> None:
     os.chmod(path, 0o600)
 
 
-def already_pushed(session_id: str, request: str) -> bool:
-    """True when this owner request already got its one push; records it otherwise.
-    A repeat block in the same goal changed the agent's next move 0 of 29 times."""
+def push_marker(session_id: str, request: str) -> tuple[Path, str]:
+    """This session's marker file and the owner request's hash. One push per request:
+    a repeat block in the same goal changed the agent's next move 0 of 29 times."""
     path = cache_dir() / "pushed"
     path.mkdir(exist_ok=True, mode=0o700)
-    marker = path / hashlib.sha256(session_id.encode()).hexdigest()[:32]
-    request_sha = hashlib.sha256(request.encode("utf-8", "replace")).hexdigest()
+    return (path / hashlib.sha256(session_id.encode()).hexdigest()[:32],
+            hashlib.sha256(request.encode("utf-8", "replace")).hexdigest())
+
+
+def already_pushed(session_id: str, request: str) -> bool:
+    marker, request_sha = push_marker(session_id, request)
     try:
-        if marker.read_text() == request_sha:
-            return True
+        return marker.read_text() == request_sha
     except OSError:
-        pass
-    marker.write_text(request_sha)
-    return False
+        return False
 
 
 def judge_stop(payload: dict) -> str | None:
@@ -684,22 +694,29 @@ def judge_stop(payload: dict) -> str | None:
         # Without items only the tool-count fact can be judged.
         would_block, reason = decide(counts, [], background_live, caps["bundles"])
         reason = reason if would_block else "unjudged"
-    record({
-        "session_key": f"claude:{payload['session_id']}",
-        "ts_ms": int(time.time() * 1000),
-        "would_block": int(would_block),
-        "reason": "pushed" if push else ("continue" if verdict["verdict"] == "continue" else reason),
-        "hint": HINT.get(reason, ""),
-        "item_kinds": ",".join(kinds),
-        "background_live": int(background_live),
-        "latency_ms": verdict["latency_ms"],
-        "input_tokens": verdict["in_tok"],
-        "output_tokens": verdict["out_tok"],
-        "outcome": verdict["outcome"],
-        "detail": verdict["detail"],
-        "final_sha256": final_sha,
-    })
-    return block_message(verdict["step"] or "the step you offered or handed back", caps) if push else None
+    try:  # a locked or failing database never costs the agent its push
+        record({
+            "session_key": f"claude:{payload['session_id']}",
+            "ts_ms": int(time.time() * 1000),
+            "would_block": int(would_block),
+            "reason": "pushed" if push else ("continue" if verdict["verdict"] == "continue" else reason),
+            "hint": HINT.get(reason, ""),
+            "item_kinds": ",".join(kinds),
+            "background_live": int(background_live),
+            "latency_ms": verdict["latency_ms"],
+            "input_tokens": verdict["in_tok"],
+            "output_tokens": verdict["out_tok"],
+            "outcome": verdict["outcome"],
+            "detail": verdict["detail"],
+            "final_sha256": final_sha,
+        })
+    except Exception:  # noqa: BLE001
+        pass
+    if not push:
+        return None
+    marker, request_sha = push_marker(payload["session_id"], request)
+    marker.write_text(request_sha)
+    return block_message(verdict["step"] or "the step you offered or handed back", caps)
 
 
 def claim_slot():
