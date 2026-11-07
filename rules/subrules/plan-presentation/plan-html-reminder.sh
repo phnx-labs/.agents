@@ -93,6 +93,16 @@ PY
   [ "$plan_signal" = "plan" ] && is_plan=1
 fi
 
+# A failed open needs a different command, not the same one again.
+open_fallback_note() {
+  echo ""
+  echo "An open was tried this turn, but its result never confirmed the page appeared"
+  echo "(for example \"via\": \"none\" when Arc's front window is on another Space)."
+  echo "Use a path that confirms it, then check the result:"
+  echo "  browser show <page.html> --os-browser --json"
+  echo "  or AppleScript to Arc: make a tab with the page's URL and read back its title."
+}
+
 # ---- Page check: every turn, not only plans ----------------------------------
 # A turn that wrote a page into an artifact home ends with that page opened for the
 # owner. Blocks once per stop chain; no transcript or no owner prompt allows.
@@ -102,13 +112,14 @@ if [ "$is_plan" != 1 ]; then
   [ "$stop_active" = "true" ] && exit 0
   page_opened=${turn_state%% *}
   page_written=${turn_state#* }
-  if [ "$page_opened" = "no" ] && [ -n "$page_written" ] && [ "$page_written" != "-" ]; then
+  if { [ "$page_opened" = "no" ] || [ "$page_opened" = "failed" ]; } && [ -n "$page_written" ] && [ "$page_written" != "-" ]; then
     {
       echo "This turn wrote or pointed the owner at $page_written but never opened it."
       echo "Open it on the owner's machine before you stop:"
       echo "  browser show <page.html> --json"
       echo "Do this unasked, every time. The owner runs hundreds of sessions and"
       echo "cannot chase paths or ask each agent to open its page."
+      [ "$page_opened" = "failed" ] && open_fallback_note
     } >&2
     exit 2
   fi
@@ -287,7 +298,7 @@ fi
 opened_ok=1
 if [ -n "$tp" ] && [ -r "$tp" ]; then
   opened=${turn_state%% *}
-  [ "$opened" = "no" ] && opened_ok=0
+  { [ "$opened" = "no" ] || [ "$opened" = "failed" ]; } && opened_ok=0
 fi
 
 # ---- decide -------------------------------------------------------------------
@@ -348,6 +359,7 @@ fi
     echo "    browser show <plan.html> --json"
     echo "  Do this unasked, every time. The owner runs hundreds of sessions and"
     echo "  cannot chase links or ask each agent to open its plan."
+    [ "$opened" = "failed" ] && open_fallback_note
   fi
   if [ "$checklist_ok" != 1 ]; then
     echo "* Create a task checklist for this plan — it has multiple steps."

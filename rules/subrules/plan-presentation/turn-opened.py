@@ -1,6 +1,7 @@
 """What this turn did about opening pages for the owner, read from the transcript.
 
-Prints "<opened> <page>": opened is yes, no or unknown (no owner prompt found), and
+Prints "<opened> <page>": opened is yes (an open whose result confirms it), failed
+(tried, never confirmed), no, or unknown (no owner prompt found), and
 page is the first page this turn wrote under an artifact home, else an artifact its
 reply names, else "-".
 A turn starts at the owner's last prompt; harness-injected records don't count.
@@ -58,6 +59,45 @@ def calls(r):
     if p.get("type") in ("function_call", "custom_tool_call", "local_shell_call"):
         yield json.dumps(p)
 
+# An open counts only when its result confirms it: `browser show` prints
+# "via": "none" when no viewer took the page (2026-11-07: Arc's front window was
+# not on the Work space, twice), and a denied or failed command never opened anything.
+FAILED = re.compile(r'"via"\s*:\s*"none"|No visible Arc window|execution error|AppleEvent handler failed'
+                    r'|Permission (?:for this action was|to use \w+ .*?has been) denied|^Exit code [1-9]|\berror\b.*\bopen', re.I | re.M)
+
+
+def results(records):
+    """Tool results by call id, for Claude tool_result blocks and Codex outputs."""
+    out = {}
+    for r in records:
+        if r.get("type") == "user":
+            for b in (r.get("message") or {}).get("content") or []:
+                if isinstance(b, dict) and b.get("type") == "tool_result":
+                    c = b.get("content")
+                    text = c if isinstance(c, str) else json.dumps(c)
+                    out[b.get("tool_use_id")] = (text, bool(b.get("is_error")))
+        p = r.get("payload") or {}
+        if p.get("type") in ("function_call_output", "custom_tool_call_output"):
+            out[p.get("call_id")] = (json.dumps(p.get("output")), False)
+    return out
+
+
+def opens(records):
+    """(call id, command text) for every attempt to open a page for the owner."""
+    for r in records:
+        if r.get("type") == "assistant":
+            for b in (r.get("message") or {}).get("content") or []:
+                if isinstance(b, dict) and b.get("type") == "tool_use":
+                    text = json.dumps(b.get("input"))
+                    if SHOW.search(text):
+                        yield b.get("id"), text
+        p = r.get("payload") or {}
+        if p.get("type") in ("function_call", "custom_tool_call", "local_shell_call"):
+            text = json.dumps(p)
+            if SHOW.search(text):
+                yield p.get("call_id"), text
+
+
 # Artifact homes only, anchored at the owner's home: an in-repo .agents/artifacts/
 # path is a repository file, not a page made for the owner.
 HOME_ART = r"(?:~|\$HOME|/home/[^/\s]+|/Users/[^/\s]+)/(?:\.agents|\.local/share/agents)/artifacts/"
@@ -111,7 +151,10 @@ if last is None:
     print("unknown -")
 else:
     turn = records[last:]
-    opened = "yes" if any(SHOW.search(c) for r in turn for c in calls(r)) else "no"
+    done = results(turn)
+    tried = list(opens(turn))
+    confirmed = [i for i, _ in tried if i in done and not done[i][1] and not FAILED.search(done[i][0])]
+    opened = "yes" if confirmed else ("failed" if tried else "no")
     page = next((w for r in turn for w in written(r)), "-")
     if page == "-":
         # The turn's final reply pointing the owner at an artifact that exists is
