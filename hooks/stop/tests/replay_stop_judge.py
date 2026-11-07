@@ -35,6 +35,7 @@ def replay(item: dict, caps: dict) -> dict:
         "final_message": item["final"][-2500:],
         "capability_manifest": judge_mod.manifest_text(caps),
     }
+    judge_mod.DEADLINE[0] = judge_mod.time.monotonic() + judge_mod.HOOK_BUDGET_S
     verdict = judge_mod.judge(snapshot, caps)
     return {"id": item["id"], "push": verdict["verdict"] == "continue" and not armed,
             "outcome": verdict["outcome"], "latency_ms": verdict["latency_ms"], "step": verdict["step"]}

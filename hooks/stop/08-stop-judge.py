@@ -285,7 +285,7 @@ def account_key() -> str:
 
 
 HOOK_BUDGET_S = 17.0     # under the 20 s hook timeout in agents.yaml, with room to record
-DEADLINE = time.monotonic() + HOOK_BUDGET_S
+DEADLINE = [time.monotonic() + HOOK_BUDGET_S]   # main() and replays restart it per stop
 
 
 def model_timeout() -> float:
@@ -294,7 +294,7 @@ def model_timeout() -> float:
         cap = min(MODEL_TIMEOUT_S, float(os.environ.get("STOP_JUDGE_TIMEOUT_S", MODEL_TIMEOUT_S)))
     except ValueError:
         cap = MODEL_TIMEOUT_S
-    return max(0.0, min(cap, DEADLINE - time.monotonic() - 1.0))
+    return max(0.0, min(cap, DEADLINE[0] - time.monotonic() - 1.0))
 
 
 # The extraction rubric lives in the script: agents-cli installs hooks into version homes
