@@ -368,6 +368,7 @@ mkfile_nocl() {  # human turn, no checklist tool
     printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"text","text":"planning"}]}}'
     printf '%s\n' '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"x","content":"ok"}]}}'
     printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"b1","name":"Bash","input":{"command":"browser show ~/.agents/artifacts/2026-11-07/x/plan.html --json"}}]}}'
+    printf '%s\n' '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"b1","content":"{\"via\": \"arc\", \"profile\": \"arc-work\"}"}]}}'
   } > "$TX"
 }
 mkfile_cl() {    # human turn, then a TaskCreate tool_use, then its tool_result(user)
@@ -376,6 +377,7 @@ mkfile_cl() {    # human turn, then a TaskCreate tool_use, then its tool_result(
     printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"t1","name":"TaskCreate","input":{"subject":"A1","description":"d"}}]}}'
     printf '%s\n' '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"t1","content":"created 1"}]}}'
     printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"b1","name":"Bash","input":{"command":"browser show ~/.agents/artifacts/2026-11-07/x/plan.html --json"}}]}}'
+    printf '%s\n' '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"b1","content":"{\"via\": \"arc\", \"profile\": \"arc-work\"}"}]}}'
   } > "$TX"
 }
 MULTI='1. first step\n2. second step\n3. third step'
@@ -425,6 +427,7 @@ run 2 "plan never opened for the owner -> block" \
 {
   printf '%s\n' '{"type":"user","message":{"role":"user","content":"first ask"}}'
   printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"b0","name":"Bash","input":{"command":"browser show old.html"}}]}}'
+  printf '%s\n' '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"b0","content":"{\"via\": \"arc\", \"profile\": \"arc-work\"}"}]}}'
   printf '%s\n' '{"type":"user","message":{"role":"user","content":"now plan it"}}'
   printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"t1","name":"TaskCreate","input":{"subject":"A1","description":"d"}}]}}'
 } > "$TX"
@@ -439,7 +442,8 @@ run 0 "plan opened with browser show this turn -> allow" \
 # 25. Codex rollout: opened through a function_call after the user message -> ALLOW.
 {
   printf '%s\n' '{"type":"event_msg","payload":{"type":"user_message","message":"plan it"}}'
-  printf '%s\n' '{"type":"response_item","payload":{"type":"function_call","name":"exec_command","arguments":"{\"cmd\":\"browser show plan.html\"}"}}'
+  printf '%s\n' '{"type":"response_item","payload":{"type":"function_call","call_id":"c1","name":"exec_command","arguments":"{\"cmd\":\"browser show plan.html\"}"}}'
+  printf '%s\n' '{"type":"response_item","payload":{"type":"function_call_output","call_id":"c1","output":"{\"via\": \"arc\"}"}}'
 } > "$TX"
 run 0 "codex function_call browser show -> allow" \
   '{"tool_name":"ExitPlanMode","tool_input":{"plan":"x"},"transcript_path":"'"$TX"'"}'
@@ -448,6 +452,7 @@ run 0 "codex function_call browser show -> allow" \
 {
   printf '%s\n' '{"type":"user","origin":{"kind":"human"},"message":{"role":"user","content":"plan it"}}'
   printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"b1","name":"Bash","input":{"command":"browser show plan.html --json"}}]}}'
+  printf '%s\n' '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"b1","content":"{\"via\": \"arc\", \"profile\": \"arc-work\"}"}]}}'
   printf '%s\n' '{"type":"user","origin":{"kind":"task-notification"},"message":{"role":"user","content":"<task-notification>done</task-notification>"}}'
   printf '%s\n' '{"type":"user","isCompactSummary":true,"message":{"role":"user","content":"This session is being continued from a previous conversation"}}'
   printf '%s\n' '{"type":"user","message":{"role":"user","content":"<bash-input>git status</bash-input>"}}'
@@ -459,7 +464,8 @@ run 0 "injected user records after the open do not reset the turn -> allow" \
 # 27. Codex injects context as a role-user response_item; only event_msg user_message is the owner.
 {
   printf '%s\n' '{"type":"event_msg","payload":{"type":"user_message","message":"plan it"}}'
-  printf '%s\n' '{"type":"response_item","payload":{"type":"function_call","name":"exec_command","arguments":"{\"cmd\":\"browser show plan.html\"}"}}'
+  printf '%s\n' '{"type":"response_item","payload":{"type":"function_call","call_id":"c1","name":"exec_command","arguments":"{\"cmd\":\"browser show plan.html\"}"}}'
+  printf '%s\n' '{"type":"response_item","payload":{"type":"function_call_output","call_id":"c1","output":"{\"via\": \"arc\"}"}}'
   printf '%s\n' '{"type":"response_item","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":"<environment_context>cwd</environment_context>"}]}}'
 } > "$TX"
 run 0 "codex injected context after the open -> allow" \
@@ -479,6 +485,7 @@ run 2 "auto mode, page written, not opened -> block" "$(STOP_AUTO)"
 
 # 29. Same turn, opened with browser show -> ALLOW.
 printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"s","name":"Bash","input":{"command":"browser show /home/u/.agents/artifacts/2026-11-07/report/index.html --json"}}]}}' >> "$TX"
+printf '%s\n' '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"s","content":"{\"via\": \"arc\", \"profile\": \"arc-work\"}"}]}}' >> "$TX"
 run 0 "auto mode, page written and opened -> allow" "$(STOP_AUTO)"
 
 # 30. The final reply names an artifact folder an earlier turn wrote (the ChemStation
@@ -528,8 +535,32 @@ run 0 "in-repo .agents/artifacts write -> allow" "$(STOP_AUTO)"
   printf '%s\n' '{"type":"user","origin":{"kind":"human"},"message":{"role":"user","content":"show me"}}'
   printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"w","name":"Write","input":{"file_path":"/home/u/.agents/artifacts/2026-11-07/r/index.html","content":"x"}}]}}'
   printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"o","name":"Bash","input":{"command":"agents ssh zion \"osascript -e '"'"'tell application \\\"Arc\\\"'"'"' -e '"'"'tell front window to make new tab with properties {URL:\\\"file:///x\\\"}'"'"'\""}}]}}'
+  printf '%s\n' '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"o","content":"{\"via\": \"arc\", \"profile\": \"arc-work\"}"}]}}'
 } > "$TX"
 run 0 "page opened directly in Arc with AppleScript -> allow" "$(STOP_AUTO)"
+
+# 31g. browser show reported it did not open ("via": "none") -> BLOCK, even though it ran.
+{
+  printf '%s\n' '{"type":"user","origin":{"kind":"human"},"message":{"role":"user","content":"show me"}}'
+  printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"w","name":"Write","input":{"file_path":"/home/u/.agents/artifacts/2026-11-07/r/index.html","content":"x"}}]}}'
+  printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"f","name":"Bash","input":{"command":"browser show /home/u/.agents/artifacts/2026-11-07/r/index.html --json"}}]}}'
+  printf '%s\n' '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"f","content":"{\"via\": \"none\", \"profile\": \"arc-work\", \"reason\": \"No visible Arc window shows a Space of Arc profile Work.\"}"}]}}'
+} > "$TX"
+run 2 "browser show that reported via none -> block" "$(STOP_AUTO)"
+
+# 31h. The failed open followed by a confirmed fallback -> ALLOW.
+printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"g","name":"Bash","input":{"command":"browser show /home/u/.agents/artifacts/2026-11-07/r/index.html --os-browser --json"}}]}}' >> "$TX"
+printf '%s\n' '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"g","content":"{\"via\": \"open\"}"}]}}' >> "$TX"
+run 0 "failed open then confirmed fallback -> allow" "$(STOP_AUTO)"
+
+# 31i. An open the permission check denied never opened anything -> BLOCK.
+{
+  printf '%s\n' '{"type":"user","origin":{"kind":"human"},"message":{"role":"user","content":"show me"}}'
+  printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"w","name":"Write","input":{"file_path":"/home/u/.agents/artifacts/2026-11-07/r/index.html","content":"x"}}]}}'
+  printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"d","name":"Bash","input":{"command":"browser show /home/u/.agents/artifacts/2026-11-07/r/index.html"}}]}}'
+  printf '%s\n' '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"d","is_error":true,"content":"Permission for this action was denied by the Claude Code auto mode classifier."}]}}'
+} > "$TX"
+run 2 "denied open -> block" "$(STOP_AUTO)"
 
 # 31e. artifacts render of a home page, not opened -> BLOCK.
 {
