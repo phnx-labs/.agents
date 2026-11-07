@@ -3,7 +3,8 @@
 Prints "<opened> <page>": opened is yes (an open whose result confirms it), failed
 (tried, never confirmed), no, or unknown (no owner prompt found), and
 page is the first page this turn wrote under an artifact home, else an artifact its
-reply names, else "-".
+reply names, else "-"; then the
+index of the owner prompt the turn started at, so a block counter resets per prompt.
 A turn starts at the owner's last prompt; harness-injected records don't count.
 """
 import json, os, re, sys
@@ -150,7 +151,7 @@ def said(r):
 
 last = max((i for i, r in enumerate(records) if human(r)), default=None)
 if last is None:
-    print("unknown -")
+    print("unknown - -")
 else:
     turn = records[last:]
     done = results(turn)
@@ -166,4 +167,4 @@ else:
             if os.path.exists(absolute(hit.group(0))):
                 page = hit.group(0)
                 break
-    print(opened, absolute(page) if page != "-" else "-")
+    print(opened, absolute(page) if page != "-" else "-", last)

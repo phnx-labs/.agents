@@ -9,6 +9,17 @@ SCAN=$(mktemp -d)
 REPO=""
 trap 'rm -rf "$SCAN" "$REPO"' EXIT
 export PLAN_HTML_SCAN_ROOT="$SCAN"
+export AGENTS_CACHE_DIR="$SCAN/cache"
+# Never post to the owner's real feed from a test: the alert goes to a stub.
+STUBS=$(mktemp -d)
+trap 'rm -rf "$SCAN" "$REPO" "$STUBS"' EXIT
+ALERTS="$STUBS/alerts.log"
+cat > "$STUBS/alert-stub" <<STUB
+#!/bin/sh
+printf '%s\n' "\$*" >> "$ALERTS"
+STUB
+chmod +x "$STUBS/alert-stub"
+export PAGE_ALERT_CMD="$STUBS/alert-stub"
 
 pass=0; fail=0
 # run <expected-rc> <label> <json>
@@ -473,7 +484,9 @@ run 0 "codex injected context after the open -> allow" \
 rm -f "$SCAN"/plan-open.html "$SCAN"/plan-open.md
 
 # --- Page check: every turn that wrote or named a page, in any mode -------------
-STOP_AUTO() { printf '{"hook_event_name":"Stop","permission_mode":"auto","transcript_path":"%s"%s}' "$TX" "${1:-}"; }
+SID=0
+STOP_AUTO() { printf '{"hook_event_name":"Stop","permission_mode":"auto","session_id":"s-%s","transcript_path":"%s"%s}' "$SID" "$TX" "${1:-}"; }
+next_case() { SID=$((SID + 1)); }
 
 # 28. Auto mode: the turn wrote a page and never opened it -> BLOCK.
 {
@@ -481,11 +494,13 @@ STOP_AUTO() { printf '{"hook_event_name":"Stop","permission_mode":"auto","transc
   printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"w","name":"Write","input":{"file_path":"/home/u/.agents/artifacts/2026-11-07/report/index.html","content":"x"}}]}}'
   printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"text","text":"Done."}]}}'
 } > "$TX"
+next_case
 run 2 "auto mode, page written, not opened -> block" "$(STOP_AUTO)"
 
 # 29. Same turn, opened with browser show -> ALLOW.
 printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"s","name":"Bash","input":{"command":"browser show /home/u/.agents/artifacts/2026-11-07/report/index.html --json"}}]}}' >> "$TX"
 printf '%s\n' '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"s","content":"{\"via\": \"arc\", \"profile\": \"arc-work\"}"}]}}' >> "$TX"
+next_case
 run 0 "auto mode, page written and opened -> allow" "$(STOP_AUTO)"
 
 # 30. The final reply names an artifact folder an earlier turn wrote (the ChemStation
@@ -502,16 +517,24 @@ run_page_home() {
   printf '%s\n' '{"type":"user","origin":{"kind":"human"},"message":{"role":"user","content":"Is it done? Where are the results?"}}'
   printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"text","text":"Results are in ~/.local/share/agents/artifacts/2026-11-07/chromatography-agent/: index.html is the walkthrough."}]}}'
 } > "$TX"
+next_case
 run_page_home 2 "final reply names an artifact it never opened -> block" "$(STOP_AUTO)"
 
-# 31. The block fires once: the retry with stop_hook_active passes.
-run_page_home 0 "page check blocks once (stop_hook_active) -> allow" "$(STOP_AUTO ',"stop_hook_active":true')"
+# 31. The block persists: retries keep blocking until the limit (3 per owner prompt);
+# the next stop goes through, and only then, so an agent that cannot open never loops.
+run_page_home 2 "retry 2 still blocks while the page is unopened" "$(STOP_AUTO ',"stop_hook_active":true')"
+run_page_home 2 "retry 3 still blocks while the page is unopened" "$(STOP_AUTO ',"stop_hook_active":true')"
+run_page_home 0 "past the limit the stop goes through (owner alerted)" "$(STOP_AUTO ',"stop_hook_active":true')"
+run_page_home 0 "and stays through for the rest of that prompt" "$(STOP_AUTO ',"stop_hook_active":true')"
+sleep 1
+if [ "$(grep -c 'Page never opened' "$ALERTS" 2>/dev/null)" = "1" ]; then pass=$((pass+1)); echo "ok   — the owner gets exactly one alert"; else fail=$((fail+1)); echo "FAIL — the owner gets exactly one alert ($(grep -c 'Page never opened' "$ALERTS" 2>/dev/null))"; fi
 
 # 31b. A named artifact that does not exist is a passing mention -> ALLOW.
 {
   printf '%s\n' '{"type":"user","origin":{"kind":"human"},"message":{"role":"user","content":"where did that go"}}'
   printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"text","text":"It was under ~/.agents/artifacts/1999-01-01/never-made/ before it was removed."}]}}'
 } > "$TX"
+next_case
 run 0 "reply names an artifact that does not exist -> allow" "$(STOP_AUTO)"
 
 # 31c. Reading an artifact writes nothing: Read, sed and grep -> ALLOW (review on #549).
@@ -521,6 +544,7 @@ run 0 "reply names an artifact that does not exist -> allow" "$(STOP_AUTO)"
   printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"b","name":"Bash","input":{"command":"sed -n 1,140p ~/.agents/artifacts/2026-11-07/demo/brief.md; grep -n hero ~/.local/share/agents/artifacts/2026-11-07/x/src.html"}}]}}'
   printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"text","text":"The brief asks for two headlines."}]}}'
 } > "$TX"
+next_case
 run 0 "turn that only reads artifacts -> allow" "$(STOP_AUTO)"
 
 # 31d. An in-repo .agents/artifacts path is a repository file, not a page for the owner -> ALLOW.
@@ -528,6 +552,7 @@ run 0 "turn that only reads artifacts -> allow" "$(STOP_AUTO)"
   printf '%s\n' '{"type":"user","origin":{"kind":"human"},"message":{"role":"user","content":"update the readme"}}'
   printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"w","name":"Write","input":{"file_path":".agents/artifacts/README.md","content":"x"}}]}}'
 } > "$TX"
+next_case
 run 0 "in-repo .agents/artifacts write -> allow" "$(STOP_AUTO)"
 
 # 31f. Opened straight in Arc with AppleScript instead of browser show -> ALLOW.
@@ -537,6 +562,7 @@ run 0 "in-repo .agents/artifacts write -> allow" "$(STOP_AUTO)"
   printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"o","name":"Bash","input":{"command":"agents ssh zion \"osascript -e '"'"'tell application \\\"Arc\\\"'"'"' -e '"'"'tell front window to make new tab with properties {URL:\\\"file:///x\\\"}'"'"'\""}}]}}'
   printf '%s\n' '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"o","content":"{\"via\": \"arc\", \"profile\": \"arc-work\"}"}]}}'
 } > "$TX"
+next_case
 run 0 "page opened directly in Arc with AppleScript -> allow" "$(STOP_AUTO)"
 
 # 31g. browser show reported it did not open ("via": "none") -> BLOCK, even though it ran.
@@ -546,11 +572,13 @@ run 0 "page opened directly in Arc with AppleScript -> allow" "$(STOP_AUTO)"
   printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"f","name":"Bash","input":{"command":"browser show /home/u/.agents/artifacts/2026-11-07/r/index.html --json"}}]}}'
   printf '%s\n' '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"f","content":"{\"via\": \"none\", \"profile\": \"arc-work\", \"reason\": \"No visible Arc window shows a Space of Arc profile Work.\"}"}]}}'
 } > "$TX"
+next_case
 run 2 "browser show that reported via none -> block" "$(STOP_AUTO)"
 
 # 31h. The failed open followed by a confirmed fallback -> ALLOW.
 printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"g","name":"Bash","input":{"command":"browser show /home/u/.agents/artifacts/2026-11-07/r/index.html --os-browser --json"}}]}}' >> "$TX"
 printf '%s\n' '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"g","content":"{\"via\": \"open\"}"}]}}' >> "$TX"
+next_case
 run 0 "failed open then confirmed fallback -> allow" "$(STOP_AUTO)"
 
 # 31i. An open the permission check denied never opened anything -> BLOCK.
@@ -560,6 +588,7 @@ run 0 "failed open then confirmed fallback -> allow" "$(STOP_AUTO)"
   printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"d","name":"Bash","input":{"command":"browser show /home/u/.agents/artifacts/2026-11-07/r/index.html"}}]}}'
   printf '%s\n' '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"d","is_error":true,"content":"Permission for this action was denied by the Claude Code auto mode classifier."}]}}'
 } > "$TX"
+next_case
 run 2 "denied open -> block" "$(STOP_AUTO)"
 
 # 31j. A successful open chained with a later failing command still counts (review on #551).
@@ -569,6 +598,7 @@ run 2 "denied open -> block" "$(STOP_AUTO)"
   printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"k","name":"Bash","input":{"command":"browser show /home/u/.agents/artifacts/2026-11-07/r/index.html --json; grep -c x missing.txt"}}]}}'
   printf '%s\n' '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"k","is_error":true,"content":"Exit code 2\n{\"via\": \"arc\"}\nerror: could not open missing.txt"}]}}'
 } > "$TX"
+next_case
 run 0 "successful open with a later failing command -> allow" "$(STOP_AUTO)"
 
 # 31e. artifacts render of a home page, not opened -> BLOCK.
@@ -576,6 +606,7 @@ run 0 "successful open with a later failing command -> allow" "$(STOP_AUTO)"
   printf '%s\n' '{"type":"user","origin":{"kind":"human"},"message":{"role":"user","content":"render it"}}'
   printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"b","name":"Bash","input":{"command":"artifacts render ~/.agents/artifacts/2026-11-07/p/plan.md"}}]}}'
 } > "$TX"
+next_case
 run 2 "artifacts render without opening -> block" "$(STOP_AUTO)"
 
 # 32. A turn that touched no page -> ALLOW.
@@ -583,6 +614,7 @@ run 2 "artifacts render without opening -> block" "$(STOP_AUTO)"
   printf '%s\n' '{"type":"user","origin":{"kind":"human"},"message":{"role":"user","content":"fix the test"}}'
   printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"e","name":"Edit","input":{"file_path":"/repo/src/a.ts"}}]}}'
 } > "$TX"
+next_case
 run 0 "turn with no page -> allow" "$(STOP_AUTO)"
 
 # 33. No transcript -> ALLOW (fails open).
