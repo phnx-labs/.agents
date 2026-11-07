@@ -409,8 +409,15 @@ check_silent_exit0 push-bang
 # stop_ok, and a continue the model gives no step for under a timeout: no push.
 run_hook push-stopok cli "$WORKED" '{}' STUB_ITEMS='{"verdict":"stop_ok","step":"","items":[]}'
 check_silent_exit0 push-stopok
-run_hook push-timeout cli "$WORKED" '{}' STUB_MODE=sleep STOP_JUDGE_TIMEOUT_S=1
-check_silent_exit0 push-timeout
+# A database that cannot be written still delivers the push.
+mkdir -p "$TMP/push-nodb/.agents/.history/hooks/system.stop-judge"
+mkdir "$TMP/push-nodb/.agents/.history/hooks/system.stop-judge/state.db"   # a directory: sqlite cannot open it
+run_hook push-nodb cli "$WORKED" '{}' STUB_ITEMS="$(push 'run the test on a worker box')"
+check "push survives a broken db" 2 "$RC"
+# The overall deadline bounds both key tries: a hung model plus a 429 retry stays under the hook timeout.
+run_hook push-deadline cli "$WORKED" '{}' STUB_MODE=sleep STOP_JUDGE_TIMEOUT_S=30
+check_silent_exit0 push-deadline
+check "deadline under the 20 s hook timeout" yes "$([ "$SETTLE_MS" -lt 19000 ] && echo yes || echo "no(${SETTLE_MS}ms)")"
 
 echo "08-stop-judge: $pass passed, $fail failed"
 [ "$fail" -eq 0 ]
