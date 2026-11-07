@@ -4,8 +4,8 @@
 # stub `claude`, `secrets`, and `browser` executables first on PATH. The stubs
 # stand in for the model and the credential store only, so no test reaches the
 # network or a real model. Each case runs under its own HOME and reads the rows
-# the hook wrote to its real SQLite database. The hook judges in a detached
-# child, so each case times the foreground, then waits for the child's row.
+# the hook wrote to its real SQLite database. The hook judges in the foreground:
+# it exits 2 with the push on stderr once per owner request, and 0 otherwise.
 set -uo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 HOOK="$HERE/../08-stop-judge.py"
@@ -76,8 +76,7 @@ item() {  # item <kind> <actor> [credential]
 }
 
 # run_hook <case> <entrypoint> <transcript-python> <payload-extra-json> [VAR=value ...]
-# Sets RC and FG_MS (foreground wall time). Unless NOWAIT=1, then waits up to 10s
-# for the detached child's row and sets SETTLE_MS (start to row). HOME is $TMP/<case>.
+# Sets RC and SETTLE_MS (start to exit). HOME is $TMP/<case>.
 run_hook() {
   local name="$1" ep="$2" gen="$3" extra="$4"; shift 4
   local home="$TMP/$name" t="$TMP/$name.jsonl" start end
@@ -97,26 +96,7 @@ p.update(json.loads(sys.argv[2])); print(json.dumps(p))' "$t" "$extra" > "$TMP/$
       "${HOOK_OVERRIDE:-$HOOK}" "$TMP/$name.payload" > "$TMP/$name.out" 2>&1
   RC=$?
   end=$(python3 -c 'import time;print(int(time.time()*1000))')
-  FG_MS=$((end - start))
-  [ "${NOWAIT:-0}" = 1 ] && return
-  python3 - "$home/.agents/.history/hooks/system.stop-judge/state.db" <<'PY'
-import os, sqlite3, sys, time
-deadline = time.time() + 10
-while time.time() < deadline:
-    if os.path.exists(sys.argv[1]):
-        try:
-            if sqlite3.connect(sys.argv[1]).execute("SELECT COUNT(*) FROM judgments").fetchone()[0]:
-                break
-        except sqlite3.Error:
-            pass
-    time.sleep(0.05)
-PY
-  end=$(python3 -c 'import time;print(int(time.time()*1000))')
   SETTLE_MS=$((end - start))
-}
-
-pending() {  # pending <case> -> handoff files still on disk
-  ls "$TMP/$1/.agents/.cache/state/hooks/system.stop-judge/pending" 2>/dev/null | tr '\n' ' '
 }
 
 row() {  # row <case> -> "would_block|reason|outcome|item_kinds|background_live" of the latest row
@@ -133,32 +113,22 @@ PY
 check() {  # check <name> <expected> <actual>
   if [ "$2" = "$3" ]; then pass=$((pass+1)); else fail=$((fail+1)); echo "  FAIL $1: expected [$2] got [$3]"; fi
 }
-check_silent_exit0() {  # the hook never blocks and never writes to stdout/stderr
+check_silent_exit0() {  # a stop that is let through: exit 0, nothing on stdout/stderr
   check "$1 exit" 0 "$RC"
   check "$1 output" "" "$(cat "$TMP/$1.out")"
 }
 
 # Headless runs are machine prompts: skipped, no model call, no DB.
-NOWAIT=1 run_hook headless sdk-cli "$WORKED" '{}' STUB_ITEMS="$(item merge_or_approve_pr owner)"
+run_hook headless sdk-cli "$WORKED" '{}' STUB_ITEMS="$(item merge_or_approve_pr owner)"
 check_silent_exit0 headless
 check headless "no-db" "$(row headless)"
 check "headless no model call" "" "$(cat "$TMP/headless/stub.log" 2>/dev/null)"
 
 # Continuing from a Stop block, or nothing said: skipped.
-NOWAIT=1 run_hook continuing cli "$WORKED" '{"stop_hook_active":true}'
+run_hook continuing cli "$WORKED" '{"stop_hook_active":true}'
 check continuing "no-db" "$(row continuing)"
-NOWAIT=1 run_hook empty-final cli "$WORKED" '{"last_assistant_message":"   "}'
+run_hook empty-final cli "$WORKED" '{"last_assistant_message":"   "}'
 check empty-final "no-db" "$(row empty-final)"
-check "skips leave no handoff" "" "$(pending headless)$(pending continuing)$(pending empty-final)"
-
-# Detached: the foreground returns at once while the model call is still running,
-# and the child's row lands when it finishes. The handoff file is gone after.
-run_hook detached cli "$WORKED" '{}' STUB_SLEEP=5 STUB_ITEMS="$(item merge_or_approve_pr owner)"
-check_silent_exit0 detached
-check "detached foreground fast" yes "$([ "$FG_MS" -lt 500 ] && echo yes || echo "no(${FG_MS}ms)")"
-check "detached row after the model call" yes "$([ "$SETTLE_MS" -ge 5000 ] && echo yes || echo "no(${SETTLE_MS}ms)")"
-check detached "1|merge_or_approve_pr|ok|merge_or_approve_pr|0" "$(row detached)"
-check "detached handoff removed" "" "$(pending detached)"
 
 # No investigation tool since the owner's message (bookkeeping does not count).
 run_hook zero-tools cli "$IDLE" '{}' STUB_ITEMS="$(item done_claim agent)"
@@ -240,7 +210,7 @@ a = json.load(open(sys.argv[1]))
 def pair(flag, value): return any(a[i] == flag and a[i + 1] == value for i in range(len(a) - 1))
 bad = [n for n, ok in [
     ("setting-sources", pair("--setting-sources", "project")), ("tools", pair("--tools", "")),
-    ("model", pair("--model", "claude-haiku-4-5")), ("no-persist", "--no-session-persistence" in a),
+    ("model", pair("--model", "claude-sonnet-5-5")), ("no-persist", "--no-session-persistence" in a),
     ("json", pair("--output-format", "json")), ("no-marker", not any(sys.argv[2] in x for x in a)),
     ("no-snapshot", not any("SNAPSHOT" in x for x in a))] if not ok]
 print(",".join(bad) or "ok")
@@ -284,33 +254,9 @@ run_hook cred-quote-only cli "$WORKED" '{}' STUB_BUNDLES="$BUNDLES_WIDE" \
 check cred-quote-only "0|pass|ok|provide_credential|0" "$(row cred-quote-only)"
 
 # The judge's own nested run, or anything else carrying the child sentinel, is ignored.
-NOWAIT=1 run_hook sentinel cli "$WORKED" '{}' STOP_JUDGE_CHILD=1 STUB_ITEMS="$(item merge_or_approve_pr owner)"
+run_hook sentinel cli "$WORKED" '{}' STOP_JUDGE_CHILD=1 STUB_ITEMS="$(item merge_or_approve_pr owner)"
 check_silent_exit0 sentinel
-check "sentinel no handoff dir" "no" "$([ -d "$TMP/sentinel/.agents/.cache/state/hooks/system.stop-judge/pending" ] && echo yes || echo no)"
 check sentinel "no-db" "$(row sentinel)"
-
-# --judge only consumes files from pending/.
-mkdir -p "$TMP/outside"; cp "$TMP/merge.payload" "$TMP/outside/stop-x.json"
-HOME="$TMP/outside" python3 "$HOOK" --judge "$TMP/outside/stop-x.json"; RC=$?
-check "judge outside pending exit" 0 "$RC"
-check "judge outside pending untouched" yes "$([ -f "$TMP/outside/stop-x.json" ] && echo yes)"
-check "judge outside pending no db" "no-db" "$(row outside)"
-
-# An unclaimed handoff older than 5 minutes is swept; a fresh one is left alone.
-P="$TMP/sweep/.agents/.cache/state/hooks/system.stop-judge/pending"; mkdir -p "$P"
-echo '{}' > "$P/stop-old.json"; echo '{}' > "$P/stop-fresh.json"
-python3 -c 'import os,sys,time; t=time.time()-600; os.utime(sys.argv[1],(t,t))' "$P/stop-old.json"
-run_hook sweep cli "$WORKED" '{}'
-check "sweep stale handoff" "stop-fresh.json " "$(pending sweep)"
-rm -f "$P/stop-fresh.json"
-
-# A handoff that cannot be written is removed, not left holding a partial payload.
-mkdir -p "$TMP/dumpfail"
-( ulimit -f 0; env -u CLAUDE_CODE_EXECPATH -u CLAUDE_CODE_OAUTH_TOKEN HOME="$TMP/dumpfail" PATH="$BIN:$PATH" \
-    CLAUDE_CODE_ENTRYPOINT=cli STUB_LOG="$TMP/dumpfail/stub.log" python3 "$HOOK" < "$TMP/merge.payload" ) \
-  > "$TMP/dumpfail.out" 2>&1; RC=$?
-check_silent_exit0 dumpfail
-check "dumpfail no handoff" "" "$(pending dumpfail)"
 
 # At most two judges run at once; a third records skipped-busy without a model call.
 S="$TMP/busy/.agents/.cache/state/hooks/system.stop-judge/slots"; mkdir -p "$S"
@@ -325,13 +271,6 @@ run_hook busy cli "$WORKED" '{}' STUB_ITEMS="$(item merge_or_approve_pr owner)"
 kill "$holder" 2>/dev/null; wait "$holder" 2>/dev/null
 check busy "0|unjudged|skipped-busy||0" "$(row busy)"
 check "busy no model call" "" "$(grep '^token=' "$TMP/busy/stub.log" 2>/dev/null)"
-
-# Every child consumed its handoff file.
-left=""
-for d in "$TMP"/*/.agents/.cache/state/hooks/system.stop-judge/pending; do
-  [ -n "$(ls "$d")" ] && left="$left ${d#"$TMP"/}"
-done
-check "no handoff left in any case" "" "$left"
 
 # Privacy: rows hold codes and a hash, never message, request, or quote text.
 leaks=""
@@ -418,8 +357,7 @@ check "tv no record no crash" "1|merge_or_approve_pr|ok|merge_or_approve_pr|0" "
 
 # Per-account home: the hook lives at accounts/claude/<id>/.claude/hooks/, so neither
 # CLAUDE_CODE_EXECPATH, the version-home layout, nor PATH finds claude. The claude that
-# fired the hook is its ancestor process; the foreground finds it there and hands it to the
-# detached child. Before that fallback, live rows on this layout read error/no-claude.
+# fired the hook is its ancestor process; the hook finds it there. Before that fallback, live rows on this layout read error/no-claude.
 ACCT="$TMP/accounts/claude/acct-1/.claude/hooks"; mkdir -p "$ACCT" "$TMP/acctbin"
 cp "$HOOK" "$ACCT/08-stop-judge.py"; cp "$HERE/../../lib/credential_catalog.py" "$ACCT/"
 cp "$BIN/claude" "$TMP/acctbin/claude"
@@ -428,6 +366,51 @@ NOCLAUDE2="$TMP/noclaude2"; mkdir -p "$NOCLAUDE2"; ln -sf "$BIN/secrets" "$NOCLA
 HOOK_OVERRIDE="$ACCT/08-stop-judge.py" CLAUDE_PARENT="$TMP/acctbin/claude" \
   run_hook account-home cli "$WORKED" '{}' STUB_ITEMS="$(item merge_or_approve_pr owner)" PATH="$NOCLAUDE2:/usr/bin:/bin"
 check account-home "1|merge_or_approve_pr|ok|merge_or_approve_pr|0" "$(row account-home)"
+
+# The push: verdict continue on a step inside the request, nothing armed -> exit 2 once,
+# the step on stderr, the card says not done, and the row says pushed.
+push() { printf '{"verdict":"continue","step":"%s","items":[{"kind":"offer_investigate","actor":"agent","quote":"want me to?"}]}' "$1"; }
+seed_records push
+run_hook push cli "$WORKED" '{}' STUB_ITEMS="$(push 'create the Project session with the API key')"
+check "push exit" 2 "$RC"
+check "push names the step" yes "$(grep -q 'create the Project session with the API key' "$TMP/push.out" && echo yes)"
+check "push says do it" yes "$(grep -q '^Not done: ' "$TMP/push.out" && echo yes)"
+check "push row" "pushed" "$(row push | cut -d'|' -f2)"
+check "push card" "not_done|False||True" "$(turn push)"
+# The same owner request gets one push only: the next stop passes.
+env -u CLAUDE_CODE_EXECPATH -u CLAUDE_CODE_OAUTH_TOKEN HOME="$TMP/push" PATH="$BIN:$PATH" CLAUDE_CODE_ENTRYPOINT=cli CLAUDE_CONFIG_DIR="$TMP/push/cfg" \
+  STUB_LOG="$TMP/push/stub.log" STUB_BUNDLES="$FILE_AUTH" STUB_ITEMS="$(push 'create the Project session')" \
+  python3 "$HOOK" < "$TMP/push.payload" > "$TMP/push2.out" 2>&1; RC=$?
+check "push once per request" 0 "$RC"
+check "push once silent" "" "$(cat "$TMP/push2.out")"
+# A new owner request earns a new push.
+WORKED2="$LIB
+u('now release it ZEBRA-QUOKKA-7731')
+a_tool('t1','Read'); res('t1')"
+python3 -c "$WORKED2" > "$TMP/push.jsonl"
+env -u CLAUDE_CODE_EXECPATH -u CLAUDE_CODE_OAUTH_TOKEN HOME="$TMP/push" PATH="$BIN:$PATH" CLAUDE_CODE_ENTRYPOINT=cli CLAUDE_CONFIG_DIR="$TMP/push/cfg" \
+  STUB_LOG="$TMP/push/stub.log" STUB_BUNDLES="$FILE_AUTH" STUB_ITEMS="$(push 'release it')" \
+  python3 "$HOOK" < "$TMP/push.payload" > "$TMP/push3.out" 2>&1; RC=$?
+check "push again on a new request" 2 "$RC"
+# Something armed will wake the agent: no push.
+run_hook push-bg cli "$WORKED" '{"background_tasks":[{"id":"b1","type":"shell","status":"running"}]}' STUB_ITEMS="$(push 'merge it')"
+check_silent_exit0 push-bg
+MONITORED="$LIB
+u('land the fix ZEBRA-QUOKKA-7731')
+a_tool('t1','Read'); res('t1'); a_tool('t2','Monitor','gh pr checks 12'); res('t2')"
+run_hook push-monitor cli "$MONITORED" '{}' STUB_ITEMS="$(push 'merge it')"
+check_silent_exit0 push-monitor
+# A ! shell prompt is not a request for work: no push.
+BANG="$LIB
+u('! git pull')
+a_tool('t1','Read'); res('t1')"
+run_hook push-bang cli "$BANG" '{}' STUB_ITEMS="$(push 'pull')"
+check_silent_exit0 push-bang
+# stop_ok, and a continue the model gives no step for under a timeout: no push.
+run_hook push-stopok cli "$WORKED" '{}' STUB_ITEMS='{"verdict":"stop_ok","step":"","items":[]}'
+check_silent_exit0 push-stopok
+run_hook push-timeout cli "$WORKED" '{}' STUB_MODE=sleep STOP_JUDGE_TIMEOUT_S=1
+check_silent_exit0 push-timeout
 
 echo "08-stop-judge: $pass passed, $fail failed"
 [ "$fail" -eq 0 ]
