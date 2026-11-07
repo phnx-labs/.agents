@@ -535,10 +535,30 @@ sleep 1
 if [ "$(grep -c 'Page never opened' "$ALERTS" 2>/dev/null)" = "1" ] && grep -q -- '--blocked' "$ALERTS"; then pass=$((pass+1)); echo "ok   — the hook files exactly one blocked ask"; else fail=$((fail+1)); echo "FAIL — the hook files exactly one blocked ask"; fi
 unset PAGE_BLOCK_CEILING
 
-# 31a. The agent filed a blocked ask naming the page -> ALLOW at once.
-printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"h","name":"Bash","input":{"command":"agents feed post \"Open ~/.local/share/agents/artifacts/2026-11-07/chromatography-agent/: zion is offline\" --title \"Page to open\" --blocked"}}]}}' >> "$TX"
-next_case
-run_page_home 0 "a blocked ask to the owner lets the stop through" "$(STOP_AUTO)"
+handoff_case() {  # handoff_case <rc> <label> <command> <result> [is_error]
+  {
+    printf '%s\n' '{"type":"user","origin":{"kind":"human"},"message":{"role":"user","content":"Is it done? Where are the results?"}}'
+    printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"text","text":"Results are in ~/.local/share/agents/artifacts/2026-11-07/chromatography-agent/: index.html is the walkthrough."}]}}'
+  } > "$TX"
+  python3 -c 'import json,sys; print(json.dumps({"type":"assistant","message":{"content":[{"type":"tool_use","id":"h","name":"Bash","input":{"command":sys.argv[1]}}]}}))' "$3" >> "$TX"
+  python3 -c 'import json,sys; print(json.dumps({"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"h","is_error":sys.argv[2]=="1","content":sys.argv[1]}]}}))' "$4" "${5:-0}" >> "$TX"
+  next_case
+  run_page_home "$1" "$2" "$(STOP_AUTO)"
+}
+
+# 31a. A blocked ask that went out and names the page lets the stop through.
+handoff_case 0 "a posted blocked ask naming the page -> allow" \
+  'agents feed post "Open ~/.local/share/agents/artifacts/2026-11-07/chromatography-agent/: zion is offline" --title "Page to open" --blocked' \
+  'Posted to the owner (blocked).'
+# Anything short of that still blocks (review on #553).
+handoff_case 2 "an echoed blocked ask -> block" \
+  'echo "agents feed post chromatography-agent --blocked"' 'agents feed post chromatography-agent --blocked'
+handoff_case 2 "feed post --help -> block" \
+  'agents feed post --help # chromatography-agent --blocked' 'Usage: agents feed post'
+handoff_case 2 "a blocked ask that failed -> block" \
+  'agents feed post "Open chromatography-agent" --blocked' 'Error: feed unreachable' 1
+handoff_case 2 "a blocked ask that does not name the page -> block" \
+  'agents feed post "Something else is stuck" --blocked' 'Posted to the owner (blocked).'
 
 # 31b. A named artifact that does not exist is a passing mention -> ALLOW.
 {
