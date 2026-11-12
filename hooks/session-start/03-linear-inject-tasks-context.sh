@@ -376,14 +376,17 @@ try:
         gname = g.get('name') or 'unnamed'
         td = ' · by ' + g['targetDate'] if g.get('targetDate') else ''
         print(f'### {rank}. {gname}{td}')
-        # The newest initiative update, when under two days old: on goal 1 that is the founder
+        # The newest initiative update, when under 36 hours old (capped to keep the 2 KB preview): on goal 1 that is the founder
         # pulse rush/api posts every morning (PHNX-4624), the numbers the goal is judged by.
         upd = g.get('lastUpdate') or {}
-        posted = (upd.get('createdAt') or '')[:10]
-        if posted and (datetime.date.fromisoformat(TODAY) - datetime.date.fromisoformat(posted)).days <= 1:
+        try:
+            at = datetime.datetime.fromisoformat((upd.get('createdAt') or '').replace('Z', '+00:00'))
+        except ValueError:
+            at = None
+        if at and datetime.datetime.now(datetime.timezone.utc) - at <= datetime.timedelta(hours=36):
             lines = [l.strip() for l in (upd.get('body') or '').splitlines() if l.strip() and not l.startswith('**')]
             if lines:
-                print(f'**Pulse ({posted}):** ' + ' '.join(lines))
+                print(f'**Pulse ({at.date().isoformat()}):** ' + ' '.join(lines)[:300])
         brief = (g.get('content') or g.get('description') or '').strip()
         if len(brief) > brief_cap:
             brief = brief[:brief_cap].rsplit(None, 1)[0] + '...'
