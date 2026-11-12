@@ -157,7 +157,7 @@ export LINEAR_API_KEY LINEAR_TEAM_ID
 export TODAY=$(date +%F)
 QUERY='{
   initiatives(first: 5, filter: { status: { eq: "Active" } }) {
-    nodes { name description content status targetDate sortOrder projects(first: 20) { nodes { name } } }
+    nodes { name description content status targetDate sortOrder lastUpdate { body createdAt } projects(first: 20) { nodes { name } } }
   }
   viewer { name displayName }
   myDayGoal: issues(first: 1, filter: {
@@ -273,7 +273,7 @@ done
 export LANES
 
 echo "$result" | python3 -c "
-import json, sys, os, re
+import datetime, json, sys, os, re
 
 # Sanitized upstream: this is printed into the injected context, so it must not
 # be able to carry newlines or markup.
@@ -376,6 +376,14 @@ try:
         gname = g.get('name') or 'unnamed'
         td = ' · by ' + g['targetDate'] if g.get('targetDate') else ''
         print(f'### {rank}. {gname}{td}')
+        # The newest initiative update, when under two days old: on goal 1 that is the founder
+        # pulse rush/api posts every morning (PHNX-4624), the numbers the goal is judged by.
+        upd = g.get('lastUpdate') or {}
+        posted = (upd.get('createdAt') or '')[:10]
+        if posted and (datetime.date.fromisoformat(TODAY) - datetime.date.fromisoformat(posted)).days <= 1:
+            lines = [l.strip() for l in (upd.get('body') or '').splitlines() if l.strip() and not l.startswith('**')]
+            if lines:
+                print(f'**Pulse ({posted}):** ' + ' '.join(lines))
         brief = (g.get('content') or g.get('description') or '').strip()
         if len(brief) > brief_cap:
             brief = brief[:brief_cap].rsplit(None, 1)[0] + '...'
