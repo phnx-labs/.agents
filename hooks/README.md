@@ -53,6 +53,7 @@ hooks/
                             json-field.sh (JSON extractor), git-facts.sh (git-fact
                             cache), git-parse.sh (git-command parser),
                             session_record.py (the per-agent-pid session record),
+                            model_call.py (one `claude -p` call from a hook),
                             test-sqlite.sh (stdlib sqlite3 for tests; not a hook)
     tests/                  its *_test.sh files
   promptcuts.yaml         data for promptcuts (internal hook: expand-promptcuts)

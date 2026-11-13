@@ -4,9 +4,10 @@
 #
 # WHY. Every fleet agent authenticates as ONE shared GitHub identity, so
 # pr-verdict.py's self-author exclusion (PHNX-3236) is unsatisfiable under it:
-# the code-reviewer's APPROVE is always "self-authored" and every PR deadlocks
+# the code-reviewer's approval is always "self-authored" and every PR deadlocks
 # onto the human owner (repro: PR #432, merged by hand). owner-mode tells
-# pr-verdict.py to KEEP every laundering/negation/code-fence gate but stop
+# pr-verdict.py to KEEP every other gate (carried-from, formal review state, the
+# model's reading of what the reviews mean) but stop
 # dropping same-login verdicts — used ONLY when the authenticated identity is a
 # trusted fleet owner.
 #

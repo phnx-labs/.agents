@@ -1,0 +1,18 @@
+[
+ [
+  {
+   "user": {
+    "login": "muqsitnawaz"
+   },
+   "created_at": "2026-11-07T10:07:20Z",
+   "body": "Fixes for the independent review, in 633fc89 and fc828b7:\n\n- **`bash bench/setup.sh` on a fresh clone** failed at `node_modules/.bin/bun: No such file or directory`. It now runs `scripts/install.sh` first. Rerun on a clean clone (no `node_modules`, no `bench/.work`):\n  ```\n  52 packages installed [65.00ms]\n  [175ms] compile  dist/linux-arm64/browser\n  browser-cli 0.1.40 (ab35da3): ok (Google Chrome for Testing 153.0.8010.36, 2 open tab(s))\n  browser-use 0.13.14: ok (Google Chrome for Testing 153.0.8010.36, 1 open tab(s))\n  browser-harness 0.1.13: ok (Google Chrome for Testing 153.0.8010.36, 1 open tab(s))\n  agent-browser 0.41.2: ok (Google Chrome for Testing 153.0.8010.36, 1 open tab(s))\n  ```\n- **Graders:**\n  - A failed page fetch other than a 404 past the last page, or a card with no price, is now a grader error and is not counted as a wrong answer. Before, it silently changed the truth.\n  - An Instagram login wall is a grader error.\n  - The isolation test sends grader errors to `errors/`.\n  - Pages are matched by hostname, not by URL substring (the CodeQL alerts).\n- **Docs:**\n  - `docs/benchmarks.md` lists the prerequisites. It says each tool gets an empty HOME, not Claude Code, and that \"no user settings\" means no user settings files. It also says Demoblaze's total is fixed.\n  - The README says `bench/` covers four of the five tools, at its own pinned versions.\n- **The model path ran for real**: `suite --runs 1 --tasks books`, one run per tool, Claude Code 2.1.319:\n  ```\n  browser-use books #1: correct 5 turns 22.9 s $0.0584\n  browser-harness books #1: correct 5 turns 13.4 s $0.0513\n  agent-browser books #1: correct 11 turns 21.8 s $0.0880\n  browser-cli books #1: correct 8 turns 21.4 s $0.0654\n  ```\n  The `claude` flags, the stream-json parsing and `summary` all work. This was one run per tool, through a wrapper that started `claude` from a signed-in agents account, and that account added its own plugins (`init.plugins` recorded them). So these figures are a smoke test, not results.\n\nNot changed:\n- A timed-out run is still counted as a wrong answer with no cost, because Claude Code reports no cost for a killed run.\n- `+dirty` still looks only at `src` and `skills`.\n"
+  },
+  {
+   "user": {
+    "login": "muqsitnawaz"
+   },
+   "created_at": "2026-11-07T10:09:39Z",
+   "body": "**Independent review, head fc828b7: Verdict: APPROVED (ready, no blockers)**\n\nA separate reviewer agent, not the author of these commits, reviewed 633fc89 and fc828b7.\n\n**Blocker from the first review is cleared.** `bench/setup.sh` now runs `scripts/install.sh` before the build, and the prerequisites are documented.\n\n**Earlier review notes are resolved:**\n- The docs now describe the HOME isolation and settings accurately.\n- The README says which of its figures `bench/` reproduces.\n- A grader that cannot read the truth now records an error instead of a wrong answer, in both `suite` and `isolation`.\n\n**The new code checks out:**\n- A 404 past the last page ends the page loop. Any other failed fetch is reported as a grader error.\n- `onSite` rejects lookalike hosts and malformed URLs.\n- A privacy re-grep of the changed files found nothing.\n\n**Not blocking:**\n- If Instagram shows the reproducer a login wall, the Instagram task never produces a result row.\n- A run killed by the timeout is counted with no cost.\n"
+  }
+ ]
+]

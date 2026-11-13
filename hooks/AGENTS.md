@@ -64,7 +64,11 @@ hooks/<event-name>/<hook-file>.{sh,py}
   path, atomic write, and `started_own_session` (whether an ancestor is an agent that
   already reported its own SessionStart, where the identity hook's by-pid walk stops).
   `session-start/04-session-identity.sh` creates it;
-  `stop/verify-work-state.py` merges the Stop `verdict` into it and never creates one. `test-sqlite.sh` is sourced by hook tests
+  `stop/verify-work-state.py` merges the Stop `verdict` into it and never creates one.
+  `model_call.py` is the one way a hook asks a model: `claude -p` with no tools, no
+  user settings (so no hook re-enters), the prompt on stdin, the `auth` secrets bundle,
+  and a process-group kill at the deadline; `stop/08-stop-judge.py` and
+  `rules/subrules/gh-merge-guard/pr-verdict.py` share it. `test-sqlite.sh` is sourced by hook tests
   that query SQLite; it is not a hook. Not event scripts: no `agents.yaml` entry,
   skipped by `registration_test.sh`. Source them by path; do not register them as
   hooks.

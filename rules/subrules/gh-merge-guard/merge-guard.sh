@@ -198,13 +198,15 @@ case "$norm" in
     # Review-on-THIS-PR check (2026-08-15, PR #2736): a merge satisfied the
     # non-author-review convention with "Non-author APPROVE on #2731" — an
     # approval carried from a DIFFERENT PR. A verdict only counts on the PR it
-    # was posted on. Accept either a real GitHub APPROVED review, or the fleet
-    # convention of a non-carried APPROVE verdict in a COMMENTED review body
-    # (`gh pr review --comment`) or an issue comment on this PR. Fail OPEN on
-    # anything the guard cannot resolve
-    # (no number, no repo, API error, rate limit) — a review guard must never
-    # block a legit merge because GitHub hiccuped; --admin blocking above never
-    # fails open.
+    # was posted on. pr-verdict.py decides: a formal GitHub review state first,
+    # then a model reads what the non-author review bodies and comments MEAN
+    # ("PASS", "NON-BLOCKING", "low risk", "Verdict: ready" all approve).
+    # Fail OPEN only on what GitHub cannot tell us (no number, no repo, API
+    # error, rate limit): a review guard must never block a legit merge because
+    # GitHub hiccuped. Fail CLOSED when the verdict itself cannot be read (no
+    # claude, no credential, model timeout, a crash): that is not a GitHub
+    # hiccup, and allowing it would merge unreviewed code. --admin blocking
+    # above never fails open.
     _pr_num=""; _pr_repo=""
     _pr_url=$(printf '%s' "$cmd" | grep -oE 'https://github\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+/pull/[0-9]+' | head -1)
     if [ -n "$_pr_url" ]; then
@@ -240,17 +242,14 @@ case "$norm" in
       fi
     fi
     if [ -n "$_pr_num" ] && [ -n "$_pr_repo" ]; then
-      # 3s per call, but PHNX-3236 made this THREE probes (reviews, comments,
-      # + the PR-author fetch below) against a hook `timeout: 5` (hooks.yaml).
-      # Run them CONCURRENTLY rather than sequentially: worst case stays ~3s
-      # (bounded by the slowest single call) instead of ~9s, which would
-      # routinely exceed the 5s budget and get the whole hook killed by the
-      # harness before it ever reaches the verdict check — a silent fail-open
-      # at the harness layer that is far more likely to fire under realistic
-      # API latency than an outright error. On stock macOS (no timeout/
-      # gtimeout) _to runs gh unbounded — same harness-level fail-open
-      # applies; acceptable for a review probe, never relied on for the admin
-      # block above (which needs no network).
+      # 3s per call, THREE probes (reviews, comments, + the PR-author fetch
+      # below, PHNX-3236), run CONCURRENTLY so the worst case stays ~3s. The
+      # hook's `timeout: 60` (hooks.yaml) must cover these probes plus
+      # pr-verdict.py's own 45s model budget; a harness kill at the timeout is
+      # a silent fail-open, so pr-verdict.py always answers first. On stock
+      # macOS (no timeout/gtimeout) _to runs gh unbounded — the same
+      # harness-level fail-open applies; acceptable for a review probe, never
+      # relied on for the admin block above (which needs no network).
       # Guard dir + owner-mode allowlist file, needed by the pr-verdict.py call
       # and the owner-mode resolution below.
       _GUARD_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
@@ -314,21 +313,33 @@ case "$norm" in
         # base64-encode each segment: a review/comment discussing THIS file
         # (as one did, live, reviewing PHNX-3236 itself) can quote the plain
         # marker text verbatim in its own body, and a plain-text split has no
-        # way to tell a quoted marker from a real one — splitting on the
-        # quoted copy corrupted the JSON on both sides and a genuine approval
-        # read as "missing". Base64's alphabet has no hyphen, so an encoded
-        # segment can never contain "---AGENTS-SPLIT---" — see pr-verdict.py's
-        # module docstring. The 4th segment is owner-mode (PHNX-3950).
+        # way to tell a quoted marker from a real one. Base64's alphabet has no
+        # hyphen, so an encoded segment can never contain "---AGENTS-SPLIT---".
+        # The 4th segment is owner-mode (PHNX-3950). Output: a status line
+        # (ok/changes/missing/unread) and a detail line.
         _verdict=$(printf '%s\n---AGENTS-SPLIT---\n%s\n---AGENTS-SPLIT---\n%s\n---AGENTS-SPLIT---\n%s' \
             "$(printf '%s' "$_reviews" | base64 | tr -d '\n')" \
             "$(printf '%s' "$_comments" | base64 | tr -d '\n')" \
             "$(printf '%s' "$_pr_author" | base64 | tr -d '\n')" \
             "$(printf '%s' "$_owner_mode" | base64 | tr -d '\n')" \
-          | python3 "$_GUARD_DIR/pr-verdict.py" 2>/dev/null) || _verdict="ok"
-        if [ "$_verdict" = "missing" ]; then
-          printf '%s\n' "Blocked: no non-author review verdict found ON this PR ($_pr_repo#$_pr_num). Post a GitHub APPROVED review, a reviewer's closing 'Verdict: ready' line, or an APPROVE/APPROVED verdict in a COMMENTED review body (gh pr review --comment) or an issue comment (gh pr comment), ON the PR being merged — a verdict 'carried from' another PR satisfies nothing (the #2736 laundering pattern). Get the automated reviewer's verdict or spawn a non-author subagent review on THIS PR, then retry." >&2
-          exit 2
-        fi
+          | python3 "$_GUARD_DIR/pr-verdict.py" 2>/dev/null)
+        _status=$(printf '%s\n' "$_verdict" | sed -n 1p)
+        _detail=$(printf '%s\n' "$_verdict" | sed -n 2p)
+        case "$_status" in
+          ok) ;;
+          changes)
+            printf '%s\n' "Blocked: a non-author review on THIS PR ($_pr_repo#$_pr_num) has an open blocking finding: \"$_detail\". Fix it and have the reviewer re-review the new head and say it is fine to merge, then retry." >&2
+            exit 2
+            ;;
+          missing)
+            printf '%s\n' "Blocked: no non-author review on THIS PR ($_pr_repo#$_pr_num) whose stance is approval. Post a formal GitHub APPROVED review, or have a non-author reviewer say in a review or comment ON the PR being merged that it is fine to merge (APPROVE, PASS, LGTM, NON-BLOCKING, low risk, Verdict: ready). A verdict carried from another PR satisfies nothing (the #2736 laundering pattern). Get the automated reviewer's verdict or spawn a non-author subagent review on THIS PR, then retry." >&2
+            exit 2
+            ;;
+          *)
+            printf '%s\n' "Blocked: the review verdict on THIS PR ($_pr_repo#$_pr_num) could not be read: ${_detail:-pr-verdict.py gave no answer}. The guard asks a model what the non-author reviews mean and never merges on a verdict it could not read. Fix that and retry; a formal GitHub APPROVED review clears without the model." >&2
+            exit 2
+            ;;
+        esac
       fi
     fi
     ;;

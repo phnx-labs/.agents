@@ -14,13 +14,15 @@ set -u
 DIR=$(cd "$(dirname "$0")" && pwd)
 GUARD="$DIR/merge-guard.sh"
 
-# gh/git stubs so the review-on-this-PR check never touches the network in
-# tests. Defaults keep every legacy case's expectation: reviews empty, comments
-# carry a fresh APPROVE verdict (so a plain merge stays allowed), PR author is
-# some third identity (so legacy comment fixtures — which carry no user/author
-# field at all — are never self-filtered). Cases override with
+# gh/git stubs so the review-on-this-PR check never touches GitHub in tests.
+# Defaults keep every shell-parsing case's expectation without a model call:
+# a formal APPROVED review from a non-author (so a plain merge stays allowed),
+# no comments, PR author some third identity. Cases override with
 # FAKE_MG_REVIEWS / FAKE_MG_COMMENTS / FAKE_MG_AUTHOR; FAKE_MG_GH_FAIL=1
-# simulates an API error (guard must fail open).
+# simulates an API error (guard must fail open). The cases whose verdict is a
+# review BODY run pr-verdict.py's real model call (FAKE_MG_REAL_HOME=1 gives it
+# the real HOME for the `auth` secrets bundle); pr-verdict_test.sh covers the
+# verdict itself. WANT_MSG greps the block message.
 STUBTMP=$(mktemp -d)
 trap 'rm -rf "$STUBTMP"' EXIT
 mkdir -p "$STUBTMP/bin"
@@ -32,10 +34,10 @@ cat > "$STUBTMP/bin/gh" <<'STUB'
 case "$*" in
   *"/reviews"*)
     if [ -n "${FAKE_MG_REVIEWS+x}" ]; then printf '%s' "$FAKE_MG_REVIEWS"
-    else printf '%s' '[]'; fi ;;
+    else printf '%s' '[{"state":"APPROVED","user":{"login":"reviewer-bot"}}]'; fi ;;
   *"/comments"*)
     if [ -n "${FAKE_MG_COMMENTS+x}" ]; then printf '%s' "$FAKE_MG_COMMENTS"
-    else printf '%s' '[{"body":"Non-author review: APPROVE - verified the diff."}]'; fi ;;
+    else printf '%s' '[]'; fi ;;
   *"api user"*)
     # merge-guard.sh's owner-mode probe: `gh api user --jq '"\(.id) \(.login)"'`
     # (PHNX-3950). Only reached when a trusted-owner id is configured (env/file).
@@ -65,6 +67,7 @@ chmod +x "$STUBTMP/bin/git"
 export PATH="$STUBTMP/bin:$PATH"
 # Hermetic HOME: owner-mode also reads the user-layer ~/.agents/trusted-owner-ids,
 # so a machine that opted in would flip the "no allowlist" case below.
+REAL_HOME=$HOME
 mkdir -p "$STUBTMP/home"
 export HOME="$STUBTMP/home"
 M="mer""ge"      # -> "merge"
@@ -95,13 +98,14 @@ check() {
   desc=$2
   cmd=$3
   json=$(printf '%s' "$cmd" | jq -Rs '{tool_input:{command:.}}')
-  printf '%s' "$json" | "$GUARD" >/dev/null 2>&1
+  _home=$HOME; [ -n "${FAKE_MG_REAL_HOME:-}" ] && _home=$REAL_HOME
+  printf '%s' "$json" | HOME="$_home" "$GUARD" >/dev/null 2>"$STUBTMP/stderr"
   got=$?
-  if [ "$got" -eq "$want" ]; then
+  if [ "$got" -eq "$want" ] && { [ -z "${WANT_MSG:-}" ] || grep -q -- "$WANT_MSG" "$STUBTMP/stderr"; }; then
     pass=$((pass + 1))
   else
     fail=$((fail + 1))
-    printf 'FAIL: %s (want exit %s, got %s)\n  cmd: %s\n' "$desc" "$want" "$got" "$cmd"
+    printf 'FAIL: %s (want exit %s, got %s)\n  cmd: %s\n  stderr: %s\n' "$desc" "$want" "$got" "$cmd" "$(cat "$STUBTMP/stderr")"
   fi
   # A `VAR=val check ...` prefix assignment on a SHELL FUNCTION persists after
   # the call returns (unlike an external command), so `FAKE_MG_GH_FAIL=1 check`
@@ -109,7 +113,7 @@ check() {
   # cases silently passed the wrong way. Clear the per-case fixtures here.
   unset FAKE_MG_GH_FAIL FAKE_MG_REVIEWS FAKE_MG_COMMENTS FAKE_MG_AUTHOR \
         FAKE_MG_USER_ID FAKE_MG_USER_LOGIN AGENTS_MERGE_TRUSTED_OWNER_IDS \
-        FAKE_MG_DIFF_FILES
+        FAKE_MG_DIFF_FILES FAKE_MG_REAL_HOME WANT_MSG CLAUDE_CODE_EXECPATH
 }
 
 # checkc — same as check, but wraps the command in a Grok CLI camelCase payload
@@ -134,7 +138,7 @@ checkc() {
   # cases silently passed the wrong way. Clear the per-case fixtures here.
   unset FAKE_MG_GH_FAIL FAKE_MG_REVIEWS FAKE_MG_COMMENTS FAKE_MG_AUTHOR \
         FAKE_MG_USER_ID FAKE_MG_USER_LOGIN AGENTS_MERGE_TRUSTED_OWNER_IDS \
-        FAKE_MG_DIFF_FILES
+        FAKE_MG_DIFF_FILES FAKE_MG_REAL_HOME WANT_MSG CLAUDE_CODE_EXECPATH
 }
 
 # --- Should BLOCK (exit 2): a genuine --admin bypass merge ---
@@ -206,53 +210,58 @@ checkc 0 "camelCase body mentions it only" \
   "gh pr create --body \"never run gh pr $M 40 $A, it bypasses protection\""
 
 # --- review-on-THIS-PR check (2026-08-15, the #2736 laundering pattern) -----
-# Default stub carries a fresh APPROVE comment -> allowed (covered above by the
-# legit-merge cases). Now the negative space:
+# The default stub carries a formal APPROVED review -> allowed (covered above by
+# the legit-merge cases). Now the negative space and the model-read verdicts.
 
-# No verdict anywhere on the PR -> block.
-FAKE_MG_COMMENTS='[{"body":"looks big, did not review"}]' \
-  check 2 "merge with no APPROVE verdict on the PR blocks" "gh pr $M 42"
-
+# Nothing on the PR -> block, without a model call.
+FAKE_MG_REVIEWS='[]' WANT_MSG='whose stance is approval' \
+  check 2 "merge with nothing posted on the PR blocks" "gh pr $M 42"
 # The verdict is carried from ANOTHER PR -> laundering, block.
-FAKE_MG_COMMENTS='[{"body":"Non-author APPROVE carried from #2731."}]' \
+FAKE_MG_REVIEWS='[]' FAKE_MG_COMMENTS='[{"body":"Non-author APPROVE carried from #2731."}]' \
   check 2 "carried-from verdict does not satisfy the review" "gh pr $M 42"
-FAKE_MG_COMMENTS='[{"body":"Non-author APPROVE on #2731 covers this."}]' \
-  check 2 "APPROVE-on-#N citation does not satisfy the review" "gh pr $M 42"
+# A formal CHANGES_REQUESTED review blocks, naming the finding.
+FAKE_MG_REVIEWS='[{"state":"CHANGES_REQUESTED","user":{"login":"reviewer-bot"},"body":"Null check missing in parse()."}]' \
+  WANT_MSG='open blocking finding: "Null check missing' \
+  check 2 "CHANGES_REQUESTED review blocks" "gh pr $M 42"
 
-# A real GitHub APPROVED review satisfies it even with no comments.
-FAKE_MG_REVIEWS='[{"state":"APPROVED"}]' FAKE_MG_COMMENTS='[]' \
-  check 0 "GitHub APPROVED review satisfies the check" "gh pr $M 42"
-
-# A fresh APPROVE verdict comment satisfies it (the fleet convention).
-FAKE_MG_COMMENTS='[{"body":"## Verdict: APPROVE\nRe-verified both findings."}]' \
-  check 0 "fresh APPROVE verdict comment satisfies the check" "gh pr $M 42"
+# Review bodies are read by the real model.
+FAKE_MG_REAL_HOME=1 FAKE_MG_REVIEWS='[]' FAKE_MG_COMMENTS='[{"user":{"login":"reviewer-bot"},"body":"looks big, did not review"}]' \
+  WANT_MSG='whose stance is approval' \
+  check 2 "merge with no verdict on the PR blocks" "gh pr $M 42"
+FAKE_MG_REAL_HOME=1 FAKE_MG_REVIEWS='[]' FAKE_MG_COMMENTS='[{"user":{"login":"reviewer-bot"},"body":"Independent review: PASS on 2e3933b, low risk."}]' \
+  check 0 "a non-author PASS comment satisfies the check" "gh pr $M 42 -R acme/widgets"
+FAKE_MG_REAL_HOME=1 FAKE_MG_REVIEWS='[]' FAKE_MG_COMMENTS='[{"user":{"login":"reviewer-bot"},"body":"NOT APPROVED: blocking bug, the retry loop never ends."}]' \
+  WANT_MSG='open blocking finding' \
+  check 2 "a non-author blocking comment blocks" "gh pr $M https://github.com/acme/widgets/pull/42"
+# The verdict cannot be read (a broken claude) -> block, never allow.
+FAKE_MG_REAL_HOME=1 CLAUDE_CODE_EXECPATH=/bin/false FAKE_MG_REVIEWS='[]' \
+  FAKE_MG_COMMENTS='[{"user":{"login":"reviewer-bot"},"body":"LGTM"}]' WANT_MSG='could not be read' \
+  check 2 "an unreadable verdict blocks" "gh pr $M 42"
 
 # API failure -> fail OPEN (a review guard must not block on a GitHub hiccup).
 FAKE_MG_GH_FAIL=1 \
   check 0 "API error fails open" "gh pr $M 42"
 
-# URL-form merge resolves repo+number from the URL.
-FAKE_MG_COMMENTS='[{"body":"no verdict here"}]' \
+# URL-form and -R forms resolve the repo (RUSH-3032: missing -R support probed
+# the CWD repo's PR and blocked a legitimate merge).
+FAKE_MG_REVIEWS='[]' \
   check 2 "URL-form merge without verdict blocks" "gh pr $M https://github.com/acme/widgets/pull/42"
-
-# -R short flag resolves the repo the same as --repo (RUSH-3032: missing -R
-# support probed the CWD repo's PR and blocked a legitimate merge).
-FAKE_MG_COMMENTS='[{"body":"VERDICT: APPROVE"}]' \
-  check 0 "-R short-flag repo with APPROVE verdict passes" "gh pr $M 42 -R acme/widgets"
-FAKE_MG_COMMENTS='[{"body":"no verdict"}]' \
+check 0 "-R short-flag repo with an approval passes" "gh pr $M 42 -R acme/widgets"
+FAKE_MG_REVIEWS='[]' \
   check 2 "-R short-flag repo without verdict blocks" "gh pr $M 42 -R acme/widgets"
-FAKE_MG_COMMENTS='[{"body":"VERDICT: APPROVE"}]' \
-  check 0 "-Rrepo concatenated form resolves the repo" "gh pr $M 42 -Racme/widgets"
+check 0 "-Rrepo concatenated form resolves the repo" "gh pr $M 42 -Racme/widgets"
 
 # --- PHNX-3236: self-merge bypass ------------------------------------------
-# The PR's own author posting their own "APPROVE" comment must NOT satisfy
-# the review — every fleet agent shares one GitHub identity, so nothing but
-# this author comparison stops the PR's opener from clearing its own guard.
-FAKE_MG_AUTHOR='fleet-bot' \
+# The PR's own author posting their own approval must NOT satisfy the review —
+# every fleet agent shares one GitHub identity, so nothing but this author
+# comparison stops the PR's opener from clearing its own guard.
+FAKE_MG_AUTHOR='fleet-bot' FAKE_MG_REVIEWS='[]' \
   FAKE_MG_COMMENTS='[{"user":{"login":"fleet-bot"},"body":"VERDICT: APPROVE"}]' \
   check 2 "self-authored APPROVE comment does not satisfy the review" "gh pr $M 42"
-# A non-author APPROVE still clears it once the author is known and differs.
-FAKE_MG_AUTHOR='fleet-bot' \
+FAKE_MG_AUTHOR='fleet-bot' FAKE_MG_REVIEWS='[{"state":"APPROVED","user":{"login":"fleet-bot"}}]' \
+  check 2 "self-authored formal APPROVED does not satisfy the review" "gh pr $M 42"
+# A non-author approval still clears it once the author is known and differs.
+FAKE_MG_REAL_HOME=1 FAKE_MG_AUTHOR='fleet-bot' FAKE_MG_REVIEWS='[]' \
   FAKE_MG_COMMENTS='[{"user":{"login":"reviewer-bot"},"body":"VERDICT: APPROVE"}]' \
   check 0 "non-author APPROVE still satisfies the review once author is resolved" "gh pr $M 42"
 
@@ -260,30 +269,30 @@ FAKE_MG_AUTHOR='fleet-bot' \
 # owner-mode engages only when the PR's OWN AUTHOR is the trusted owner: the
 # authenticated id (FAKE_MG_USER_ID) is in the allowlist AND the authenticated
 # login (FAKE_MG_USER_LOGIN) equals the PR author (FAKE_MG_AUTHOR). Then a
-# self-authored APPROVE clears the guard so an owner agent stops handing every
+# self-authored approval clears the guard so an owner agent stops handing every
 # merge to the human.
-FAKE_MG_AUTHOR='fleet-bot' FAKE_MG_USER_ID='13007401' FAKE_MG_USER_LOGIN='fleet-bot' AGENTS_MERGE_TRUSTED_OWNER_IDS='13007401' \
-  FAKE_MG_COMMENTS='[{"user":{"login":"fleet-bot"},"body":"VERDICT: APPROVE"}]' \
-  check 0 "owner-mode: self-authored APPROVE clears when the PR author is the trusted owner" "gh pr $M 42"
+FAKE_MG_REAL_HOME=1 FAKE_MG_AUTHOR='fleet-bot' FAKE_MG_USER_ID='13007401' FAKE_MG_USER_LOGIN='fleet-bot' AGENTS_MERGE_TRUSTED_OWNER_IDS='13007401' \
+  FAKE_MG_REVIEWS='[]' FAKE_MG_COMMENTS='[{"user":{"login":"fleet-bot"},"body":"Independent review (subagent, non-author): NON-BLOCKING, approve as is."}]' \
+  check 0 "owner-mode: self-authored approval clears when the PR author is the trusted owner" "gh pr $M 42"
 # SECURITY (reviewer BLOCKER): a trusted owner merging a THIRD PARTY's PR must
 # NOT get that party's own self-approval counted — owner-mode is keyed on the PR
 # AUTHOR being the owner, not on who runs the merge. Author != authed login ->
 # owner-mode OFF -> the external self-approval is excluded -> blocked.
 FAKE_MG_AUTHOR='external-contributor' FAKE_MG_USER_ID='13007401' FAKE_MG_USER_LOGIN='fleet-bot' AGENTS_MERGE_TRUSTED_OWNER_IDS='13007401' \
-  FAKE_MG_COMMENTS='[{"user":{"login":"external-contributor"},"body":"VERDICT: APPROVE"}]' \
+  FAKE_MG_REVIEWS='[]' FAKE_MG_COMMENTS='[{"user":{"login":"external-contributor"},"body":"VERDICT: APPROVE"}]' \
   check 2 "owner-mode: a trusted owner does NOT clear a third party's self-approval" "gh pr $M 55"
 # A DIFFERENT authenticated id (not in the allowlist) -> owner-mode OFF -> the
 # self-authored APPROVE is excluded and the merge is blocked. "no one else."
 FAKE_MG_AUTHOR='fleet-bot' FAKE_MG_USER_ID='99999999' FAKE_MG_USER_LOGIN='fleet-bot' AGENTS_MERGE_TRUSTED_OWNER_IDS='13007401' \
-  FAKE_MG_COMMENTS='[{"user":{"login":"fleet-bot"},"body":"VERDICT: APPROVE"}]' \
+  FAKE_MG_REVIEWS='[]' FAKE_MG_COMMENTS='[{"user":{"login":"fleet-bot"},"body":"VERDICT: APPROVE"}]' \
   check 2 "owner-mode: a non-trusted identity is still blocked on a self-authored APPROVE" "gh pr $M 42"
 # No allowlist configured -> owner-mode never engages even if a user id resolves.
 FAKE_MG_AUTHOR='fleet-bot' FAKE_MG_USER_ID='13007401' FAKE_MG_USER_LOGIN='fleet-bot' \
-  FAKE_MG_COMMENTS='[{"user":{"login":"fleet-bot"},"body":"VERDICT: APPROVE"}]' \
+  FAKE_MG_REVIEWS='[]' FAKE_MG_COMMENTS='[{"user":{"login":"fleet-bot"},"body":"VERDICT: APPROVE"}]' \
   check 2 "owner-mode: no allowlist means a self-authored APPROVE stays blocked" "gh pr $M 42"
 # Owner-mode never merges UNREVIEWED code: no verdict at all still blocks.
-FAKE_MG_AUTHOR='fleet-bot' FAKE_MG_USER_ID='13007401' FAKE_MG_USER_LOGIN='fleet-bot' AGENTS_MERGE_TRUSTED_OWNER_IDS='13007401' \
-  FAKE_MG_COMMENTS='[{"user":{"login":"fleet-bot"},"body":"no verdict here"}]' \
+FAKE_MG_REAL_HOME=1 FAKE_MG_AUTHOR='fleet-bot' FAKE_MG_USER_ID='13007401' FAKE_MG_USER_LOGIN='fleet-bot' AGENTS_MERGE_TRUSTED_OWNER_IDS='13007401' \
+  FAKE_MG_REVIEWS='[]' FAKE_MG_COMMENTS='[{"user":{"login":"fleet-bot"},"body":"no verdict here"}]' \
   check 2 "owner-mode: still blocks when there is no verdict at all" "gh pr $M 42"
 # --admin is blocked for a trusted owner too (owner merges plainly; the ruleset
 # exemption + GitHub-enforced CI still apply). Trigger word assembled to dodge
@@ -298,7 +307,7 @@ FAKE_MG_DIFF_FILES=$'README.md\nCHANGELOG.md\ndocs/guide.txt' \
   check 0 "non-code fast path: docs-only PR merges without review" "gh pr $M 80"
 # Mixed PR: one .ts file among docs. Full review path must run.
 FAKE_MG_DIFF_FILES=$'README.md\nsrc/index.ts\nCHANGELOG.md' \
-  check 0 "non-code fast path: mixed PR with code goes to full review (has APPROVE)" "gh pr $M 80"
+  check 0 "non-code fast path: mixed PR with code goes to full review (has an approval)" "gh pr $M 80"
 # Config-only but touches .github/workflows — critical path, must NOT fast-path.
 FAKE_MG_DIFF_FILES=$'README.md\n.github/workflows/ci.yml' \
   FAKE_MG_REVIEWS='[]' FAKE_MG_COMMENTS='[]' \
@@ -316,7 +325,7 @@ FAKE_MG_DIFF_FILES=$'config/settings.yaml\ndata/fixtures.json\nrules/subrules/fo
   check 0 "non-code fast path: config/rules PR without critical paths merges" "gh pr $M 80"
 # Empty diff (gh pr diff failed) — must NOT fast-path (fail closed).
 FAKE_MG_DIFF_FILES='' \
-  check 0 "non-code fast path: empty diff falls through to full review (has APPROVE)" "gh pr $M 80"
+  check 0 "non-code fast path: empty diff falls through to full review (has an approval)" "gh pr $M 80"
 
 # --- Other admin-bypass merge paths (2026-10-04) ----------------------------
 # With enforce_admins off, the shared owner account can merge past pending or red

@@ -1,0 +1,18 @@
+[
+ [
+  {
+   "user": {
+    "login": "muqsitnawaz"
+   },
+   "created_at": "2026-10-17T13:53:30Z",
+   "body": "Independent review (subagent, non-author): NON-BLOCKING, approve as is. The diagnosis checks out: `accepting()` in `src/monitor/endpoint.ts:25-34` connects and calls `probe.destroy()` right away, so the stand-in's `socket.end` can EPIPE. Production servers already handle this (`broadcast.ts:98`, `:275`). The behavior assertions (`readForeign`, `EADDRINUSE`, the recovery checks) are unchanged."
+  },
+  {
+   "user": {
+    "login": "muqsitnawaz"
+   },
+   "created_at": "2026-10-27T02:08:32Z",
+   "body": "Verdict: APPROVE (independent non-author subagent review). The swallowed errors are only the stand-in server's accepted sockets; readForeign keeps its own error reject and every leader assertion (stderr EADDRINUSE count, producers, post-recovery reset) is untouched. Still applies on current main (src/monitor/leader.bootstrap.test.ts:142-146)."
+  }
+ ]
+]

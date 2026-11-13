@@ -16,7 +16,7 @@ BIN="$TMP/bin"; mkdir -p "$BIN"
 cat > "$BIN/claude" <<'STUB'
 #!/usr/bin/env bash
 printf 'token=%s thinking=%s cwd=%s\n' "${CLAUDE_CODE_OAUTH_TOKEN:-}" "${MAX_THINKING_TOKENS:-}" "$PWD" >> "$STUB_LOG"
-printf 'env ep=%s child=%s acctkey=%s\n' "${CLAUDE_CODE_ENTRYPOINT:-}" "${STOP_JUDGE_CHILD:-}" "${STOP_JUDGE_ACCOUNT_KEY:-}" >> "$STUB_LOG"
+printf 'env ep=%s child=%s acctkey=%s\n' "${CLAUDE_CODE_ENTRYPOINT:-}" "${STOP_JUDGE_CHILD:-}" "${MODEL_CALL_ACCOUNT_KEY:-}" >> "$STUB_LOG"
 python3 -c 'import json,sys; print(json.dumps(sys.argv[1:]))' "$@" > "$STUB_LOG.argv"
 cat > "$STUB_LOG.stdin"
 [ -n "${STUB_SLEEP:-}" ] && sleep "$STUB_SLEEP"
@@ -291,7 +291,7 @@ check "manifest names only" "auth,stripe.com|agent-profile" \
 # what a live hook sees; before claude_binary() it recorded error/no-claude.
 VER="$TMP/versions/claude/9.9.9"; mkdir -p "$VER/home/.claude/hooks" "$VER/node_modules/.bin"
 cp "$HOOK" "$VER/home/.claude/hooks/08-stop-judge.py"
-cp "$HERE/../../lib/credential_catalog.py" "$VER/home/.claude/hooks/credential_catalog.py"
+cp "$HERE/../../lib/credential_catalog.py" "$HERE/../../lib/model_call.py" "$VER/home/.claude/hooks/"
 cp "$BIN/claude" "$VER/node_modules/.bin/claude"
 NOCLAUDE="$TMP/noclaude"; mkdir -p "$NOCLAUDE"; ln -sf "$BIN/secrets" "$NOCLAUDE/secrets"; ln -sf "$BIN/browser" "$NOCLAUDE/browser"
 HOOK_OVERRIDE="$VER/home/.claude/hooks/08-stop-judge.py" \
@@ -359,7 +359,7 @@ check "tv no record no crash" "1|merge_or_approve_pr|ok|merge_or_approve_pr|0" "
 # CLAUDE_CODE_EXECPATH, the version-home layout, nor PATH finds claude. The claude that
 # fired the hook is its ancestor process; the hook finds it there. Before that fallback, live rows on this layout read error/no-claude.
 ACCT="$TMP/accounts/claude/acct-1/.claude/hooks"; mkdir -p "$ACCT" "$TMP/acctbin"
-cp "$HOOK" "$ACCT/08-stop-judge.py"; cp "$HERE/../../lib/credential_catalog.py" "$ACCT/"
+cp "$HOOK" "$ACCT/08-stop-judge.py"; cp "$HERE/../../lib/credential_catalog.py" "$HERE/../../lib/model_call.py" "$ACCT/"
 cp "$BIN/claude" "$TMP/acctbin/claude"
 NOCLAUDE2="$TMP/noclaude2"; mkdir -p "$NOCLAUDE2"; ln -sf "$BIN/secrets" "$NOCLAUDE2/secrets"; ln -sf "$BIN/browser" "$NOCLAUDE2/browser"
 # Run the hook under a parent whose argv[0] is the stub claude's absolute path.
