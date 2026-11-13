@@ -3,6 +3,7 @@
 
 A PR is merge-clearing when EITHER:
   - a GitHub review has state APPROVED, OR
+  - a non-author reviewer's LATEST `Verdict:` line reads `Verdict: ready`, OR
   - a whole-word APPROVE or APPROVED that is not a carried-from citation (the #2736
     laundering pattern), does not have a refusal attached to THAT token
     (PHNX-3118 — "NOT APPROVED", "do not approve", "refuse to APPROVE"), and is
@@ -61,6 +62,12 @@ CARRIED = re.compile(
     re.I,
 )
 APPROVE = re.compile(r"\bAPPROVED?\b")
+
+# A configured repo reviewer (pr-care's "Review PRs" automation) ends each review
+# with one line, exactly `Verdict: ready` or `Verdict: changes needed`. Only the
+# reviewer's LATEST such line counts, so a "ready" on an older head is withdrawn
+# by a later "changes needed" from the same login.
+VERDICT_LINE = re.compile(r"^[ \t]*Verdict:[ \t]*(ready|changes needed)[ \t]*$", re.I | re.M)
 
 # PHNX-3118: matching a bare APPROVE anywhere in the body has no notion of
 # whether the body is USING the word as a verdict or NEGATING it. An explicit
@@ -301,7 +308,25 @@ def has_verdict(reviews, comments, pr_author: str, owner_mode: bool = False) -> 
     # whose body happens to contain APPROVE must NOT clear the guard, or a
     # rejecting/stale review would launder itself into an approval.
     commented = [r for r in non_author_reviews if r.get("state") == "COMMENTED"]
-    return _body_approves(commented) or _body_approves(non_author_comments)
+    return (
+        _body_approves(commented)
+        or _body_approves(non_author_comments)
+        or _latest_verdict_ready(commented + non_author_comments)
+    )
+
+
+def _latest_verdict_ready(items) -> bool:
+    """True if some login's most recent `Verdict:` line (outside code) is ready."""
+    latest = {}
+    for it in items:
+        lines = VERDICT_LINE.findall(_strip_code(it.get("body") or ""))
+        if not lines:
+            continue
+        when = it.get("submitted_at") or it.get("created_at") or ""
+        login = _item_login(it).casefold()
+        if login not in latest or when >= latest[login][0]:
+            latest[login] = (when, lines[-1].lower())
+    return any(v == "ready" for _, v in latest.values())
 
 
 def verdict_from_stdin(raw: str) -> str:

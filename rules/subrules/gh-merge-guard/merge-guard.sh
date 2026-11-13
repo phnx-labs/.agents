@@ -258,9 +258,9 @@ case "$norm" in
       _owner_mode=0
       _pr_tmp=$(mktemp -d 2>/dev/null) || _pr_tmp=""
       if [ -n "$_pr_tmp" ]; then
-        ( _to 3 gh api "repos/$_pr_repo/pulls/$_pr_num/reviews" --cache 60s \
+        ( _to 3 gh api "repos/$_pr_repo/pulls/$_pr_num/reviews" \
             >"$_pr_tmp/reviews.out" 2>/dev/null; echo $? >"$_pr_tmp/reviews.rc" ) &
-        ( _to 3 gh api "repos/$_pr_repo/issues/$_pr_num/comments" --cache 60s \
+        ( _to 3 gh api "repos/$_pr_repo/issues/$_pr_num/comments" \
             >"$_pr_tmp/comments.out" 2>/dev/null; echo $? >"$_pr_tmp/comments.rc" ) &
         # PHNX-3236: the PR's own author, so pr-verdict.py can exclude any
         # review/comment authored by them (a self-merge bypass — every fleet
@@ -326,7 +326,7 @@ case "$norm" in
             "$(printf '%s' "$_owner_mode" | base64 | tr -d '\n')" \
           | python3 "$_GUARD_DIR/pr-verdict.py" 2>/dev/null) || _verdict="ok"
         if [ "$_verdict" = "missing" ]; then
-          printf '%s\n' "Blocked: no non-author review verdict found ON this PR ($_pr_repo#$_pr_num). Post a GitHub APPROVED review, or an APPROVE/APPROVED verdict in a COMMENTED review body (gh pr review --comment) or an issue comment (gh pr comment), ON the PR being merged — a verdict 'carried from' another PR satisfies nothing (the #2736 laundering pattern). Get the automated reviewer's verdict or spawn a non-author subagent review on THIS PR, then retry." >&2
+          printf '%s\n' "Blocked: no non-author review verdict found ON this PR ($_pr_repo#$_pr_num). Post a GitHub APPROVED review, a reviewer's closing 'Verdict: ready' line, or an APPROVE/APPROVED verdict in a COMMENTED review body (gh pr review --comment) or an issue comment (gh pr comment), ON the PR being merged — a verdict 'carried from' another PR satisfies nothing (the #2736 laundering pattern). Get the automated reviewer's verdict or spawn a non-author subagent review on THIS PR, then retry." >&2
           exit 2
         fi
       fi
