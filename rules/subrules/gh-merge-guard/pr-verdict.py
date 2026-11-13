@@ -9,7 +9,7 @@ Hard gates first, in code:
   - Each login's latest formal review state decides first: CHANGES_REQUESTED
     blocks, APPROVED clears outright. A dismissed review is neither.
   - An approval only counts when the model's quote is found, verbatim, in an item
-    that does not cite a verdict "carried from" another PR (#2736: a verdict only
+    whose quoted line does not cite a verdict "carried from" another PR (#2736: a verdict only
     counts on the PR it was posted on). Such items still reach the model, so a
     blocking finding inside one still blocks. A quote found nowhere is unread.
 
@@ -191,9 +191,17 @@ def read_verdict(items: list[dict], pr_author: str, owner_mode: bool) -> tuple[s
     holders = [it for it in items if _norm(quote) and _norm(quote) in _norm(it["body"])]
     if not holders:
         return "unread", "the model's approving quote is not in any review on this PR: " + _one_line(quote, 120)
-    if all(CARRIED.search(it["body"]) for it in holders):
+    if all(_cites_other_pr(it["body"], quote) for it in holders):
         return "missing", ""
     return "ok", _one_line(quote)
+
+
+def _cites_other_pr(body: str, quote: str) -> bool:
+    """Whether the line carrying the quote cites a verdict carried from another PR
+    ("APPROVE carried from #2731"). Only that line counts, so a review that merely
+    discusses carried-from citations elsewhere still approves."""
+    lines = [ln for ln in body.split("\n") if _norm(quote) in _norm(ln)]
+    return bool(CARRIED.search("\n".join(lines) if lines else body))
 
 
 def _norm(text: str) -> str:
