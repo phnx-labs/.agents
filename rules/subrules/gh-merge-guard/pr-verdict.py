@@ -260,7 +260,15 @@ def _body_approves(items) -> bool:
     return False
 
 
+def _flatten_pages(items):
+    """`gh api --paginate --slurp` wraps each page in its own list."""
+    if isinstance(items, list) and all(isinstance(p, list) for p in items):
+        return [it for page in items for it in page]
+    return items
+
+
 def has_verdict(reviews, comments, pr_author: str, owner_mode: bool = False) -> bool:
+    reviews, comments = _flatten_pages(reviews), _flatten_pages(comments)
     # PHNX-3236: exclude anything authored by the PR's own author FIRST, from
     # both reviews and comments, before checking state or body text. GitHub's
     # API does reject an attempt to submit a formal APPROVED review on your
@@ -311,23 +319,36 @@ def has_verdict(reviews, comments, pr_author: str, owner_mode: bool = False) -> 
     return (
         _body_approves(commented)
         or _body_approves(non_author_comments)
-        or _latest_verdict_ready(commented + non_author_comments)
+        or _latest_verdict_ready(non_author_reviews, non_author_comments)
     )
 
 
-def _latest_verdict_ready(items) -> bool:
-    """True if some login's most recent `Verdict:` line (outside code) is ready."""
-    latest = {}
-    for it in items:
-        lines = VERDICT_LINE.findall(_strip_code(it.get("body") or ""))
-        if not lines:
-            continue
-        when = it.get("submitted_at") or it.get("created_at") or ""
+def _latest_verdict_ready(reviews, comments) -> bool:
+    """True if some login's latest verdict is a `Verdict: ready` line (outside
+    code, with no carried-from or refused APPROVE in the same body). A later
+    `changes needed` or CHANGES_REQUESTED review from that login withdraws it,
+    and a withdrawal with no timestamp withdraws it whatever the order."""
+    latest, withdrawn = {}, set()
+    items = [(r, "changes needed") for r in reviews if r.get("state") == "CHANGES_REQUESTED"]
+    items += [(it, None) for it in reviews if it.get("state") == "COMMENTED"] + [(it, None) for it in comments]
+    for it, verdict in items:
+        raw = (it.get("body") or "").replace("\r\n", "\n").replace("\r", "\n")
+        if verdict is None:
+            lines = VERDICT_LINE.findall(_strip_code(raw))
+            if not lines:
+                continue
+            verdict = lines[-1].lower()
+            if verdict == "ready" and (
+                CARRIED.search(raw) or any(_token_negated(raw, m.start()) for m in APPROVE.finditer(raw))
+            ):
+                continue
         login = _item_login(it).casefold()
+        when = it.get("submitted_at") or it.get("created_at") or ""
+        if verdict != "ready" and not when:
+            withdrawn.add(login)
         if login not in latest or when >= latest[login][0]:
-            latest[login] = (when, lines[-1].lower())
-    return any(v == "ready" for _, v in latest.values())
-
+            latest[login] = (when, verdict)
+    return any(v == "ready" and k not in withdrawn for k, (_, v) in latest.items())
 
 def verdict_from_stdin(raw: str) -> str:
     # Base64 segments joined by the plain-text marker. None of the segments can

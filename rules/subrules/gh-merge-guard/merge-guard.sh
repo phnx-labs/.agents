@@ -258,9 +258,9 @@ case "$norm" in
       _owner_mode=0
       _pr_tmp=$(mktemp -d 2>/dev/null) || _pr_tmp=""
       if [ -n "$_pr_tmp" ]; then
-        ( _to 3 gh api "repos/$_pr_repo/pulls/$_pr_num/reviews" \
+        ( _to 3 gh api "repos/$_pr_repo/pulls/$_pr_num/reviews" --paginate --slurp \
             >"$_pr_tmp/reviews.out" 2>/dev/null; echo $? >"$_pr_tmp/reviews.rc" ) &
-        ( _to 3 gh api "repos/$_pr_repo/issues/$_pr_num/comments" \
+        ( _to 3 gh api "repos/$_pr_repo/issues/$_pr_num/comments" --paginate --slurp \
             >"$_pr_tmp/comments.out" 2>/dev/null; echo $? >"$_pr_tmp/comments.rc" ) &
         # PHNX-3236: the PR's own author, so pr-verdict.py can exclude any
         # review/comment authored by them (a self-merge bypass — every fleet
