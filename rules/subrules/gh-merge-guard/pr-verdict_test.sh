@@ -316,5 +316,14 @@ check missing "ready mid-sentence is not a verdict line" '[]' '[{"user":{"login"
 check missing "ready quoted in a code fence" '[]' '[{"user":{"login":"reviewer-bot"},"body":"The bot prints:\n```\nVerdict: ready\n```"}]'
 check missing "self-authored Verdict: ready without owner-mode" '[]' '[{"user":{"login":"pr-author-bot"},"body":"Verdict: ready"}]'
 
+check missing "CRLF changes needed withdraws an earlier ready" '[]' '[{"user":{"login":"reviewer-bot"},"created_at":"2026-11-12T15:34:01Z","body":"Verdict: ready"},{"user":{"login":"reviewer-bot"},"created_at":"2026-11-12T15:36:42Z","body":"Found bug\r\nVerdict: changes needed\r\n"}]'
+check ok "CRLF ready clears" '[]' '[{"user":{"login":"reviewer-bot"},"created_at":"2026-11-12T15:36:42Z","body":"All good\r\nVerdict: ready\r\n"}]'
+check missing "carried-from beside Verdict: ready" '[]' '[{"user":{"login":"reviewer-bot"},"body":"Verdict carried from #2736.\nVerdict: ready"}]'
+check missing "refused APPROVE beside Verdict: ready" '[]' '[{"user":{"login":"reviewer-bot"},"body":"I do NOT APPROVE this.\nVerdict: ready"}]'
+check missing "later CHANGES_REQUESTED review withdraws a ready comment" '[{"state":"CHANGES_REQUESTED","user":{"login":"reviewer-bot"},"submitted_at":"2026-11-12T15:36:42Z","body":"bug"}]' '[{"user":{"login":"reviewer-bot"},"created_at":"2026-11-12T15:34:01Z","body":"Verdict: ready"}]'
+check missing "untimed changes needed withdraws a timed ready" '[]' '[{"user":{"login":"reviewer-bot"},"created_at":"2026-11-12T15:34:01Z","body":"Verdict: ready"},{"user":{"login":"reviewer-bot"},"body":"Verdict: changes needed"}]'
+check missing "paginated pages: changes needed on page 2 withdraws page 1 ready" '[]' '[[{"user":{"login":"reviewer-bot"},"created_at":"2026-11-12T15:34:01Z","body":"Verdict: ready"}],[{"user":{"login":"reviewer-bot"},"created_at":"2026-11-12T15:36:42Z","body":"Verdict: changes needed"}]]'
+check ok "paginated pages: APPROVE on page 2 clears" '[]' '[[{"user":{"login":"reviewer-bot"},"body":"looks big"}],[{"user":{"login":"reviewer-bot"},"body":"VERDICT: APPROVE"}]]'
+
 printf -- '---\npr-verdict: %s passed, %s failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]
