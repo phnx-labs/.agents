@@ -57,8 +57,6 @@ check missing "self-authored comment is excluded" '[]' "[{\"user\":{\"login\":\"
 check missing "self-authored formal APPROVED is excluded" "[{\"state\":\"APPROVED\",\"user\":{\"login\":\"PR-Author-Bot\"}}]" '[]'
 check missing "self-authored, GraphQL author.login shape" '[]' "[{\"author\":{\"login\":\"$AUTHOR\"},\"body\":\"VERDICT: APPROVE\"}]"
 check ok "owner-mode: self-authored formal APPROVED clears" "[{\"state\":\"APPROVED\",\"user\":{\"login\":\"$AUTHOR\"}}]" '[]' "$AUTHOR" 1
-check missing "approval carried from another PR does not count" '[]' "[{\"user\":$R,\"body\":\"Non-author APPROVE carried from #2731.\"}]"
-check missing "APPROVED on #N citation does not count" '[]' "[{\"user\":$R,\"body\":\"APPROVED on #2731 covers this.\"}]"
 check missing "nothing posted" '[]' '[]'
 check missing "real PR, owner-mode off: every item is the author's own" \
   "$(fixture agents-system-544 reviews)" "$(fixture agents-system-544 comments)" "$OWNER" 0
@@ -104,6 +102,10 @@ check changes "a refusal that also mentions the word" '[]' \
   "[{\"user\":$R,\"body\":\"I do NOT APPROVE this. Just checking the regex: APPROVE.\"}]"
 check missing "APPROVE only quoted in code, no verdict given" '[]' \
   "[{\"user\":$R,\"body\":\"Repro of the false positive:\\n\`\`\`\\nVERDICT: APPROVE\\n\`\`\`\\nThat is quoted, not my verdict. Still reviewing.\"}]"
+check missing "approval carried from another PR does not count" '[]' "[{\"user\":$R,\"body\":\"Non-author APPROVE carried from #2731.\"}]"
+check missing "APPROVED on #N citation does not count" '[]' "[{\"user\":$R,\"body\":\"APPROVED on #2731 covers this.\"}]"
+check changes "a blocking finding that mentions 'carried over from' still blocks" '[]' \
+  "[{\"user\":$R,\"created_at\":\"2026-11-12T10:00:00Z\",\"body\":\"LGTM\"},{\"user\":{\"login\":\"second-reviewer\"},\"created_at\":\"2026-11-12T11:00:00Z\",\"body\":\"BLOCKING: this regression was carried over from the refactor; save() now drops the last row.\"}]"
 check missing "a comment that reviewed nothing" '[]' "[{\"user\":$R,\"body\":\"looks big, did not review\"}]"
 check ok "plain-English approval: low risk, good to go" '[]' \
   "[{\"user\":$R,\"body\":\"Read the whole diff. Low risk, good to go.\"}]"
