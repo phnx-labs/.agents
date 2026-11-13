@@ -8,8 +8,10 @@ Hard gates first, in code:
     IS the trusted fleet owner, whose reviewer agents post under that login).
   - Each login's latest formal review state decides first: CHANGES_REQUESTED
     blocks, APPROVED clears outright. A dismissed review is neither.
-  - A review or comment citing a verdict "carried from" another PR is dropped
-    (#2736: a verdict only counts on the PR it was posted on).
+  - An approval only counts when the model's quote is found, verbatim, in an item
+    that does not cite a verdict "carried from" another PR (#2736: a verdict only
+    counts on the PR it was posted on). Such items still reach the model, so a
+    blocking finding inside one still blocks. A quote found nowhere is unread.
 
 What the remaining COMMENTED review bodies and issue comments MEAN is read by a
 model, not matched by words: a reviewer writes "PASS on 2e3933b", "NON-BLOCKING,
@@ -49,7 +51,7 @@ MODEL = "claude-haiku-5-5"
 # merge-guard's gh probes take up to 3 s before this runs; hooks.yaml gives the hook 60 s.
 BUDGET_S = 45.0
 CALL_S = 20.0            # one call usually answers in 2-4 s; a stalled one is retried once
-BODY_CHARS = 8000        # per item: head and tail of a longer body
+BODY_CHARS = 20000       # per item: head and tail of a longer body
 TOTAL_CHARS = 120_000    # newest items first when the PR has more
 CHILD_SENTINEL = "MERGE_GUARD_CHILD"
 
@@ -67,7 +69,7 @@ Decide the reviewers' current stance on THIS pull request:
 When author_items_included is true, the author's login also posts for reviewer agents; an author item counts as a verdict only when it gives one as a review, not when it describes the author's own work.
 
 Output ONLY compact JSON, no prose, no fence:
-{"verdict":"approve|changes|none","quote":"<the sentence from the items that decides it, copied verbatim; empty for none>"}"""
+{"verdict":"approve|changes|none","quote":"<the one sentence from the items that decides it, copied verbatim: for approve, the approving sentence; empty for none>"}"""
 
 
 def _b64_text(segment: str) -> str:
@@ -138,7 +140,7 @@ def model_items(reviews: list[dict], comments: list[dict]) -> list[dict]:
     items = []
     for kind, it in sorted(raw, key=lambda p: _when(p[1])):
         body = (it.get("body") or "").strip()
-        if not body or CARRIED.search(body):
+        if not body:
             continue
         items.append({"author": _login(it), "at": _when(it), "kind": kind, "body": _clip(body)})
     kept, size = [], 0
@@ -181,8 +183,22 @@ def read_verdict(items: list[dict], pr_author: str, owner_mode: bool) -> tuple[s
     verdict = str((obj or {}).get("verdict") or "")
     if verdict not in ("approve", "changes", "none"):
         return "unread", "the model's reply was not a verdict: " + _one_line(reply["text"], 120)
-    status = {"approve": "ok", "changes": "changes", "none": "missing"}[verdict]
-    return status, _one_line((obj or {}).get("quote") or "")
+    quote = _one_line((obj or {}).get("quote") or "", 2000)
+    if verdict == "changes":
+        return "changes", _one_line(quote)
+    if verdict == "none":
+        return "missing", ""
+    holders = [it for it in items if _norm(quote) and _norm(quote) in _norm(it["body"])]
+    if not holders:
+        return "unread", "the model's approving quote is not in any review on this PR: " + _one_line(quote, 120)
+    if all(CARRIED.search(it["body"]) for it in holders):
+        return "missing", ""
+    return "ok", _one_line(quote)
+
+
+def _norm(text: str) -> str:
+    """Casefolded, markdown emphasis and code ticks dropped, whitespace collapsed."""
+    return " ".join(re.sub(r"[*_`]", "", text).casefold().split())
 
 
 def decide(reviews, comments, pr_author: str, owner_mode: bool = False) -> tuple[str, str]:
