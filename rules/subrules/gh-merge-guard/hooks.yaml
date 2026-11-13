@@ -7,4 +7,6 @@ merge-guard:
   script: merge-guard.sh
   events: [PreToolUse]
   matcher: Bash
-  timeout: 5
+  # Covers the ~3s GitHub probes plus pr-verdict.py's 45s model budget, so the
+  # guard always answers before the harness kills it (a kill fails open).
+  timeout: 60

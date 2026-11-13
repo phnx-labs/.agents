@@ -24,7 +24,7 @@ finding, it is a guess with a file path attached.
    Count the changed files by kind. A diff whose every changed file matches the
    extension allowlist `.md`, `.yaml`, `.yml`, `.json`, `.toml`, `.txt`, `.cfg`,
    `.ini`, `.conf`, `.lock`, `.gitignore`, `.env`, `.csv` is a **non-code diff**.
-   (This list must match `rules/subrules/gh-merge-guard/merge-guard.sh:203` exactly.)
+   (This list must match `rules/subrules/gh-merge-guard/merge-guard.sh:235` exactly.)
    Return immediately:
    ```
    ## Verdict
