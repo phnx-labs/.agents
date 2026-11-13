@@ -305,5 +305,16 @@ checko missing "owner-mode garbage value ('yes') is treated as OFF" \
 check missing "3-segment payload (no owner segment) still excludes self-author" \
   '[{"state":"COMMENTED","user":{"login":"pr-author-bot"},"body":"VERDICT: APPROVE"}]' '[]'
 
+# A configured reviewer's last line `Verdict: ready` approves; its latest verdict
+# line wins, and the author's own line never counts without owner-mode.
+check ok "reviewer comment ending Verdict: ready" '[]' '[{"user":{"login":"reviewer-bot"},"created_at":"2026-11-12T15:36:42Z","body":"Review of 77b8bc0\n\nAll checks pass.\n\nVerdict: ready"}]'
+check ok "COMMENTED review ending Verdict: ready" '[{"state":"COMMENTED","user":{"login":"reviewer-bot"},"submitted_at":"2026-11-12T15:36:42Z","body":"Review.\nVerdict: ready"}]' '[]'
+check missing "Verdict: changes needed" '[]' '[{"user":{"login":"reviewer-bot"},"created_at":"2026-11-12T15:36:42Z","body":"Review.\nVerdict: changes needed"}]'
+check missing "older ready withdrawn by a later changes needed" '[]' '[{"user":{"login":"reviewer-bot"},"created_at":"2026-11-12T15:34:01Z","body":"Verdict: ready"},{"user":{"login":"reviewer-bot"},"created_at":"2026-11-12T15:36:42Z","body":"Verdict: changes needed"}]'
+check ok "later ready replaces an older changes needed" '[]' '[{"user":{"login":"reviewer-bot"},"created_at":"2026-11-12T15:34:01Z","body":"Verdict: changes needed"},{"user":{"login":"reviewer-bot"},"created_at":"2026-11-12T15:36:42Z","body":"Verdict: ready"}]'
+check missing "ready mid-sentence is not a verdict line" '[]' '[{"user":{"login":"reviewer-bot"},"body":"Verdict: ready once the null check lands."}]'
+check missing "ready quoted in a code fence" '[]' '[{"user":{"login":"reviewer-bot"},"body":"The bot prints:\n```\nVerdict: ready\n```"}]'
+check missing "self-authored Verdict: ready without owner-mode" '[]' '[{"user":{"login":"pr-author-bot"},"body":"Verdict: ready"}]'
+
 printf -- '---\npr-verdict: %s passed, %s failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]
