@@ -134,10 +134,26 @@ CI_NOTE=$(python3 -c 'print(("CI: all 412 jobs passed, coverage unchanged. " * 5
 CI_SPAM=$(for i in 1 2 3 4 5 6; do printf '{"user":{"login":"ci-bot"},"created_at":"2026-11-12T12:0%s:00Z","body":"%s"},' "$i" "$CI_NOTE"; done)
 check changes "long bot comments after a blocker do not push it out" "$APPROVED_AT" \
   "[{\"user\":{\"login\":\"second-reviewer\"},\"created_at\":\"2026-11-12T11:00:00Z\",\"body\":\"BLOCKING: save() drops the last row. Do not merge.\"},${CI_SPAM%,}]"
+check changes "a blocker with no timestamp is read" "$APPROVED_AT" \
+  "[{\"user\":{\"login\":\"second-reviewer\"},\"body\":\"BLOCKING: save() drops the last row. Do not merge.\"}]"
+MIDDLE=$(python3 -c 'pad = "Walked through the diff line by line. " * 330; print(pad + "BLOCKING: save() drops the last row, do not merge. " + pad)')
+check changes "a blocker in the middle of a long review is read whole" "$APPROVED_AT" \
+  "[{\"user\":{\"login\":\"second-reviewer\"},\"created_at\":\"2026-11-12T11:00:00Z\",\"body\":\"$MIDDLE\"}]"
+SHORT_MID=$(python3 -c 'pad = "Read the parser changes. " * 35; print(pad + "BLOCKING: save() drops the last row, do not merge. " + pad)')
+NOTES=$(for i in $(seq 1 99); do printf '{"user":{"login":"ci-bot"},"created_at":"2026-11-12T12:00:%02dZ","body":"CI run %s passed."},' $((i % 60)) "$i"; done)
+check changes "a mid-review blocker among 99 short bot notes is read whole" "$APPROVED_AT" \
+  "[{\"user\":{\"login\":\"second-reviewer\"},\"created_at\":\"2026-11-12T11:00:00Z\",\"body\":\"$SHORT_MID\"},${NOTES%,}]"
+check ok "the latest active approval stands over a blocker posted before it" \
+  "[{\"state\":\"APPROVED\",\"user\":$R,\"submitted_at\":\"2026-11-12T10:00:00Z\"},{\"state\":\"APPROVED\",\"user\":{\"login\":\"third-reviewer\"},\"submitted_at\":\"2026-11-12T12:00:00Z\"}]" \
+  "[{\"user\":{\"login\":\"second-reviewer\"},\"created_at\":\"2026-11-12T11:00:00Z\",\"body\":\"BLOCKING: save() drops the last row.\"}]"
+HUGE=$(python3 -c 'print("CI log line. " * 32000)')
+got=$(verdict "$APPROVED_AT" "[{\"user\":{\"login\":\"ci-bot\"},\"created_at\":\"2026-11-12T11:00:00Z\",\"body\":\"$HUGE\"}]" "$AUTHOR")
+case "$got" in unread\|*"reads whole"*) pass=$((pass + 1)); echo "ok    unread   over the whole-read cap after an approval  [${got#*|}]" ;;
+  *) fail=$((fail + 1)); echo "FAIL  over the whole-read cap after an approval: ${got:0:200}" ;; esac
 got=$(CLAUDE_CODE_EXECPATH=/bin/false CLAUDE_CODE_OAUTH_TOKEN=x verdict "$APPROVED_AT" \
-  "[{\"user\":$R,\"created_at\":\"2026-11-12T11:00:00Z\",\"body\":\"BLOCKING: found a data loss bug.\"}]" "$AUTHOR")
-case "$got" in unread\|*) pass=$((pass + 1)); echo "ok    unread   later item after approval, broken claude binary  [${got#*|}]" ;;
-  *) fail=$((fail + 1)); echo "FAIL  later item after approval, broken claude binary: $got" ;; esac
+  "[{\"user\":{\"login\":\"ci-bot\"},\"created_at\":\"2026-11-12T11:00:00Z\",\"body\":\"CI: all jobs passed.\"}]" "$AUTHOR")
+case "$got" in unread\|*) pass=$((pass + 1)); echo "ok    unread   a CI note after approval, broken claude binary  [${got#*|}]" ;;
+  *) fail=$((fail + 1)); echo "FAIL  a CI note after approval, broken claude binary: $got" ;; esac
 
 printf -- '---\npr-verdict: %s passed, %s failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]
