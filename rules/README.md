@@ -80,7 +80,7 @@ wholesale. A new name unions in. This repo is a pull-only mirror — never edit 
 **Never put a `rules.yaml` in `~/.agents/rules/`.** The preset comes from the first layer
 whose `rules.yaml` defines it, user before system, so a user `rules.yaml` replaces this
 preset wholesale: `subrules: []` there drops every system rule and leaves only your own
-subrules (yosemite-m6 and mark-1 ran on Mission and Stack alone until 2026-10-22). Old
+subrules (machines with an empty one ran on Mission and Stack alone). Old
 copies of system subrule names in `~/.agents/rules/subrules/` likewise shadow the current
 ones.
 
