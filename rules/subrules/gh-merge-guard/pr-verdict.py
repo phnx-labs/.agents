@@ -55,7 +55,7 @@ BUDGET_S = 45.0
 CALL_S = 20.0            # one call usually answers in 2-4 s; a stalled one is retried once
 BODY_CHARS = 20000       # per item: head and tail of a longer body
 TOTAL_CHARS = 120_000    # newest items first when the PR has more
-MIN_SHARE_CHARS = 600    # floor per item when every item after an approval is kept
+LATER_MAX_CHARS = 400_000  # items after an approval go whole; past this the verdict is unread
 CHILD_SENTINEL = "MERGE_GUARD_CHILD"
 
 CARRIED = re.compile(r"\bcarried\s+(?:over\s+)?from\b|\bAPPROVED?\s+(?:on|from)\s+#\d+", re.I)
@@ -107,11 +107,11 @@ def _when(it: dict) -> str:
     return it.get("submitted_at") or it.get("created_at") or ""
 
 
-def _clip(body: str, limit: int = BODY_CHARS) -> str:
+def _clip(body: str) -> str:
     body = body.replace("\r\n", "\n")
-    if len(body) <= limit:
+    if len(body) <= BODY_CHARS:
         return body
-    half = limit // 2
+    half = BODY_CHARS // 2
     return body[:half] + "\n[... middle of a long review omitted ...]\n" + body[-half:]
 
 
@@ -144,20 +144,19 @@ def formal_state(reviews: list[dict]):
 def model_items(reviews: list[dict], comments: list[dict], since: str | None = None) -> list[dict]:
     """COMMENTED review bodies and issue comments, oldest first, newest kept within TOTAL_CHARS.
 
-    With ``since``, only items at or after that time, and every one of them is kept:
-    each body shrinks to its share of TOTAL_CHARS instead, so a blocker posted after an
-    approval cannot be pushed out by long bot comments that follow it."""
+    With ``since``, only items at or after that time (an item with no time is kept, since
+    nothing shows it came first), each kept whole: clipping could drop a blocker from the
+    middle of a body, so the caller bounds the total instead."""
     raw = [("review", r) for r in reviews if r.get("state") == "COMMENTED"]
     raw += [("comment", c) for c in comments]
     items = []
     for kind, it in sorted(raw, key=lambda p: _when(p[1])):
         body = (it.get("body") or "").strip()
-        if not body or (since is not None and _when(it) < since):
+        if not body or (since is not None and _when(it) and _when(it) < since):
             continue
         items.append({"author": _login(it), "at": _when(it), "kind": kind, "body": body})
     if since is not None:
-        share = max(MIN_SHARE_CHARS, min(BODY_CHARS, TOTAL_CHARS // max(1, len(items))))
-        return [dict(item, body=_clip(item["body"], share)) for item in items]
+        return items
     items = [dict(item, body=_clip(item["body"])) for item in items]
     kept, size = [], 0
     for item in reversed(items):
@@ -246,6 +245,10 @@ def decide(reviews, comments, pr_author: str, owner_mode: bool = False) -> tuple
         # the same second as it is read: GitHub times have one-second precision.
         approved_at = max(_when(r) for r in _latest_formal(reviews).values() if r.get("state") == "APPROVED")
         later = model_items(reviews, comments, since=approved_at)
+        size = sum(len(it["body"]) for it in later)
+        if size > LATER_MAX_CHARS:
+            return "unread", (f"{size} characters were posted at or after the formal approval, over the "
+                              f"{LATER_MAX_CHARS} the guard reads whole")
         if later:
             verdict, why = model_stance(later, pr_author.strip(), owner_mode)
             if verdict == "changes":
