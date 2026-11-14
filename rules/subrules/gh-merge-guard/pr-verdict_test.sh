@@ -117,5 +117,18 @@ check ok "plain-English approval: low risk, good to go" '[]' \
 check ok "a blocking finding the reviewer later clears" '[]' \
   "[{\"user\":$R,\"created_at\":\"2026-11-12T10:00:00Z\",\"body\":\"BLOCKING: the retry loop never ends when the API returns 500.\"},{\"user\":{\"login\":\"$AUTHOR\"},\"created_at\":\"2026-11-12T10:30:00Z\",\"body\":\"Fixed in 4f1c2aa.\"},{\"user\":$R,\"created_at\":\"2026-11-12T11:00:00Z\",\"body\":\"Re-reviewed 4f1c2aa: the loop is bounded now. LGTM.\"}]"
 
+echo "== formal APPROVED, then later items"
+APPROVED_AT="[{\"state\":\"APPROVED\",\"user\":$R,\"submitted_at\":\"2026-11-12T10:00:00Z\",\"body\":\"\"}]"
+check changes "a blocking comment posted after a formal approval blocks" "$APPROVED_AT" \
+  "[{\"user\":{\"login\":\"second-reviewer\"},\"created_at\":\"2026-11-12T11:00:00Z\",\"body\":\"BLOCKING: the new migration drops the users.email index and nothing recreates it. Do not merge.\"}]"
+check ok "a nit posted after a formal approval does not block" "$APPROVED_AT" \
+  "[{\"user\":{\"login\":\"second-reviewer\"},\"created_at\":\"2026-11-12T11:00:00Z\",\"body\":\"Optional nit: the helper name could be shorter. Fine either way.\"}]"
+check ok "a blocking comment the approval came after is superseded" "$APPROVED_AT" \
+  "[{\"user\":$R,\"created_at\":\"2026-11-12T09:00:00Z\",\"body\":\"BLOCKING: the retry loop never ends on a 500.\"}]"
+got=$(CLAUDE_CODE_EXECPATH=/bin/false CLAUDE_CODE_OAUTH_TOKEN=x verdict "$APPROVED_AT" \
+  "[{\"user\":$R,\"created_at\":\"2026-11-12T11:00:00Z\",\"body\":\"BLOCKING: found a data loss bug.\"}]" "$AUTHOR")
+case "$got" in unread\|*) pass=$((pass + 1)); echo "ok    unread   later item after approval, broken claude binary  [${got#*|}]" ;;
+  *) fail=$((fail + 1)); echo "FAIL  later item after approval, broken claude binary: $got" ;; esac
+
 printf -- '---\npr-verdict: %s passed, %s failed\n' "$pass" "$fail"
 [ "$fail" -eq 0 ]
