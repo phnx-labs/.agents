@@ -55,6 +55,7 @@ BUDGET_S = 45.0
 CALL_S = 20.0            # one call usually answers in 2-4 s; a stalled one is retried once
 BODY_CHARS = 20000       # per item: head and tail of a longer body
 TOTAL_CHARS = 120_000    # newest items first when the PR has more
+MIN_SHARE_CHARS = 600    # floor per item when every item after an approval is kept
 CHILD_SENTINEL = "MERGE_GUARD_CHILD"
 
 CARRIED = re.compile(r"\bcarried\s+(?:over\s+)?from\b|\bAPPROVED?\s+(?:on|from)\s+#\d+", re.I)
@@ -106,11 +107,11 @@ def _when(it: dict) -> str:
     return it.get("submitted_at") or it.get("created_at") or ""
 
 
-def _clip(body: str) -> str:
+def _clip(body: str, limit: int = BODY_CHARS) -> str:
     body = body.replace("\r\n", "\n")
-    if len(body) <= BODY_CHARS:
+    if len(body) <= limit:
         return body
-    half = BODY_CHARS // 2
+    half = limit // 2
     return body[:half] + "\n[... middle of a long review omitted ...]\n" + body[-half:]
 
 
@@ -118,13 +119,18 @@ def _one_line(text: str, limit: int = 300) -> str:
     return " ".join(str(text).split())[:limit]
 
 
-def formal_state(reviews: list[dict]):
-    """(status, detail) from each login's latest APPROVED / CHANGES_REQUESTED / DISMISSED
-    review, or None when no formal review decides it."""
+def _latest_formal(reviews: list[dict]) -> dict[str, dict]:
+    """Each login's latest APPROVED / CHANGES_REQUESTED / DISMISSED review."""
     latest: dict[str, dict] = {}
     for r in sorted(reviews, key=_when):
         if r.get("state") in ("APPROVED", "CHANGES_REQUESTED", "DISMISSED"):
             latest[_login(r).casefold()] = r
+    return latest
+
+
+def formal_state(reviews: list[dict]):
+    """(status, detail) from each login's latest formal review, or None when none decides it."""
+    latest = _latest_formal(reviews)
     blocking = [r for r in latest.values() if r.get("state") == "CHANGES_REQUESTED"]
     if blocking:
         r = blocking[-1]
@@ -135,16 +141,24 @@ def formal_state(reviews: list[dict]):
     return None
 
 
-def model_items(reviews: list[dict], comments: list[dict]) -> list[dict]:
-    """COMMENTED review bodies and issue comments, oldest first, newest kept within TOTAL_CHARS."""
+def model_items(reviews: list[dict], comments: list[dict], since: str | None = None) -> list[dict]:
+    """COMMENTED review bodies and issue comments, oldest first, newest kept within TOTAL_CHARS.
+
+    With ``since``, only items at or after that time, and every one of them is kept:
+    each body shrinks to its share of TOTAL_CHARS instead, so a blocker posted after an
+    approval cannot be pushed out by long bot comments that follow it."""
     raw = [("review", r) for r in reviews if r.get("state") == "COMMENTED"]
     raw += [("comment", c) for c in comments]
     items = []
     for kind, it in sorted(raw, key=lambda p: _when(p[1])):
         body = (it.get("body") or "").strip()
-        if not body:
+        if not body or (since is not None and _when(it) < since):
             continue
-        items.append({"author": _login(it), "at": _when(it), "kind": kind, "body": _clip(body)})
+        items.append({"author": _login(it), "at": _when(it), "kind": kind, "body": body})
+    if since is not None:
+        share = max(MIN_SHARE_CHARS, min(BODY_CHARS, TOTAL_CHARS // max(1, len(items))))
+        return [dict(item, body=_clip(item["body"], share)) for item in items]
+    items = [dict(item, body=_clip(item["body"])) for item in items]
     kept, size = [], 0
     for item in reversed(items):
         size += len(item["body"])
@@ -228,8 +242,10 @@ def decide(reviews, comments, pr_author: str, owner_mode: bool = False) -> tuple
     if formal and formal[0] == "ok":
         # A formal approval predates whatever was posted after it: a later blocking
         # finding still blocks, and a model that cannot read those items blocks too.
-        approved_at = max(_when(r) for r in reviews if r.get("state") == "APPROVED")
-        later = [it for it in model_items(reviews, comments) if it["at"] > approved_at]
+        # The cutoff is the latest approval that still counts, and an item stamped in
+        # the same second as it is read: GitHub times have one-second precision.
+        approved_at = max(_when(r) for r in _latest_formal(reviews).values() if r.get("state") == "APPROVED")
+        later = model_items(reviews, comments, since=approved_at)
         if later:
             verdict, why = model_stance(later, pr_author.strip(), owner_mode)
             if verdict == "changes":

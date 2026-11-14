@@ -336,7 +336,7 @@ case "$norm" in
             exit 2
             ;;
           *)
-            printf '%s\n' "Blocked: the review verdict on THIS PR ($_pr_repo#$_pr_num) could not be read: ${_detail:-pr-verdict.py gave no answer}. The guard asks a model what the non-author reviews mean and never merges on a verdict it could not read. Fix that and retry; a formal GitHub APPROVED review clears without the model." >&2
+            printf '%s\n' "Blocked: the review verdict on THIS PR ($_pr_repo#$_pr_num) could not be read: ${_detail:-pr-verdict.py gave no answer}. The guard asks a model what the non-author reviews mean and never merges on a verdict it could not read. Fix that and retry. A formal GitHub APPROVED review clears without the model only when nothing was posted on the PR after it." >&2
             exit 2
             ;;
         esac
