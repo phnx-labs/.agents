@@ -89,12 +89,14 @@ ones.
 [`rules-check.sh`](./rules-check.sh) composes the user and system layers the way
 `composeRules` does and compares the result with the rules file (agents-cli's
 `capabilities.rules.file` under the agent's config dir) of every installed version on the
-machine, without `agents sync`. It also names a version file that is a symlink and every
-account copy that is a frozen file rather than a link to a version. It does not model extra
-repos or a per-version `rulesPreset`; when `agents.yaml` sets either, it says so and `--apply`
-rewrites nothing. `--apply` sets aside an untracked user `rules.yaml`, fast-forwards
-`~/.agents` and `~/.agents/.system` when they are clean, and rewrites each version file that
-differs. Across the fleet (`bash -s -- --apply` to repair):
+machine, without `agents sync`. Each version composes the preset it selected (`rulesPreset`,
+else `default`). It also names a version file that is a symlink or missing, and every account
+copy that is a frozen file rather than a link to a version. It does not model enabled extra
+repos; when one is set it says so and `--apply` changes nothing. `--apply` sets aside an
+untracked user `rules.yaml`, fast-forwards `~/.agents` and `~/.agents/.system` when they are
+clean, and writes each version file that differs or is missing. It leaves a file as is when
+its preset is defined nowhere, and refuses to write through a symlinked directory. It needs
+PyYAML, or `uv` to fetch it. Tests: `bash rules/rules-check_test.sh`. differs. Across the fleet (`bash -s -- --apply` to repair):
 
 ```bash
 for d in $(agents devices list --json | jq -r '.[].name'); do agents ssh "$d" 'bash -s' < rules/rules-check.sh; done
