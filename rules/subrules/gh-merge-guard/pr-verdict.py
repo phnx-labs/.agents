@@ -7,7 +7,9 @@ Hard gates first, in code:
     unless owner_mode is on (PHNX-3950: the caller sets it only when the PR author
     IS the trusted fleet owner, whose reviewer agents post under that login).
   - Each login's latest formal review state decides first: CHANGES_REQUESTED
-    blocks, APPROVED clears outright. A dismissed review is neither.
+    blocks. APPROVED clears unless a review body or comment posted after the
+    approval carries an open blocking finding, which the model reads. A dismissed
+    review is neither.
   - An approval only counts when the model's quote is found, verbatim, in an item
     whose quoted line does not cite a verdict "carried from" another PR (#2736: a verdict only
     counts on the PR it was posted on). Such items still reach the model, so a
@@ -152,8 +154,8 @@ def model_items(reviews: list[dict], comments: list[dict]) -> list[dict]:
     return kept[::-1]
 
 
-def read_verdict(items: list[dict], pr_author: str, owner_mode: bool) -> tuple[str, str]:
-    """Ask the model what the items mean. Any failure is ("unread", why)."""
+def model_stance(items: list[dict], pr_author: str, owner_mode: bool) -> tuple[str, str]:
+    """Ask the model what the items mean: (approve|changes|none, quote), or ("unread", why)."""
     try:
         import model_call
     except ImportError:
@@ -183,7 +185,14 @@ def read_verdict(items: list[dict], pr_author: str, owner_mode: bool) -> tuple[s
     verdict = str((obj or {}).get("verdict") or "")
     if verdict not in ("approve", "changes", "none"):
         return "unread", "the model's reply was not a verdict: " + _one_line(reply["text"], 120)
-    quote = _one_line((obj or {}).get("quote") or "", 2000)
+    return verdict, _one_line((obj or {}).get("quote") or "", 2000)
+
+
+def read_verdict(items: list[dict], pr_author: str, owner_mode: bool) -> tuple[str, str]:
+    """The merge status the items give on their own. Any failure is ("unread", why)."""
+    verdict, quote = model_stance(items, pr_author, owner_mode)
+    if verdict == "unread":
+        return verdict, quote
     if verdict == "changes":
         return "changes", _one_line(quote)
     if verdict == "none":
@@ -216,6 +225,17 @@ def decide(reviews, comments, pr_author: str, owner_mode: bool = False) -> tuple
         reviews = [r for r in reviews if not (author and _login(r).casefold() == author)]
         comments = [c for c in comments if not (author and _login(c).casefold() == author)]
     formal = formal_state(reviews)
+    if formal and formal[0] == "ok":
+        # A formal approval predates whatever was posted after it: a later blocking
+        # finding still blocks, and a model that cannot read those items blocks too.
+        approved_at = max(_when(r) for r in reviews if r.get("state") == "APPROVED")
+        later = [it for it in model_items(reviews, comments) if it["at"] > approved_at]
+        if later:
+            verdict, why = model_stance(later, pr_author.strip(), owner_mode)
+            if verdict == "changes":
+                return "changes", _one_line(why)
+            if verdict == "unread":
+                return "unread", why
     if formal:
         return formal
     items = model_items(reviews, comments)
