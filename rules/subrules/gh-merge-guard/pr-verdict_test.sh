@@ -125,6 +125,15 @@ check ok "a nit posted after a formal approval does not block" "$APPROVED_AT" \
   "[{\"user\":{\"login\":\"second-reviewer\"},\"created_at\":\"2026-11-12T11:00:00Z\",\"body\":\"Optional nit: the helper name could be shorter. Fine either way.\"}]"
 check ok "a blocking comment the approval came after is superseded" "$APPROVED_AT" \
   "[{\"user\":$R,\"created_at\":\"2026-11-12T09:00:00Z\",\"body\":\"BLOCKING: the retry loop never ends on a 500.\"}]"
+check changes "a blocker stamped in the same second as the approval is read" "$APPROVED_AT" \
+  "[{\"user\":{\"login\":\"second-reviewer\"},\"created_at\":\"2026-11-12T10:00:00Z\",\"body\":\"BLOCKING: save() drops the last row. Do not merge.\"}]"
+check changes "an approval later dismissed does not move the cutoff past a blocker" \
+  "[{\"state\":\"APPROVED\",\"user\":$R,\"submitted_at\":\"2026-11-12T10:00:00Z\"},{\"state\":\"APPROVED\",\"user\":{\"login\":\"third-reviewer\"},\"submitted_at\":\"2026-11-12T12:00:00Z\"},{\"state\":\"DISMISSED\",\"user\":{\"login\":\"third-reviewer\"},\"submitted_at\":\"2026-11-12T13:00:00Z\"}]" \
+  "[{\"user\":{\"login\":\"second-reviewer\"},\"created_at\":\"2026-11-12T11:00:00Z\",\"body\":\"BLOCKING: save() drops the last row. Do not merge.\"}]"
+CI_NOTE=$(python3 -c 'print(("CI: all 412 jobs passed, coverage unchanged. " * 500).strip())')
+CI_SPAM=$(for i in 1 2 3 4 5 6; do printf '{"user":{"login":"ci-bot"},"created_at":"2026-11-12T12:0%s:00Z","body":"%s"},' "$i" "$CI_NOTE"; done)
+check changes "long bot comments after a blocker do not push it out" "$APPROVED_AT" \
+  "[{\"user\":{\"login\":\"second-reviewer\"},\"created_at\":\"2026-11-12T11:00:00Z\",\"body\":\"BLOCKING: save() drops the last row. Do not merge.\"},${CI_SPAM%,}]"
 got=$(CLAUDE_CODE_EXECPATH=/bin/false CLAUDE_CODE_OAUTH_TOKEN=x verdict "$APPROVED_AT" \
   "[{\"user\":$R,\"created_at\":\"2026-11-12T11:00:00Z\",\"body\":\"BLOCKING: found a data loss bug.\"}]" "$AUTHOR")
 case "$got" in unread\|*) pass=$((pass + 1)); echo "ok    unread   later item after approval, broken claude binary  [${got#*|}]" ;;
