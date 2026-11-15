@@ -75,5 +75,27 @@ check "a symlinked user subrule dir is skipped, a user file unions in" same "$V/
 setup; mkdir -p "$A/.history/accounts/cursor/a1/.cursor"; printf 'X\n' > "$A/.history/accounts/cursor/a1/.cursor/.cursorrules"; run
 check "a frozen account copy outside .claude is reported" grep -q 'frozen .history/accounts/cursor/a1/.cursor/.cursorrules' "$T/out"
 
+setup; mv "$A/.history/versions" "$T/versions-elsewhere"; ln -s "$T/versions-elsewhere" "$A/.history/versions"; run --apply; rc=$?
+check "a symlinked versions dir is not written through" same "$T/versions-elsewhere/claude/1.0.0/home/.claude/CLAUDE.md" "OLD"
+check "  and the failure exits non-zero" [ "$rc" = 1 ]
+
+setup; printf 'versions:\n  claude:\n    default: 1.0.0\n' > "$A/.system/meta.yaml"; chmod 755 "$A"
+# .agents/.cache is left out: importing agents-cli's modules opens its own empty secrets-serve log there.
+snap() {  # files: mode, size, mtime; directories: mode only (macOS sizes a directory by its entries)
+  (cd "$T" && { find . -type f -exec stat -c '%n %a %s %Y' {} + 2>/dev/null || find . -type f -exec stat -f '%N %Lp %z %m' {} +
+                find . ! -type f -exec stat -c '%n %a' {} + 2>/dev/null || find . ! -type f -exec stat -f '%N %Lp' {} +; }) \
+    | grep -v -e '^\./out ' -e '^\./\.agents/\.cache' | sort
+}
+before=$(snap); run; after=$(snap)
+diff <(echo "$before") <(echo "$after") >> "$T/out"
+check "a report changes nothing on disk (no metadata migration, no chmod)" [ "$before" = "$after" ]
+
+setup; real=$(dirname "$(node -e 'console.log(require("fs").realpathSync(process.argv[1]))' "$(command -v agents)")")
+real=${real%/bin}; P=$T/pkg; mkdir -p "$P/dist/bin" "$T/bin"
+printf '{"name":"@phnx-labs/agents-cli"}' > "$P/package.json"; ln -s "$real/lib" "$P/dist/lib"
+printf '#!/bin/sh\n' > "$P/dist/bin/agents"; chmod +x "$P/dist/bin/agents"; ln -s "$P/dist/bin/agents" "$T/bin/agents"
+PATH="$T/bin:$PATH" run --apply
+check "a native dist/bin/agents entrypoint finds the package's modules" same "$V/CLAUDE.md" "CORE"
+
 echo "---"; echo "rules-check: $pass passed, $fail failed"
 [ "$fail" = 0 ]
