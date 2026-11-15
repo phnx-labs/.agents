@@ -90,7 +90,7 @@ ones.
 installed agents-cli's own composer (the same layers, extra repos, YAML parsing and
 per-version `rulesPreset`) and compares the bytes with that version's rules file, without
 `agents sync`. `agents sync status` cannot do this: it fingerprints the rule sources, not the
-installed file. It reads metadata without migrating it, so a report changes nothing. It also names a version file that is a symlink or missing, and every account
+installed file. It reads metadata without migrating it, so a report never rewrites configuration; the only write is agents-cli creating its own empty `~/.agents/.cache/logs/secrets-serve.log` when its modules load. It also names a version file that is a symlink or missing, and every account
 copy that is a frozen file rather than a link to a version. `--apply` sets aside an untracked
 user `rules.yaml`, fast-forwards `~/.agents` and `~/.agents/.system` when they are clean, and
 writes each version file that differs or is missing. It leaves a file as is when its preset
