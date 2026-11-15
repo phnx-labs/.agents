@@ -86,17 +86,16 @@ ones.
 
 ## Checking what each machine loads
 
-[`rules-check.sh`](./rules-check.sh) composes the user and system layers the way
-`composeRules` does and compares the result with the rules file (agents-cli's
-`capabilities.rules.file` under the agent's config dir) of every installed version on the
-machine, without `agents sync`. Each version composes the preset it selected (`rulesPreset`,
-else `default`). It also names a version file that is a symlink or missing, and every account
-copy that is a frozen file rather than a link to a version. It does not model enabled extra
-repos; when one is set it says so and `--apply` changes nothing. `--apply` sets aside an
-untracked user `rules.yaml`, fast-forwards `~/.agents` and `~/.agents/.system` when they are
-clean, and writes each version file that differs or is missing. It leaves a file as is when
-its preset is defined nowhere, and refuses to write through a symlinked directory. It needs
-PyYAML, or `uv` to fetch it. Tests: `bash rules/rules-check_test.sh`. differs. Across the fleet (`bash -s -- --apply` to repair):
+[`rules-check.sh`](./rules-check.sh) composes each installed version's ruleset with the
+installed agents-cli's own composer (the same layers, extra repos, YAML parsing and
+per-version `rulesPreset`) and compares the bytes with that version's rules file, without
+`agents sync`. `agents sync status` cannot do this: it fingerprints the rule sources, not the
+installed file. It also names a version file that is a symlink or missing, and every account
+copy that is a frozen file rather than a link to a version. `--apply` sets aside an untracked
+user `rules.yaml`, fast-forwards `~/.agents` and `~/.agents/.system` when they are clean, and
+writes each version file that differs or is missing. It leaves a file as is when its preset
+does not compose, and refuses to write through a symlink anywhere under
+`~/.agents/.history/versions`. Tests: `bash rules/rules-check_test.sh`. Across the fleet (`bash -s -- --apply` to repair):
 
 ```bash
 for d in $(agents devices list --json | jq -r '.[].name'); do agents ssh "$d" 'bash -s' < rules/rules-check.sh; done

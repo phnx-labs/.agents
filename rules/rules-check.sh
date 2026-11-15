@@ -2,20 +2,17 @@
 # rules-check.sh — audit (and with --apply, repair) the rules file each installed agent
 # version on THIS machine loads, without `agents sync`.
 #
-# It composes the ruleset as agents-cli's version-home writer does (staleness/writers/rules.ts
-# -> composeRulesFromState, cli/src/lib/rules/compose.ts) for the user and system layers:
-# the preset comes from the first layer whose rules.yaml defines it (user before system),
-# each named subrule resolves user-first, then every user subrule not yet named unions in;
-# fragments are right-trimmed and joined by one blank line. Each version composes the preset
-# it selected (`rulesPreset` in .history/version-resources.json or agents.yaml, else
-# `default`). Enabled extra repos (`extraRepos`) are not modelled: when one is set it says so
-# and --apply changes nothing. A preset no layer defines leaves that version's file as is,
-# as the CLI's writer does. Needs PyYAML (or uv to fetch it), like the CLI's YAML parser.
+# `agents sync status` fingerprints rule sources, not the installed file, so a version file
+# that drifted still reads synced. This check composes each version's ruleset with the
+# installed agents-cli's own code (composeRulesFromState, getActiveRulesPreset, the agent
+# specs: same layers, extra repos, YAML parser and per-version preset) and compares bytes.
+# A preset that does not compose leaves that version's file as is.
 #
-#   rules-check.sh            report: composed hash, each version's file, frozen account copies
+#   rules-check.sh            report: composed hash per preset, each version's file, frozen
+#                             account copies
 #   rules-check.sh --apply    also: set aside an untracked ~/.agents/rules/rules.yaml,
 #                             fast-forward ~/.agents and ~/.agents/.system when clean,
-#                             and rewrite each version's rules file that differs
+#                             and write each version's rules file that differs or is missing
 # Fleet-wide: see "Checking what each machine loads" in rules/README.md.
 set -uo pipefail
 case "${1:-}" in
@@ -26,159 +23,9 @@ esac
 A="$HOME/.agents"
 HOST=$(hostname -s 2>/dev/null || hostname)
 
-# The CLI parses YAML fully; a partial parser would compose a different ruleset.
-if python3 -c 'import yaml' 2>/dev/null; then PY=(python3)
-elif command -v uv >/dev/null 2>&1; then PY=(uv run -q --no-project --with pyyaml python)
-else echo "$HOST: rules-check.sh needs PyYAML (python3 -m pip install --user pyyaml) or uv" >&2; exit 2
-fi
-COMPOSE=$(cat <<'PY'
-import glob as globmod, hashlib, json, os, sys, tempfile
-import yaml
-A, HOST, MODE = os.environ["A"], os.environ["HOST"], os.environ["MODE"]
-# Rules file per agent under its config dir (agents-cli agent-spec `configDir` and
-# `capabilities.rules.file`); an agent not listed is not checked.
-RULES_FILE = {
-    "claude": ".claude/CLAUDE.md", "codex": ".codex/AGENTS.md", "cursor": ".cursor/.cursorrules",
-    "opencode": ".opencode/AGENTS.md", "openclaw": ".openclaw/workspace/AGENTS.md",
-    "copilot": ".copilot/AGENTS.md", "amp": ".config/amp/AGENTS.md", "goose": ".config/goose/AGENTS.md",
-    "antigravity": ".gemini/antigravity-cli/AGENTS.md", "grok": ".grok/AGENTS.md",
-    "kimi": ".kimi-code/AGENTS.md", "droid": ".factory/AGENTS.md", "hermes": ".hermes/MEMORY.md",
-    "muse": ".config/muse/AGENTS.md", "warp": ".warp/AGENTS.md",
-}
-
-def load(path, parse):
-    if not os.path.exists(path): return {}
-    try:
-        with open(path, encoding="utf-8") as fh: doc = parse(fh)
-    except (OSError, ValueError, yaml.YAMLError): return None
-    return doc if isinstance(doc, dict) else {}
-
-meta = load(f"{A}/agents.yaml", yaml.safe_load)
-resources = load(f"{A}/.history/version-resources.json", json.load)
-if meta is None or resources is None:
-    print(f"{HOST}: WARNING agents.yaml or .history/version-resources.json does not parse; --apply changes nothing")
-    if MODE != "report": sys.exit(1)
-    meta, resources = meta or {}, resources or {}
-extras = sorted(a for a, c in (meta.get("extraRepos") or {}).items() if isinstance(c, dict) and c.get("enabled"))
-if extras:
-    print(f"{HOST}: WARNING extra repos {', '.join(extras)} add rules layers this check does not model; "
-          "STALE may be wrong and --apply changes nothing")
-    if MODE != "report": sys.exit(1)
-if MODE == "preflight": sys.exit(0)
-APPLY = MODE == "apply"
-
-layers = [(s, d) for s, d in (("user", f"{A}/rules"), ("system", f"{A}/.system/rules")) if os.path.isdir(d)]
-
-def preset_def(d, name):
-    """The subrules preset `name` lists in d/rules.yaml, or None when that file does not define it."""
-    doc = load(f"{d}/rules.yaml", yaml.safe_load)
-    presets = (doc or {}).get("presets")
-    if not isinstance(presets, dict) or presets.get(name) is None: return None
-    return list((presets[name] or {}).get("subrules") or [])
-
-def resolve(d, name):
-    for p in (f"{d}/subrules/{name}/rule.md", f"{d}/subrules/{name}.md"):
-        if os.path.exists(p): return p
-
-def layer_names(d):
-    sd, out = f"{d}/subrules", set()
-    if not os.path.isdir(sd): return []
-    for e in os.scandir(sd):  # a symlinked directory is not a subrule, as with Dirent.isDirectory()
-        if e.is_dir(follow_symlinks=False):
-            if os.path.exists(f"{sd}/{e.name}/rule.md"): out.add(e.name)
-        elif e.name.endswith(".md") and e.name != "README.md": out.add(e.name[:-3])
-    return sorted(out)
-
-h = lambda b: hashlib.md5(b).hexdigest()[:8]
-cache = {}
-def compose(name):
-    if name in cache: return cache[name]
-    pre = next(((s, n) for s, d in layers for n in [preset_def(d, name)] if n is not None), None)
-    if pre is None:
-        cache[name] = None
-        print(f"{HOST}: preset {name!r} is not defined in any rules.yaml; versions selecting it are left as is")
-        return None
-    composed, seen = [], set()
-    for sub in pre[1]:
-        if sub in seen: continue
-        for s, d in layers:
-            p = resolve(d, sub)
-            if p: composed.append((sub, s, p)); seen.add(sub); break
-    for s, d in layers:
-        if s == "system": continue
-        for sub in layer_names(d):
-            if sub not in seen and resolve(d, sub):
-                composed.append((sub, s, resolve(d, sub))); seen.add(sub)
-    parts = [open(p, "rb").read().decode("utf-8").rstrip() for _, _, p in composed]
-    content = (("\n\n".join(parts) + "\n") if parts else "").encode("utf-8")
-    print(f"{HOST}: preset {name!r} from {pre[0]} layer; composed {h(content)} {len(content)} bytes = "
-          + " ".join(f"{n}({s[0]})" for n, s, _ in composed))
-    if pre[0] != "system":
-        print(f"{HOST}: WARNING {A}/rules/rules.yaml defines preset {name!r}, so the system one is ignored")
-    cache[name] = content
-    return content
-
-def selected(agent, version):
-    for src in (resources, meta.get("versions") or {}):
-        v = ((src.get(agent) or {}).get(version) or {}) if isinstance(src, dict) else {}
-        if isinstance(v, dict) and v.get("rulesPreset"): return v["rulesPreset"]
-    return "default"
-
-def write(home, f, content):
-    """Write f atomically, never through a symlinked directory below home or a planted temp file."""
-    cur = home
-    for part in os.path.relpath(os.path.dirname(f), home).split(os.sep):
-        cur = os.path.join(cur, part)
-        if os.path.islink(cur) or (os.path.lexists(cur) and not os.path.isdir(cur)):
-            raise OSError(f"{cur} is a symlink or not a directory")
-    os.makedirs(os.path.dirname(f), exist_ok=True)
-    fd, tmp = tempfile.mkstemp(dir=os.path.dirname(f), prefix=".rules-check.")
-    try:
-        with os.fdopen(fd, "wb") as out:
-            out.write(content); out.flush(); os.fsync(out.fileno())
-        os.replace(tmp, f)  # replaces a symlink at f itself, as the CLI's writer does
-    except BaseException:
-        if os.path.lexists(tmp): os.unlink(tmp)
-        raise
-
-failed = 0
-for home in sorted(globmod.glob(f"{A}/.history/versions/*/*/home")):
-    agent, version = home.split("/")[-3], home.split("/")[-2]
-    if agent not in RULES_FILE:
-        print(f"  skip   {home[len(A) + 1:]} (no rules file known for {agent})"); continue
-    f = os.path.join(home, RULES_FILE[agent])
-    rel = f[len(A) + 1:]
-    want = compose(selected(agent, version))
-    if want is None:
-        print(f"  NOPRESET {rel} (selects {selected(agent, version)!r})"); continue
-    link = os.path.islink(f)
-    if not os.path.lexists(f): got = "absent"
-    elif os.path.exists(f): got = h(open(f, "rb").read())
-    else: got = "dangling"
-    if got == h(want) and not link:
-        print(f"  ok     {rel}"); continue
-    what = f"link -> {os.readlink(f)} ({got})" if link else got
-    if not APPLY:
-        print(f"  {'LINK ' if link else 'ABSENT' if got == 'absent' else 'STALE'}  {rel} ({what})"); continue
-    try:
-        write(home, f, want)
-        print(f"  fixed  {rel} ({what} -> {h(want)})")
-    except OSError as e:
-        failed += 1
-        print(f"  FAILED {rel} ({e})")
-for acct in sorted(globmod.glob(f"{A}/.history/accounts/*/*")):
-    agent = acct.split("/")[-2]
-    f = os.path.join(acct, RULES_FILE.get(agent, "\0"))
-    if agent in RULES_FILE and os.path.isfile(f) and not os.path.islink(f):
-        print(f"  frozen {f[len(A) + 1:]} ({h(open(f, 'rb').read())}; a copy, not a link to a version)")
-sys.exit(1 if failed else 0)
-PY
-)
-run() { MODE=$1 HOST=$HOST A=$A "${PY[@]}" -c "$COMPOSE"; }
-
-if [ "$APPLY" = 1 ] && ! run preflight; then
-  echo "$HOST: --apply changed nothing"; exit 1
-fi
+bin=$(command -v agents) || { echo "$HOST: agents-cli is not installed" >&2; exit 2; }
+DIST=$(dirname "$(node -e 'console.log(require("fs").realpathSync(process.argv[1]))' "$bin")")
+[ -f "$DIST/lib/rules/compose.js" ] || { echo "$HOST: no rules composer under $DIST" >&2; exit 2; }
 
 if [ "$APPLY" = 1 ]; then
   y="$A/rules/rules.yaml"
@@ -205,4 +52,91 @@ if [ "$APPLY" = 1 ]; then
   done
 fi
 
-if [ "$APPLY" = 1 ]; then run apply; else run report; fi
+COMPOSE=$(cat <<'JS'
+import fs from "fs"; import path from "path"; import crypto from "crypto";
+const { DIST, A, HOST } = process.env, APPLY = process.env.APPLY === "1";
+const { composeRulesFromState } = await import(`${DIST}/lib/rules/compose.js`);
+const { getActiveRulesPreset } = await import(`${DIST}/lib/state.js`);
+const { AGENTS, agentConfigDirName } = await import(`${DIST}/lib/agents.js`);
+const h = (b) => crypto.createHash("md5").update(b).digest("hex").slice(0, 8);
+const VERSIONS = path.join(A, ".history", "versions");
+const rulesFile = (agent) => {
+  const cap = AGENTS[agent]?.capabilities?.rules;
+  return cap ? path.join(agentConfigDirName(agent), cap.file) : null;
+};
+const ls = (d) => { try { return fs.readdirSync(d).sort(); } catch { return []; } };
+
+const composed = new Map();
+function compose(preset) {
+  if (composed.has(preset)) return composed.get(preset);
+  let out = null;
+  try {
+    const r = composeRulesFromState({ preset });
+    out = Buffer.from(r.content, "utf-8");
+    console.log(`${HOST}: preset '${preset}' from ${r.presetLayer} layer; composed ${h(out)} ${out.length} bytes = `
+      + r.subrules.map((s) => `${s.name}(${s.layerScope[0]})`).join(" "));
+    if (r.presetLayer !== "system")
+      console.log(`${HOST}: WARNING the ${r.presetLayer} layer defines preset '${preset}', so the system one is ignored`);
+  } catch (e) {
+    console.log(`${HOST}: preset '${preset}' does not compose (${e.message}); versions selecting it are left as is`);
+  }
+  composed.set(preset, out);
+  return out;
+}
+
+// Write f atomically. Every path component from the versions dir down to f's directory must
+// be a real directory (no symlink can redirect the write), and the temp file is created
+// exclusively, so a planted file or link is never written through.
+function write(f, content) {
+  let cur = VERSIONS;
+  for (const part of path.relative(VERSIONS, path.dirname(f)).split(path.sep)) {
+    cur = path.join(cur, part);
+    let st = null;
+    try { st = fs.lstatSync(cur); } catch {}
+    if (st && !st.isDirectory()) throw new Error(`${cur} is a symlink or not a directory`);
+    if (!st) fs.mkdirSync(cur);
+  }
+  const tmp = path.join(path.dirname(f), `.rules-check.${crypto.randomBytes(6).toString("hex")}`);
+  const fd = fs.openSync(tmp, "wx", 0o644);
+  try {
+    fs.writeSync(fd, content); fs.fsyncSync(fd); fs.closeSync(fd);
+    fs.renameSync(tmp, f);  // replaces a symlink at f itself, as the CLI's writer does
+  } catch (e) {
+    try { fs.unlinkSync(tmp); } catch {}
+    throw e;
+  }
+}
+
+let failed = 0;
+for (const agent of ls(VERSIONS)) for (const version of ls(path.join(VERSIONS, agent))) {
+  const home = path.join(VERSIONS, agent, version, "home");
+  if (!fs.existsSync(home)) continue;
+  const relFile = rulesFile(agent);
+  if (!relFile) { console.log(`  skip   ${path.relative(A, home)} (${agent} has no rules file)`); continue; }
+  const f = path.join(home, relFile), rel = path.relative(A, f);
+  const preset = getActiveRulesPreset(agent, version);
+  const want = compose(preset);
+  if (!want) { console.log(`  NOPRESET ${rel} (selects '${preset}')`); continue; }
+  let st = null;
+  try { st = fs.lstatSync(f); } catch {}
+  const link = !!st?.isSymbolicLink();
+  const got = !st ? "absent" : fs.existsSync(f) ? h(fs.readFileSync(f)) : "dangling";
+  if (got === h(want) && !link) { console.log(`  ok     ${rel}`); continue; }
+  const what = link ? `link -> ${fs.readlinkSync(f)} (${got})` : got;
+  if (!APPLY) { console.log(`  ${link ? "LINK  " : got === "absent" ? "ABSENT" : "STALE "} ${rel} (${what})`); continue; }
+  try { write(f, want); console.log(`  fixed  ${rel} (${what} -> ${h(want)})`); }
+  catch (e) { failed++; console.log(`  FAILED ${rel} (${e.message})`); }
+}
+const ACCOUNTS = path.join(A, ".history", "accounts");
+for (const agent of ls(ACCOUNTS)) for (const id of ls(path.join(ACCOUNTS, agent))) {
+  const relFile = rulesFile(agent);
+  if (!relFile) continue;
+  const f = path.join(ACCOUNTS, agent, id, relFile);
+  let st = null;
+  try { st = fs.lstatSync(f); } catch {}
+  if (st?.isFile()) console.log(`  frozen ${path.relative(A, f)} (${h(fs.readFileSync(f))}; a copy, not a link to a version)`);
+}
+process.exit(failed ? 1 : 0);
+JS
+)
+cd "$A" && DIST=$DIST A=$A HOST=$HOST APPLY=$APPLY node --input-type=module -e "$COMPOSE"

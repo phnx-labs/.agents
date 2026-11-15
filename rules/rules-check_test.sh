@@ -39,12 +39,28 @@ check "  and is reported" grep -q NOPRESET "$T/out"
 setup; rm "$S/rules.yaml"; run --apply
 check "no rules.yaml leaves the file as is (never empties it)" same "$V/CLAUDE.md" "OLD"
 
-setup; printf 'extraRepos:\n  team: {url: x, enabled: true}\n' > "$A/agents.yaml"; run --apply; rc=$?
-check "an enabled extra repo makes --apply change nothing" same "$V/CLAUDE.md" "OLD"
-check "  and exits non-zero" [ "$rc" = 1 ]
+setup; printf 'versions:\n  claude:\n    1.0.0: {rulesPreset: custom}\n' > "$A/.system/agents.yaml"; run --apply
+check "a rulesPreset set only in the system agents.yaml is composed" same "$V/CLAUDE.md" "ALT"
+
+setup; printf 'versions:\n  claude:\n    1.0.0: {rulesPreset: custom}\n' > "$A/agents.yaml"
+printf '{}' > "$A/.history/version-resources.json"; run --apply
+check "version-resources.json supersedes a legacy agents.yaml selection" same "$V/CLAUDE.md" "CORE"
+
+setup; printf 'presets:\n  default:\n    subrules: [on]\n' > "$S/rules.yaml"; printf 'ON RULE\n' > "$S/subrules/on.md"; run --apply
+check "a subrule named 'on' is a name, not a boolean" same "$V/CLAUDE.md" "ON RULE"
+
+setup; mkdir -p "$T/team/rules/subrules"; printf 'TEAM\n' > "$T/team/rules/subrules/team.md"
+printf 'extraRepos:\n  team: {url: x, enabled: true, path: %s}\n' "$T/team" > "$A/agents.yaml"; run --apply
+check "an enabled extra repo's subrules union in" same "$V/CLAUDE.md" "$(printf 'CORE\n\nTEAM')"
+
+setup; H=$A/.history/versions/claude/1.0.0/home
+mkdir -p "$T/outside2/.claude"; printf 'KEEP\n' > "$T/outside2/.claude/CLAUDE.md"
+mv "$H" "$T/moved-home"; ln -s "$T/outside2" "$H"; run --apply; rc=$?
+check "a symlinked version home is not written through" same "$T/outside2/.claude/CLAUDE.md" "KEEP"
+check "  and the failure exits non-zero" [ "$rc" = 1 ]
 
 setup; mkdir "$T/outside"; printf 'KEEP\n' > "$T/outside/CLAUDE.md"
-rm -r "$V"; ln -s "$T/outside" "$V"; run --apply; rc=$?
+mv "$V" "$T/moved-claude"; ln -s "$T/outside" "$V"; run --apply; rc=$?
 check "a symlinked config dir is not written through" same "$T/outside/CLAUDE.md" "KEEP"
 check "  and the failure exits non-zero" [ "$rc" = 1 ]
 
