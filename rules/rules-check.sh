@@ -4,8 +4,9 @@
 #
 # `agents sync status` fingerprints rule sources, not the installed file, so a version file
 # that drifted still reads synced. This check composes each version's ruleset with the
-# installed agents-cli's own code (composeRulesFromState, getActiveRulesPreset, the agent
-# specs: same layers, extra repos, YAML parser and per-version preset) and compares bytes.
+# installed agents-cli's own code (composeRules, readMeta, the agent specs: same layers,
+# extra repos, YAML parser and per-version preset) and compares bytes. Metadata is read with
+# readMeta({migrate: false}), so the check itself never migrates or rewrites configuration.
 # A preset that does not compose leaves that version's file as is.
 #
 #   rules-check.sh            report: composed hash per preset, each version's file, frozen
@@ -24,7 +25,17 @@ A="$HOME/.agents"
 HOST=$(hostname -s 2>/dev/null || hostname)
 
 bin=$(command -v agents) || { echo "$HOST: agents-cli is not installed" >&2; exit 2; }
-DIST=$(dirname "$(node -e 'console.log(require("fs").realpathSync(process.argv[1]))' "$bin")")
+# The entrypoint is dist/index.js or, on macOS, the native dist/bin/agents; the modules sit
+# under the package root's dist/ either way.
+DIST=$(node -e '
+const fs = require("fs"), path = require("path");
+let d = path.dirname(fs.realpathSync(process.argv[1]));
+while (d !== path.dirname(d)) {
+  const p = path.join(d, "package.json");
+  if (fs.existsSync(p) && JSON.parse(fs.readFileSync(p, "utf-8")).name === "@phnx-labs/agents-cli") break;
+  d = path.dirname(d);
+}
+console.log(path.join(d, "dist"));' "$bin")
 [ -f "$DIST/lib/rules/compose.js" ] || { echo "$HOST: no rules composer under $DIST" >&2; exit 2; }
 
 if [ "$APPLY" = 1 ]; then
@@ -52,11 +63,22 @@ if [ "$APPLY" = 1 ]; then
   done
 fi
 
-COMPOSE=$(cat <<'JS'
+read -r -d '' COMPOSE <<'JS' || true  # not $(cat <<...): bash 3.2 misparses quotes in it
 import fs from "fs"; import path from "path"; import crypto from "crypto";
 const { DIST, A, HOST } = process.env, APPLY = process.env.APPLY === "1";
-const { composeRulesFromState } = await import(`${DIST}/lib/rules/compose.js`);
-const { getActiveRulesPreset } = await import(`${DIST}/lib/state.js`);
+const { composeRules } = await import(`${DIST}/lib/rules/compose.js`);
+const { readMeta, getUserRulesDir, getResolvedRulesDir, resolveExtraRepoDir } = await import(`${DIST}/lib/state.js`);
+// discoverRulesLayers and getActiveRulesPreset, over readMeta({migrate: false}): the CLI's
+// getters call readMeta() with migration on, which can write agents.yaml and chmod ~/.agents.
+const meta = readMeta({ migrate: false });
+const layers = [];
+if (fs.existsSync(getUserRulesDir())) layers.push({ scope: "user", rulesDir: getUserRulesDir() });
+for (const [alias, cfg] of Object.entries(meta.extraRepos || {})) {
+  const rulesDir = path.join(resolveExtraRepoDir(alias, cfg), "rules");
+  if (cfg?.enabled && fs.existsSync(rulesDir)) layers.push({ scope: "extra", rulesDir, alias });
+}
+if (fs.existsSync(getResolvedRulesDir())) layers.push({ scope: "system", rulesDir: getResolvedRulesDir() });
+const getActiveRulesPreset = (agent, version) => meta.versions?.[agent]?.[version]?.rulesPreset || "default";
 const { AGENTS, agentConfigDirName } = await import(`${DIST}/lib/agents.js`);
 const h = (b) => crypto.createHash("md5").update(b).digest("hex").slice(0, 8);
 const VERSIONS = path.join(A, ".history", "versions");
@@ -71,7 +93,7 @@ function compose(preset) {
   if (composed.has(preset)) return composed.get(preset);
   let out = null;
   try {
-    const r = composeRulesFromState({ preset });
+    const r = composeRules({ preset, layers });
     out = Buffer.from(r.content, "utf-8");
     console.log(`${HOST}: preset '${preset}' from ${r.presetLayer} layer; composed ${h(out)} ${out.length} bytes = `
       + r.subrules.map((s) => `${s.name}(${s.layerScope[0]})`).join(" "));
@@ -84,12 +106,12 @@ function compose(preset) {
   return out;
 }
 
-// Write f atomically. Every path component from the versions dir down to f's directory must
+// Write f atomically. The versions dir and every path component below it down to f's directory must
 // be a real directory (no symlink can redirect the write), and the temp file is created
 // exclusively, so a planted file or link is never written through.
 function write(f, content) {
   let cur = VERSIONS;
-  for (const part of path.relative(VERSIONS, path.dirname(f)).split(path.sep)) {
+  for (const part of ["", ...path.relative(VERSIONS, path.dirname(f)).split(path.sep)]) {
     cur = path.join(cur, part);
     let st = null;
     try { st = fs.lstatSync(cur); } catch {}
@@ -138,5 +160,4 @@ for (const agent of ls(ACCOUNTS)) for (const id of ls(path.join(ACCOUNTS, agent)
 }
 process.exit(failed ? 1 : 0);
 JS
-)
 cd "$A" && DIST=$DIST A=$A HOST=$HOST APPLY=$APPLY node --input-type=module -e "$COMPOSE"
