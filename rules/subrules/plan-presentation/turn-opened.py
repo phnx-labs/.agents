@@ -69,6 +69,20 @@ FAILED = re.compile(r'"via"\s*:\s*"none"|No visible Arc window|execution error|A
                     r'|Permission (?:for this action was|to use \w+ .*?has been) denied', re.I)
 
 
+# A `browser show` also has to say the owner can see the page or was told about it:
+# "visible": true, or a sent notification. A bare success only proves a tab exists
+# somewhere (2026-11-16: two pages sat behind VSCodium on zion and one opened on
+# mac-mini, and each agent said "it's open"). browser-cli 0.2.16 prints these.
+# Codex records a result JSON-encoded once more, so its quotes arrive as \".
+LANDED = re.compile(r'\\?"visible\\?"\s*:\s*true|\\?"notification\\?"\s*:\s*\\?"(?:clickable|plain)'
+                    r'|selected in its front window with|; notification sent', re.I)
+SHOW_CLI = re.compile(r"\bbrowser\s+show\b")
+
+
+def landed(command, text):
+    return not SHOW_CLI.search(command) or bool(LANDED.search(text))
+
+
 HANDOFF = re.compile(r"^\s*agents\s+feed\s+post\s+(?!-h\b|--help\b)[^\n]*--blocked\b")
 
 
@@ -182,7 +196,7 @@ else:
     turn = records[last:]
     done = results(turn)
     tried = list(opens(turn))
-    confirmed = [i for i, _ in tried if i in done and not FAILED.search(done[i][0])]
+    confirmed = [i for i, c in tried if i in done and not FAILED.search(done[i][0]) and landed(c, done[i][0])]
     opened = "yes" if confirmed else ("failed" if tried else "no")
     page = next((w for r in turn for w in written(r)), "-")
     if page == "-":
