@@ -99,10 +99,10 @@ open_fallback_note() {
   echo "An open was tried this turn, but its result never confirmed the owner can see the"
   echo "page or was told about it: it needs \"visible\": true or a sent notification"
   echo "(\"via\": \"none\", a bare {\"profile\": …} from browser-cli before 0.2.16, and"
-  echo "\"notification\": \"none\" all fail). If the output has no visible field, run"
+  echo "\"visible\": false with \"notification\": \"none\" all fail). If the output has no visible field, run"
   echo "\`browser doctor\` and update browser-cli. Then try again and check the result:"
   echo "  browser show <page.html> --json"
-  echo "  browser show <page.html> --os-browser --json   (always notifies)"
+  echo "  browser show <page.html> --os-browser --json   (macOS: notifies when the page is not in front)"
   echo "Tell the owner where the page is, in the words show prints, never just \"it's open\"."
 }
 
