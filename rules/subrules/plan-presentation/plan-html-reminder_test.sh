@@ -379,7 +379,7 @@ mkfile_nocl() {  # human turn, no checklist tool
     printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"text","text":"planning"}]}}'
     printf '%s\n' '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"x","content":"ok"}]}}'
     printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"b1","name":"Bash","input":{"command":"browser show ~/.agents/artifacts/2026-11-07/x/plan.html --json"}}]}}'
-    printf '%s\n' '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"b1","content":"{\"via\": \"arc\", \"profile\": \"arc-work\"}"}]}}'
+    printf '%s\n' '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"b1","content":"{\"via\": \"profile\", \"profile\": \"arc-work\", \"visible\": true, \"frontmost\": \"Arc\", \"notification\": \"none\"}"}]}}'
   } > "$TX"
 }
 mkfile_cl() {    # human turn, then a TaskCreate tool_use, then its tool_result(user)
@@ -388,7 +388,7 @@ mkfile_cl() {    # human turn, then a TaskCreate tool_use, then its tool_result(
     printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"t1","name":"TaskCreate","input":{"subject":"A1","description":"d"}}]}}'
     printf '%s\n' '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"t1","content":"created 1"}]}}'
     printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"b1","name":"Bash","input":{"command":"browser show ~/.agents/artifacts/2026-11-07/x/plan.html --json"}}]}}'
-    printf '%s\n' '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"b1","content":"{\"via\": \"arc\", \"profile\": \"arc-work\"}"}]}}'
+    printf '%s\n' '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"b1","content":"{\"via\": \"profile\", \"profile\": \"arc-work\", \"visible\": true, \"frontmost\": \"Arc\", \"notification\": \"none\"}"}]}}'
   } > "$TX"
 }
 MULTI='1. first step\n2. second step\n3. third step'
@@ -438,7 +438,7 @@ run 2 "plan never opened for the owner -> block" \
 {
   printf '%s\n' '{"type":"user","message":{"role":"user","content":"first ask"}}'
   printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"b0","name":"Bash","input":{"command":"browser show old.html"}}]}}'
-  printf '%s\n' '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"b0","content":"{\"via\": \"arc\", \"profile\": \"arc-work\"}"}]}}'
+  printf '%s\n' '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"b0","content":"{\"via\": \"profile\", \"profile\": \"arc-work\", \"visible\": true, \"frontmost\": \"Arc\", \"notification\": \"none\"}"}]}}'
   printf '%s\n' '{"type":"user","message":{"role":"user","content":"now plan it"}}'
   printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"t1","name":"TaskCreate","input":{"subject":"A1","description":"d"}}]}}'
 } > "$TX"
@@ -454,7 +454,7 @@ run 0 "plan opened with browser show this turn -> allow" \
 {
   printf '%s\n' '{"type":"event_msg","payload":{"type":"user_message","message":"plan it"}}'
   printf '%s\n' '{"type":"response_item","payload":{"type":"function_call","call_id":"c1","name":"exec_command","arguments":"{\"cmd\":\"browser show plan.html\"}"}}'
-  printf '%s\n' '{"type":"response_item","payload":{"type":"function_call_output","call_id":"c1","output":"{\"via\": \"arc\"}"}}'
+  printf '%s\n' '{"type":"response_item","payload":{"type":"function_call_output","call_id":"c1","output":"{\"via\": \"profile\", \"visible\": false, \"frontmost\": \"VSCodium\", \"notification\": \"plain\"}"}}'
 } > "$TX"
 run 0 "codex function_call browser show -> allow" \
   '{"tool_name":"ExitPlanMode","tool_input":{"plan":"x"},"transcript_path":"'"$TX"'"}'
@@ -463,7 +463,7 @@ run 0 "codex function_call browser show -> allow" \
 {
   printf '%s\n' '{"type":"user","origin":{"kind":"human"},"message":{"role":"user","content":"plan it"}}'
   printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"b1","name":"Bash","input":{"command":"browser show plan.html --json"}}]}}'
-  printf '%s\n' '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"b1","content":"{\"via\": \"arc\", \"profile\": \"arc-work\"}"}]}}'
+  printf '%s\n' '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"b1","content":"{\"via\": \"profile\", \"profile\": \"arc-work\", \"visible\": true, \"frontmost\": \"Arc\", \"notification\": \"none\"}"}]}}'
   printf '%s\n' '{"type":"user","origin":{"kind":"task-notification"},"message":{"role":"user","content":"<task-notification>done</task-notification>"}}'
   printf '%s\n' '{"type":"user","isCompactSummary":true,"message":{"role":"user","content":"This session is being continued from a previous conversation"}}'
   printf '%s\n' '{"type":"user","message":{"role":"user","content":"<bash-input>git status</bash-input>"}}'
@@ -476,7 +476,7 @@ run 0 "injected user records after the open do not reset the turn -> allow" \
 {
   printf '%s\n' '{"type":"event_msg","payload":{"type":"user_message","message":"plan it"}}'
   printf '%s\n' '{"type":"response_item","payload":{"type":"function_call","call_id":"c1","name":"exec_command","arguments":"{\"cmd\":\"browser show plan.html\"}"}}'
-  printf '%s\n' '{"type":"response_item","payload":{"type":"function_call_output","call_id":"c1","output":"{\"via\": \"arc\"}"}}'
+  printf '%s\n' '{"type":"response_item","payload":{"type":"function_call_output","call_id":"c1","output":"{\"via\": \"profile\", \"visible\": false, \"frontmost\": \"VSCodium\", \"notification\": \"plain\"}"}}'
   printf '%s\n' '{"type":"response_item","payload":{"type":"message","role":"user","content":[{"type":"input_text","text":"<environment_context>cwd</environment_context>"}]}}'
 } > "$TX"
 run 0 "codex injected context after the open -> allow" \
@@ -499,7 +499,7 @@ run 2 "auto mode, page written, not opened -> block" "$(STOP_AUTO)"
 
 # 29. Same turn, opened with browser show -> ALLOW.
 printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"s","name":"Bash","input":{"command":"browser show /home/u/.agents/artifacts/2026-11-07/report/index.html --json"}}]}}' >> "$TX"
-printf '%s\n' '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"s","content":"{\"via\": \"arc\", \"profile\": \"arc-work\"}"}]}}' >> "$TX"
+printf '%s\n' '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"s","content":"{\"via\": \"profile\", \"profile\": \"arc-work\", \"visible\": true, \"frontmost\": \"Arc\", \"notification\": \"none\"}"}]}}' >> "$TX"
 next_case
 run 0 "auto mode, page written and opened -> allow" "$(STOP_AUTO)"
 
@@ -591,7 +591,7 @@ run 0 "in-repo .agents/artifacts write -> allow" "$(STOP_AUTO)"
   printf '%s\n' '{"type":"user","origin":{"kind":"human"},"message":{"role":"user","content":"show me"}}'
   printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"w","name":"Write","input":{"file_path":"/home/u/.agents/artifacts/2026-11-07/r/index.html","content":"x"}}]}}'
   printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"o","name":"Bash","input":{"command":"agents ssh zion \"osascript -e '"'"'tell application \\\"Arc\\\"'"'"' -e '"'"'tell front window to make new tab with properties {URL:\\\"file:///x\\\"}'"'"'\""}}]}}'
-  printf '%s\n' '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"o","content":"{\"via\": \"arc\", \"profile\": \"arc-work\"}"}]}}'
+  printf '%s\n' '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"o","content":"{\"via\": \"profile\", \"profile\": \"arc-work\", \"visible\": true, \"frontmost\": \"Arc\", \"notification\": \"none\"}"}]}}'
 } > "$TX"
 next_case
 run 0 "page opened directly in Arc with AppleScript -> allow" "$(STOP_AUTO)"
@@ -608,7 +608,7 @@ run 2 "browser show that reported via none -> block" "$(STOP_AUTO)"
 
 # 31h. The failed open followed by a confirmed fallback -> ALLOW.
 printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"g","name":"Bash","input":{"command":"browser show /home/u/.agents/artifacts/2026-11-07/r/index.html --os-browser --json"}}]}}' >> "$TX"
-printf '%s\n' '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"g","content":"{\"via\": \"open\"}"}]}}' >> "$TX"
+printf '%s\n' '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"g","content":"{\"via\": \"open\", \"app\": \"Comet\", \"visible\": false, \"frontmost\": \"Comet\", \"notification\": \"plain\"}"}]}}' >> "$TX"
 next_case
 run 0 "failed open then confirmed fallback -> allow" "$(STOP_AUTO)"
 
@@ -627,10 +627,60 @@ run 2 "denied open -> block" "$(STOP_AUTO)"
   printf '%s\n' '{"type":"user","origin":{"kind":"human"},"message":{"role":"user","content":"show me"}}'
   printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"w","name":"Write","input":{"file_path":"/home/u/.agents/artifacts/2026-11-07/r/index.html","content":"x"}}]}}'
   printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"k","name":"Bash","input":{"command":"browser show /home/u/.agents/artifacts/2026-11-07/r/index.html --json; grep -c x missing.txt"}}]}}'
-  printf '%s\n' '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"k","is_error":true,"content":"Exit code 2\n{\"via\": \"arc\"}\nerror: could not open missing.txt"}]}}'
+  printf '%s\n' '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"k","is_error":true,"content":"Exit code 2\n{\"via\": \"profile\", \"visible\": false, \"frontmost\": \"VSCodium\", \"notification\": \"plain\"}\nerror: could not open missing.txt"}]}}'
 } > "$TX"
 next_case
 run 0 "successful open with a later failing command -> allow" "$(STOP_AUTO)"
+
+# 31k. show before 0.2.16, bare success, page behind VSCodium -> block
+{
+  printf '%s\n' '{"type":"user","origin":{"kind":"human"},"message":{"role":"user","content":"show me"}}'
+  printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"w","name":"Write","input":{"file_path":"/home/u/.agents/artifacts/2026-11-16/r/index.html","content":"x"}}]}}'
+  printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"s","name":"Bash","input":{"command":"browser show /home/u/.agents/artifacts/2026-11-16/r/index.html --json"}}]}}'
+  printf '%s\n' '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"s","content":"{\"via\": \"profile\", \"profile\": \"arc-work\", \"reused\": false, \"device\": \"zion\"}"}]}}'
+} > "$TX"
+next_case
+run 2 "show before 0.2.16, bare success, page behind VSCodium -> block" "$(STOP_AUTO)"
+
+# 31l. show opened on the wrong Mac via the OS handler (0.1.24) -> block
+{
+  printf '%s\n' '{"type":"user","origin":{"kind":"human"},"message":{"role":"user","content":"show me"}}'
+  printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"w","name":"Write","input":{"file_path":"/home/u/.agents/artifacts/2026-11-16/r/index.html","content":"x"}}]}}'
+  printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"s","name":"Bash","input":{"command":"/opt/homebrew/bin/browser show /home/u/.agents/artifacts/2026-11-16/r/index.html"}}]}}'
+  printf '%s\n' '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"s","content":"Opened in the OS default browser: file:///home/u/.agents/artifacts/2026-11-16/r/index.html"}]}}'
+} > "$TX"
+next_case
+run 2 "show opened on the wrong Mac via the OS handler (0.1.24) -> block" "$(STOP_AUTO)"
+
+# 31m. show not visible and no notification sent -> block
+{
+  printf '%s\n' '{"type":"user","origin":{"kind":"human"},"message":{"role":"user","content":"show me"}}'
+  printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"w","name":"Write","input":{"file_path":"/home/u/.agents/artifacts/2026-11-16/r/index.html","content":"x"}}]}}'
+  printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"s","name":"Bash","input":{"command":"browser show /home/u/.agents/artifacts/2026-11-16/r/index.html --json"}}]}}'
+  printf '%s\n' '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"s","content":"{\"via\": \"profile\", \"visible\": false, \"frontmost\": \"VSCodium\", \"notification\": \"none\"}"}]}}'
+} > "$TX"
+next_case
+run 2 "show not visible and no notification sent -> block" "$(STOP_AUTO)"
+
+# 31n. show line says notification sent -> allow
+{
+  printf '%s\n' '{"type":"user","origin":{"kind":"human"},"message":{"role":"user","content":"show me"}}'
+  printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"w","name":"Write","input":{"file_path":"/home/u/.agents/artifacts/2026-11-16/r/index.html","content":"x"}}]}}'
+  printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"s","name":"Bash","input":{"command":"browser show /home/u/.agents/artifacts/2026-11-16/r/index.html"}}]}}'
+  printf '%s\n' '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"s","content":"Opened in Arc (arc-work) on zion (behind VSCodium); notification sent: file:///home/u/.agents/artifacts/2026-11-16/r/index.html"}]}}'
+} > "$TX"
+next_case
+run 0 "show line says notification sent -> allow" "$(STOP_AUTO)"
+
+# 31o. show line says selected in front -> allow
+{
+  printf '%s\n' '{"type":"user","origin":{"kind":"human"},"message":{"role":"user","content":"show me"}}'
+  printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"w","name":"Write","input":{"file_path":"/home/u/.agents/artifacts/2026-11-16/r/index.html","content":"x"}}]}}'
+  printf '%s\n' '{"type":"assistant","message":{"content":[{"type":"tool_use","id":"s","name":"Bash","input":{"command":"browser show /home/u/.agents/artifacts/2026-11-16/r/index.html"}}]}}'
+  printf '%s\n' '{"type":"user","message":{"content":[{"type":"tool_result","tool_use_id":"s","content":"Opened in Arc (arc-work), selected in its front window with Arc in front: file:///home/u/.agents/artifacts/2026-11-16/r/index.html"}]}}'
+} > "$TX"
+next_case
+run 0 "show line says selected in front -> allow" "$(STOP_AUTO)"
 
 # 31e. artifacts render of a home page, not opened -> BLOCK.
 {

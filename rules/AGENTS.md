@@ -46,6 +46,12 @@ explain behavior better than prose, and inspect what you present
 (`ui-work-discipline`). Close with a summary that stands alone, including
 anything needed from the user.
 
+The owner runs many sessions and is rarely watching this one. A page or handoff
+is delivered only once it is in front of them or they were told: say where it
+is in the words `browser show` prints ("in Arc, behind VSCodium; notification
+sent"), never just "it's open", and make the one thing they must do singular
+and obvious.
+
 ## F5 — Protect irreversible state
 
 Protect the primary checkout, other people's work, credentials, and private

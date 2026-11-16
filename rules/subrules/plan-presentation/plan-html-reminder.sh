@@ -96,11 +96,14 @@ fi
 # A failed open needs a different command, not the same one again.
 open_fallback_note() {
   echo ""
-  echo "An open was tried this turn, but its result never confirmed the page appeared"
-  echo "(for example \"via\": \"none\" when Arc's front window is on another Space)."
-  echo "Use a path that confirms it, then check the result:"
-  echo "  browser show <page.html> --os-browser --json"
-  echo "  or AppleScript to Arc: make a tab with the page's URL and read back its title."
+  echo "An open was tried this turn, but its result never confirmed the owner can see the"
+  echo "page or was told about it: it needs \"visible\": true or a sent notification"
+  echo "(\"via\": \"none\", a bare {\"profile\": …} from browser-cli before 0.2.16, and"
+  echo "\"notification\": \"none\" all fail). If the output has no visible field, run"
+  echo "\`browser doctor\` and update browser-cli. Then try again and check the result:"
+  echo "  browser show <page.html> --json"
+  echo "  browser show <page.html> --os-browser --json   (always notifies)"
+  echo "Tell the owner where the page is, in the words show prints, never just \"it's open\"."
 }
 
 # ---- Page check: every turn, not only plans ----------------------------------
