@@ -48,9 +48,9 @@ anything needed from the user.
 
 The owner runs many sessions and is rarely watching this one. A page or handoff
 is delivered only once it is in front of them or they were told: say where it
-is in the words `browser show` prints ("in Arc, behind VSCodium; notification
-sent"), never just "it's open", and make the one thing they must do singular
-and obvious.
+is in the words `browser show` prints ("Opened in Arc (arc-work) on zion
+(behind VSCodium); notification sent"), never just "it's open", and make the one
+thing they must do singular and obvious.
 
 ## F5 — Protect irreversible state
 
