@@ -8,7 +8,7 @@ assessment, review, refactoring, and codebase learning.
 |---|---|---|
 | `/work:loop` | Deliver a ticket, branch, PR, or queue; spread independent work across the fleet. `triage` decides keep-and-schedule or cancel. | [Command](commands/loop.md) · [Skill](skills/loop/SKILL.md) |
 | `/work:commit` | Commit and push cohesive changes to code, documentation, assets, or configuration. | [Command](commands/commit.md) · [Skill](skills/commit/SKILL.md) |
-| `/work:dispatch` (`/dispatch`) | Discover, route, and verify one unit of work. | [Command](commands/dispatch.md) · [Skill](skills/dispatch/SKILL.md) |
+| `/work:dispatch` | Discover, route, and verify one unit of work. | [Command](commands/dispatch.md) · [Skill](skills/dispatch/SKILL.md) |
 | `/work:resume` | Reconstruct one project's sessions, PRs, worktrees, and tickets, then resume unfinished work on workers. | [Command](commands/resume.md) · [Skill](skills/resume/SKILL.md) |
 | `/work:demo` | Demonstrate the installed or live result against original intent with real inputs and evidence. | [Command](commands/demo.md) · [Skill](skills/demo/SKILL.md) |
 

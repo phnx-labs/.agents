@@ -1,14 +1,14 @@
 ---
 name: dispatch
-description: "Dispatch one task, coding or non-coding, to a capable executor and own its delivery. Use for /dispatch, /work:dispatch, a ticket, a described task, or the next clear task in a named project."
+description: "Dispatch one task, coding or non-coding, to a capable executor and own its delivery. Use for /work:dispatch, a ticket, a described task, or the next clear task in a named project."
 argument-hint: "[task, ticket, or project]"
 user-invocable: true
 ---
 
 # Dispatch one task
 
-Dispatch **$ARGUMENTS**. `/dispatch` defaults to the current project;
-`/work:dispatch` also accepts other projects and non-coding work. With no concrete
+Dispatch **$ARGUMENTS**. It defaults to the current project and also accepts other
+projects and non-coding work. With no concrete
 target, ask for the task. A board sweep belongs to `work:loop triage`.
 
 ## Establish what is actually needed

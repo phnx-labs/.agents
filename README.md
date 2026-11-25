@@ -83,7 +83,7 @@ to type.
 |---|---|---|
 | **Drain everything overnight** (any project, code *or* browser/outreach) without waiting on me | `/work:loop` | [`work`](plugins/work/README.md) — spreads load across accounts/hosts; **merges on green** behind a non-author review instead of leaving PRs for you |
 | Finish a **queue of engineering tickets** | `/work:loop` | [`work`](plugins/work/README.md) — worktrees, CI, review, release |
-| **One** clear task (any kind) to an agent | `/work:dispatch` or `/dispatch` | `work` for kind-agnostic; top-level `/dispatch` leans engineering |
+| **One** clear task (any kind) to an agent | `/work:dispatch` | [`work`](plugins/work/README.md) — classifies the task and routes it to an executor |
 | Decide keep/cancel/priority on the **whole board** | `/work:loop triage` | Triage mode — forces keep-and-schedule or cancel, never a hedge state |
 | Drive the **current task** to fully delivered | `/finish` | [`sessions`](plugins/sessions/README.md) — never stops at a recap or partial handoff |
 | **Demonstrate** what just landed — real env, before/after, report | `/work:demo` | [`work`](plugins/work/README.md) — recover intent, drive the shipped surface on real inputs, deliver a report on your screen + the PR |
@@ -169,7 +169,7 @@ requested outcome is cohesive commits and a verified push.
 
 ```text
 /work:dispatch RUSH-1234
-/dispatch fix the menubar reclaim bug
+/work:dispatch fix the menubar reclaim bug
 ```
 
 ### 4. After a crash

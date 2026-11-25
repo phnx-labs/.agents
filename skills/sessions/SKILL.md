@@ -30,8 +30,8 @@ sessions --project agents-cli --all
 
 `agents ps focus --attach-only` joins a still-running session; `agents run --resume`
 recovers a stopped one; `agents fork` branches a recap-seeded sibling. The `sessions`
-plugin skills drive them: `/continue` and `/recover` → `sessions:continue`,
-`/fork` → `sessions:fork`. Prefer those skills over hand-rolling resume flags.
+plugin skills drive them: `/continue` and `/recover` → `sessions:continue`;
+`agents fork` needs no skill. Prefer those skills over hand-rolling resume flags.
 
 ```bash
 # Attach — join a still-running session (live pane/tab); fails if it is not live

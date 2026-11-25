@@ -50,10 +50,9 @@ recap-and-leave, run `/recap` then [`/self:close`](../plugins/self/README.md).
 | [`/continue`](./continue.md) | Alias of `/sessions:continue` — resume prior work **in this session** (reattach only if genuinely live); group-capable. Also finishes crashed sessions headlessly (`/continue recover`). |
 | [`/insights`](./insights.md) | Alias of `/sessions:insights` — orchestrate `agents insights` + mix + perf + resources into evidence-backed actions |
 | [`/recall`](./recall.md) | Alias of `/sessions:search` — pull ranked, snippet-level context from prior sessions on a topic, without loading full transcripts. Falls back to the bundled `recall.py` when the CLI is thin — it's the only path that recovers assistant answers, since the index never stores them. |
-| [`/fork`](./fork.md) | Alias of `/sessions:fork` — fork this conversation into a NEW, independent session in a fresh terminal; the original is untouched. |
 | [`/learn`](./learn.md) | Post-session reflection that writes durable improvements forward — distill the lessons that generalize and route them to the right skill/rule/memory; `/learn <target>` audits one skill or command across all past sessions |
 
-The procedures for `/continue`, `/insights`, `/recall`, and `/fork` live in the
+The procedures for `/continue`, `/insights`, and `/recall` live in the
 [`sessions` plugin](../plugins/sessions/README.md) skills. Top-level files only invoke those
 skills (`/continue` → `/sessions:continue`). Picking a whole project back up is
 [`/work:resume`](../plugins/work/README.md). Recovering after a crash finishes the work
@@ -66,16 +65,15 @@ window-reopening `sessions:restore` was removed.
 
 | Command | What it does |
 |---|---|
-| [`/dispatch`](./dispatch.md) | Dispatch one task through `work:dispatch`: discover existing work, clarify scope, commit tracking at execution, and verify delivery |
 | [`/teams`](./teams.md) | Spawn parallel agents to work on a task together |
 
 The `tickets` skill is the general-purpose primitive (list, claim, comment, close).
 [`/work:loop triage`](../plugins/work/README.md) is a board-wide sweep that forces every open
 item to a real decision — keep-and-schedule-this-cycle or cancel, never Backlog.
-`/dispatch` is the single-task path from idea through verified delivery.
+[`/work:dispatch`](../plugins/work/README.md) is the single-task path from idea through verified delivery.
 [`/work:loop`](../plugins/work/README.md) is the unattended **queue** drain across projects
 and kinds (not engineering-only). Easy to confuse: `/work:loop triage` decides the board
-without touching code; `/dispatch` delegates one authorized task;
+without touching code; `/work:dispatch` delegates one authorized task;
 `/work:loop` keeps going unattended until the clear queue is empty.
 
 ## Present
@@ -92,7 +90,7 @@ Machine profiling is [`/fleet:profile`](../plugins/fleet/README.md).
 ## Related
 
 Several commands escalate to `agents teams` when the scope is wide: `/debug`, `/plan`,
-`/recap`, `/dispatch` (and `/code:refactor`, for independent moves in its landing phase).
+`/recap`, `/work:dispatch` (and `/code:refactor`, for independent moves in its landing phase).
 
 Capabilities like `/secrets`, `/sessions`, and `/browser` are **skills**, not commands —
 see [`skills/`](../skills/README.md). They are invoked the same way but carry their own
