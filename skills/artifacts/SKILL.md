@@ -149,13 +149,15 @@ and its own contract.
    links and state the limitation. Do not invent a component, callback, or working
    control the renderer does not implement. See the authoring reference.
 
-   Show media and social content with a component fence, never hand-written
-   HTML (artifacts-cli 0.19.0+): `post` for a post as X, Threads, Bluesky,
-   LinkedIn, Reddit or Instagram shows it, `video` for a recording (a reel with
-   `"aspect": "9:16"`), `gallery` for screens or photos to compare, `events` for
-   a schedule, `link` for the one source worth opening. Each takes JSON; run
-   `artifacts components <name>` for its fields and a working example, and
-   `artifacts check` before rendering. Use real names, media and counts, never
+   The installed catalogue is the full list and grows with each release: check
+   `artifacts components` before hand-writing HTML for anything a component
+   might cover. For media and social content (artifacts-cli 0.19.0+) it has, for
+   example, `post` for a post as X, Threads, Bluesky, LinkedIn, Reddit or
+   Instagram shows it, `video` for a recording (a reel with `"aspect": "9:16"`),
+   `gallery` for screens or photos to compare, `events` for a schedule and `link`
+   for the one source worth opening. Each takes JSON; `artifacts components
+   <name>` prints its fields and a working example, and `artifacts check`
+   validates it before rendering. Use real names, media and counts, never
    invented engagement.
 
    Cite evidence near the claim it supports, with descriptive links or `excerpt`
