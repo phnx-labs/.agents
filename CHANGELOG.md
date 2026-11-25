@@ -4,6 +4,8 @@
 
 ### Added
 
+- **`/prototype` is a top-level alias of `/design:prototype`**, like `/insights` and `/debug`, so the most-used design skill no longer needs its plugin prefix.
+
 - **The `artifacts` skill and the artifact critic teach pages that scan in one pass.** An audit of 42 artifacts agents made found the ask stated plainly on only 8 of the 30 pages that needed the owner, checklists 53% to 91% down the page, 9 unreadable hand-drawn diagrams and 11 pages citing PRs without links. The skill now teaches artifacts-cli 0.21.0's top band (`needs:`, task-list progress, `facts:` as key numbers), the `diagram` fence in place of hand-placed SVG, the `waterfall` and `line-chart` fences, clips, references that link themselves, headings that state their point, and posting the page's link back on its ticket and PR. The critic blocks a buried ask, an unreadable diagram, a UI change with no capture, and an unverifiable claim the decision rests on. `clis/artifacts.yaml` pins artifacts-cli so `agents doctor` reports a stale install.
 
 - **The `artifacts` skill treats `artifacts components` as the full list.** Its media paragraph read as if `post`, `video`, `gallery`, `events` and `link` were all there is. It now says the installed catalogue grows with each release and names those five as examples, so a component added to artifacts-cli reaches agents with the release and needs no skill edit.
