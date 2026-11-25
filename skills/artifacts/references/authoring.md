@@ -113,6 +113,40 @@ handlers. Do not imply live agent actions or production changes from local
 exploration. Check that the installed catalogue contains the component before use;
 on an older CLI use ordinary `<details>` and links, or report the missing feature.
 
+### Media and social components (0.19.0+)
+
+Five JSON fences show content the way people meet it. The renderer owns the
+layout, the palette, the lightbox and the carousel controls; you supply data.
+
+| Fence | Shows | Pick it when |
+| --- | --- | --- |
+| `post` | A post for `x`, `threads`, `bluesky`, `linkedin`, `reddit` or `instagram`: author, text, up to 4 media (Instagram 10, a carousel with arrows), counts | Reviewing a draft before it goes out, quoting a real post, reporting a launch |
+| `video` | A player with title, caption and counts. `"aspect": "9:16"` or a YouTube Shorts link is a reel with tap-to-play | A recording of the change, a clip or reel to review |
+| `gallery` | `grid`, `masonry` or `carousel`; any image opens full screen | Screens, frames or photos a reader compares |
+| `events` | A calendar agenda grouped by day | A schedule, a launch week, meetings an agent booked |
+| `link` | A rich preview card | The one source worth opening, not every citation |
+
+A minimal post:
+
+````markdown
+```post
+{
+  "platform": "x",
+  "author": { "name": "Rush", "handle": "getrushhq", "verified": true },
+  "text": "Shipped the new renderer. #buildinpublic",
+  "media": [{ "src": "shots/after.png", "alt": "The rendered page" }],
+  "time": "2026-11-24T09:41",
+  "metrics": { "replies": 18, "likes": 1280 }
+}
+```
+````
+
+`artifacts components <name>` prints every field. Media `src`, `poster` and
+`avatar` take an https URL or a path beside the Markdown, which render inlines so
+the page stays one file; keep videos short. Times show exactly as written, so
+name the zone with `events.timezone`. Unknown fields fail `artifacts check`.
+Show a post's counts only when they are real.
+
 Keep overview and expanded states readable. Native disclosure needs HTML inside
 it, not Markdown that may render literally:
 
