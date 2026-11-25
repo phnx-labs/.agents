@@ -16,6 +16,7 @@ These are **host tools**, not agents. They are the binaries a skill shells out t
 | [`secrets`](./secrets.yaml) | Standalone secrets CLI (`@phnx-labs/secrets-cli`). agents-cli no longer ships the engine; call `secrets` directly |
 | [`browser`](./browser.yaml) | Standalone browser engine (`@phnx-labs/browser-cli`); call `browser` directly |
 | [`computer`](./computer.yaml) | Standalone desktop engine (`@phnx-labs/computer-cli`); call `computer` directly |
+| [`artifacts`](./artifacts.yaml) | Renders agent Markdown into a self-contained HTML page and shares it; the `artifacts` skill teaches its components |
 | [`term`](./term.yaml) | Standalone PTY engine (`@phnx-labs/term-cli`); the interactive-terminal tool the setup-token mint behind `agents accounts add`/`login` spawns (`agents pty` was removed, PHNX-4091). `agents setup term` installs it |
 
 ## Using them
