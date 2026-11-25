@@ -93,7 +93,7 @@ launched directly. That is also what lets a passthrough verb reach the harness:
 `agents run claude#work -- rc`. Pass `--mode plan` when a run must be read-only.
 
 **`plan` is not universally read-only.** Agents without a native read-only mode
-(including Antigravity, Cursor, and Kiro) warn and degrade `plan` to their safest native
+(including Cursor and Kiro) warn and degrade `plan` to their safest native
 mode, which is usually writable `edit`. Headless Kimi has no read-only equivalent and
 rejects `plan` instead of silently running writable.
 
