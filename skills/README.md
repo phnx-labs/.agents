@@ -35,7 +35,6 @@ out-of-band) — after the self-unblock ladder is exhausted.
 
 | Skill | What it does |
 |---|---|
-| [`mq`](./mq/SKILL.md) | Structure-aware query for large files — extract one section instead of reading the whole file |
 | [`learn`](./learn/SKILL.md) | Reflect on a finished session and write the durable lessons back into skills, rules, or memory |
 | [`tickets`](./tickets/SKILL.md) | Work with the project's issue tracker — auto-detect Linear/GitHub/Jira (skill/CLI/repo signal), then list/claim/comment/close/create/search with proof; drives the check-first/close-on-delivery lifecycle |
 
@@ -45,9 +44,6 @@ out-of-band) — after the self-unblock ladder is exhausted.
 |---|---|
 | [`artifacts`](./artifacts/SKILL.md) | Make the pages the owner reads: Markdown rendered with `artifacts-cli` for plans and reports, or a hand-written HTML review page for before/afters and prototypes |
 | [`plan`](./plan/SKILL.md) | Portable entry point for the canonical `swarm:plan` skill, including goals, expected outcomes, success checks and visual artifacts |
-| [`docs`](./docs/SKILL.md) | Write documentation — user-facing, technical, runbooks, onboarding, changelogs, and AGENTS.md (`write-agents-md.md`) |
-
-`docs` covers system docs; for directory agent contracts use `docs/write-agents-md.md`.
 
 ## Machine-specific values stay out of the skill
 

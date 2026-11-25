@@ -43,7 +43,7 @@ that it stays trustworthy while doing it.
 
 This section is **this repo's instance** of the general rule. The rule itself — including
 when a directory wants neither file — lives in the
-[`write-agents-md`](./skills/docs/write-agents-md.md) docs subskill. Change it there first; this section
+[`write-agents-md`](./plugins/code/skills/learn/write-agents-md.md) guide in `code:learn`. Change it there first; this section
 records only how it lands here, plus the `rules/` exception below.
 
 Every directory carries both, and they do different jobs. Do not merge them.
@@ -93,7 +93,7 @@ domain — an industry, a function, one product's workflow — should be one
 `plugins/<name>/` with its skills inside, not N entries competing in the flat `skills/`
 list. The test: if two skills would always be installed together, or if a reader would
 ask "which of these three do I use?", they are one plugin. A skill stays top-level only
-when it is genuinely standalone and cross-domain (`browser`, `mq`, `sessions`).
+when it is genuinely standalone and cross-domain (`browser`, `secrets`, `sessions`).
 
 **Give every user-facing skill a slash command that routes to it.** A skill loads when
 the model decides its `description` matches; a command fires when the user types it.
