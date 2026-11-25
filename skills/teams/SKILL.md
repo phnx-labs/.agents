@@ -133,7 +133,7 @@ its own: Claude/Copilot's smart classifier, Codex's never-prompt
 for an unattended edit-mode teammate; reach for plain `edit` only when you actively
 want it to pause on ambiguous operations (e.g. a human is watching that teammate's
 session). Default coverage by harness: `plan`/`edit`/`auto` are all headless-capable
-on claude/codex/cursor/droid/opencode; kimi/grok/antigravity have no headless `plan`
+on claude/codex/cursor/droid/opencode, and `plan`/`edit` on antigravity; kimi/grok have no headless `plan`
 and silently downgrade a `plan` request to `auto`. A headless Cursor `plan` teammate
 runs Cursor's read-only ask mode and trusts its working directory, so it answers in
 its log instead of stalling on Cursor's workspace-trust prompt (agents-cli PR #3718).
