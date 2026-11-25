@@ -170,8 +170,10 @@ and its own contract.
    for real drill-down only (service → module → evidence, where most readers stop
    at the overview): rows with children, and a shared `metric` when the rows carry
    numbers. Six things you decide on are a short list or a table, not an
-   explorer. Run `artifacts components`, then `artifacts components <name>` for a
-   component's input contract and example. Fill in data; let the renderer own
+   explorer. Run `artifacts components`, then one `artifacts components <name>
+   <name>…` call for every component you will use (artifacts-cli 0.22.0+; an
+   older CLI takes one name per call) to get their contracts and examples. Fill
+   in data; let the renderer own
    layout, keyboard behavior and printing. If the installed
    version lacks that command or component, use supported native disclosure or
    links and state the limitation. Do not invent a component, callback, or working
@@ -183,10 +185,10 @@ and its own contract.
    example, `post` for a post as X, Threads, Bluesky, LinkedIn, Reddit or
    Instagram shows it, `video` for a recording (a reel with `"aspect": "9:16"`),
    `gallery` for screens or photos to compare, `events` for a schedule and `link`
-   for the one source worth opening. Each takes JSON; `artifacts components
-   <name>` prints its fields and a working example, and `artifacts check`
-   validates it before rendering. Use real names, media and counts, never
-   invented engagement.
+   for the one source worth opening. Each takes JSON. Look up every component
+   you need in that one call, write, then render: a render error names the
+   fields the failing level takes, so fix a typo from the error without another
+   lookup. Use real names, media and counts, never invented engagement.
 
    Cite evidence near the claim it supports, with descriptive links or `excerpt`
    fences pinned to the source revision. Put source details inside the relevant
@@ -207,11 +209,12 @@ and its own contract.
 5. Validate and render:
 
    ```bash
-   artifacts check "$SOURCE"
    artifacts render "$SOURCE"
    ```
 
-   Rendering writes `<source>.html` beside the Markdown. Fix errors in Markdown
+   `render` runs every `check` rule first and writes nothing while an error
+   stands, so one command validates and renders; run `artifacts check` alone
+   only to validate without writing. Rendering writes `<source>.html` beside the Markdown. Fix errors in Markdown
    or `DESIGN.md`, never in generated HTML.
 
 6. Inspect the rendered file headlessly. Check both themes, desktop and mobile
