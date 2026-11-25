@@ -1,0 +1,16 @@
+name: artifacts
+description: |
+  Phoenix Labs artifacts-cli — renders an agent's Markdown into one self-contained
+  HTML page (plans, reports, visuals) and shares it. The `artifacts` skill and the
+  artifact critic teach its components, so an older install renders pages without
+  the top band, diagram fence or charts the skill describes. Binary is `artifacts`.
+homepage: https://artifacts-cli.sh
+
+check: artifacts --version
+
+# Pin the published package. Bumping means editing this tag plus CHANGELOG.
+install:
+  - npm: "@phnx-labs/artifacts-cli@0.21.0"
+
+post_install: |
+  artifacts --version

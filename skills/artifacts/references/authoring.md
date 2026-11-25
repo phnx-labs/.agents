@@ -113,6 +113,24 @@ handlers. Do not imply live agent actions or production changes from local
 exploration. Check that the installed catalogue contains the component before use;
 on an older CLI use ordinary `<details>` and links, or report the missing feature.
 
+### Top band, diagrams, charts and clips (0.21.0+)
+
+- `needs:` (a sentence or a list, inline Markdown) renders as a highlighted
+  "Needs you" panel under the cover; task lists anywhere in the body add a
+  progress bar with a link to each list; `facts:` render as key numbers. Related
+  chips with the same label collapse into one.
+- A `diagram` fence: `id: Title | detail | detail` boxes (`id*:` highlights the
+  focal one) and `a -> b : label`, `a <-> b`, `a -- b` edges. Options
+  `title="…"` and `direction=LR|TB`. The renderer lays it out (dagre, bundled),
+  keeps text at 12.5 px or more and gives phones the narrower layout.
+- `bar-chart`, `waterfall` (first row the start, signed changes, `= Total` rows
+  with an empty value, computed) and `line-chart` (first column x, up to five
+  numeric series) take Markdown tables; labels are page text and wrap.
+- `![What it does](clip.mp4)` (`.webm`, `.m4v`, `.mov`) plays muted and loops.
+- With `repository: owner/repo`, `PR #123`, `owner/repo#12`, `#1234`, SHAs and
+  `dir/file.ts:42` link themselves; an issue key links once a URL on the page
+  shows its tracker.
+
 ### Media and social components (0.19.0+)
 
 Five JSON fences show content the way people meet it. The renderer owns the
@@ -251,6 +269,11 @@ reviewable** page — not a wall of bullets.
 Markdown source; do not open a partial file.
 
 ## Diagram Recipe
+
+Prefer a `diagram` fence for any system, flow or dependency graph: the renderer
+places boxes, routes arrows and sizes text, which hand-placed coordinates got
+wrong on 9 of 42 audited pages. The recipe below is for what a graph cannot
+express (mockups, timelines, annotated captures).
 
 `<style>` and custom classes are rejected **inside SVG too**, so style every
 element with presentation attributes instead of a shared class. Repeat the
