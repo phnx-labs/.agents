@@ -83,6 +83,7 @@ without touching code; `/dispatch` delegates one authorized task;
 | Command | What it does |
 |---|---|
 | [`/visualize`](./visualize.md) | Turn any concept, dataset, or finding into one self-contained branded HTML visual — infographic, explainer, status dashboard, data story, comparison. Routes to the `artifacts` skill's `kind: visual` |
+| [`/prototype`](./prototype.md) | Alias of `/design:prototype` — a working, clickable screen or flow built from the product's own design system |
 
 ## Observe
 
