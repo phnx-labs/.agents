@@ -111,11 +111,32 @@ and its own contract.
    Put every related ticket, PR, issue, or design URL in `links`. Mirror those
    URLs under `## Tracking` in plans. Use `tracking` for a short primary id.
 
+   Fill the top band (artifacts-cli 0.21.0+). The owner scrolls once, so the
+   renderer puts three things under the cover, before the Related chips:
+   `needs:` (what the owner must decide or do, one sentence or a list, with the
+   link to act on it), the progress of every task list in the body, and `facts:`
+   as key numbers (`8 of 30 asks clear` renders as a big number over its label).
+   An ask is never item five of a closing list; `check` warns when the body asks
+   for something and `needs:` is empty. With `repository: owner/repo`, `PR #123`,
+   commit SHAs and `dir/file.ts:42` link themselves, and an issue key such as
+   `PHNX-123` links once its ticket URL is in `links`, so cite work by id and
+   every claim is checkable from the References list.
+
+   Headings state their point ("CI is blocked on billing"), so the contents
+   rail reads as the summary. Reports and visuals have no required headings;
+   `check` warns when every heading is a slot like Summary or Findings. Keep a
+   page under about 2,500 words: the point and its evidence, with the long tail
+   behind an explorer or in a linked appendix.
+
    Use Markdown for headings, prose, tables, lists, and fenced code. Use direct
-   HTML only for grids, panels, figures, and callouts. Use inline SVG for
-   architecture, flows, timelines, state diagrams, and other semantic figures.
-   Read [references/authoring.md](references/authoring.md) before adding HTML or
-   SVG; follow its diagram recipe. Before drawing a diagram, read
+   HTML only for grids, panels, figures, and callouts. Draw architecture, flows
+   and dependencies with a `diagram` fence: write `id: Title | detail` boxes and
+   `a -> b : label` edges, mark the focal box with `id*:`, and the renderer lays
+   it out with readable text on desktop and phone. Hand-placed SVG is where the
+   unreadable diagrams came from; keep inline SVG for mockups, timelines and
+   illustrations a graph cannot express, and keep its text at 11 px or more
+   after scaling (`check` warns). Read
+   [references/authoring.md](references/authoring.md) before adding HTML or SVG. Before drawing a diagram, read
    [references/diagram-conventions.md](references/diagram-conventions.md) for the
    notation the field expects.
 
@@ -129,6 +150,13 @@ and its own contract.
    should know what matters before opening anything. Preserve correct terms,
    qualifications, units, denominators, timeframes and unresolved decisions; when
    rewriting, account for the original claims rather than quietly dropping them.
+
+   Pick components by the job. Ask: `needs:`. State: a status list (✅ ❌ ⚠️ ➡️
+   lines). Steps: a task list. A feature: a capture, or a clip
+   `![The interaction](clip.mp4)` that plays muted and loops; a page linking a
+   UI PR with neither gets a warning. A system: `diagram`. Numbers: `bar-chart`,
+   `waterfall` (totals computed) or `line-chart`. One takeaway: an
+   `artifact-callout`. Code: `excerpt` or `diff`. Drill-down: `explorer`.
 
    Choose the form by the reader's task. Use prose for a simple claim, aligned
    tables for exact lookup or a few comparable options, charts for quantitative
@@ -237,7 +265,8 @@ and its own contract.
    ```
 
    `me` opens only for the owner and lists the page in the Rush console under
-   Artifacts; link it from the ticket or PR. Widen to `--visibility org` or
+   Artifacts. Post its link on the ticket and the PR it covers, so each points
+   back to the artifact the way the artifact links to them. Widen to `--visibility org` or
    `public` only when the user asks. Never put credentials or confidential
    material in the source, `DESIGN.md`, or a widened share.
 
@@ -397,8 +426,8 @@ title, and a short single-takeaway summary. Choose the page shape from the
 content: infographic, explainer, status dashboard, data story, or comparison.
 
 Make one hero figure the visual spine of the page. A table alone does not count.
-Use `## Story`, optional `## Evidence`, and `## Figure`, with the hero figure under
-`## Figure`. Choose supporting evidence by its job: excerpts, captures, charts, or exact-value
+Headings state their point; there are no required section names. A feature
+leads with its capture or clip, a system with its `diagram`. Choose supporting evidence by its job: excerpts, captures, charts, or exact-value
 tables. Give it a clear reading order, labeled connectors or axes, a
 caption, and — when color or line style carries meaning — direct labels on the
 marks where the figure stays clean, or a legend when direct labels would clutter.
@@ -411,8 +440,9 @@ must respect reduced motion. Do not add scripts to Markdown: the renderer owns
 behavior there, and authored scripts are rejected.
 
 Quantitative charts must use honest scales, units, source labels, and accessible
-color choices. Use inline SVG for bespoke explanatory graphics; use the
-project's established chart system when one exists.
+color choices. Use the `bar-chart`, `waterfall` and `line-chart` fences for data,
+inline SVG only for bespoke explanatory graphics, and the project's established
+chart system when one exists.
 
 Tell a story; let what you already know about visualization guide the piece. Name
 the *Big Idea* in one sentence and the reader's *"so what"* before you chart, and
@@ -459,6 +489,8 @@ breakdowns or live results to make a visual look complete.
 - `artifacts check` and `artifacts render` exit successfully.
 - A plan satisfies its declared surface contract exactly.
 - A visual contains one hero figure that carries the explanation.
+- What the owner must decide or do is in `needs:`, task progress shows in the top
+  band, and PRs, tickets, commits and files are cited by id so they link.
 - Every embedded capture was viewed at the pixel level before shipping, and any live
   page was fully settled before it was captured.
 - Recommendations include their rationale and evidence; visible changes have a

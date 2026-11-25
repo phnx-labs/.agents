@@ -26,14 +26,21 @@ replace one with another by habit.
    whether it helps that decision with the right amount of detail.
 3. **Read the artifacts skill's rules.** `~/.agents/.system/skills/artifacts/SKILL.md` step 3 states
    the reading-task and interaction contract and `~/.agents/.system/skills/artifacts/references/authoring.md` lists the components the
-   renderer has: `bar-chart` fences, inline SVG, `artifact-stat`, `artifact-grid`,
-   `artifact-callout`, `artifact-behavior`, `excerpt` cards, `diff` fences.
+   renderer has: the top band (`needs:`, task-list progress, `facts:`), `diagram`,
+   `bar-chart`, `waterfall` and `line-chart` fences, clips (`![…](clip.mp4)`),
+   inline SVG, `artifact-stat`, `artifact-grid`, `artifact-callout`,
+   `artifact-behavior`, `excerpt` cards, `diff` fences.
 
 ## The rubric, in order
 
 - **Reading order.** The entry view explains the conclusion, consequence and next
   decision. Essential qualifications stay visible. A wall of equally prominent
   tiles, a large empty cover, or source chips obscuring the point is a finding.
+- **The ask comes first.** When the reader must decide or do something, it is in
+  `needs:` and shows in the top band with the link to act on it. An ask that
+  appears only in the body, or as the last item of a list, is BLOCKING. Steps
+  are task lists, so their progress shows at the top. Headings state their
+  point; a contents rail of Summary, Findings, Evidence is NON-BLOCKING.
 - **Expectations are explicit.** A plan states its goal, observable expected
   outcome and success checks before implementation detail, without requiring a
   click. Missing outcomes, task lists presented as acceptance, or proposed results
@@ -44,8 +51,11 @@ replace one with another by habit.
   simple claims. Check whether the chosen form makes that task easier. Do not
   require a picture for every sentence or cards for every record. Record accepted
   tables in `review:` so the checker warning is answered.
-- **Relationships and change are clear.** Architecture needs drawn relationships.
-  Visible changes need comparable current/proposed views or a working example.
+- **Relationships and change are clear.** Architecture needs drawn relationships;
+  a hand-placed SVG with a line through a label, overlapping boxes or text under
+  11 px is BLOCKING, and the remedy is a `diagram` fence. Visible changes need
+  comparable current/proposed views or a working example; a feature or UI PR
+  with no capture or clip is BLOCKING.
   Match viewport and state; label real captures, code-derived conclusions and
   mockups accurately. A diagram of paragraphs is not a substitute for showing the
   behavior or the evidence behind it.
@@ -57,6 +67,12 @@ replace one with another by habit.
   expanded states. Check SVG text after scaling, contrast, clipping and overflow.
   Tiny labels, crowded chips and truncated qualifications block regardless of a
   successful render command.
+- **Claims link to their evidence.** PRs, tickets, commits and files are cited
+  by id or link and appear in References. A claim the decision rests on with no
+  way to check it is BLOCKING; other unlinked citations are NON-BLOCKING.
+- **Length fits the decision.** A page the reader must search rather than read
+  (roughly over 2,500 words, or a long tail in the main path) is NON-BLOCKING with
+  a concrete cut, BLOCKING when the length buries the ask or the conclusion.
 - **Evidence survives the rewrite.** Preserve exact terms, units, denominators,
   timeframes, uncertainty and unresolved decisions. Open cited sources. Do not
   treat merged code as deployed behavior, a prototype as production proof, or
