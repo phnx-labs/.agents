@@ -94,8 +94,9 @@ Markdown frontmatter.
 
 ## Reusable interactive components
 
-Run `artifacts components` to discover the installed catalogue, and
-`artifacts components explorer --json` for the input contract and complete example.
+Run `artifacts components` to discover the installed catalogue, then
+`artifacts components <name> [<name>…]` once for the contracts and complete examples
+of every component you will use (`--json` for machine-readable output).
 An `explorer` fence accepts JSON: `title`, optional `description`, optional
 `metric: {label, unit, max}`, and `items`. Each item has a `label`, optional numeric
 `value`, `detail`, `description`, `sources: [{label, href}]`, and nested `children`.
@@ -159,10 +160,10 @@ A minimal post:
 ```
 ````
 
-`artifacts components <name>` prints every field. Media `src`, `poster` and
+`artifacts components <name> [<name>…]` prints every field. Media `src`, `poster` and
 `avatar` take an https URL or a path beside the Markdown, which render inlines so
 the page stays one file; keep videos short. Times show exactly as written, so
-name the zone with `events.timezone`. Unknown fields fail `artifacts check`.
+name the zone with `events.timezone`. Unknown fields fail `artifacts render`, and the error lists the fields that level takes.
 Show a post's counts only when they are real.
 
 Keep overview and expanded states readable. Native disclosure needs HTML inside
