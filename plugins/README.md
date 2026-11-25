@@ -25,7 +25,6 @@ I run?* and § *Automate your work*. This page is the plugin catalog.
 | PR review or whole-repo architecture scan | **code** | `/code:review` |
 | Parallel agents / blind plan / spec / debug | **swarm** | `/swarm`, `/swarm:plan`, … |
 | Resume prior work / recall / session analytics | **sessions** | `/continue`, `/finish`, `/insights`, `/recall`, `/fork` |
-| Current repository's agent output, cost, mix, and workflow tax as HTML | **yc** | `/yc:workweave` |
 | Onboard a bare device / profile a sluggish machine | **fleet** | `/fleet:onboard`, `/fleet:profile` |
 | Offline design render | **design** | `/design` |
 | Agent self-exit | **self** | `/self:close` |
@@ -45,7 +44,6 @@ review, refactoring, and codebase learning.
 | [`design`](./design/README.md) | 5 | Create or refine systems, graphics, and interactive prototypes; critique existing design |
 | [`self`](./self/README.md) | 3 | Agent self-operations — `/self:close` cleanly self-terminates the session (guarded SIGTERM to the harness); `/self:hibernate` sleeps the session until a future time; `/self:reflect` recalls corrections and constraints before revising work |
 | [`sessions`](./sessions/README.md) | 2 | Session lifecycle + analytics — `/sessions:continue` finishes prior work here (crash recovery finishes headlessly via `/continue recover`), `/sessions:search` pulls ranked snippet-level context from prior sessions (falls back to a bundled `recall.py` that recovers assistant answers the index misses); `/sessions:finish`/`/sessions:insights`/`/sessions:fork` skills are reached only via their top-level `/finish` `/insights` `/fork` aliases, and `/recall` aliases `/sessions:search` |
-| [`yc`](./yc/README.md) | 1 | Local recreations of YC startup products using a general-purpose agent plus focused skills/scripts; first recipe `/yc:workweave` turns indexed agent sessions, output, cost, resource use, hook/command latency, and friction into private HTML |
 
 ## Layout
 

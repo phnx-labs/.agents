@@ -53,6 +53,8 @@
 
 ### Removed
 
+- **The `yc` plugin (`/yc:workweave`).** No session invoked it in the last 30 days across three machines.
+
 - **The `docs`, `mq` and `tests` skills are gone.** `docs` and `mq` saw little use, and `skills/tests/` was a by-hand duplicate-name check that ran nowhere. The AGENTS.md writing guide that lived in `docs` moves to `plugins/code/skills/learn/write-agents-md.md`, beside the skill that writes AGENTS.md; the repo `AGENTS.md` and `code:learn` point there. The `mq` CLI manifest (`clis/mq.yaml`) stays.
 
 - **The `investigate-first-gate` Stop hook.** The same rule is already in `rules/` and in the `investigate-first-reminder` prompt hook, so the gate was a third copy that re-blocked replies. It also fired on a bare `! git pull`. The reminder stays.
