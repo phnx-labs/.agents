@@ -48,6 +48,8 @@
 
 ### Removed
 
+- **The `docs`, `mq` and `tests` skills are gone.** `docs` and `mq` saw little use, and `skills/tests/` was a by-hand duplicate-name check that ran nowhere. The AGENTS.md writing guide that lived in `docs` moves to `plugins/code/skills/learn/write-agents-md.md`, beside the skill that writes AGENTS.md; the repo `AGENTS.md` and `code:learn` point there. The `mq` CLI manifest (`clis/mq.yaml`) stays.
+
 - **The `investigate-first-gate` Stop hook.** The same rule is already in `rules/` and in the `investigate-first-reminder` prompt hook, so the gate was a third copy that re-blocked replies. It also fired on a bare `! git pull`. The reminder stays.
 - **Routines (agents-cli removed `agents routines` in 1.23.29, phnx-labs/agi-cli#3986).** Deleted `routines/` (the `worktree-sweep` and `backfill-check-outcomes` jobs, the sweep script and its test), the `routines` skill, and `webhooks/`, whose receiver only fired routines and which agents-cli had already retired. README, AGENTS.md, `skills/README.md`, CODEOWNERS, `.gitignore`, `hooks/run_tests.sh`, `/self:hibernate` and two hook comments no longer point at them. Nothing reclaims stale worktrees on a schedule now: `hooks/post-tool-use/02-worktree-reclaim-nudge.py` still removes the tree at merge time, and `check-outcome-backfill.py` still runs on demand.
 

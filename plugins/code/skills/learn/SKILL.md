@@ -12,7 +12,7 @@ Use `$ARGUMENTS` to select the session, topic, or package; otherwise use the cur
 Preserve durable project knowledge that a future agent would otherwise need to rediscover.
 Routine work or an already adequate explanation may warrant no change.
 
-Read the `docs` skill's `write-agents-md.md` guidance before editing project memory.
+Read [`write-agents-md.md`](write-agents-md.md) before editing project memory.
 Understand the relevant entry points, ownership boundaries, contracts, and non-obvious
 pitfalls from actual source and observed behavior. Separate enforced invariants from
 design intent and assumptions.
