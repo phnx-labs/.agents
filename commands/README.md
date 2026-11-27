@@ -21,7 +21,8 @@ commands are often thin wrappers that only invoke a skill (harness-friendly).
 | Command | What it does |
 |---|---|
 | [`/plan`](./plan.md) | Visual product brief, goals/non-goals, accurate diagrams, and a reviewable change proposal via `swarm:plan` |
-| [`/swarm`](./swarm.md) | Front door to the `swarm` plugin — fan work across parallel agents (`run` by default; or `plan` / `spec` / `debug`) |
+| [`/swarm`](./swarm.md) | Fan work across parallel agents via the `teams` skill, or run a swarm mode (`plan` / `spec` / `debug`) |
+| [`/spec`](./spec.md) | Write down how a capability behaves today, checked blind by independent agents against the code (routes to `swarm:spec`) |
 | [`/debug`](./debug.md) | Trace the data path, attribute regressions to the responsible agent/session and explain how they slipped, then have independent agents confirm the root cause (routes to `swarm:debug`) |
 | [`/blame`](./blame.md) | Trace a regression — a feature that worked and silently broke — to the culprit change, the removed/skipped test that let it through, and the agent/session behind it. Read-only forensics, no fix |
 
@@ -94,7 +95,7 @@ Several commands escalate to `agents teams` when the scope is wide: `/debug`, `/
 
 Capabilities like `/secrets`, `/sessions`, and `/browser` are **skills**, not commands —
 see [`skills/`](../skills/README.md). They are invoked the same way but carry their own
-tooling. Plugins ship namespaced commands (`/work:loop`, `/swarm:run`, `/fleet:onboard`) —
+tooling. Plugins ship namespaced commands (`/work:loop`, `/swarm:spec`, `/fleet:onboard`) —
 see [`plugins/`](../plugins/README.md).
 
 ---

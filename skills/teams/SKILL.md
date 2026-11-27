@@ -28,6 +28,47 @@ Organize AI coding agents into teams for parallel collaboration. This skill teac
 - **Single agent**: Use `agents run <agent> "prompt" --mode edit` for one-off tasks
 - **Multiple agents**: Use `agents teams` when you need parallel execution
 
+## Split a task across a team
+
+`/swarm <task>` lands here; `/swarm plan|spec|debug` and `/plan`, `/spec`, `/debug`
+use this section for their fan-out. You architect, teammates execute.
+
+1. **Find the seams before spawning.** Scope with in-process subagents (`Explore` /
+   `Plan`), not full agent CLIs. Read the files that define the patterns a teammate
+   must extend, and put concrete paths in each brief ("add `UseLocalModel bool` to
+   `UserConfig` in `config/user.go:15`", never "store the config somewhere"). For a
+   fact about the outside world (a library API, a model id, a price), web-search it
+   with the current year and put the citation in the briefs.
+2. **A team needs at least 2 independent tracks.** If track A cannot start without
+   B's output, re-slice or sequence it with `--after`. With no 2 independent tracks,
+   use one `agents run` or do it inline. Size by judgment: spend teammates where
+   uncertainty is highest.
+3. **Show the distribution plan, then proceed.** One block per track, plus the
+   boundaries:
+
+   ```
+   ### Track: <name>  (agent: <harness>, mode: plan|auto)
+   - Goal: <deliverable>
+   - Owns: <files/globs this track may modify>
+   - Must NOT touch: <files owned by other tracks>
+   - Verification: <the literal command or flow that proves it done>
+   - After: <track names, or none>
+
+   ### Boundaries
+   - No two tracks write the same file; a shared dependency has one owner.
+   - Seams: <track A calls X that track B builds> -> <the command that proves it>
+   ```
+
+   The seam list is the integration checklist you run before calling the work done
+   (see "Orchestrator: post at boundaries, verify the seam").
+4. **Verify a conclusion blind.** When a teammate's job is to *check* something (a
+   root cause, a plan, a spec), give it the context and the question but not your
+   hypothesis or answer, and put each verifier on a different provider. Agreement
+   you prompted proves nothing.
+5. **Synthesize, don't concatenate.** Where tracks agree, that is likely true. Where
+   they diverge is the real decision: surface it with each side cited to its
+   teammate and `file:line`. Disband the team when synthesis is done.
+
 ## Quick Start
 
 ```bash
