@@ -2,7 +2,7 @@
 name: teams
 description: "Organize AI coding agents into teams that collaborate on a shared task. Create teams, add teammates, start them, monitor progress, and collect results. Use this skill when you need parallel agent execution. For single-agent dispatch, use `agents run` instead."
 argument-hint: "[create|add|start|status|disband]"
-allowed-tools: Bash(agents teams*), Bash(agents run*)
+allowed-tools: Bash(agents teams*), Bash(agents run*), Bash(agents view*), Read(*), Grep(*), Glob(*), WebSearch(*), WebFetch(*)
 user-invocable: true
 ---
 
@@ -20,6 +20,10 @@ blocks a 3rd same-harness teammate on a multi-harness machine unless the
 brief states `single-harness: <capability reason>` — mixed is the default,
 monoculture is the documented exception.
 
+`agents teams doctor` reads sign-in from installed config, not a live call, so stale
+auth can report signed-in and still fail at spawn. Before a load-bearing run,
+smoke-test each harness: `agents run <agent> --mode skip --timeout 1m "Reply with exactly OK"`.
+
 
 Organize AI coding agents into teams for parallel collaboration. This skill teaches you how to use the `agents teams` CLI.
 
@@ -34,7 +38,7 @@ Organize AI coding agents into teams for parallel collaboration. This skill teac
 use this section for their fan-out. You architect, teammates execute.
 
 1. **Find the seams before spawning.** Scope with in-process subagents (`Explore` /
-   `Plan`), not full agent CLIs. Read the files that define the patterns a teammate
+   `Plan`, with `model` set explicitly), not full agent CLIs. Read the files that define the patterns a teammate
    must extend, and put concrete paths in each brief ("add `UseLocalModel bool` to
    `UserConfig` in `config/user.go:15`", never "store the config somewhere"). For a
    fact about the outside world (a library API, a model id, a price), web-search it
@@ -42,7 +46,8 @@ use this section for their fan-out. You architect, teammates execute.
 2. **A team needs at least 2 independent tracks.** If track A cannot start without
    B's output, re-slice or sequence it with `--after`. With no 2 independent tracks,
    use one `agents run` or do it inline. Size by judgment: spend teammates where
-   uncertainty is highest.
+   uncertainty is highest, and steer cost per track with `--model cheap|default|best|ultra`
+   on `teams add` (`agents models <agent>` shows what each tier resolves to).
 3. **Show the distribution plan, then proceed.** One block per track, plus the
    boundaries:
 
