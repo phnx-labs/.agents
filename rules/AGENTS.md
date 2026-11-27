@@ -29,8 +29,7 @@ absent. Judge
 authentication with a real authenticated request and reachability with a direct
 probe. After repeated identical policy denials, stop re-dressing the same
 blocked action. A real handoff names what remains, why, and the smallest next
-action; prepare it immediately and keep independent work moving. Never create
-identities or credentials to route around a block.
+action; prepare it immediately and keep independent work moving.
 
 ## F3 — Demonstrate delivery
 

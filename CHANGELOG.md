@@ -57,6 +57,8 @@
 
 ### Removed
 
+- **The ban on creating identities or credentials to get past a block is gone.** F2 in `foundations` ended with "Never create identities or credentials to route around a block," and the `work:loop` skill said "never create identities or export credentials to route around a blocker." The owner removed both. Keeping credentials in `secrets` (`operational`) and getting authorization before moving credentials to another host (F5) still apply.
+
 - **`/fork` with the `sessions:fork` skill, and the top-level `/dispatch` alias.** Neither was used in November across three machines. `agents fork` (and the AGI extension's Fork commands, which call it) builds its own recap and never used the skill. `work:dispatch` stays and is reached as `/work:dispatch`.
 
 - **The `yc` plugin (`/yc:workweave`).** No session invoked it in the last 30 days across three machines.
