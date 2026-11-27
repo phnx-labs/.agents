@@ -55,8 +55,7 @@ recover stalls. Dispatch and process exit status are not delivery evidence.
 | Research | Use the research workflow and current sources; deliver a cited answer or requested artifact. |
 
 Recover context from sessions, ticket/PR history, and the owning code before asking the
-user for information already available. Keep credentials in existing secret mechanisms;
-never create identities or export credentials to route around a blocker.
+user for information already available. Keep credentials in existing secret mechanisms.
 
 ## Verify and deliver
 
