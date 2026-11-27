@@ -1,19 +1,20 @@
 # swarm plugin
 
-Fan a task out across a team of parallel coding agents, then synthesize. Runs on the
-**`agents teams` CLI** (the Swarmify MCP is gone).
+Modes that use a team of independent agents to check a conclusion: a plan, a spec, or a
+root cause. Each mode runs on the **`agents teams` CLI**, and the mechanics of splitting
+work across a team (tracks, boundaries, blinded verification, the seam check) live in
+the [`teams`](../../skills/teams/SKILL.md) skill, so they are written down once.
 
-**Skill-first.** Commands only say `Invoke the \`swarm:…\` skill`. The shared engine is
-the internal **`swarm:orchestrate`** skill (no command of its own).
+**Skill-first.** Commands only say `Invoke the \`swarm:…\` skill`.
 
 ## Front door
 
 | Surface | Use when |
 | --- | --- |
-| **`/swarm`** (top-level) | Default entry — routes to `run` / `plan` / `spec` / `debug` from a leading mode word, else generic `run` |
-| `/swarm:run` | Explicit generic fan-out (same as bare `/swarm <task>`) |
+| **`/swarm`** (top-level) | Routes `plan` / `spec` / `debug` to that mode; any other task loads the `teams` skill |
+| `/plan`, `/spec`, `/debug` (top-level) | Aliases of `/swarm:plan`, `/swarm:spec`, `/swarm:debug` |
 
-## Specialized modes (kept)
+## Modes
 
 | Command | Use when |
 | --- | --- |
@@ -41,24 +42,14 @@ implementation details. An explicit request for another output format takes prec
 ## Removed
 
 `/swarm:test` and `/swarm:qa` are gone from this plugin (unused). For ordinary test writing
-follow the Strict Testing rule in the ruleset; for browser walks use the `browser` skill / a generic `/swarm:run`
-brief.
-
-## Principles
-
-- **`agents teams`, not Swarm MCP.** `agents teams --help` / `agents teams doctor`.
-- **Discover, then mix.** Signed-in providers only; diversity beats three of one model.
-- **Size by judgment.** Wide for gnarly work, one (or none) for narrow.
-- **Blinded verification** when the job is to *check* a conclusion.
-- **`--mode plan`** for read-only tracks; **`--mode edit`** only when a track changes code.
-- **Web-search first** for state-of-the-world facts.
-- **Evidence or it didn't happen.** Every brief ends with file:line quotes.
+follow the Strict Testing rule in the ruleset; for browser walks use the `browser` skill or a `/swarm <task>` team.
 
 ## History
 
 Originally `/swarm`, `/splan`, `/stest`, `/sdebug`, … on Swarmify MCP. Rebuilt on
 `agents teams` as `/swarm:*`. 0.5.0 simplifies to run + plan + spec + debug and a
-top-level `/swarm` router; test/qa modes dropped.
+top-level `/swarm` router; test/qa modes dropped. 0.6.0 folds the `orchestrate` engine
+into the `teams` skill and drops `run`, which restated it; bare `/swarm <task>` loads `teams`.
 
 ---
 

@@ -8,7 +8,7 @@ user-invocable: true
 
 # swarm:spec — write down how a capability actually behaves
 
-> Read the `swarm:orchestrate` skill first for the fan-out mechanics (team creation, briefs, blinded verification, monitoring). This skill is the **spec mode**: reverse-engineer a source-of-truth description of how the real code behaves, **document the visual/flow shape with mock-ups when there is a UI**, then validate it against independent agents who describe the same capability blind and against the code's actual behavior.
+> Read the `teams` skill ("Split a task across a team") first for the fan-out mechanics (team creation, briefs, blinded verification, monitoring). This skill is the **spec mode**: reverse-engineer a source-of-truth description of how the real code behaves, **document the visual/flow shape with mock-ups when there is a UI**, then validate it against independent agents who describe the same capability blind and against the code's actual behavior.
 
 You are specifying: **$ARGUMENTS**
 
@@ -104,14 +104,14 @@ Rules that keep a spec honest and useful:
 
 ## 5. Verify — the swarm describes it blind, and checks it against the code
 
-Fan out via `agents teams` (mechanics in `swarm:orchestrate`). Check who's signed in (`agents teams doctor` / `agents view --json`), then run **two kinds of verification**, sized by judgment (more agents for a wide or load-bearing capability):
+Fan out via `agents teams` (mechanics in the `teams` skill). Check who's signed in (`agents teams doctor` / `agents view --json`), then run **two kinds of verification**, sized by judgment (more agents for a wide or load-bearing capability):
 
 **a. Blind independent descriptions** — spawn 1–2 agents on **different** providers than yourself (`--mode plan`, read-only). Give each the capability boundary and the key files, but **NOT your draft**. Ask each to independently describe how the capability behaves from the code alone. Divergence is the signal:
 - Behavior they described that you missed → a real gap in your spec.
 - Behavior you wrote that they contradict → one of you misread the code; go re-read the file:line and resolve it.
 - Different sharp cases for the same behavior → it is under-specified; the union is the truth.
 
-**b. Spec-vs-code check** — take your drafted behavior and have a verifier confirm each line against actual code behavior at the cited file:line (`--mode plan`). Behavior the code does **not** actually do is either a bug in the code or a wrong line in your spec — surface it, never quietly rewrite the spec to match a buggy implementation. (Blinded verification per `swarm:orchestrate`: hand the claim and the file, not your confidence.)
+**b. Spec-vs-code check** — take your drafted behavior and have a verifier confirm each line against actual code behavior at the cited file:line (`--mode plan`). Behavior the code does **not** actually do is either a bug in the code or a wrong line in your spec — surface it, never quietly rewrite the spec to match a buggy implementation. (Blinded verification per the `teams` skill: hand the claim and the file, not your confidence.)
 
 ## Output
 

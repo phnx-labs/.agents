@@ -8,7 +8,7 @@ user-invocable: true
 
 # swarm:debug — from intent, to a confirmed root cause, to a dispatched fix
 
-> Read `swarm:orchestrate` first for fan-out mechanics and the blinded-verification rule. This is the **debug loop**: pin what you *meant* against what *happened*, find the gap in the contract that let it slip, prove the root cause with independent agents, then close it out — artifact, ticket, dispatch. No fix ships until the cause is proven and independently confirmed.
+> Read the `teams` skill ("Split a task across a team") first for fan-out mechanics and the blinded-verification rule. This is the **debug loop**: pin what you *meant* against what *happened*, find the gap in the contract that let it slip, prove the root cause with independent agents, then close it out — artifact, ticket, dispatch. No fix ships until the cause is proven and independently confirmed.
 
 You are debugging: **$ARGUMENTS**
 
@@ -46,7 +46,7 @@ If the bug could involve external behavior (a library version's quirk, an API co
 
 ## 4. Verify — blinded, scaled to the bug, on the worker boxes
 
-Fan out via `agents teams` (mechanics in `swarm:orchestrate`). First check who's available (`agents teams doctor` / `agents view --json`), then **mix different model providers** — the diversity is the whole point; two of the same model agreeing proves nothing. Dispatch verifiers to the worker boxes by default (`--device yosemite-s0,yosemite-s1`, or `--device auto`) to keep the interactive machine responsive.
+Fan out via `agents teams` (mechanics in the `teams` skill). First check who's available (`agents teams doctor` / `agents view --json`), then **mix different model providers** — the diversity is the whole point; two of the same model agreeing proves nothing. Dispatch verifiers to the worker boxes by default (`--device yosemite-s0,yosemite-s1`, or `--device auto`) to keep the interactive machine responsive.
 
 **Scale the verifier count to the bug, by judgment** (not a fixed number):
 - Trivial / single-file → 1 independent check, or skip the swarm and just prove it yourself.
@@ -79,7 +79,7 @@ A confirmed root cause is the middle of the task, not the end. When this is a re
 
 - **Render a viewable artifact.** Turn the finding (intent/observed/delta → evidence chain → root cause → spec gap → recommended fix) into a self-contained HTML doc and open it on the machine the user sits at — follow the `artifacts` skill for the LOOK and the `/plan` open-on-Mac transport. This is the surface the user reviews and reacts to.
 - **Track the fix.** If it's fixable now, fix it (or dispatch the fix — see below); otherwise enrich or open a ticket through the `tickets` skill, scoped to the fix: the delta, the root-cause file:line, the regression test to add, and the spec gap. Link the artifact.
-- **Dispatch the build.** Once the fix is approved, dispatch it to the worker boxes — `agents run <profile> --device yosemite-s0` for a single fix, or `agents teams` for multi-surface work (see `swarm:orchestrate`). Don't hand-build it on the interactive machine.
+- **Dispatch the build.** Once the fix is approved, dispatch it to the worker boxes — `agents run <profile> --device yosemite-s0` for a single fix, or `agents teams` for multi-surface work (see the `teams` skill). Don't hand-build it on the interactive machine.
 
 For a quick throwaway diagnosis, stop at the confirmed root cause and say so.
 

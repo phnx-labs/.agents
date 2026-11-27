@@ -1,7 +1,7 @@
 {
   "name": "swarm",
-  "version": "0.5.7",
-  "description": "swarm \u2014 fan a task out across parallel coding agents via `agents teams`. Top-level `/swarm` (and `/swarm:run`) is the generic fan-out. Specialized modes: `/swarm:plan` (reviewable change proposal; the plan skill owns scope, visuals, success checks, and review), `/swarm:spec` (durable source-of-truth contract so others do not invent wrong behavior \u2014 requirements, scenarios, mock-ups, drift-check), `/swarm:debug` (blind multi-provider root-cause). Shared engine: internal `swarm:orchestrate` skill. Commands only invoke skills. `/swarm:test` and `/swarm:qa` removed.",
+  "version": "0.6.0",
+  "description": "swarm \u2014 modes that use a team of independent agents to check a conclusion. `/swarm:plan` (reviewable change proposal; the plan skill owns scope, visuals, success checks, and review), `/swarm:spec` (how a capability behaves today, described blind by independent agents and checked against the code), `/swarm:debug` (blind multi-provider root-cause). Fan-out mechanics live in the `teams` skill; bare `/swarm <task>` loads it.",
   "author": {
     "name": "Muqsit Nawaz",
     "email": "contact@trp.so"
